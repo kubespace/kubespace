@@ -1,0 +1,134 @@
+@import './variables.scss';
+@import './mixin.scss';
+@import './transition.scss';
+@import './element-ui.scss';
+@import './sidebar.scss';
+
+body {
+  height: 100%;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-family: Helvetica Neue, Helvetica, PingFang SC, Hiragino Sans GB, Microsoft YaHei, Arial, sans-serif;
+}
+
+label {
+  font-weight: 700;
+}
+
+html {
+  height: 100%;
+  box-sizing: border-box;
+}
+
+#app {
+  height: 100%;
+}
+
+*,
+*:before,
+*:after {
+  box-sizing: inherit;
+}
+
+a:focus,
+a:active {
+  outline: none;
+}
+
+a,
+a:focus,
+a:hover {
+  cursor: pointer;
+  color: inherit;
+  text-decoration: none;
+}
+
+div:focus {
+  outline: none;
+}
+
+.clearfix {
+  &:after {
+    visibility: hidden;
+    display: block;
+    font-size: 0;
+    content: " ";
+    clear: both;
+    height: 0;
+  }
+}
+
+// main-container global css
+.app-container {
+  padding: 20px;
+}
+
+.app-main {
+
+  .running-class {
+    color: #67C23A;
+  }
+
+  .terminate-class {
+    color: #909399;
+  }
+
+  .waiting-class {
+    color: #E6A23C;
+  }
+
+  .back-class {
+    background-color: #EBEEF5;
+    border-radius: 30px;
+    padding: 3px 6px;
+    margin-right: 2px;
+  }
+  .dashboard {
+    &-container {
+      margin: 10px 30px;
+    }
+    &-text {
+      font-size: 30px;
+      line-height: 46px;
+    }
+  
+    .table-fix {
+      height: calc(100% - 100px);
+    }
+  }
+
+  .dialogFooter {
+    text-align: center;
+    margin: -10px 60px 15px;
+
+    button {
+      border-radius: 0px;
+      padding: 10px 25px;
+    }
+  }
+
+  .dialogContent {
+    padding: 0px 60px 0 40px;
+    margin: -20px 0;
+
+    label {
+      font-weight: 400;
+    }
+    .el-form-item {
+      margin-bottom: 15px;
+    }
+    input, textarea {
+      border-radius: 0px;
+    }
+    textarea {
+      height: 80px;
+    }
+  }
+
+  .tableOperate {
+    .el-link {
+      font-weight: 430;
+    }
+  }
+}

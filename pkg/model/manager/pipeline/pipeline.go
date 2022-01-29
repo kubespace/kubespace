@@ -1,0 +1,62 @@
+package pipeline
+
+import (
+	"github.com/kubespace/kubespace/pkg/model/types"
+	"gorm.io/gorm"
+)
+
+type ManagerPipeline struct {
+	DB *gorm.DB
+}
+
+func NewPipelineManager(db *gorm.DB) *ManagerPipeline {
+	return &ManagerPipeline{DB: db}
+}
+
+func (p *ManagerPipeline) CreatePipeline(pipeline *types.Pipeline, stages []*types.PipelineStage) (*types.Pipeline, error) {
+	err := p.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(pipeline).Error; err != nil {
+			return err
+		}
+		var prevStageId uint = 0
+		for _, stage := range stages {
+			stage.PipelineId = pipeline.ID
+			stage.PrevStageId = prevStageId
+			if err := tx.Create(stage).Error; err != nil {
+				return err
+			}
+			prevStageId = stage.ID
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return pipeline, nil
+}
+
+func (p *ManagerPipeline) Get(pipelineId uint) (*types.Pipeline, error) {
+	var pipeline types.Pipeline
+	if err := p.DB.First(&pipeline, pipelineId).Error; err != nil {
+		return nil, err
+	}
+	return &pipeline, nil
+}
+
+func (p *ManagerPipeline) List(workspaceId uint) ([]types.Pipeline, error) {
+	var ps []types.Pipeline
+	result := p.DB.Where("workspace_id = ?", workspaceId).Find(&ps)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return ps, nil
+}
+
+func (p *ManagerPipeline) Stages(pipelineId uint) ([]types.PipelineStage, error) {
+	var stages []types.PipelineStage
+	if err := p.DB.Where("pipeline_id = ?", pipelineId).Find(&stages).Error; err != nil {
+		return nil, err
+	}
+
+	return stages, nil
+}
