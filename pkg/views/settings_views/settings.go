@@ -13,26 +13,26 @@ import (
 	"time"
 )
 
-type SettingsSecret struct {
+type Settings struct {
 	Views  []*views.View
 	models *model.Models
 }
 
-func NewSettingsSecret(models *model.Models) *SettingsSecret {
-	secret := &SettingsSecret{
+func NewSettings(models *model.Models) *Settings {
+	settings := &Settings{
 		models: models,
 	}
 	vs := []*views.View{
-		views.NewView(http.MethodGet, "", secret.list),
-		views.NewView(http.MethodPost, "", secret.create),
-		views.NewView(http.MethodPut, "/:id", secret.update),
-		views.NewView(http.MethodDelete, "/:id", secret.delete),
+		views.NewView(http.MethodGet, "", settings.list),
+		views.NewView(http.MethodPost, "", settings.create),
+		views.NewView(http.MethodPut, "/:id", settings.update),
+		views.NewView(http.MethodDelete, "/:id", settings.delete),
 	}
-	secret.Views = vs
-	return secret
+	settings.Views = vs
+	return settings
 }
 
-func (s *SettingsSecret) create(c *views.Context) *utils.Response {
+func (s *Settings) create(c *views.Context) *utils.Response {
 	var ser serializers.SecretsSerializers
 	resp := &utils.Response{Code: code.Success}
 	if err := c.ShouldBind(&ser); err != nil {
@@ -63,7 +63,7 @@ func (s *SettingsSecret) create(c *views.Context) *utils.Response {
 	return resp
 }
 
-func (s *SettingsSecret) update(c *views.Context) *utils.Response {
+func (s *Settings) update(c *views.Context) *utils.Response {
 	var ser serializers.SecretsSerializers
 	resp := &utils.Response{Code: code.Success}
 	if err := c.ShouldBind(&ser); err != nil {
@@ -99,7 +99,7 @@ func (s *SettingsSecret) update(c *views.Context) *utils.Response {
 	return resp
 }
 
-func (s *SettingsSecret) delete(c *views.Context) *utils.Response {
+func (s *Settings) delete(c *views.Context) *utils.Response {
 	resp := &utils.Response{Code: code.Success}
 	secretId, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -120,7 +120,7 @@ func (s *SettingsSecret) delete(c *views.Context) *utils.Response {
 	return resp
 }
 
-func (s *SettingsSecret) list(c *views.Context) *utils.Response {
+func (s *Settings) list(c *views.Context) *utils.Response {
 	resp := &utils.Response{Code: code.Success}
 	secrets, err := s.models.SettingsSecretManager.List()
 	if err != nil {

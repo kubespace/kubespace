@@ -98,7 +98,7 @@ const hasToken = getToken()
 
 if (hasToken) {
   try{
-    connect()
+    // connect()
   } catch (error) {
     console.log(error)
   }

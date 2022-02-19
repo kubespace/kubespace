@@ -36,7 +36,7 @@
           show-overflow-tooltip
         >
           <template slot-scope="scope">
-            <span :style="{'color': (scope.row.status === 'Connect' ? '#409EFF' : '#F56C6C')}">
+            <span :style="{'color': (scope.row.status === 'Connect' ? '#67c23a' : '#F56C6C')}">
               {{scope.row.status}}
               <template v-if="scope.row.status === 'Connect'">
                 <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="correct" />
@@ -58,7 +58,7 @@
               </el-link>
               <el-link :underline="false" style="margin-right: 15px; color:#409EFF" 
                 @click="nameClick(scope.row.name)"
-                v-if="scope.row.status === 'Connect'">查看详情</el-link>
+                v-if="scope.row.status === 'Connect'">集群详情</el-link>
               <el-link :underline="false" style="color: #F56C6C" @click="deleteClusters([{name: scope.row.name}])">删除</el-link>
             </div>
             <!-- <el-button

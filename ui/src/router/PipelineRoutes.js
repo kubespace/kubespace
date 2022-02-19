@@ -10,6 +10,13 @@ const Routes = [
     meta: { title: '流水线', icon: 'pipeline', 'group': 'pipeline', object: 'pipeline' }
   },
   {
+    path: 'create',
+    name: 'pipelineCreate',
+    hidden: true,
+    component: () => import('@/views/pipeline/pipelineCreate'),
+    meta: { title: '流水线', icon: 'pipeline', sideName: 'pipeline', 'group': 'pipeline', object: 'cluster'}
+  },
+  {
     path: 'resource',
     name: 'pipelineResource',
     component: () => import('@/views/pipeline/pipeline'),
@@ -31,6 +38,13 @@ const Routes = [
         name: 'pipelineBuilds',
         hidden: true,
         component: () => import('@/views/pipeline/build'),
+        meta: { title: '流水线', icon: 'pipeline', sideName: 'pipeline', 'group': 'pipeline', object: 'cluster'}
+      },
+      {
+        path: 'edit',
+        name: 'pipelineEdit',
+        hidden: true,
+        component: () => import('@/views/pipeline/pipelineEdit'),
         meta: { title: '流水线', icon: 'pipeline', sideName: 'pipeline', 'group': 'pipeline', object: 'cluster'}
       },
     ]

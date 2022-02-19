@@ -14,3 +14,19 @@ export function getPipeline(pipelineId) {
     method: 'get',
   })
 }
+
+export function updatePipeline(data) {
+  return request({
+    url: `pipeline/pipeline`,
+    method: 'put',
+    data: data,
+  })
+}
+
+export function createPipeline(data) {
+  return request({
+    url: `pipeline/pipeline`,
+    method: 'post',
+    data: data,
+  })
+}

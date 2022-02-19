@@ -25,8 +25,8 @@ import (
 
 type codeCommit struct {
 	CommitId string
-	Author string
-	Message string
+	Author   string
+	Message  string
 }
 
 type ServicePipelineRun struct {
@@ -52,7 +52,7 @@ func (r *ServicePipelineRun) ListPipelineRun(pipelineId uint) *utils.Response {
 		}
 		data := map[string]interface{}{
 			"pipeline_run": pipelineRun,
-			"stages_run": stagesRun,
+			"stages_run":   stagesRun,
 		}
 		retData = append(retData, data)
 	}
@@ -81,8 +81,8 @@ func (r *ServicePipelineRun) getCodeAuth(secretId uint) (transport.AuthMethod, e
 		return nil, fmt.Errorf("获取代码密钥失败：" + err.Error())
 	}
 	var auth transport.AuthMethod
-	if secret.Value.Type == types.SettingsSecretTypeKey {
-		privateKey, err := sshgit.NewPublicKeys("git", []byte(secret.Value.PrivateKey), "")
+	if secret.Type == types.SettingsSecretTypeKey {
+		privateKey, err := sshgit.NewPublicKeys("git", []byte(secret.PrivateKey), "")
 		if err != nil {
 			return nil, fmt.Errorf("生成代码密钥失败：" + err.Error())
 		}
@@ -90,10 +90,10 @@ func (r *ServicePipelineRun) getCodeAuth(secretId uint) (transport.AuthMethod, e
 			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		}
 		auth = privateKey
-	} else if secret.Value.Type == types.SettingsSecretTypePassword {
+	} else if secret.Type == types.SettingsSecretTypePassword {
 		auth = &http.BasicAuth{
-			Username: secret.Value.User,
-			Password: secret.Value.Password,
+			Username: secret.User,
+			Password: secret.Password,
 		}
 	}
 	return auth, nil
@@ -106,14 +106,14 @@ func (r *ServicePipelineRun) getCodeBranchCommit(codeUrl, branch string, secretI
 	}
 	uuid := utils.CreateUUID()
 	refName := "refs/heads/" + branch
-	ref, err := git.PlainClone("/tmp/" + uuid, true, &git.CloneOptions{
-		Auth:          auth,
-		URL:           codeUrl,
-		Progress:      os.Stdout,
-		ReferenceName: plumbing.ReferenceName(refName),
-		SingleBranch: true,
-		Depth: 1,
-		NoCheckout: true,
+	ref, err := git.PlainClone("/tmp/"+uuid, true, &git.CloneOptions{
+		Auth:            auth,
+		URL:             codeUrl,
+		Progress:        os.Stdout,
+		ReferenceName:   plumbing.ReferenceName(refName),
+		SingleBranch:    true,
+		Depth:           1,
+		NoCheckout:      true,
 		InsecureSkipTLS: true,
 	})
 	if err != nil {
@@ -132,8 +132,8 @@ func (r *ServicePipelineRun) getCodeBranchCommit(codeUrl, branch string, secretI
 	}
 	return &codeCommit{
 		CommitId: commit.Hash.String(),
-		Author: commit.Author.Name,
-		Message: commit.Message,
+		Author:   commit.Author.Name,
+		Message:  commit.Message,
 	}, nil
 }
 
@@ -235,7 +235,7 @@ func (r *ServicePipelineRun) Build(buildSer *serializers.PipelineBuildSerializer
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
-	go r.Execute(pipelineRun, 0, types.StageTriggerModeAuto)
+	go r.ManualExecutePipeline(pipelineRun, workspace)
 	return &utils.Response{Code: code.Success, Data: pipelineRun}
 }
 
@@ -370,7 +370,12 @@ func (r *ServicePipelineRun) ExecuteJob(stageRun *types.PipelineRunStage, runJob
 		workspace, _ := r.models.PipelineWorkspaceManager.Get(uint(workspaceId))
 		if workspace.CodeSecretId != 0 {
 			secret, _ := r.models.SettingsSecretManager.Get(workspace.CodeSecretId)
-			executeParams["code_secret"] = secret.Value
+			executeParams["code_secret"] = map[string]interface{}{
+				"type":        secret.Type,
+				"user":        secret.User,
+				"password":    secret.Password,
+				"private_key": secret.PrivateKey,
+			}
 		}
 	}
 	data, err := utils.HttpPost(plugin.Url, executeParams)

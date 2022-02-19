@@ -2,11 +2,11 @@
   <div class="side-bar">
     <div v-if="hasTopSelector" class="top-selector">
       <div class="selector-header">
-        <div class="selector-header__left">
+        <div class="selector-header__left" @click="topSelectorReturn">
           <i class="el-icon-arrow-left"></i>
         </div>
-        <div>
-          <el-select v-model="topSelectorValue" placeholder=""  @change="topSelectorChange">
+        <div class="topSelector__right">
+          <el-select v-model="topSelectorValue" v-loading="topSelectorLoading"  placeholder=""  @change="topSelectorChange">
             <el-option
               v-for="item in oriTopSelectors"
               :key="item.value"
@@ -19,17 +19,17 @@
       </div>
     </div>
     <div :class="hasTopSelector? 'scrollbar-div-wrapper-hastop' : 'scrollbar-div-wrapper-notop'">
-    <el-scrollbar wrap-class="scrollbar-wrapper">
-      <el-menu
-        :default-active="activeMenu"
-        :collapse="false"
-        :unique-opened="false"
-        :collapse-transition="true"
-        mode="vertical"
-      >
-        <sidebar-item v-for="route in routes" :key="route.path" :item="route" />
-      </el-menu>
-    </el-scrollbar>
+      <el-scrollbar wrap-class="scrollbar-wrapper">
+        <el-menu
+          :default-active="activeMenu"
+          :collapse="false"
+          :unique-opened="false"
+          :collapse-transition="true"
+          mode="vertical"
+        >
+          <sidebar-item v-for="route in routes" :key="route.path" :item="route" />
+        </el-menu>
+      </el-scrollbar>
     </div>
   </div>
 </template>
@@ -44,15 +44,25 @@ export default {
     return {
       oriTopSelectors: [],
       topSelectorValue: "",
+      topSelectorLoading: true
     }
   },
   created() {
+    if (this.hasTopSelector && this.topSelectorType == 'cluster') {
+      this.$store.dispatch('watchCluster', this.$route.params.name)
+    }
     this.fetchTopSelectors()
   },
   components: { SidebarItem },
   watch: {
     topSelectorType: function () {
       this.fetchTopSelectors()
+    },
+    topSelectorValue: function(newObj, oldObj) {
+      console.log(oldObj, newObj)
+      if(this.topSelectorType == 'cluster') {
+        this.$store.dispatch('watchCluster', newObj)
+      }
     }
   },
   computed: {
@@ -91,6 +101,7 @@ export default {
       }
     },
     fetchClusters() {
+      this.topSelectorLoading = true;
       listCluster().then(response => {
         var clusters = response.data ? response.data : []
         var cur_cluster = this.$route.params.name
@@ -102,11 +113,13 @@ export default {
             this.topSelectorValue = cur_cluster
           }
         }
+        this.topSelectorLoading = false;
       }).catch(() => {
         
       })
     },
     fetchPipelineWorkspaces() {
+      this.topSelectorLoading = true;
       listWorkspaces().then((response) => {
         var workspaces = response.data ? response.data : []
         var cur_workspace = parseInt(this.$route.params.workspaceId)
@@ -116,6 +129,7 @@ export default {
             this.topSelectorValue = cur_workspace
           }
         }
+        this.topSelectorLoading = false;
       }).catch(() => {
 
       })
@@ -127,6 +141,15 @@ export default {
         this.$router.push({name: 'pipeline', params: {'workspaceId': this.topSelectorValue}})
       } else if (this.topSelectorType == 'workspace') {
         this.$router.push({name: 'workspaceOverview', params: {'workspaceId': this.topSelectorValue}})
+      }
+    },
+    topSelectorReturn() {
+      if (this.topSelectorType == 'cluster') {
+        this.$router.push({name: 'clusterIndex'})
+      } else if (this.topSelectorType == 'pipeline') {
+        this.$router.push({name: 'pipelineWorkspace'})
+      } else if (this.topSelectorType == 'workspace') {
+        this.$router.push({name: 'workspaceIndex'})
       }
     }
   }
@@ -145,7 +168,6 @@ export default {
     .el-page-header {
       display: inline-flex;
       vertical-align: middle;
-
     }
 
     .selector-header {
@@ -174,16 +196,20 @@ export default {
   .scrollbar-div-wrapper-notop {
     height: 100%;
   }
+
 </style>
 <style>
-  .top-selector .el-page-header__left {
-    margin-right: 30px;
-  }
-  .top-selector .el-page-header__left::after {
-    right: -15px;
-  }
   .top-selector .el-input__inner {
     border: 0px;
     padding-left: 1px;
+  }
+
+  .topSelector__right .el-loading-spinner {
+    margin-top: -10px;
+  }
+  .topSelector__right .el-loading-spinner .circular {
+    height: 22px;
+    width: 22px;
+    margin-right: 65px;
   }
 </style>

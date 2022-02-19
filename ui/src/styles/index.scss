@@ -121,14 +121,16 @@ div:focus {
     input, textarea {
       border-radius: 0px;
     }
-    textarea {
+    .dialogTextarea >textarea {
       height: 80px;
     }
+
   }
 
   .tableOperate {
     .el-link {
       font-weight: 430;
+      font-size: 13px;
     }
   }
 }

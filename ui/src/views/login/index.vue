@@ -124,8 +124,8 @@ export default {
 .login-title {
     font-size: 32px;
     font-family: Avenir, Helvetica Neue, Arial, Helvetica, sans-serif;
-    background: linear-gradient(to right,#F56C6C, rgb(110, 147, 184));
-    -webkit-background-clip: text;
-    color: transparent;
+    /* background: linear-gradient(to right,#F56C6C, rgb(110, 147, 184)); */
+    /* -webkit-background-clip: text; */
+    /* color: transparent; */
 }
 </style>

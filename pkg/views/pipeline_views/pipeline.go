@@ -28,6 +28,7 @@ func NewPipeline(models *model.Models) *Pipeline {
 		views.NewView(http.MethodGet, "", pw.list),
 		views.NewView(http.MethodGet, "/:pipelineId", pw.get),
 		views.NewView(http.MethodPost, "", pw.create),
+		views.NewView(http.MethodPut, "", pw.update),
 	}
 	pw.Views = vs
 	return pw
@@ -50,7 +51,7 @@ func (p *Pipeline) list(c *views.Context) *utils.Response {
 }
 
 func (p *Pipeline) create(c *views.Context) *utils.Response {
-	var ser serializers.PipelineCreateSerializer
+	var ser serializers.PipelineSerializer
 	if err := c.ShouldBind(&ser); err != nil {
 		return &utils.Response{
 			Code: code.ParamsError,
@@ -58,4 +59,15 @@ func (p *Pipeline) create(c *views.Context) *utils.Response {
 		}
 	}
 	return p.pipelineService.Create(&ser, c.User)
+}
+
+func (p *Pipeline) update(c *views.Context) *utils.Response {
+	var ser serializers.PipelineSerializer
+	if err := c.ShouldBind(&ser); err != nil {
+		return &utils.Response{
+			Code: code.ParamsError,
+			Msg:  err.Error(),
+		}
+	}
+	return p.pipelineService.Update(&ser, c.User)
 }

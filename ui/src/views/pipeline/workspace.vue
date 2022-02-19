@@ -36,7 +36,7 @@
         <el-table-column label="操作" width="180">
           <template slot-scope="scope">
             <div class="tableOperate">
-              <el-link :underline="false" style="margin-right: 15px; color:#409EFF" @click="nameClick(scope.row.id)">查看详情</el-link>
+              <el-link :underline="false" style="margin-right: 15px; color:#409EFF" @click="nameClick(scope.row.id)">流水线</el-link>
               <el-link :underline="false" style="margin-right: 15px; color:#409EFF" @click="openUpdateFormDialog(scope.row)">编辑</el-link>
               <el-link :underline="false" style="color: #F56C6C" @click="handleDeleteWorkspace(scope.row.id, scope.row.name)">删除</el-link>
             </div>
@@ -46,7 +46,7 @@
 
       <el-dialog :title="updateFormVisible ? '修改流水线空间' : '创建流水线空间'" :visible.sync="createFormVisible"
         @close="closeFormDialog" :destroy-on-close="true">
-        <div class="dialogContent" style="">
+        <div class="dialogContent">
           <el-form :model="form" :rules="rules" ref="form" label-position="left" label-width="105px">
             <el-form-item label="空间类型" prop="type">
               <span v-if="updateFormVisible">{{ workspaceTypeMap[form.type] }}</span>
@@ -157,14 +157,14 @@ export default {
     codePasswordSecrets() {
       let secrets = [];
       for(let s of this.secrets) {
-        if(s.kind == 'code' && s.type=='password') secrets.push(s)
+        if(s.type=='password') secrets.push(s)
       }
       return secrets
     },
     codeKeySecrets() {
       let secrets = [];
       for(let s of this.secrets) {
-        if(s.kind == 'code' && s.type=='key') secrets.push(s)
+        if(s.type=='key') secrets.push(s)
       }
       return secrets
     }
@@ -217,7 +217,7 @@ export default {
         workspace['description'] = this.form.description
       }
       createWorkspace(workspace).then(() => {
-        this.createSecretFormVisible = false;
+        this.createFormVisible = false;
         Message.success("创建流水线空间成功")
         this.fetchWorkspaces()
       }).catch((err) => {

@@ -1,334 +1,320 @@
 <template>
   <div>
-    <clusterbar :titleName="titleName" :nameFunc="nameSearch" :createFunc="createClusterDialog" createDisplay="创建项目"/>
+    <clusterbar :titleName="titleName" :nameFunc="nameSearch" :createFunc="openCreateFormDialog" createDisplay="创建空间"/>
     <div class="dashboard-container" ref="tableCot">
       <el-table
-        :data="workspaces"
+        ref="multipleTable"
+        :data="originWorkspaces"
         class="table-fix"
-        tooltip-effect="dark"
-        :max-height="maxHeight"
-        style="width: 100%"
-        v-loading="loading"
         :cell-style="cellStyle"
+        v-loading="loading"
         :default-sort = "{prop: 'name'}"
-        row-key="name"
+        tooltip-effect="dark"
+        style="width: 100%"
       >
-        <el-table-column prop="name" label="名称" show-overflow-tooltip>
+        <el-table-column prop="name" label="名称" show-overflow-tooltip min-width="15">
           <template slot-scope="scope">
             <span class="name-class" v-on:click="nameClick(scope.row.id)">
               {{ scope.row.name }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column
-          prop="create_time"
-          label="创建时间"
-          show-overflow-tooltip
-        >
+        <el-table-column prop="description" label="描述" show-overflow-tooltip min-width="15">
         </el-table-column>
-        <el-table-column
-          prop="status"
-          label="状态"
-          min-width="34%"
-          show-overflow-tooltip
-        >
+        <el-table-column prop="roles" label="密钥类型" show-overflow-tooltip min-width="15">
           <template slot-scope="scope">
-            <span :style="{'color': (scope.row.status === 'Connect' ? '#409EFF' : '#F56C6C')}">
-              {{scope.row.status}}
-              <template v-if="scope.row.status === 'Connect'">
-                <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="correct" />
-              </template>
-              <template v-else>
-                <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="wrong" />
-              </template>
-            </span>
+            {{ secretTypeMap[scope.row.type] }}
           </template>
         </el-table-column>
-
-        <el-table-column label="" width="80">
+        <el-table-column prop="update_user" label="操作人" show-overflow-tooltip min-width="10">
           <template slot-scope="scope">
-            <!-- <el-button
-              @click.native.prevent="deleteRow(scope.$index, tableData)"
-              type="text"
-              size="small">
-              删除
-            </el-button> -->
-            <!-- <el-link :underline="false" style="font-size: 13px">删除</el-link> -->
-            <el-dropdown size="medium" >
-              <el-link :underline="false"><svg-icon style="width: 1.3em; height: 1.3em;" icon-class="operate" /></el-link>
-              <el-dropdown-menu slot="dropdown">
-                <template v-if="$updatePerm()">
-                  <el-dropdown-item @click.native.prevent="clusterConnectToken=scope.row.token; clusterConnectDialog = true" 
-                    v-if="scope.row.status === 'Pending'">
-                    <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="link" />
-                    <span style="margin-left: 5px;">连接</span>
-                  </el-dropdown-item>
-                </template>
-                <el-dropdown-item v-if="$updatePerm()" @click.native.prevent="createClusterFormVisible = true; inviteForm=true; 
-                  form={name: scope.row.name, members: scope.row.members}">
-                  <svg-icon style="width: 1.2em; height: 1.2em; line-height: 40px; vertical-align: -0.25em" icon-class="invite" />
-                  <span style="margin-left: 5px;">邀请</span>
-                </el-dropdown-item>
-                <el-dropdown-item v-if="$deletePerm()" @click.native.prevent="deleteClusters([{name: scope.row.name}])">
-                  <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="delete" />
-                  <span style="margin-left: 5px;">删除</span>
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
+            {{ scope.row.update_user }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="update_time" label="更新时间" show-overflow-tooltip min-width="15">
+          <template slot-scope="scope">
+            {{ $dateFormat(scope.row.update_time) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="150">
+          <template slot-scope="scope">
+            <div class="tableOperate">
+              <el-link :underline="false" style="margin-right: 15px; color:#409EFF" @click="nameClick(scope.row.id)">详情</el-link>
+              <el-link :underline="false" style="margin-right: 15px; color:#409EFF" @click="openUpdateFormDialog(scope.row)">编辑</el-link>
+              <el-link :underline="false" style="color: #F56C6C" @click="handleDeleteWorkspace(scope.row.id, scope.row.name)">删除</el-link>
+            </div>
           </template>
         </el-table-column>
       </el-table>
-    </div>
-    <div>
-      <el-dialog :title="inviteForm ? '邀请用户':'创建集群'" :visible.sync="createClusterFormVisible" :close-on-click-modal="false" 
-        :destroy-on-close="true" @close="form={'name': '', 'members': []}; inviteForm=false;">
-        <el-form :model="form">
-          <el-form-item label="集群名称">
-            <el-input v-model="form.name" :disabled="inviteForm" autocomplete="off" placeholder="请输入集群名称"></el-input>
-          </el-form-item>
-          <el-form-item label="邀请">
-            <el-select v-model="form.members" style="width: 100%" multiple filterable placeholder="请选择要邀请的用户">
-              <el-option
-                v-for="item in users"
-                :key="item.name"
-                :label="item.name"
-                :value="item.name">
-              </el-option>
-            </el-select>
-          </el-form-item>
-        </el-form>
-        <div slot="footer" class="dialog-footer">
-          <el-button @click="createClusterFormVisible = false; form={'name': '', 'members': []}; inviteForm=false;">取 消</el-button>
-          <el-button type="primary" @click="inviteForm ? handleClusterMembers() : handleCreateCluster();">确 定</el-button>
+
+      <el-dialog :title="updateFormVisible ? '修改空间' : '创建空间'" :visible.sync="createFormVisible"
+      @close="closeFormDialog" :destroy-on-close="true">
+        <div class="dialogContent" style="">
+          <el-form :model="form" :rules="rules" ref="form" label-position="left" label-width="105px">
+            <el-form-item label="名称" prop="name">
+              <el-input :disabled="updateFormVisible" v-model="form.name" autocomplete="off" placeholder="请输入密钥名称" size="small"></el-input>
+            </el-form-item>
+            <el-form-item label="描述" prop="description">
+              <el-input v-model="form.description" type="textarea" autocomplete="off" placeholder="请输入密钥描述" size="small"></el-input>
+            </el-form-item>
+            <el-form-item label="密钥类型" prop="secret_type">
+              <el-radio-group v-model="form.secret_type">
+                <el-radio label="password">用户密码</el-radio>
+                <el-radio label="key">私钥</el-radio>
+                <el-radio label="token">AccessToken</el-radio>
+              </el-radio-group>
+            </el-form-item>
+            <el-form-item label="用户" prop="user" v-if="form.secret_type == 'password'">
+              <el-input v-model="form.user" autocomplete="off" placeholder="请输入用户" size="small"></el-input>
+            </el-form-item>
+            <el-form-item label="密码" prop="password" v-if="form.secret_type == 'password'">
+              <el-input v-model="form.password" autocomplete="off" placeholder="请输入密码" size="small" show-password></el-input>
+            </el-form-item>
+            <el-form-item label="私钥" prop="private_key" v-if="form.secret_type == 'key'">
+              <el-input v-model="form.private_key" class="dialogTextarea" type="textarea" autocomplete="off" placeholder="请输入私钥" size="small"></el-input>
+            </el-form-item>
+            <el-form-item label="AccessToken" prop="access_token" v-if="form.secret_type == 'token'">
+              <el-input v-model="form.access_token" class="dialogTextarea" type="textarea" autocomplete="off" placeholder="请输入私钥" size="small"></el-input>
+            </el-form-item>
+          </el-form>
+        </div>
+        <div slot="footer" class="dialogFooter">
+          <el-button @click="createFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
+          <el-button type="primary" @click="updateFormVisible ? handleUpdateWorkspace() : handleCreateWorkspace()" >确 定</el-button>
         </div>
       </el-dialog>
     </div>
-
-    <el-dialog title="集群导入" :visible.sync="clusterConnectDialog" :close-on-click-modal="false">
-      <div style="font-size: 15px;">请在现有Kubernetes集群上运行下面的kubeclt命令，以连接OpenSpace平台：</div>
-      <div style="margin-top: 15px;">
-        <el-tag type="info" style="font-size: 14px; border-radius: 4px;">
-          {{ copyCluster }}
-        </el-tag>
-        <!-- <el-tag type="" style="font-size: 14px; border-radius: 0px 4px 4px 0px;">复制</el-tag> -->
-        <!-- <el-button plain size="small" slot="append" 
-            style="height: 32px; border-radius: 0px 4px 4px 0px; padding: 10px 8px;"
-            v-clipboard:copy="copyCluster" v-clipboard:success="onCopy" v-clipboard:error="onError">
-            复制
-        </el-button> -->
-      </div>
-      <div style="font-size: 13px; margin-top: 8px; color: #e6a23c;">
-        *注意：请将上述访问地址{{this.locationAddr}}换为Kubernetes集群可以访问的地址。
-      </div>
-      <div slot="footer" class="dialog-footer">
-        <el-button type="primary" @click="clusterConnectDialog = false">确 定</el-button>
-      </div>
-    </el-dialog>
   </div>
 </template>
-
 <script>
-import { Clusterbar } from '@/views/components'
-import { listWorkspaces } from '@/api/pipeline/workspace'
-import { getUser } from "@/api/user";
-import { Message } from 'element-ui'
+import { Clusterbar } from "@/views/components";
+import { createSecret, listSecret, updateSecret, deleteSecret } from "@/api/settings/secret";
+import { Message } from "element-ui";
 
 export default {
-  name: 'PipelineWorkspace',
+  name: "secret",
   components: {
-    Clusterbar
+    Clusterbar,
+  },
+  mounted: function () {
+    const that = this;
+    window.onresize = () => {
+      return (() => {
+        let heightStyle = window.innerHeight - 150;
+        that.maxHeight = heightStyle;
+      })();
+    };
   },
   data() {
     return {
-      titleName: ["项目空间"],
-      search_name: '',
-      users: [],
-      cellStyle: {border: 0},
       maxHeight: window.innerHeight - 150,
+      cellStyle: { border: 0 },
+      titleName: ["项目空间"],
       loading: true,
-      workspaces: [],
-      createClusterFormVisible: false,
-      inviteForm: false,
-      clusterConnectDialog: false,
-      clusterConnectToken: '',
+      createFormVisible: false,
+      updateFormVisible: false,
       form: {
-        name: '',
-        members: [],
+        id: "",
+        name: "",
+        description: "",
+        user: "",
+        password: "",
+        private_key: "",
+        access_token: "",
+        secret_type: "password"
       },
-      locationAddr: window.location.origin,
-    }
+      rules: {
+        name: [{ required: true, message: '请输入密钥名称', trigger: 'blur' },],
+        secret_type: [{ required: true, message: '请选择密钥类型', trigger: 'blur' },],
+        user: [{ required: true, message: '请输入用户', trigger: 'blur' },],
+        password: [{ required: true, message: '请输入密码', trigger: 'blur' },],
+        private_key: [{ required: true, message: '请输入私钥', trigger: 'blur' },],
+        access_token: [{ required: true, message: '请输入AccessToken', trigger: 'blur' },],
+      },
+      originWorkspaces: [],
+      search_name: "",
+      secretTypeMap: {
+        'password': '密码',
+        'key': '密钥',
+        'token': 'AccessToken'
+      }
+    };
   },
   created() {
-    this.fetchData();
-    this.fetchUsers();
-  },
-  mounted() {
-    const that = this
-    window.onresize = () => {
-      return (() => {
-        let heightStyle = window.innerHeight - 150
-        console.log(heightStyle)
-        that.maxHeight = heightStyle
-      })()
-    }
+    this.fetchWorkspaces();
   },
   computed: {
+    secrets() {
+
+    }
   },
   methods: {
-    fetchData() {
-      this.loading = true
-      listWorkspaces()
-        .then((response) => {
-          this.loading = false
-          this.workspaces = response.data || [];
-        })
-        .catch(() => {
-          this.loading = false
-        })
-    },
-    fetchUsers() {
-      getUser({}).then((response) => {
-        this.users = response.data;
-      });
-    },
     nameClick: function(id) {
-      parent.location.href = '/ui/workspace/' + id
+      this.$router.push({name: 'workspaceOverview', params: {'workspaceId': id}})
     },
-    nameSearch: function(val) {
-      this.search_name = val
+    handleEdit(index, row) {
+      console.log(index, row);
     },
-    createClusterDialog() {
-      this.createClusterFormVisible = true;
-    },
-    handleCreateCluster() {
-      if (!this.form.name) {
-        Message.error('集群名称不能为空！')
-        return
-      }
-      createCluster(this.form)
-        .then((response) => {
-          Message.success("集群添加成功")
-          this.createClusterFormVisible = false
-          this.loading = false
-          this.fetchData()
-          this.clusterConnectToken = response.data.token
-          this.clusterConnectDialog = true;
-        })
-        .catch(() => {
-          // this.createClusterFormVisible = false
-          this.loading = false
-        })
-    },
-    handleClusterMembers() {
-      if (!this.form.name) {
-        Message.error('集群名称不能为空！')
-        return
-      }
-      clusterMembers(this.form)
-        .then((response) => {
-          Message.success("邀请用户成功")
-          this.createClusterFormVisible = false
-          this.inviteForm = false
-          this.loading = false
-          this.fetchData()
-        })
-        .catch(() => {
-          // this.createClusterFormVisible = false
-          this.loading = false
-        })
-    },
-    deleteClusters(delClusters) {
-      if(delClusters.length <= 0) {
-        Message.error('请选择要删除的集群')
-        return
-      }
-      deleteCluster(delClusters).then((response) => {
-          this.fetchData()
-      }).catch((e) => {
-        console.log(e)
+    fetchWorkspaces() {
+      this.loading = true
+      listSecret().then((resp) => {
+        this.originWorkspaces = resp.data ? resp.data : []
+        this.loading = false
+      }).catch((err) => {
+        console.log(err)
+        this.loading = false
       })
     },
-    onCopy(e) {
-      Message.success("复制成功")
+    handleCreateWorkspace() {
+      if(!this.form.name) {
+        Message.error("密钥名称不能为空");
+        return
+      }
+      if(!this.form.secret_type) {
+        Message.error("密钥类别不能为空，请重新选择");
+        return
+      }
+      let secret = {
+        name: this.form.name, 
+        secret_type: this.form.secret_type, 
+        description: this.form.description
+      }
+      if(this.form.secret_type == 'password') {
+        if (!this.form.user) {
+          Message.error("密钥用户不能为空");
+          return
+        }
+        if (!this.form.password) {
+          Message.error("密码不能为空");
+          return
+        }
+        secret['user'] = this.form.user
+        secret['password'] = this.form.password
+      } else if (this.form.secret_type == 'key') {
+        if (!this.form.private_key) {
+          Message.error("私钥不能为空");
+          return
+        }
+        secret['private_key'] = this.form.private_key
+      } else if (this.form.secret_type == 'token') {
+        if (!this.form.access_token) {
+          Message.error("AccessToken不能为空");
+          return
+        }
+        secret['access_token'] = this.form.access_token
+      }
+      createSecret(secret).then(() => {
+        this.createFormVisible = false;
+        Message.success("创建密钥成功")
+        this.fetchWorkspaces()
+      }).catch((err) => {
+        console.log(err)
+      });
     },
-    onError(e) {
-
+    handleUpdateWorkspace() {
+      if(!this.form.id) {
+        Message.error("获取密钥id参数异常，请刷新重试");
+        return
+      }
+      let secret = {
+        name: this.form.name,
+        secret_type: this.form.secret_type,
+        description: this.form.description
+      }
+      if(this.form.secret_type == 'password') {
+        if (!this.form.user) {
+          Message.error("密钥用户不能为空");
+          return
+        }
+        if (!this.form.password) {
+          Message.error("密码不能为空");
+          return
+        }
+        secret['user'] = this.form.user
+        secret['password'] = this.form.password
+      } else if (this.form.secret_type == 'key') {
+        if (!this.form.private_key) {
+          Message.error("私钥不能为空");
+          return
+        }
+        secret['private_key'] = this.form.private_key
+      } else if (this.form.secret_type == 'token') {
+        if (!this.form.access_token) {
+          Message.error("AccessToken不能为空");
+          return
+        }
+        secret['access_token'] = this.form.access_token
+      }
+      updateSecret(this.form.id, secret).then(() => {
+        this.createFormVisible = false;
+        Message.success("更新密钥成功")
+        this.fetchWorkspaces()
+      }).catch((err) => {
+        console.log(err)
+      });
+    },
+    handleDeleteWorkspace(id, name) {
+      if(!id) {
+        Message.error("获取密钥id参数异常，请刷新重试");
+        return
+      }
+      this.$confirm(`请确认是否删除「${name}」此密钥?`, '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+          deleteSecret(id).then(() => {
+            Message.success("删除密钥成功")
+            this.fetchWorkspaces()
+          }).catch((err) => {
+            console.log(err)
+          });
+        }).catch(() => {       
+        });
+    },
+    nameSearch(val) {
+      this.search_name = val;
+    },
+    openCreateFormDialog() {
+      this.createFormVisible = true;
+    },
+    openUpdateFormDialog(secret) {
+      this.form = {
+        id: secret.id,
+        name: secret.name,
+        description: secret.description,
+        secret_type: secret.type || 'password',
+        user: secret.user,
+        password: '',
+        private_key: '',
+        access_token: '',
+      }
+      this.updateFormVisible = true;
+      this.createFormVisible = true
+    },
+    closeFormDialog() {
+      this.form = {
+        name: "",
+        description: "",
+        user: "",
+        password: "",
+        private_key: "",
+        access_token: "",
+        secret_type: "password"
+      }
+      this.updateFormVisible = false; 
+      this.createFormVisible = false;
     }
   },
-}
+};
 </script>
 
+
 <style lang="scss" scoped>
-.member-bar {
-  transition: width 0.28s;
-  height: 55px;
-  overflow: hidden;
-  box-shadow: inset 0 0 4px rgba(0, 21, 41, 0.1);
-  margin: 20px 20px 0px;
-
-  .app-breadcrumb.el-breadcrumb {
-    display: inline-block;
-    font-size: 20px;
-    line-height: 55px;
-    margin-left: 8px;
-
-    .no-redirect {
-      // color: #97a8be;
-      cursor: text;
-      margin-left: 15px;
-      font-size: 23px;
-      font-family: Avenir, Helvetica Neue, Arial, Helvetica, sans-serif;
-    }
-  }
-
-  .icon-create {
-    display: inline-block;
-    line-height: 55px;
-    margin-left: 20px;
-    width: 1.8em;
-    height: 1.8em;
-    vertical-align: 0.8em;
-    color: #bfbfbf;
-  }
-
-  .right {
-    float: right;
-    height: 100%;
-    line-height: 55px;
-    margin-right: 25px;
-
-    .el-input {
-      width: 195px;
-      margin-left: 15px;
-    }
-
-    .el-select {
-      .el-select__tags {
-        white-space: nowrap;
-        overflow: hidden;
-      }
-    }
-  }
-}
-.dashboard {
-  &-container {
-    margin: 10px 30px;
-    height: calc(100%);
-  }
-  &-text {
-    font-size: 30px;
-    line-height: 46px;
-  }
-}
+@import "~@/styles/variables.scss";
 
 .table-fix {
   height: calc(100% - 100px);
 }
 
-.name-class {
-  cursor: pointer;
-}
-.name-class:hover {
-  color: #409EFF;
-}
 </style>

@@ -23,9 +23,9 @@ func NewWorkspaceService(models *model.Models) *WorkspaceService {
 func (w *WorkspaceService) getCodeName(codeType string, codeUrl string) string {
 	var re *regexp.Regexp
 	if codeType == types.WorkspaceCodeTypeHttps {
-		re, _ = regexp.Compile("http[s]+://[\\w.:]+/([\\w/]+)[.git]+")
+		re, _ = regexp.Compile("http[s]+://[\\w\\.:]+/([\\w/]+)[.git]*")
 	} else if codeType == types.WorkspaceCodeTypeGit {
-		re, _ = regexp.Compile("git@[\\w.:]+/([\\w/]+)[.git]+")
+		re, _ = regexp.Compile("git@[\\w\\.]+:[\\d]*/?([\\w/]+)[\\.git]*")
 	} else {
 		return ""
 	}
@@ -54,9 +54,9 @@ func (w *WorkspaceService) Create(workspaceSer *serializers.WorkspaceSerializer,
 	}
 	workspace := &types.PipelineWorkspace{
 		Name:         workspaceSer.Name,
-		Description: workspaceSer.Description,
+		Description:  workspaceSer.Description,
 		Type:         workspaceSer.Type,
-		CodeType: workspaceSer.CodeType,
+		CodeType:     workspaceSer.CodeType,
 		CodeUrl:      workspaceSer.CodeUrl,
 		CodeSecretId: workspaceSer.CodeSecretId,
 		CreateUser:   user.Name,

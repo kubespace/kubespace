@@ -8,17 +8,18 @@ import (
 type WorkspaceSerializer struct {
 	Name         string `json:"name" form:"name"`
 	Type         string `json:"type" form:"type"`
-	Description string `json:"description" form:"description"`
+	Description  string `json:"description" form:"description"`
 	CodeUrl      string `json:"code_url" form:"code_url"`
-	CodeType      string `json:"code_type" form:"code_type"`
-	CodeSecretId     uint `json:"code_secret_id" form:"code_secret_id"`
+	CodeType     string `json:"code_type" form:"code_type"`
+	CodeSecretId uint   `json:"code_secret_id" form:"code_secret_id"`
 }
 
-type PipelineCreateSerializer struct {
-	WorkspaceId uint                   `json:"workspace_id"`
-	Name        string                 `json:"name"`
-	Triggers    types.PipelineTriggers `json:"triggers"`
-	Stages      []PipelineCreateStage  `json:"stages"`
+type PipelineSerializer struct {
+	ID          uint                      `json:"id"`
+	WorkspaceId uint                      `json:"workspace_id"`
+	Name        string                    `json:"name"`
+	Triggers    types.PipelineTriggers    `json:"triggers"`
+	Stages      []PipelineStageSerializer `json:"stages"`
 }
 
 type PipelineTrigger struct {
@@ -32,7 +33,8 @@ type PipelineTriggerExpression struct {
 	Value    string `json:"value"`
 }
 
-type PipelineCreateStage struct {
+type PipelineStageSerializer struct {
+	ID          uint               `json:"id"`
 	Name        string             `json:"name"`
 	TriggerMode string             `json:"trigger_mode"`
 	Jobs        types.PipelineJobs `json:"jobs"`
@@ -43,7 +45,7 @@ type PipelineListSerializer struct {
 }
 
 type PipelineBuildListSerializer struct {
-	PipelineId uint                   `json:"pipeline_id" form:"pipeline_id"`
+	PipelineId uint `json:"pipeline_id" form:"pipeline_id"`
 }
 
 type PipelineBuildSerializer struct {

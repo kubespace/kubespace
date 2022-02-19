@@ -165,9 +165,9 @@
       </el-row>
 
       <el-row>
-        <div class="border-class event-class">
+        <div class="border-class event-class" >
           <div style="margin: 5px 0px 10px;">事件</div>
-          <el-timeline v-if="events && events.length > 0">
+          <el-timeline v-if="events && events.length > 0" style="max-height: 200px;">
             <template v-for="e of events">
               <el-timeline-item :key="e.uid" :timestamp="e.event_time" placement="top">
                 <el-card shadow="never">
@@ -187,6 +187,7 @@
 <script>
 import { clusterDetail } from '@/api/cluster'
 import { listEvents } from '@/api/event'
+import { Message } from 'element-ui'
 
 export default {
   name: 'cluster',

@@ -20,7 +20,7 @@ func NewPipelineService(models *model.Models) *ServicePipeline {
 	}
 }
 
-func (p *ServicePipeline) Create(pipelineSer *serializers.PipelineCreateSerializer, user *types.User) *utils.Response {
+func (p *ServicePipeline) Create(pipelineSer *serializers.PipelineSerializer, user *types.User) *utils.Response {
 	pipeline := &types.Pipeline{
 		Name:        pipelineSer.Name,
 		WorkspaceId: pipelineSer.WorkspaceId,
@@ -66,6 +66,54 @@ func (p *ServicePipeline) Create(pipelineSer *serializers.PipelineCreateSerializ
 	}
 }
 
+func (p *ServicePipeline) Update(pipelineSer *serializers.PipelineSerializer, user *types.User) *utils.Response {
+	pipeline, err := p.models.ManagerPipeline.Get(pipelineSer.ID)
+	if err != nil {
+		return &utils.Response{
+			Code: code.DBError,
+			Msg:  fmt.Sprintf("获取流水线失败:%s", err.Error()),
+		}
+	}
+	pipeline.Name = pipelineSer.Name
+	pipeline.Triggers = pipelineSer.Triggers
+	pipeline.UpdateUser = user.Name
+	for _, trigger := range pipelineSer.Triggers {
+		if trigger.Type != types.PipelineTriggerTypeCode {
+			return &utils.Response{
+				Code: code.ParamsError,
+				Msg:  fmt.Sprintf("pipeline trigger type %s is unknown", trigger.Type),
+			}
+		}
+	}
+	var stages []*types.PipelineStage
+	for _, stageSer := range pipelineSer.Stages {
+		if stageSer.TriggerMode != types.StageTriggerModeAuto && stageSer.TriggerMode != types.StageTriggerModeManual {
+			return &utils.Response{
+				Code: code.ParamsError,
+				Msg:  fmt.Sprintf("trigger mode %s is unknown", stageSer.TriggerMode),
+			}
+		}
+		stage := &types.PipelineStage{
+			ID:          stageSer.ID,
+			Name:        stageSer.Name,
+			TriggerMode: stageSer.TriggerMode,
+			Jobs:        stageSer.Jobs,
+		}
+		stages = append(stages, stage)
+	}
+	pipeline, err = p.models.ManagerPipeline.UpdatePipeline(pipeline, stages)
+	if err != nil {
+		return &utils.Response{
+			Code: code.DBError,
+			Msg:  err.Error(),
+		}
+	}
+	return &utils.Response{
+		Code: code.Success,
+		Data: pipeline,
+	}
+}
+
 func (p *ServicePipeline) GetPipeline(pipelineId uint) *utils.Response {
 	pipeline, err := p.models.ManagerPipeline.Get(pipelineId)
 	if err != nil {
@@ -83,6 +131,7 @@ func (p *ServicePipeline) GetPipeline(pipelineId uint) *utils.Response {
 		"pipeline": pipeline,
 		"stages":   stages,
 		"workspace": map[string]interface{}{
+			"id":       workspace.ID,
 			"name":     workspace.Name,
 			"type":     workspace.Type,
 			"code_url": workspace.CodeUrl,
@@ -103,7 +152,7 @@ func (p *ServicePipeline) ListPipeline(workspaceId uint) *utils.Response {
 			return &utils.Response{Code: code.DBError, Msg: fmt.Sprintf("获取流水线构建列表错误: %v", err)}
 		}
 		data := map[string]interface{}{
-			"pipeline": pipeline,
+			"pipeline":   pipeline,
 			"last_build": lastPipelineRun,
 		}
 		retData = append(retData, data)

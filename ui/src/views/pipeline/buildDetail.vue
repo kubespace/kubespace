@@ -25,7 +25,7 @@ export default {
       cellStyle: {border: 0, padding: '1px 0', 'line-height': '35px'},
       maxHeight: window.innerHeight - 145,
       loading: true,
-      pipeline: [],
+      pipeline: {},
       build: {},
       tableData: [{
             commitId: '64a986150874cd1ed1c984889229b1204c9503d1',

@@ -20,79 +20,36 @@
             </span>
           </template>
         </el-table-column>
-        <el-table-column
-          prop="create_time"
-          label="最新构建"
-          show-overflow-tooltip
-        >
+        <el-table-column prop="create_time" label="最新构建" show-overflow-tooltip>
           <template slot-scope="scope">
-            <span>
+            <span v-if="scope.row.last_build" :style="{'color': getBuildStatusColor(scope.row.last_build.status)}">
+              <i style="font-size: 16px;" :class="getBuildStatusIcon(scope.row.last_build.status)"></i>
               {{ scope.row.last_build ? '#' + scope.row.last_build.build_number : "无" }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column
-          prop="create_time"
-          label="最新构建时间"
-          show-overflow-tooltip
-        >
+        <el-table-column prop="create_time" label="最新构建时间" show-overflow-tooltip>
           <template slot-scope="scope">
             <span>
               {{ scope.row.last_build ? $dateFormat(scope.row.last_build.create_time) : "" }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column
-          prop="create_time"
-          label="触发人"
-          show-overflow-tooltip
-        >
+        <el-table-column prop="create_time" label="触发人" show-overflow-tooltip>
           <template slot-scope="scope">
             <span>
               {{ scope.row.last_build ? scope.row.last_build.operator : "" }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column
-          prop="status"
-          label="状态"
-          min-width="34%"
-          show-overflow-tooltip
-        >
-          <template slot-scope="scope">
-            <template v-if="scope.row.last_build">
-              <span :style="{'color': (scope.row.last_build.status === 'ok' ? '#409EFF' : '#F56C6C')}">
-                {{scope.row.status}}
-                <template v-if="scope.row.last_build.status === 'ok'">
-                  <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="correct" />
-                </template>
-                <template v-else>
-                  <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="wrong" />
-                </template>
-              </span>
-            </template>
-          </template>
-        </el-table-column>
 
-        <el-table-column label="" width="80">
+        <el-table-column label="操作" width="180">
           <template slot-scope="scope">
-            <el-dropdown size="medium" >
-              <el-link :underline="false"><svg-icon style="width: 1.3em; height: 1.3em;" icon-class="operate" /></el-link>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item @click.native.prevent="console.log(scope.row)">
-                  <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="delete" />
-                  <span style="margin-left: 5px;">构建</span>
-                </el-dropdown-item>
-                <el-dropdown-item @click.native.prevent="">
-                  <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="delete" />
-                  <span style="margin-left: 5px;">编辑</span>
-                </el-dropdown-item>
-                <el-dropdown-item @click.native.prevent="">
-                  <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="delete" />
-                  <span style="margin-left: 5px;">删除</span>
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
+            <div class="tableOperate">
+              <el-link :underline="false" style="margin-right: 15px; color:#409EFF" @click="nameClick(scope.row.id)">构建</el-link>
+              <el-link :underline="false" style="margin-right: 15px; color:#409EFF" @click="editPipelineOperate(scope.row.pipeline.id)">编辑</el-link>
+              <el-link :underline="false" style="color: #F56C6C" @click="handleDeleteWorkspace(scope.row.id, scope.row.name)">删除</el-link>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -167,7 +124,23 @@ export default {
       this.search_name = val
     },
     createPipelineFunc() {
-
+      this.$router.push({name: "pipelineCreate",});
+    },
+    editPipelineOperate(id) {
+      this.$router.push({name: "pipelineEdit", params: { pipelineId: id },});
+    },
+    getBuildStatusColor(status) {
+      if(status == 'ok') return '#67c23a'
+      if(status == 'error') return '#DC143C'
+      if(status == 'doing') return '#E6A23C'
+      return ''
+    },
+    getBuildStatusIcon(status) {
+      if(status == 'ok') return 'el-icon-success'
+      if(status == 'error') return 'el-icon-error'
+      if(status == 'doing') return 'el-icon-refresh'
+      if(status == 'wait') return 'el-icon-remove'
+      return ''
     }
   },
 }

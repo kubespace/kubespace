@@ -1,6 +1,10 @@
 <template>
   <div>
-    <clusterbar :titleName="titleName" :nameFunc="nameSearch" :createFunc="buildPipeline" createDisplay="构建"/>
+    <clusterbar :titleName="titleName" :nameFunc="nameSearch" createDisplay="构建">
+      <!-- <div> -->
+        <el-button  slot="right-btn" size="small" type="primary" @click="openBuildParams" icon="el-icon-video-play">构 建</el-button>
+      <!-- </div> -->
+    </clusterbar>
     <div class="dashboard-container dashboard-container-build" :style="{height: maxHeight + 'px'}" :max-height="maxHeight">
       <div class="build-list" v-for="build in builds" :key="build.pipeline_run.id">
         <div style="border-bottom: 1px solid #EBEEF5;">
@@ -24,7 +28,7 @@
                   <!-- #{{ build.pipeline_run.build_number }} -->
                 </div>
                 <div class="build-info__left-branch">
-                  <svg-icon icon-class="branch" /> develop
+                  <svg-icon icon-class="branch" /> {{ build.pipeline_run.env.PIPELINE_CODE_BRANCH }}
                 </div>
               </div>
               <div class="build-info__left-op">
@@ -73,7 +77,7 @@
                 构建源
               </div>
               <el-table
-                :data="tableData"
+                :data="build.clickDetail ? build.clickDetail.commit || [] : []"
                 :cell-style="cellStyle"
                 style="width: 100%">
                 <el-table-column
@@ -87,7 +91,7 @@
                   width="120">
                 </el-table-column>
                 <el-table-column
-                  prop="comment"
+                  prop="message"
                   label="comment"
                   width="">
                 </el-table-column>
@@ -125,6 +129,22 @@
         </div>
       </div>
     </div>
+
+    <el-dialog title="执行流水线" :visible.sync="dialogVisible" :destroy-on-close="true" 
+      @close="buildParams = {};" :close-on-click-modal="false">
+      <div class="dialogContent" style="padding: 0px 40px;">
+        <el-form :model="buildParams" ref="" label-position="left" label-width="105px">
+          
+          <el-form-item label="构建分支" prop="" :required="true">
+            <el-input style="width: 250px;" placeholder="请输入分支" v-model="buildParams.branch" autocomplete="off" size="small"></el-input>
+          </el-form-item>
+        </el-form>
+      </div>
+      <div slot="footer" class="dialogFooter">
+        <el-button @click="dialogVisible = false" style="margin-right: 20px;" >取 消</el-button>
+        <el-button type="primary" @click="buildPipeline">确 定</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -132,6 +152,7 @@
 import { Clusterbar } from '@/views/components'
 import { getPipeline } from '@/api/pipeline/pipeline'
 import { listBuilds, buildPipeline } from '@/api/pipeline/build'
+import { Message } from 'element-ui'
 
 export default {
   name: 'PipelineWorkspace',
@@ -146,6 +167,7 @@ export default {
       cellStyle: {border: 0, padding: '1px 0', 'line-height': '35px'},
       maxHeight: window.innerHeight - 145,
       loading: true,
+      dialogVisible: false,
       pipeline: [],
       builds: [],
       tableData: [{
@@ -153,7 +175,8 @@ export default {
             author: 'lizeen',
             comment: 'add helm application and crd'
           },],
-      buildDetails: {}
+      buildDetails: {},
+      buildParams: {}
     }
   },
   created() {
@@ -204,8 +227,15 @@ export default {
     nameSearch: function(val) {
       this.search_name = val
     },
+    openBuildParams() {
+      this.dialogVisible = true
+    },
     buildPipeline: function() {
-      buildPipeline(this.pipelineId, {'branch': 'develop'}).then((response) => {
+      if(!this.buildParams.branch) {
+        Message.error("请输入构建分支")
+        return
+      }
+      buildPipeline(this.pipelineId, this.buildParams).then((response) => {
         this.$message({message: '构建成功', type: 'success'});
         this.fetchBuilds()
       }).catch( (err) => {
@@ -263,7 +293,16 @@ export default {
           return
         }
       }
-      this.$set(build, 'clickDetail', {type: type, stage: stage})
+      if(type == 'source') {
+        let commit = {
+          commitId: build.pipeline_run.env.PIPELINE_CODE_COMMIT_ID,
+          author: build.pipeline_run.env.PIPELINE_CODE_COMMIT_AUTHOR,
+          message: build.pipeline_run.env.PIPELINE_CODE_COMMIT_MESSAGE,
+        }
+        this.$set(build, 'clickDetail', {type: type, commit: [commit]})
+      } else {
+        this.$set(build, 'clickDetail', {type: type, stage: stage})
+      }
     },
     clickBuildNumber(build) {
       this.$router.push({name: 'pipelineBuildDetail', params: {buildId: build.pipeline_run.id}})

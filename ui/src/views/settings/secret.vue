@@ -14,10 +14,7 @@
       >
         <el-table-column prop="name" label="名称" show-overflow-tooltip min-width="15">
         </el-table-column>
-        <el-table-column prop="kind" label="类别" show-overflow-tooltip min-width="15">
-          <template slot-scope="scope">
-            {{ secretKindMap[scope.row.kind] }}
-          </template>
+        <el-table-column prop="description" label="描述" show-overflow-tooltip min-width="15">
         </el-table-column>
         <el-table-column prop="roles" label="密钥类型" show-overflow-tooltip min-width="15">
           <template slot-scope="scope">
@@ -51,19 +48,14 @@
             <el-form-item label="名称" prop="name">
               <el-input :disabled="updateSecretVisible" v-model="form.name" autocomplete="off" placeholder="请输入密钥名称" size="small"></el-input>
             </el-form-item>
-            <el-form-item label="类别" prop="kind">
-              <span v-if="updateSecretVisible">{{ secretKindMap[form.kind] }}</span>
-              <el-radio-group v-else v-model="form.kind" @change="secretKindChange">
-                <el-radio label="code">代码库</el-radio>
-                <el-radio label="registry">镜像仓库</el-radio>
-                <el-radio label="ssh">主机ssh</el-radio>
-              </el-radio-group>
+            <el-form-item label="描述" prop="description">
+              <el-input v-model="form.description" type="textarea" autocomplete="off" placeholder="请输入密钥描述" size="small"></el-input>
             </el-form-item>
-            <el-form-item label="密钥类型" prop="secret_type" v-if="form.kind=='code' || form.kind =='ssh'">
+            <el-form-item label="密钥类型" prop="secret_type">
               <el-radio-group v-model="form.secret_type">
                 <el-radio label="password">用户密码</el-radio>
                 <el-radio label="key">私钥</el-radio>
-                <el-radio label="token" v-if="form.kind=='code'">AccessToken</el-radio>
+                <el-radio label="token">AccessToken</el-radio>
               </el-radio-group>
             </el-form-item>
             <el-form-item label="用户" prop="user" v-if="form.secret_type == 'password'">
@@ -73,10 +65,10 @@
               <el-input v-model="form.password" autocomplete="off" placeholder="请输入密码" size="small" show-password></el-input>
             </el-form-item>
             <el-form-item label="私钥" prop="private_key" v-if="form.secret_type == 'key'">
-              <el-input v-model="form.private_key" type="textarea" autocomplete="off" placeholder="请输入私钥" size="small"></el-input>
+              <el-input v-model="form.private_key" class="dialogTextarea" type="textarea" autocomplete="off" placeholder="请输入私钥" size="small"></el-input>
             </el-form-item>
             <el-form-item label="AccessToken" prop="access_token" v-if="form.secret_type == 'token'">
-              <el-input v-model="form.access_token" type="textarea" autocomplete="off" placeholder="请输入私钥" size="small"></el-input>
+              <el-input v-model="form.access_token" class="dialogTextarea" type="textarea" autocomplete="off" placeholder="请输入私钥" size="small"></el-input>
             </el-form-item>
           </el-form>
         </div>
@@ -118,16 +110,15 @@ export default {
       form: {
         id: "",
         name: "",
+        description: "",
         user: "",
         password: "",
         private_key: "",
         access_token: "",
-        kind: "code",
         secret_type: "password"
       },
       rules: {
         name: [{ required: true, message: '请输入密钥名称', trigger: 'blur' },],
-        kind: [{ required: true, message: '请选择密钥类别', trigger: 'blur' },],
         secret_type: [{ required: true, message: '请选择密钥类型', trigger: 'blur' },],
         user: [{ required: true, message: '请输入用户', trigger: 'blur' },],
         password: [{ required: true, message: '请输入密码', trigger: 'blur' },],
@@ -136,11 +127,6 @@ export default {
       },
       originSecrets: [],
       search_name: "",
-      secretKindMap: {
-        'code': '代码库',
-        'ssh': '主机ssh',
-        'registry': '镜像仓库'
-      },
       secretTypeMap: {
         'password': '密码',
         'key': '密钥',
@@ -175,13 +161,14 @@ export default {
         Message.error("密钥名称不能为空");
         return
       }
-      let secret = {name: this.form.name, kind: this.form.kind}
-      if(this.form.kind == 'code' || this.form.kind == 'ssh') {
-        if(!this.form.secret_type) {
-          Message.error("密钥类别不能为空，请重新选择");
-          return
-        }
-        secret['secret_type'] = this.form.secret_type
+      if(!this.form.secret_type) {
+        Message.error("密钥类别不能为空，请重新选择");
+        return
+      }
+      let secret = {
+        name: this.form.name, 
+        secret_type: this.form.secret_type, 
+        description: this.form.description
       }
       if(this.form.secret_type == 'password') {
         if (!this.form.user) {
@@ -220,13 +207,10 @@ export default {
         Message.error("获取密钥id参数异常，请刷新重试");
         return
       }
-      let secret = {name: this.form.name}
-      if(this.form.kind == 'code' || this.form.kind == 'ssh') {
-        if(!this.form.secret_type) {
-          Message.error("密钥类别不能为空，请重新选择");
-          return
-        }
-        secret['secret_type'] = this.form.secret_type
+      let secret = {
+        name: this.form.name,
+        secret_type: this.form.secret_type,
+        description: this.form.description
       }
       if(this.form.secret_type == 'password') {
         if (!this.form.user) {
@@ -289,7 +273,7 @@ export default {
       this.form = {
         id: secret.id,
         name: secret.name,
-        kind: secret.kind,
+        description: secret.description,
         secret_type: secret.type || 'password',
         user: secret.user,
         password: '',
@@ -299,24 +283,14 @@ export default {
       this.updateSecretVisible = true;
       this.createSecretFormVisible = true
     },
-    secretKindChange() {
-      if(this.form.kind == 'registry') {
-        this.form.secret_type = 'password'
-        return
-      }
-      if(this.form.kind == 'ssh' && this.form.secret_type == 'token') {
-        this.form.secret_type = 'password'
-        return
-      }
-    },
     closeSecretDialog() {
       this.form = {
         name: "",
+        description: "",
         user: "",
         password: "",
         private_key: "",
         access_token: "",
-        kind: "code",
         secret_type: "password"
       }
       this.updateSecretVisible = false; 
