@@ -17,7 +17,7 @@ var (
 	keyFile       = flag.String("cert-key-file", "", "cert key file path for tls used.")
 	mysqlHost     = flag.String("mysql-host", "127.0.0.1:3306", "mysql address used.")
 	mysqlUser     = flag.String("mysql-user", "root", "mysql db user.")
-	mysqlPassword = flag.String("mysql-password", "123abc,.;", "mysql password used.")
+	mysqlPassword = flag.String("mysql-password", "", "mysql password used.")
 	mysqlDbName   = flag.String("mysql-dbname", "kubespace", "mysql db used.")
 )
 

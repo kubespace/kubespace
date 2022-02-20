@@ -17,8 +17,28 @@ type Project struct {
 
 type ProjectApp struct {
 	ID           uint      `gorm:"primaryKey" json:"id"`
-	Name         string    `gorm:"size:255;not null;uniqueIndex" json:"name"`
-	Owner   string    `gorm:"size:50;not null" json:"owner"`
+	ProjectId uint `gorm:"not null;uniqueIndex:ProjectNameUnique" json:"project_app_id"`
+	Name         string    `gorm:"size:255;not null;uniqueIndex:ProjectNameUnique" json:"name"`
+	CurrentVersionId uint `gorm:"not null;" json:"current_version_id"`
+	Status string `gorm:"not null;size:255" json:"status"`
+	CreateUser   string    `gorm:"size:50;not null" json:"create_user"`
+	CreateTime   time.Time `gorm:"column:create_time;not null;autoCreateTime" json:"create_time"`
+	UpdateTime   time.Time `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`
+}
+
+type AppStore struct {
+	ID uint
+	Name string
+}
+
+type AppVersion struct {
+	ID uint `gorm:"primaryKey" json:"id"`
+	ProjectAppId uint `gorm:"uniqueIndex:AppNameVersionUnique" json:"project_app_id"`
+	AppStoreId uint `gorm:"uniqueIndex:AppNameVersionUnique" json:"app_store_id"`
+	PackageName string `gorm:"size:255;not null;uniqueIndex:AppNameVersionUnique" json:"package_name"`
+	PackageVersion string `gorm:"size:255;not null;uniqueIndex:AppNameVersionUnique" json:"package_version"`
+	AppVersion string `gorm:"size:255;not null" json:"app_version"`
+	Owner   string    `gorm:"not null;size:50;not null" json:"owner"`
 	CreateUser   string    `gorm:"size:50;not null" json:"create_user"`
 	CreateTime   time.Time `gorm:"column:create_time;not null;autoCreateTime" json:"create_time"`
 	UpdateTime   time.Time `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`

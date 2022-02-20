@@ -40,7 +40,6 @@ func (s *SettingsSecret) create(c *views.Context) *utils.Response {
 		resp.Msg = err.Error()
 		return resp
 	}
-	klog.Info(ser)
 	secret := &types.SettingsSecret{
 		Name:        ser.Name,
 		Description: ser.Description,

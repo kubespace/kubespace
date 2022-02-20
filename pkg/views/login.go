@@ -12,6 +12,7 @@ import (
 	"k8s.io/klog"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type Login struct {
@@ -67,7 +68,7 @@ func (l Login) Login(c *gin.Context) {
 		return
 	}
 
-	userObj.LastLogin = utils.StringNow()
+	userObj.LastLogin = time.Now()
 	if err := l.models.UserManager.Update(userObj); err != nil {
 		resp.Code = code.UpdateError
 		resp.Msg = err.Error()
@@ -108,10 +109,11 @@ func (l Login) CreateAdmin(c *gin.Context) {
 		Password: utils.Encrypt(ser.Password),
 		IsSuper:  true,
 		Status:   "normal",
-		Roles:    []string{types.AdminRole.Name},
+		//Roles:    []string{types.AdminRole.Name},
+		LastLogin: time.Now(),
+		CreateTime: time.Now(),
+		UpdateTime: time.Now(),
 	}
-	user.CreateTime = utils.StringNow()
-	user.UpdateTime = utils.StringNow()
 
 	if err := l.models.UserManager.Create(&user); err != nil {
 		resp.Code = code.CreateError

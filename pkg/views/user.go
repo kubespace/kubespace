@@ -9,6 +9,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/views/serializers"
 	"k8s.io/klog"
 	"net/http"
+	"time"
 )
 
 type User struct {
@@ -83,9 +84,9 @@ func (u *User) update(c *Context) *utils.Response {
 		userObj.Password = utils.Encrypt(user.Password)
 	}
 
-	if user.Roles != nil {
-		userObj.Roles = user.Roles
-	}
+	//if user.Roles != nil {
+	//	userObj.Roles = user.Roles
+	//}
 
 	if user.Email != "" {
 		if ok := utils.VerifyEmailFormat(user.Email); !ok {
@@ -117,7 +118,7 @@ func (u *User) list(c *Context) *utils.Response {
 	var data []map[string]interface{}
 
 	for _, du := range dList {
-		perms, err := u.models.UserManager.Permissions(du)
+		perms, err := u.models.UserManager.Permissions(&du)
 		if err != nil {
 			resp.Code = code.GetError
 			resp.Msg = err.Error()
@@ -129,7 +130,7 @@ func (u *User) list(c *Context) *utils.Response {
 			"status":      du.Status,
 			"is_super":    du.IsSuper,
 			"last_login":  du.LastLogin,
-			"roles":       du.Roles,
+			//"roles":       du.Roles,
 			"permissions": perms,
 		})
 	}
@@ -164,10 +165,11 @@ func (u *User) create(c *Context) *utils.Response {
 		Email:    ser.Email,
 		IsSuper:  isSuper,
 		Status:   "normal",
-		Roles:    ser.Roles,
+		//Roles:    ser.Roles,
+		LastLogin: time.Now(),
+		CreateTime: time.Now(),
+		UpdateTime: time.Now(),
 	}
-	userObj.CreateTime = utils.StringNow()
-	userObj.UpdateTime = utils.StringNow()
 
 	if err := u.models.UserManager.Create(&userObj); err != nil {
 		resp.Code = code.CreateError
