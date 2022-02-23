@@ -12,7 +12,7 @@ const Routes = [
   {
     path: 'image',
     name: 'settinsImage',
-    component: () => import('@/views/settings/cluster/index'),
+    component: () => import('@/views/settings/image_registry'),
     meta: { title: '镜像仓库', icon: 'docker', 'group': 'settings', object: 'cluster' }
   },
   {

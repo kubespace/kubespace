@@ -1,6 +1,6 @@
 <template>
   <div>
-    <clusterbar :titleName="titleName" :nameFunc="nameSearch" :createFunc="openCreateFormDialog" createDisplay="创建空间"/>
+    <clusterbar :titleName="titleName" :nameFunc="nameSearch" :createFunc="openCreateFormDialog" createDisplay="创建应用"/>
     <div class="dashboard-container" ref="tableCot">
       <el-table
         ref="multipleTable"
@@ -21,7 +21,7 @@
         </el-table-column>
         <el-table-column prop="description" label="描述" show-overflow-tooltip min-width="15">
         </el-table-column>
-        <el-table-column prop="cluster_id" label="绑定集群" show-overflow-tooltip min-width="15">
+        <el-table-column prop="cluster_id" label="集群" show-overflow-tooltip min-width="15">
         </el-table-column>
         <el-table-column prop="namespace" label="命名空间" show-overflow-tooltip min-width="15">
         </el-table-column>
@@ -38,8 +38,8 @@
         <el-table-column label="操作" width="150">
           <template slot-scope="scope">
             <div class="tableOperate">
-              <el-link :underline="false" style="margin-right: 13px; color:#409EFF" @click="nameClick(scope.row.id)">详情</el-link>
-              <el-link :underline="false" style="margin-right: 13px; color:#409EFF" @click="openUpdateFormDialog(scope.row)">编辑</el-link>
+              <el-link :underline="false" style="margin-right: 15px; color:#409EFF" @click="nameClick(scope.row.id)">详情</el-link>
+              <el-link :underline="false" style="margin-right: 15px; color:#409EFF" @click="openUpdateFormDialog(scope.row)">编辑</el-link>
               <el-link :underline="false" style="color: #F56C6C" @click="handleDeleteWorkspace(scope.row.id, scope.row.name)">删除</el-link>
             </div>
           </template>
@@ -100,7 +100,7 @@ import { listNamespace } from '@/api/namespace'
 import { Message } from "element-ui";
 
 export default {
-  name: "workspace",
+  name: "projectApps",
   components: {
     Clusterbar,
   },
@@ -117,7 +117,7 @@ export default {
     return {
       maxHeight: window.innerHeight - 150,
       cellStyle: { border: 0 },
-      titleName: ["项目空间"],
+      titleName: ["应用管理"],
       loading: true,
       createFormVisible: false,
       updateFormVisible: false,

@@ -128,6 +128,10 @@
           </div>
         </div>
       </div>
+
+      <div v-if="builds.length == 0" style="text-align: center; margin-top: 30px; margin-left: -100px; color: #606266; font-size: 14px;">
+        暂无流水线构建记录，<span @click="openBuildParams" class="build-span" style="color:#409EFF">执行流水线</span>
+      </div>
     </div>
 
     <el-dialog title="执行流水线" :visible.sync="dialogVisible" :destroy-on-close="true" 
@@ -406,6 +410,13 @@ export default {
   font-weight: 400;
 }
 .build-stage {
+}
+
+.build-span{
+
+}
+.build-span:hover{
+  cursor: pointer;
 }
 </style>
 <style>

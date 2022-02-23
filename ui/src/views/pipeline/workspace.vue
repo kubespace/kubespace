@@ -68,7 +68,7 @@
                 size="small"></el-input>
             </el-form-item>
             <el-form-item label="访问密钥" prop="codeSecretId" v-if="form.type=='code'">
-              <el-select v-model="form.codeSecretId" placeholder="请选择代码访问密钥" size="small">
+              <el-select v-model="form.codeSecretId" placeholder="请选择代码访问密钥" size="small" style="width: 100%">
                 <el-option
                   v-for="secret in form.codeType == 'https' ? codePasswordSecrets : codeKeySecrets"
                   :key="secret.id"
@@ -135,8 +135,9 @@ export default {
       rules: {
         name: [{ required: true, message: '请输入空间名称', trigger: 'blur' },],
         type: [{ required: true, message: '请选择空间类型', trigger: 'blur' },],
-        codeType: [{ required: true, message: '请选择代码类型', trigger: 'blur' },],
-        codeUrl: [{ required: true, message: '请输入代码访问地址', trigger: 'blur' },],
+        codeType: [{ required: true, message: '', trigger: 'blur' },],
+        codeUrl: [{ required: true, message: ' ', trigger: 'blur' },],
+        codeSecretId: [{ required: true, message: ' ', trigger: 'blur' },],
       },
     }
   },

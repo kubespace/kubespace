@@ -715,10 +715,6 @@ export default {
 </style>
 
 <style lang="scss">
-.el-dialog__body {
-  padding-top: 5px;
-  padding-bottom: 5px;
-}
 .replicaDialog {
   .el-form-item {
     margin-bottom: 10px;
@@ -785,9 +781,6 @@ export default {
 .podCollapse .el-collapse-item__content {
   padding: 0px 10px 15px;
   /* font-size: 13px; */
-}
-.el-dialog__body {
-  padding-top: 5px;
 }
 /* .msgClass {
   margin: 0px 25px;

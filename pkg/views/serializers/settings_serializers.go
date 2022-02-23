@@ -10,10 +10,8 @@ type SecretsSerializers struct {
 	AccessToken string `json:"access_token" form:"access_token"`
 }
 
-type SettingsSerializers struct {
-	Type    string      `json:"type" form:"type"`
-	Scope   string      `json:"scope" form:"scope"`
-	ScopeId string      `json:"scope_id" form:"scope_id"`
-	Key     string      `json:"key" form:"key"`
-	Value   interface{} `json:"value" form:"value"`
+type ImageRegistrySerializers struct {
+	Registry string `json:"registry" form:"registry"`
+	User     string `json:"user" form:"user"`
+	Password string `json:"password" form:"password"`
 }

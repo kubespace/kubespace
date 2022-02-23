@@ -14,16 +14,18 @@ import (
 )
 
 type Project struct {
-	Views            []*views.View
-	models           *model.Models
+	Views  []*views.View
+	models *model.Models
 }
 
 func NewProject(models *model.Models) *Project {
 	pipelineWs := &Project{
-		models:           models,
+		models: models,
 	}
 	vs := []*views.View{
+		views.NewView(http.MethodGet, "", pipelineWs.list),
 		views.NewView(http.MethodPost, "", pipelineWs.create),
+		views.NewView(http.MethodDelete, "/:id", pipelineWs.delete),
 	}
 	pipelineWs.Views = vs
 	return pipelineWs
@@ -38,15 +40,15 @@ func (p *Project) create(c *views.Context) *utils.Response {
 		return resp
 	}
 	project := &types.Project{
-		Name: ser.Name,
+		Name:        ser.Name,
 		Description: ser.Description,
-		ClusterId: ser.ClusterId,
-		Namespace: ser.Namespace,
-		Owner: ser.Owner,
-		CreateUser: c.User.Name,
-		UpdateUser: c.User.Name,
-		CreateTime: time.Now(),
-		UpdateTime: time.Now(),
+		ClusterId:   ser.ClusterId,
+		Namespace:   ser.Namespace,
+		Owner:       ser.Owner,
+		CreateUser:  c.User.Name,
+		UpdateUser:  c.User.Name,
+		CreateTime:  time.Now(),
+		UpdateTime:  time.Now(),
 	}
 	project, err := p.models.ProjectManager.Create(project)
 	if err != nil {
@@ -70,12 +72,12 @@ func (p *Project) list(c *views.Context) *utils.Response {
 
 	for _, project := range projects {
 		data = append(data, map[string]interface{}{
-			"id": project.ID,
-			"name": project.Name,
+			"id":          project.ID,
+			"name":        project.Name,
 			"description": project.Description,
-			"cluster_id": project.ClusterId,
-			"namespace": project.Namespace,
-			"owner": project.Owner,
+			"cluster_id":  project.ClusterId,
+			"namespace":   project.Namespace,
+			"owner":       project.Owner,
 			"update_user": project.UpdateUser,
 			"create_time": project.CreateTime,
 			"update_time": project.UpdateTime,

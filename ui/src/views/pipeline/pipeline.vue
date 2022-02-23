@@ -28,6 +28,13 @@
             </span>
           </template>
         </el-table-column>
+        <el-table-column prop="create_time" label="构建分支" show-overflow-tooltip>
+          <template slot-scope="scope">
+            <span>
+              {{ getBuildBranch(scope.row.last_build) || '—' }}
+            </span>
+          </template>
+        </el-table-column>
         <el-table-column prop="create_time" label="最新构建时间" show-overflow-tooltip>
           <template slot-scope="scope">
             <span>
@@ -43,7 +50,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="180">
+        <el-table-column label="操作" width="140">
           <template slot-scope="scope">
             <div class="tableOperate">
               <el-link :underline="false" style="margin-right: 15px; color:#409EFF" @click="nameClick(scope.row.id)">构建</el-link>
@@ -122,6 +129,22 @@ export default {
     },
     nameSearch: function(val) {
       this.search_name = val
+    },
+    getBuildBranch(build) {
+      console.log(build)
+      if(build) {
+        let branch = ''
+        let author = ''
+        if(build.env && build.env.PIPELINE_CODE_BRANCH) {
+          branch = build.env.PIPELINE_CODE_BRANCH
+        }
+        if (!branch) return ''
+        if(build.env && build.env.PIPELINE_CODE_COMMIT_AUTHOR){
+          author = build.env.PIPELINE_CODE_COMMIT_AUTHOR
+        }
+        return branch + (author ? ' (' + author + ')' : '')
+      }
+      return ''
     },
     createPipelineFunc() {
       this.$router.push({name: "pipelineCreate",});

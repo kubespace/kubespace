@@ -38,6 +38,7 @@
 import SidebarItem from './SidebarItem'
 import { listWorkspaces } from '@/api/pipeline/workspace'
 import { listCluster } from '@/api/cluster'
+import { listProjects } from "@/api/project/project";
 
 export default {
   data() {
@@ -50,6 +51,8 @@ export default {
   created() {
     if (this.hasTopSelector && this.topSelectorType == 'cluster') {
       this.$store.dispatch('watchCluster', this.$route.params.name)
+    } else {
+      this.$store.dispatch('watchCluster', '')
     }
     this.fetchTopSelectors()
   },
@@ -59,9 +62,10 @@ export default {
       this.fetchTopSelectors()
     },
     topSelectorValue: function(newObj, oldObj) {
-      console.log(oldObj, newObj)
       if(this.topSelectorType == 'cluster') {
         this.$store.dispatch('watchCluster', newObj)
+      } else {
+        this.$store.dispatch('watchCluster', '')
       }
     }
   },
@@ -96,7 +100,7 @@ export default {
         } else if (this.topSelectorType == 'cluster') {
           this.fetchClusters()
         } else if (this.topSelectorType == 'workspace') {
-          this.fetchPipelineWorkspaces()
+          this.fetchProjects()
         }
       }
     },
@@ -124,6 +128,22 @@ export default {
         var workspaces = response.data ? response.data : []
         var cur_workspace = parseInt(this.$route.params.workspaceId)
         for (let workspace of workspaces) {
+          this.oriTopSelectors.push({'value': workspace.id, 'label': workspace.name})
+          if(workspace.id == cur_workspace) {
+            this.topSelectorValue = cur_workspace
+          }
+        }
+        this.topSelectorLoading = false;
+      }).catch(() => {
+
+      })
+    },
+    fetchProjects() {
+      this.topSelectorLoading = true;
+      listProjects().then((response) => {
+        var projects = response.data ? response.data : []
+        var cur_workspace = parseInt(this.$route.params.workspaceId)
+        for (let workspace of projects) {
           this.oriTopSelectors.push({'value': workspace.id, 'label': workspace.name})
           if(workspace.id == cur_workspace) {
             this.topSelectorValue = cur_workspace

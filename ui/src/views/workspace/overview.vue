@@ -1,129 +1,7 @@
 <template>
   <div>
-    <clusterbar :titleName="titleName" :nameFunc="nameSearch" :createFunc="createClusterDialog" createDisplay="创建项目"/>
     <div class="dashboard-container" ref="tableCot">
-      <el-table
-        :data="workspaces"
-        class="table-fix"
-        tooltip-effect="dark"
-        :max-height="maxHeight"
-        style="width: 100%"
-        v-loading="loading"
-        :cell-style="cellStyle"
-        :default-sort = "{prop: 'name'}"
-        row-key="name"
-      >
-        <el-table-column prop="name" label="名称" show-overflow-tooltip>
-          <template slot-scope="scope">
-            <span class="name-class" v-on:click="nameClick(scope.row.id)">
-              {{ scope.row.name }}
-            </span>
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="create_time"
-          label="创建时间"
-          show-overflow-tooltip
-        >
-        </el-table-column>
-        <el-table-column
-          prop="status"
-          label="状态"
-          min-width="34%"
-          show-overflow-tooltip
-        >
-          <template slot-scope="scope">
-            <span :style="{'color': (scope.row.status === 'Connect' ? '#409EFF' : '#F56C6C')}">
-              {{scope.row.status}}
-              <template v-if="scope.row.status === 'Connect'">
-                <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="correct" />
-              </template>
-              <template v-else>
-                <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="wrong" />
-              </template>
-            </span>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="" width="80">
-          <template slot-scope="scope">
-            <!-- <el-button
-              @click.native.prevent="deleteRow(scope.$index, tableData)"
-              type="text"
-              size="small">
-              删除
-            </el-button> -->
-            <!-- <el-link :underline="false" style="font-size: 13px">删除</el-link> -->
-            <el-dropdown size="medium" >
-              <el-link :underline="false"><svg-icon style="width: 1.3em; height: 1.3em;" icon-class="operate" /></el-link>
-              <el-dropdown-menu slot="dropdown">
-                <template v-if="$updatePerm()">
-                  <el-dropdown-item @click.native.prevent="clusterConnectToken=scope.row.token; clusterConnectDialog = true" 
-                    v-if="scope.row.status === 'Pending'">
-                    <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="link" />
-                    <span style="margin-left: 5px;">连接</span>
-                  </el-dropdown-item>
-                </template>
-                <el-dropdown-item v-if="$updatePerm()" @click.native.prevent="createClusterFormVisible = true; inviteForm=true; 
-                  form={name: scope.row.name, members: scope.row.members}">
-                  <svg-icon style="width: 1.2em; height: 1.2em; line-height: 40px; vertical-align: -0.25em" icon-class="invite" />
-                  <span style="margin-left: 5px;">邀请</span>
-                </el-dropdown-item>
-                <el-dropdown-item v-if="$deletePerm()" @click.native.prevent="deleteClusters([{name: scope.row.name}])">
-                  <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="delete" />
-                  <span style="margin-left: 5px;">删除</span>
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
-          </template>
-        </el-table-column>
-      </el-table>
     </div>
-    <div>
-      <el-dialog :title="inviteForm ? '邀请用户':'创建集群'" :visible.sync="createClusterFormVisible" :close-on-click-modal="false" 
-        :destroy-on-close="true" @close="form={'name': '', 'members': []}; inviteForm=false;">
-        <el-form :model="form">
-          <el-form-item label="集群名称">
-            <el-input v-model="form.name" :disabled="inviteForm" autocomplete="off" placeholder="请输入集群名称"></el-input>
-          </el-form-item>
-          <el-form-item label="邀请">
-            <el-select v-model="form.members" style="width: 100%" multiple filterable placeholder="请选择要邀请的用户">
-              <el-option
-                v-for="item in users"
-                :key="item.name"
-                :label="item.name"
-                :value="item.name">
-              </el-option>
-            </el-select>
-          </el-form-item>
-        </el-form>
-        <div slot="footer" class="dialog-footer">
-          <el-button @click="createClusterFormVisible = false; form={'name': '', 'members': []}; inviteForm=false;">取 消</el-button>
-          <el-button type="primary" @click="inviteForm ? handleClusterMembers() : handleCreateCluster();">确 定</el-button>
-        </div>
-      </el-dialog>
-    </div>
-
-    <el-dialog title="集群导入" :visible.sync="clusterConnectDialog" :close-on-click-modal="false">
-      <div style="font-size: 15px;">请在现有Kubernetes集群上运行下面的kubeclt命令，以连接OpenSpace平台：</div>
-      <div style="margin-top: 15px;">
-        <el-tag type="info" style="font-size: 14px; border-radius: 4px;">
-          {{ copyCluster }}
-        </el-tag>
-        <!-- <el-tag type="" style="font-size: 14px; border-radius: 0px 4px 4px 0px;">复制</el-tag> -->
-        <!-- <el-button plain size="small" slot="append" 
-            style="height: 32px; border-radius: 0px 4px 4px 0px; padding: 10px 8px;"
-            v-clipboard:copy="copyCluster" v-clipboard:success="onCopy" v-clipboard:error="onError">
-            复制
-        </el-button> -->
-      </div>
-      <div style="font-size: 13px; margin-top: 8px; color: #e6a23c;">
-        *注意：请将上述访问地址{{this.locationAddr}}换为Kubernetes集群可以访问的地址。
-      </div>
-      <div slot="footer" class="dialog-footer">
-        <el-button type="primary" @click="clusterConnectDialog = false">确 定</el-button>
-      </div>
-    </el-dialog>
   </div>
 </template>
 
@@ -134,7 +12,7 @@ import { getUser } from "@/api/user";
 import { Message } from 'element-ui'
 
 export default {
-  name: 'PipelineWorkspace',
+  name: 'ProjectOverview',
   components: {
     Clusterbar
   },

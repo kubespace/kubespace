@@ -320,11 +320,7 @@ export default {
 
 </style>
 
-<style lang="scss">
-.el-dialog__body {
-  padding-top: 5px;
-  padding-bottom: 5px;
-}
+<style lang="scss">·
 .replicaDialog {
   .el-form-item {
     margin-bottom: 10px;

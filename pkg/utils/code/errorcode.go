@@ -17,4 +17,5 @@ const (
 	EncodeError    = "EncodeError"
 	DataNotExists  = "DataNotExists"
 	AuthError      = "AuthError"
+	HelmError      = "HelmError"
 )

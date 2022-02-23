@@ -59,10 +59,10 @@
               </el-radio-group>
             </el-form-item>
             <el-form-item label="用户" prop="user" v-if="form.secret_type == 'password'">
-              <el-input v-model="form.user" autocomplete="off" placeholder="请输入用户" size="small"></el-input>
+              <el-input v-model="form.user" autocomplete="off" clearable placeholder="请输入用户" size="small"></el-input>
             </el-form-item>
             <el-form-item label="密码" prop="password" v-if="form.secret_type == 'password'">
-              <el-input v-model="form.password" autocomplete="off" placeholder="请输入密码" size="small" show-password></el-input>
+              <el-input v-model="form.password" autocomplete="new-password" clearable placeholder="请输入密码" size="small" show-password></el-input>
             </el-form-item>
             <el-form-item label="私钥" prop="private_key" v-if="form.secret_type == 'key'">
               <el-input v-model="form.private_key" class="dialogTextarea" type="textarea" autocomplete="off" placeholder="请输入私钥" size="small"></el-input>
@@ -118,12 +118,12 @@ export default {
         secret_type: "password"
       },
       rules: {
-        name: [{ required: true, message: '请输入密钥名称', trigger: 'blur' },],
-        secret_type: [{ required: true, message: '请选择密钥类型', trigger: 'blur' },],
-        user: [{ required: true, message: '请输入用户', trigger: 'blur' },],
-        password: [{ required: true, message: '请输入密码', trigger: 'blur' },],
-        private_key: [{ required: true, message: '请输入私钥', trigger: 'blur' },],
-        access_token: [{ required: true, message: '请输入AccessToken', trigger: 'blur' },],
+        name: [{ required: true, message: ' ', trigger: 'blur' },],
+        secret_type: [{ required: true, message: ' ', trigger: 'blur' },],
+        user: [{ required: true, message: ' ', trigger: 'blur' },],
+        password: [{ required: true, message: ' ', trigger: 'blur' },],
+        private_key: [{ required: true, message: ' ', trigger: 'blur' },],
+        access_token: [{ required: true, message: ' ', trigger: 'blur' },],
       },
       originSecrets: [],
       search_name: "",

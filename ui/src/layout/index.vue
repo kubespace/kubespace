@@ -47,6 +47,7 @@ export default {
       const route = this.$route
       const { meta } = route
       if (meta.noSidebar) {
+        this.$store.dispatch('watchCluster', '')
         return false
       }
       return true

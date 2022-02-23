@@ -12,8 +12,8 @@ const Routes = [
   {
     path: 'app',
     name: 'workspaceApp',
-    component: () => import('@/views/workspace/overview'),
-    meta: { title: '项目应用', icon: 'workspace_app', 'group': 'workspace', object: 'pipeline' }
+    component: () => import('@/views/workspace/apps'),
+    meta: { title: '应用管理', icon: 'workspace_app', 'group': 'workspace', object: 'pipeline' }
   },
   {
     path: '',

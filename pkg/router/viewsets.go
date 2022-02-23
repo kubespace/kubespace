@@ -6,6 +6,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/views"
 	"github.com/kubespace/kubespace/pkg/views/kube_views"
 	"github.com/kubespace/kubespace/pkg/views/pipeline_views"
+	"github.com/kubespace/kubespace/pkg/views/project_views"
 	"github.com/kubespace/kubespace/pkg/views/settings_views"
 )
 
@@ -46,6 +47,10 @@ func NewViewSets(kr *kube_resource.KubeResources, models *model.Models) *ViewSet
 	pipelineRun := pipeline_views.NewPipelineRun(models)
 
 	settingsSecret := settings_views.NewSettingsSecret(models)
+	imageRegistry := settings_views.NewImageRegistry(models)
+
+	projectWorkspace := project_views.NewProject(models)
+	projectApps := project_views.NewProjectApp(models)
 
 	viewsets := &ViewSets{
 		"cluster":        cluster.Views,
@@ -80,7 +85,11 @@ func NewViewSets(kr *kube_resource.KubeResources, models *model.Models) *ViewSet
 		"pipeline/pipeline":  pipeline.Views,
 		"pipeline/build":     pipelineRun.Views,
 
-		"settings/secret": settingsSecret.Views,
+		"settings/secret":         settingsSecret.Views,
+		"settings/image_registry": imageRegistry.Views,
+
+		"project/workspace": projectWorkspace.Views,
+		"project/apps":      projectApps.Views,
 	}
 
 	return viewsets

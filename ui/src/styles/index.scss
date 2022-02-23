@@ -133,4 +133,11 @@ div:focus {
       font-size: 13px;
     }
   }
+
+  .name-class {
+    cursor: pointer;
+  }
+  .name-class:hover {
+    color: #409EFF;
+  }
 }
