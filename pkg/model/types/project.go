@@ -48,3 +48,11 @@ type AppVersion struct {
 	CreateTime     time.Time `gorm:"column:create_time;not null;autoCreateTime" json:"create_time"`
 	UpdateTime     time.Time `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`
 }
+
+type AppVersionChart struct {
+	ID         uint      `gorm:"primaryKey" json:"id"`
+	Path       string    `gorm:"size:2000;uniqueIndex"`
+	Content    []byte    `gorm:"" json:"content"`
+	CreateTime time.Time `gorm:"column:create_time;not null;autoCreateTime" json:"create_time"`
+	UpdateTime time.Time `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`
+}

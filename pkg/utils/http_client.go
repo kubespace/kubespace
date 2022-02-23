@@ -8,8 +8,10 @@ import (
 	"io"
 	"io/ioutil"
 	"k8s.io/klog"
+	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
 )
 
@@ -93,4 +95,46 @@ func (c *HttpClient) addParamsToPath(oriPath string, params map[string]string) s
 		oriUrl.RawQuery = urlParam.Encode()
 	}
 	return oriUrl.String()
+}
+
+func PostFile(url, filename, filepath string) ([]byte, error) {
+	bodyBuf := &bytes.Buffer{}
+	bodyWriter := multipart.NewWriter(bodyBuf)
+
+	// 关键的一步操作
+	fileWriter, err := bodyWriter.CreateFormFile(filename, filepath)
+	if err != nil {
+		fmt.Println("error writing to buffer")
+		return nil, err
+	}
+
+	// 打开文件句柄操作
+	fh, err := os.Open(filepath)
+	if err != nil {
+		fmt.Println("error opening file")
+		return nil, err
+	}
+	defer fh.Close()
+
+	// iocopy
+	_, err = io.Copy(fileWriter, fh)
+	if err != nil {
+		return nil, err
+	}
+
+	contentType := bodyWriter.FormDataContentType()
+	bodyWriter.Close()
+
+	resp, err := http.Post(url, contentType, bodyBuf)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println(resp.Status)
+	fmt.Println(string(respBody))
+	return respBody, nil
 }
