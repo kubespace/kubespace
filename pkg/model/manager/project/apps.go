@@ -8,26 +8,28 @@ import (
 
 type AppManager struct {
 	*gorm.DB
+	*AppVersionManager
 }
 
-func NewAppManager(db *gorm.DB) *AppManager {
-	return &AppManager{DB: db}
+func NewAppManager(chartManager *AppVersionManager, db *gorm.DB) *AppManager {
+	return &AppManager{DB: db, AppVersionManager: chartManager}
 }
 
-func (a *AppManager) Create(app *types.ProjectApp, appVersion *types.AppVersion) (*types.ProjectApp, error) {
-	err := a.DB.Transaction(func(tx *gorm.DB) error {
+func (a *AppManager) CreateApp(chartFilePath string, app *types.ProjectApp, appVersion *types.AppVersion) (*types.ProjectApp, error) {
+	var err error
+	err = a.DB.Transaction(func(tx *gorm.DB) error {
 		if app.ID == 0 {
-			if err := tx.Create(app).Error; err != nil {
+			if err = tx.Create(app).Error; err != nil {
 				return err
 			}
 		}
-		appVersion.ProjectAppId = app.ID
-		if err := tx.Create(appVersion).Error; err != nil {
+		appVersion, err = a.AppVersionManager.CreateAppVersion(chartFilePath, types.AppVersionScopeProjectApp, app.ID, appVersion)
+		if err != nil {
 			return err
 		}
 		if app.Status == types.AppStatusUninstall {
 			app.AppVersionId = appVersion.ID
-			if err := tx.Save(app).Error; err != nil {
+			if err = tx.Save(app).Error; err != nil {
 				return err
 			}
 		}
@@ -50,9 +52,9 @@ func (a *AppManager) GetByName(projectId uint, name string) (*types.ProjectApp, 
 	return &app, nil
 }
 
-func (a *AppManager) GetAppVersion(appId uint, packageName, packageVersion string) (*types.AppVersion, error) {
+func (a *AppManager) GetAppVersion(scope string, scopeId uint, packageName, packageVersion string) (*types.AppVersion, error) {
 	var version types.AppVersion
-	err := a.DB.First(&version, "project_app_id = ? and package_name = ? and package_version = ?", appId, packageName, packageVersion).Error
+	err := a.DB.First(&version, "scope = ? and scope_id = ? and package_name = ? and package_version = ?", scope, scopeId, packageName, packageVersion).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	} else if err != nil {

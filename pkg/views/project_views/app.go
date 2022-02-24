@@ -34,5 +34,5 @@ func (a *ProjectApp) create(c *views.Context) *utils.Response {
 	if err := c.ShouldBind(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	return a.AppService.CreateApp(c.User, ser)
+	return a.AppService.CreateProjectApp(c.User, ser)
 }

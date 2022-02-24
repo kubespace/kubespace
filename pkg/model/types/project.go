@@ -26,8 +26,8 @@ type ProjectApp struct {
 	AppVersionId uint      `gorm:"" json:"app_version_id"`
 	Values       string    `gorm:"type:text;not null;" json:"values"`
 	Status       string    `gorm:"not null;size:255" json:"status"`
-	CreateUser   string    `gorm:"size:50;not null" json:"create_user"`
-	UpdateUser   string    `gorm:"size:50;not null" json:"update_user"`
+	CreateUser   string    `gorm:"size:255;not null" json:"create_user"`
+	UpdateUser   string    `gorm:"size:255;not null" json:"update_user"`
 	CreateTime   time.Time `gorm:"column:create_time;not null;autoCreateTime" json:"create_time"`
 	UpdateTime   time.Time `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`
 }
@@ -37,13 +37,20 @@ type AppStore struct {
 	Name string
 }
 
+const (
+	AppVersionScopeProjectApp = "project_app"
+	AppVersionScopeStoreApp   = "store_app"
+)
+
 type AppVersion struct {
 	ID             uint      `gorm:"primaryKey" json:"id"`
-	ProjectAppId   uint      `gorm:"uniqueIndex:AppNameVersionUnique" json:"project_app_id"`
-	AppStoreId     uint      `gorm:"uniqueIndex:AppNameVersionUnique" json:"app_store_id"`
-	PackageName    string    `gorm:"size:255;not null;uniqueIndex:AppNameVersionUnique" json:"package_name"`
-	PackageVersion string    `gorm:"size:255;not null;uniqueIndex:AppNameVersionUnique" json:"package_version"`
+	Scope          string    `gorm:"not null;uniqueIndex:ScopeVersionUnique" json:"scope"`
+	ScopeId        uint      `gorm:"not null;uniqueIndex:ScopeVersionUnique" json:"scope_id"`
+	PackageName    string    `gorm:"size:255;not null;uniqueIndex:ScopeAppNameVersionUnique" json:"package_name"`
+	PackageVersion string    `gorm:"size:255;not null;uniqueIndex:ScopeAppNameVersionUnique" json:"package_version"`
 	AppVersion     string    `gorm:"size:255;not null" json:"app_version"`
+	DefaultValues  string    `gorm:"type:text;not null" json:"default_values"`
+	ChartPath      string    `gorm:"size:2000;"`
 	CreateUser     string    `gorm:"size:50;not null" json:"create_user"`
 	CreateTime     time.Time `gorm:"column:create_time;not null;autoCreateTime" json:"create_time"`
 	UpdateTime     time.Time `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`

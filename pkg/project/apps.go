@@ -34,13 +34,13 @@ func (a *AppService) WriteFile(fileName, content string) error {
 	return nil
 }
 
-func (a *AppService) CreateApp(user *types.User, serializer serializers.ProjectCreateAppSerializer) *utils.Response {
+func (a *AppService) CreateProjectApp(user *types.User, serializer serializers.ProjectCreateAppSerializer) *utils.Response {
 	app, err := a.models.ProjectAppManager.GetByName(serializer.ProjectId, serializer.Name)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
 	if app != nil {
-		sameVersion, err := a.models.ProjectAppManager.GetAppVersion(app.ID, app.Name, serializer.Version)
+		sameVersion, err := a.models.ProjectAppManager.GetAppVersion(types.AppVersionScopeProjectApp, app.ID, serializer.Name, serializer.Version)
 		if err != nil {
 			return &utils.Response{Code: code.DBError, Msg: err.Error()}
 		}
@@ -52,7 +52,7 @@ func (a *AppService) CreateApp(user *types.User, serializer serializers.ProjectC
 		app = &types.ProjectApp{
 			ProjectId:  serializer.ProjectId,
 			Name:       serializer.Name,
-			Values:     "",
+			Values:     serializer.Values,
 			Status:     types.AppStatusUninstall,
 			CreateUser: user.Name,
 			UpdateUser: user.Name,
@@ -96,7 +96,7 @@ func (a *AppService) CreateApp(user *types.User, serializer serializers.ProjectC
 		CreateTime:     time.Now(),
 		UpdateTime:     time.Now(),
 	}
-	_, err = a.models.ProjectAppManager.Create(app, appVersion)
+	_, err = a.models.ProjectAppManager.CreateProjectApp(tgzPath, app, appVersion)
 	if err != nil {
 		return &utils.Response{Code: code.CreateError, Msg: err.Error()}
 	}
