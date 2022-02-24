@@ -15,7 +15,7 @@ func NewAppManager(chartManager *AppVersionManager, db *gorm.DB) *AppManager {
 	return &AppManager{DB: db, AppVersionManager: chartManager}
 }
 
-func (a *AppManager) CreateApp(chartFilePath string, app *types.ProjectApp, appVersion *types.AppVersion) (*types.ProjectApp, error) {
+func (a *AppManager) CreateProjectApp(chartFilePath string, app *types.ProjectApp, appVersion *types.AppVersion) (*types.ProjectApp, error) {
 	var err error
 	err = a.DB.Transaction(func(tx *gorm.DB) error {
 		if app.ID == 0 {
@@ -61,4 +61,33 @@ func (a *AppManager) GetAppVersion(scope string, scopeId uint, packageName, pack
 		return nil, err
 	}
 	return &version, nil
+}
+
+func (a *AppManager) ListProjectApps(projectId uint) ([]*types.ProjectApp, error) {
+	var apps []types.ProjectApp
+	var err error
+	if err = a.DB.Where("project_id = ?", projectId).Find(&apps).Error; err != nil {
+		return nil, err
+	}
+	var rets []*types.ProjectApp
+	for _, app := range apps {
+		app.AppVersion, err = a.AppVersionManager.GetAppVersion(app.AppVersionId)
+		if err != nil {
+			return nil, err
+		}
+		rets = append(rets, &app)
+	}
+	return rets, nil
+}
+
+func (a *AppManager) GetProjectApp(appId uint) (*types.ProjectApp, error) {
+	var app types.ProjectApp
+	var err error
+	if err = a.DB.First(&app, "id = ?", appId).Error; err != nil {
+		return nil, err
+	}
+	if app.AppVersion, err = a.AppVersionManager.GetAppVersion(app.AppVersionId); err != nil {
+		return nil, err
+	}
+	return &app, nil
 }

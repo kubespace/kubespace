@@ -52,7 +52,7 @@ func (a *AppService) CreateProjectApp(user *types.User, serializer serializers.P
 		app = &types.ProjectApp{
 			ProjectId:  serializer.ProjectId,
 			Name:       serializer.Name,
-			Values:     serializer.Values,
+			Values:     "",
 			Status:     types.AppStatusUninstall,
 			CreateUser: user.Name,
 			UpdateUser: user.Name,
@@ -92,6 +92,7 @@ func (a *AppService) CreateProjectApp(user *types.User, serializer serializers.P
 		PackageName:    serializer.Name,
 		PackageVersion: serializer.Version,
 		AppVersion:     serializer.Version,
+		DefaultValues:  serializer.Values,
 		CreateUser:     user.Name,
 		CreateTime:     time.Now(),
 		UpdateTime:     time.Now(),
@@ -101,4 +102,29 @@ func (a *AppService) CreateProjectApp(user *types.User, serializer serializers.P
 		return &utils.Response{Code: code.CreateError, Msg: err.Error()}
 	}
 	return &utils.Response{Code: code.Success}
+}
+
+func (a *AppService) InstallApp(user *types.User, serializer serializers.ProjectInstallAppSerializer) *utils.Response {
+	return &utils.Response{Code: code.Success}
+}
+
+func (a *AppService) ListApp(serializer serializers.ProjectAppListSerializer) *utils.Response {
+	projectApps, err := a.models.ProjectAppManager.ListProjectApps(serializer.ProjectId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	var data []map[string]interface{}
+	for _, app := range projectApps {
+		res := map[string]interface{}{
+			"id":              app.ID,
+			"name":            app.Name,
+			"status":          app.Status,
+			"update_user":     app.UpdateUser,
+			"update_time":     app.UpdateTime,
+			"package_name":    app.AppVersion.PackageName,
+			"package_version": app.AppVersion.PackageVersion,
+		}
+		data = append(data, res)
+	}
+	return &utils.Response{Code: code.Success, Data: data}
 }

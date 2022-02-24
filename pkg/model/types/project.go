@@ -20,16 +20,17 @@ const (
 )
 
 type ProjectApp struct {
-	ID           uint      `gorm:"primaryKey" json:"id"`
-	ProjectId    uint      `gorm:"not null;uniqueIndex:ProjectNameUnique" json:"project_app_id"`
-	Name         string    `gorm:"size:255;not null;uniqueIndex:ProjectNameUnique" json:"name"`
-	AppVersionId uint      `gorm:"" json:"app_version_id"`
-	Values       string    `gorm:"type:text;not null;" json:"values"`
-	Status       string    `gorm:"not null;size:255" json:"status"`
-	CreateUser   string    `gorm:"size:255;not null" json:"create_user"`
-	UpdateUser   string    `gorm:"size:255;not null" json:"update_user"`
-	CreateTime   time.Time `gorm:"column:create_time;not null;autoCreateTime" json:"create_time"`
-	UpdateTime   time.Time `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`
+	ID           uint        `gorm:"primaryKey" json:"id"`
+	ProjectId    uint        `gorm:"not null;uniqueIndex:ProjectNameUnique" json:"project_app_id"`
+	Name         string      `gorm:"size:255;not null;uniqueIndex:ProjectNameUnique" json:"name"`
+	AppVersionId uint        `gorm:"" json:"app_version_id"`
+	AppVersion   *AppVersion `gorm:"-" json:"app_version"`
+	Values       string      `gorm:"type:text;not null;" json:"values"`
+	Status       string      `gorm:"not null;size:255" json:"status"`
+	CreateUser   string      `gorm:"size:255;not null" json:"create_user"`
+	UpdateUser   string      `gorm:"size:255;not null" json:"update_user"`
+	CreateTime   time.Time   `gorm:"column:create_time;not null;autoCreateTime" json:"create_time"`
+	UpdateTime   time.Time   `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`
 }
 
 type AppStore struct {
@@ -44,13 +45,13 @@ const (
 
 type AppVersion struct {
 	ID             uint      `gorm:"primaryKey" json:"id"`
-	Scope          string    `gorm:"not null;uniqueIndex:ScopeVersionUnique" json:"scope"`
-	ScopeId        uint      `gorm:"not null;uniqueIndex:ScopeVersionUnique" json:"scope_id"`
+	Scope          string    `gorm:"size:255;not null;uniqueIndex:ScopeAppNameVersionUnique" json:"scope"`
+	ScopeId        uint      `gorm:"not null;uniqueIndex:ScopeAppNameVersionUnique" json:"scope_id"`
 	PackageName    string    `gorm:"size:255;not null;uniqueIndex:ScopeAppNameVersionUnique" json:"package_name"`
 	PackageVersion string    `gorm:"size:255;not null;uniqueIndex:ScopeAppNameVersionUnique" json:"package_version"`
 	AppVersion     string    `gorm:"size:255;not null" json:"app_version"`
 	DefaultValues  string    `gorm:"type:text;not null" json:"default_values"`
-	ChartPath      string    `gorm:"size:2000;"`
+	ChartPath      string    `gorm:"size:255;not null" json:"chart_path"`
 	CreateUser     string    `gorm:"size:50;not null" json:"create_user"`
 	CreateTime     time.Time `gorm:"column:create_time;not null;autoCreateTime" json:"create_time"`
 	UpdateTime     time.Time `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`
@@ -58,8 +59,8 @@ type AppVersion struct {
 
 type AppVersionChart struct {
 	ID         uint      `gorm:"primaryKey" json:"id"`
-	Path       string    `gorm:"size:2000;uniqueIndex"`
-	Content    []byte    `gorm:"" json:"content"`
+	Path       string    `gorm:"size:255;uniqueIndex"`
+	Content    []byte    `gorm:"type:mediumblob" json:"content"`
 	CreateTime time.Time `gorm:"column:create_time;not null;autoCreateTime" json:"create_time"`
 	UpdateTime time.Time `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`
 }
