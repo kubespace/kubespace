@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"gorm.io/gorm"
+	"time"
 )
 
 type AppManager struct {
@@ -90,4 +91,17 @@ func (a *AppManager) GetProjectApp(appId uint) (*types.ProjectApp, error) {
 		return nil, err
 	}
 	return &app, nil
+}
+
+func (a *AppManager) UpdateProjectApp(app *types.ProjectApp, columns ...string) error {
+	app.UpdateTime = time.Now()
+	if len(columns) == 0 {
+		columns = []string{"*"}
+	} else {
+		columns = append(columns, "update_time")
+	}
+	if err := a.DB.Model(app).Select(columns).Updates(*app).Error; err != nil {
+		return err
+	}
+	return nil
 }

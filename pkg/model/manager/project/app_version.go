@@ -19,7 +19,7 @@ func NewAppVersionManager(db *gorm.DB) *AppVersionManager {
 
 func (v *AppVersionManager) NewPackageFilenameFromNameVersion(name string, version string) string {
 	prefix := strconv.FormatInt(time.Now().Unix(), 10)
-	filename := fmt.Sprintf("%s/%s-%s", prefix, name, version)
+	filename := fmt.Sprintf("%s/%s-%s.tgz", prefix, name, version)
 	return filename
 }
 
@@ -60,4 +60,12 @@ func (v *AppVersionManager) GetAppVersion(appVersionId uint) (*types.AppVersion,
 		return nil, err
 	}
 	return &appVersion, nil
+}
+
+func (v *AppVersionManager) GetAppVersionChart(chartPath string) (*types.AppVersionChart, error) {
+	var appVersionChart types.AppVersionChart
+	if err := v.DB.First(&appVersionChart, "path = ?", chartPath).Error; err != nil {
+		return nil, err
+	}
+	return &appVersionChart, nil
 }

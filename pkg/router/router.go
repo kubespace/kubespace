@@ -96,7 +96,7 @@ func NewRouter(redisOptions *redis.Options, mysqlOptions *mysql.Options) (*Route
 	engine.GET("/ws/log/:cluster/:namespace/:pod", logWs.Connect)
 
 	helmView := kube_views.NewHelm(kubeResources, models)
-	engine.GET("/app/charts/:name/:chart_version", helmView.GetAppChart)
+	engine.GET("/app/charts/*path", helmView.GetAppChart)
 
 	return &Router{
 		Engine: engine,

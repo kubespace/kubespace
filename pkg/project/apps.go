@@ -117,12 +117,52 @@ func (a *AppService) InstallApp(user *types.User, serializer serializers.Project
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
+	projectApp.UpdateUser = user.Name
+	if err = a.models.ProjectAppManager.UpdateProjectApp(projectApp, "update_user"); err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
 	installParmas := map[string]interface{}{
 		"namespace":  project.Namespace,
 		"chart_path": projectApp.AppVersion.ChartPath,
 		"values":     serializer.Values,
 	}
-	a.Helm.Create(project.ClusterId, installParmas)
+	resp := a.Helm.Create(project.ClusterId, installParmas)
+	if !resp.IsSuccess() {
+		return resp
+	}
+	projectApp.Status = types.AppStatusUnReady
+	if err = a.models.ProjectAppManager.UpdateProjectApp(projectApp, "status"); err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	return &utils.Response{Code: code.Success}
+}
+
+func (a *AppService) DestroyApp(user *types.User, serializer serializers.ProjectInstallAppSerializer) *utils.Response {
+	projectApp, err := a.models.ProjectAppManager.GetProjectApp(serializer.ProjectAppId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	project, err := a.models.ProjectManager.Get(projectApp.ProjectId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	projectApp.UpdateUser = user.Name
+	if err = a.models.ProjectAppManager.UpdateProjectApp(projectApp, "update_user"); err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	installParmas := map[string]interface{}{
+		"namespace":  project.Namespace,
+		"chart_path": projectApp.AppVersion.ChartPath,
+		"values":     serializer.Values,
+	}
+	resp := a.Helm.Delete(project.ClusterId, installParmas)
+	if !resp.IsSuccess() {
+		return resp
+	}
+	projectApp.Status = types.AppStatusUnReady
+	if err = a.models.ProjectAppManager.UpdateProjectApp(projectApp, "status"); err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
 	return &utils.Response{Code: code.Success}
 }
 

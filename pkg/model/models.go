@@ -20,9 +20,9 @@ type Models struct {
 	PipelinePluginManager    *pipeline.ManagerPipelinePlugin
 	*manager.SettingsSecretManager
 	*manager.ImageRegistryManager
-	ProjectAppManager      *project.AppManager
-	ProjectAppChartManager *project.AppVersionManager
-	ProjectManager         *project.ManagerProject
+	ProjectAppManager        *project.AppManager
+	ProjectAppVersionManager *project.AppVersionManager
+	ProjectManager           *project.ManagerProject
 }
 
 func NewModels(redisOp *redis.Options, mysqlOptions *mysql.Options) (*Models, error) {
@@ -47,8 +47,8 @@ func NewModels(redisOp *redis.Options, mysqlOptions *mysql.Options) (*Models, er
 	imageRegistry := manager.NewSettingsImageRegistryManager(db)
 
 	projectMgr := project.NewManagerProject(db)
-	appChartMgr := project.NewAppVersionManager(db)
-	projectAppMgr := project.NewAppManager(appChartMgr, db)
+	appVersionMgr := project.NewAppVersionManager(db)
+	projectAppMgr := project.NewAppManager(appVersionMgr, db)
 
 	return &Models{
 		ClusterManager:           cm,
@@ -63,6 +63,7 @@ func NewModels(redisOp *redis.Options, mysqlOptions *mysql.Options) (*Models, er
 		SettingsSecretManager:    secrets,
 		ProjectManager:           projectMgr,
 		ProjectAppManager:        projectAppMgr,
+		ProjectAppVersionManager: appVersionMgr,
 		ImageRegistryManager:     imageRegistry,
 	}, nil
 }

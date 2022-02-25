@@ -170,17 +170,13 @@ func (h *Helm) getApp(c *views.Context) *utils.Response {
 }
 
 func (h *Helm) GetAppChart(c *gin.Context) {
-	res := &utils.Response{Code: code.Success}
-	name, _ := c.Params.Get("name")
-	chartVersion, _ := c.Params.Get("chart_version")
+	chartPath, _ := c.Params.Get("path")
+	chartPath = chartPath[1:]
 
-	app, err := h.models.AppManager.Get(name, chartVersion)
+	appChart, err := h.models.ProjectAppVersionManager.GetAppVersionChart(chartPath)
 	if err != nil {
-		res.Code = code.GetError
-		res.Msg = err.Error()
-		c.JSON(200, res)
+		c.JSON(http.StatusNotFound, &utils.Response{Code: code.GetError, Msg: err.Error()})
 		return
 	}
-	res.Data = app.Chart
-	c.JSON(200, res)
+	c.Data(http.StatusOK, "application/x-tar", appChart.Content)
 }
