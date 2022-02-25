@@ -70,12 +70,12 @@ func (a *AppManager) ListProjectApps(projectId uint) ([]*types.ProjectApp, error
 		return nil, err
 	}
 	var rets []*types.ProjectApp
-	for _, app := range apps {
-		app.AppVersion, err = a.AppVersionManager.GetAppVersion(app.AppVersionId)
+	for i, app := range apps {
+		apps[i].AppVersion, err = a.AppVersionManager.GetAppVersion(app.AppVersionId)
 		if err != nil {
 			return nil, err
 		}
-		rets = append(rets, &app)
+		rets = append(rets, &apps[i])
 	}
 	return rets, nil
 }

@@ -50,7 +50,7 @@ func NewViewSets(kr *kube_resource.KubeResources, models *model.Models) *ViewSet
 	imageRegistry := settings_views.NewImageRegistry(models)
 
 	projectWorkspace := project_views.NewProject(models)
-	projectApps := project_views.NewProjectApp(models)
+	projectApps := project_views.NewProjectApp(kr, models)
 
 	viewsets := &ViewSets{
 		"cluster":        cluster.Views,

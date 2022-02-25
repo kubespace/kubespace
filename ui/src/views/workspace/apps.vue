@@ -4,7 +4,7 @@
     <div class="dashboard-container" ref="tableCot">
       <el-table
         ref="multipleTable"
-        :data="originWorkspaces"
+        :data="originApps"
         class="table-fix"
         :cell-style="cellStyle"
         v-loading="loading"
@@ -19,28 +19,39 @@
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="description" label="描述" show-overflow-tooltip min-width="15">
+        <el-table-column prop="package_version" label="版本" show-overflow-tooltip min-width="15">
         </el-table-column>
-        <el-table-column prop="cluster_id" label="集群" show-overflow-tooltip min-width="15">
-        </el-table-column>
-        <el-table-column prop="namespace" label="命名空间" show-overflow-tooltip min-width="15">
-        </el-table-column>
-        <el-table-column prop="owner" label="负责人" show-overflow-tooltip min-width="10">
+        <el-table-column prop="type" label="类型" show-overflow-tooltip min-width="15">
           <template slot-scope="scope">
-            {{ scope.row.owner }}
+            {{ typeNameMap[scope.row.type] }}
           </template>
         </el-table-column>
-        <el-table-column prop="update_time" label="更新时间" show-overflow-tooltip min-width="15">
+        <el-table-column prop="update_user" label="操作人" show-overflow-tooltip min-width="15">
+        </el-table-column>
+        <el-table-column prop="update_time" label="更新时间" show-overflow-tooltip min-width="20">
           <template slot-scope="scope">
             {{ $dateFormat(scope.row.update_time) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="status" label="状态" show-overflow-tooltip min-width="15">
+          <template slot-scope="scope">
+            <div class="status-class" :style="{'border-color': statusColorMap[scope.row.status], 'background-color': statusColorMap[scope.row.status]}"></div>
+            <span :style="{'font-weight': 430}">{{ statusNameMap[scope.row.status] }}</span>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="150">
           <template slot-scope="scope">
             <div class="tableOperate">
-              <el-link :underline="false" style="margin-right: 15px; color:#409EFF" @click="nameClick(scope.row.id)">详情</el-link>
-              <el-link :underline="false" style="margin-right: 15px; color:#409EFF" @click="openUpdateFormDialog(scope.row)">编辑</el-link>
-              <el-link :underline="false" style="color: #F56C6C" @click="handleDeleteWorkspace(scope.row.id, scope.row.name)">删除</el-link>
+              <el-link :underline="false" class="operator-btn"
+                v-if="scope.row.status=='UnInstall'" @click="nameClick(scope.row.id)">安装</el-link>
+              <el-link :underline="false" class="operator-btn"
+                v-if="scope.row.status=='Running'" @click="nameClick(scope.row.id)">升级</el-link>
+              <el-link :underline="false" class="operator-btn"
+                @click="openUpdateFormDialog(scope.row)">编辑</el-link>
+              <el-link :underline="false" class="operator-btn" style="color: #F56C6C"
+                v-if="scope.row.status=='Running'" @click="nameClick(scope.row.id)">销毁</el-link>
+              <el-link :underline="false" style="color: #F56C6C" v-if="scope.row.status=='UnInstall'"
+                @click="handleDeleteApp(scope.row.id, scope.row.name)">删除</el-link>
             </div>
           </template>
         </el-table-column>
@@ -55,18 +66,6 @@
             </el-form-item>
             <el-form-item label="描述" prop="description">
               <el-input v-model="form.description" type="textarea" autocomplete="off" placeholder="请输入空间描述" size="small"></el-input>
-            </el-form-item>
-            <el-form-item label="集群" prop="" :required="true">
-              <el-select v-model="form.cluster_id" placeholder="请选择要绑定的集群" size="small" style="width: 100%;"
-                @change="fetchNamespace" :disabled="updateFormVisible">
-                <el-option
-                  v-for="item in clusters"
-                  :key="item.name"
-                  :label="item.name"
-                  :value="item.name"
-                  :disabled="item.status != 'Connect'">
-                </el-option>
-              </el-select>
             </el-form-item>
             <el-form-item label="命名空间" prop="" :required="true">
               <el-select v-model="form.namespace" placeholder="请选择要绑定的命名空间" size="small" style="width: 100%;"
@@ -86,7 +85,7 @@
         </div>
         <div slot="footer" class="dialogFooter">
           <el-button @click="createFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
-          <el-button type="primary" @click="updateFormVisible ? handleUpdateWorkspace() : handleCreateWorkspace()" >确 定</el-button>
+          <el-button type="primary" @click="updateFormVisible ? handleUpdateApp() : handleCreateApp()" >确 定</el-button>
         </div>
       </el-dialog>
     </div>
@@ -94,9 +93,7 @@
 </template>
 <script>
 import { Clusterbar } from "@/views/components";
-import { createProject, listProjects, updateProject, deleteProject } from "@/api/project/project";
-import { listCluster } from '@/api/cluster'
-import { listNamespace } from '@/api/namespace'
+import { listApps } from "@/api/project/apps";
 import { Message } from "element-ui";
 
 export default {
@@ -134,21 +131,33 @@ export default {
       rules: {
         name: [{ required: true, message: '请输入空间名称', trigger: 'blur' },],
       },
-      originWorkspaces: [],
+      statusNameMap: {
+        "UnInstall": "未安装",
+        "UnReady": "未就绪",
+        "RunningFault": "运行故障",
+        "Running": "运行中"
+      },
+      statusColorMap: {
+        "UnInstall": "",
+        "UnReady": "#E6A23C",
+        "RunningFault": "#F56C6C",
+        "Running": "#67C23A"
+      },
+      typeNameMap: {
+        "ordinary_app": "普通应用",
+        "middleware": "中间件",
+        "import_app": "导入应用"
+      },
+      originApps: [],
       search_name: "",
-      secretTypeMap: {
-        'password': '密码',
-        'key': '密钥',
-        'token': 'AccessToken'
-      }
     };
   },
   created() {
-    this.fetchWorkspaces();
+    this.fetchApps();
   },
   computed: {
-    secrets() {
-
+    projectId() {
+      return this.$route.params.workspaceId
     }
   },
   methods: {
@@ -158,17 +167,20 @@ export default {
     handleEdit(index, row) {
       console.log(index, row);
     },
-    fetchWorkspaces() {
+    fetchApps() {
       this.loading = true
-      listProjects().then((resp) => {
-        this.originWorkspaces = resp.data ? resp.data : []
+      listApps({project_id: this.projectId}).then((resp) => {
+        this.originApps = resp.data ? resp.data : []
         this.loading = false
       }).catch((err) => {
         console.log(err)
         this.loading = false
       })
     },
-    handleCreateWorkspace() {
+    getAppStatusName(status) {
+
+    },
+    handleCreateApp() {
       if(!this.form.name) {
         Message.error("空间名称不能为空");
         return
@@ -191,12 +203,12 @@ export default {
       createProject(project).then(() => {
         this.createFormVisible = false;
         Message.success("创建项目空间成功")
-        this.fetchWorkspaces()
+        this.fetchApps()
       }).catch((err) => {
         console.log(err)
       });
     },
-    handleUpdateWorkspace() {
+    handleUpdateApp() {
       if(!this.form.id) {
         Message.error("获取空间id参数异常，请刷新重试");
         return
@@ -209,12 +221,12 @@ export default {
       updateSecret(this.form.id, project).then(() => {
         this.createFormVisible = false;
         Message.success("更新项目空间成功")
-        this.fetchWorkspaces()
+        this.fetchApps()
       }).catch((err) => {
         console.log(err)
       });
     },
-    handleDeleteWorkspace(id, name) {
+    handleDeleteApp(id, name) {
       if(!id) {
         Message.error("获取密钥id参数异常，请刷新重试");
         return
@@ -226,7 +238,7 @@ export default {
         }).then(() => {
           deleteSecret(id).then(() => {
             Message.success("删除项目空间成功")
-            this.fetchWorkspaces()
+            this.fetchApps()
           }).catch((err) => {
             console.log(err)
           });
@@ -235,38 +247,6 @@ export default {
     },
     nameSearch(val) {
       this.search_name = val;
-    },
-    fetchClusters() {
-      this.namespaces = []
-      listCluster()
-        .then((response) => {
-          this.clusters = response.data || [];
-        }).catch(() => {
-        })
-    },
-    fetchNamespace: function() {
-      this.namespaces = []
-      const cluster = this.form.cluster_id
-      if (cluster) {
-        listNamespace(cluster).then(response => {
-          this.namespaces = response.data
-          this.namespaces.sort((a, b) => {return a.name > b.name ? 1 : -1})
-          let nsCache = storage.get(this.nsKey)
-          if (nsCache) {
-            var nsNames = []
-            for(let n of this.namespaces) nsNames.push(n.name)
-            let nsInput = nsCache.filter((name) => {return nsNames.indexOf(name) > -1})
-            this.nsInput = nsInput
-            if (this.nsFunc) {
-              this.nsFunc(this.nsInput)
-            }
-          }
-        }).catch((err) => {
-          console.log(err)
-        })
-      } else {
-        Message.error("获取集群异常，请刷新重试")
-      }
     },
     openCreateFormDialog() {
       this.createFormVisible = true;
@@ -306,6 +286,23 @@ export default {
 
 .table-fix {
   height: calc(100% - 100px);
+}
+
+.status-class {
+  height: 13px; 
+  width: 13px; 
+  border: 1px solid; 
+  border-color:rgb(121, 123, 129); 
+  background-color: rgb(121, 123, 129);  
+  display: inline-block;
+  vertical-align: middle; 
+  border-radius: 25px; 
+  margin: 0px 5px 3px 0px;
+}
+
+.operator-btn {
+  margin-right: 15px;
+  color:#0c81f5
 }
 
 </style>

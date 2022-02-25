@@ -1,6 +1,7 @@
 package project
 
 import (
+	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/utils"
@@ -13,12 +14,14 @@ import (
 )
 
 type AppService struct {
+	*kube_resource.KubeResources
 	models *model.Models
 }
 
-func NewAppService(models *model.Models) *AppService {
+func NewAppService(kr *kube_resource.KubeResources, models *model.Models) *AppService {
 	return &AppService{
-		models: models,
+		models:        models,
+		KubeResources: kr,
 	}
 }
 
@@ -93,6 +96,7 @@ func (a *AppService) CreateProjectApp(user *types.User, serializer serializers.P
 		PackageVersion: serializer.Version,
 		AppVersion:     serializer.Version,
 		DefaultValues:  serializer.Values,
+		Type:           types.AppVersionTypeOrdinaryApp,
 		CreateUser:     user.Name,
 		CreateTime:     time.Now(),
 		UpdateTime:     time.Now(),
@@ -105,6 +109,20 @@ func (a *AppService) CreateProjectApp(user *types.User, serializer serializers.P
 }
 
 func (a *AppService) InstallApp(user *types.User, serializer serializers.ProjectInstallAppSerializer) *utils.Response {
+	projectApp, err := a.models.ProjectAppManager.GetProjectApp(serializer.ProjectAppId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	project, err := a.models.ProjectManager.Get(projectApp.ProjectId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	installParmas := map[string]interface{}{
+		"namespace":  project.Namespace,
+		"chart_path": projectApp.AppVersion.ChartPath,
+		"values":     serializer.Values,
+	}
+	a.Helm.Create(project.ClusterId, installParmas)
 	return &utils.Response{Code: code.Success}
 }
 
@@ -119,6 +137,7 @@ func (a *AppService) ListApp(serializer serializers.ProjectAppListSerializer) *u
 			"id":              app.ID,
 			"name":            app.Name,
 			"status":          app.Status,
+			"type":            app.AppVersion.Type,
 			"update_user":     app.UpdateUser,
 			"update_time":     app.UpdateTime,
 			"package_name":    app.AppVersion.PackageName,

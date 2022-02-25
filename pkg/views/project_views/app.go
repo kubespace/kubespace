@@ -1,6 +1,7 @@
 package project_views
 
 import (
+	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/project"
 	"github.com/kubespace/kubespace/pkg/utils"
@@ -15,12 +16,12 @@ type ProjectApp struct {
 	AppService *project.AppService
 }
 
-func NewProjectApp(models *model.Models) *ProjectApp {
+func NewProjectApp(kr *kube_resource.KubeResources, models *model.Models) *ProjectApp {
 	app := &ProjectApp{
-		AppService: project.NewAppService(models),
+		AppService: project.NewAppService(kr, models),
 	}
 	vs := []*views.View{
-		//views.NewView(http.MethodGet, "", app.list),
+		views.NewView(http.MethodGet, "", app.list),
 		views.NewView(http.MethodPost, "", app.create),
 		//views.NewView(http.MethodDelete, "/:id", app.delete),
 	}
@@ -34,6 +35,14 @@ func (a *ProjectApp) create(c *views.Context) *utils.Response {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
 	return a.AppService.CreateProjectApp(c.User, ser)
+}
+
+func (a *ProjectApp) list(c *views.Context) *utils.Response {
+	var ser serializers.ProjectAppListSerializer
+	if err := c.ShouldBindQuery(&ser); err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	return a.AppService.ListApp(ser)
 }
 
 func (a *ProjectApp) install(c *views.Context) *utils.Response {

@@ -16,7 +16,11 @@ type Project struct {
 }
 
 const (
-	AppStatusUninstall = "uninstall"
+	AppStatusUninstall    = "UnInstall"
+	AppStatusInstallError = "InstallError"
+	AppStatusUnReady      = "UnReady"
+	AppStatusRunningFault = "RunningFault"
+	AppStatusRunning      = "Running"
 )
 
 type ProjectApp struct {
@@ -41,6 +45,10 @@ type AppStore struct {
 const (
 	AppVersionScopeProjectApp = "project_app"
 	AppVersionScopeStoreApp   = "store_app"
+
+	AppVersionTypeOrdinaryApp = "ordinary_app"
+	AppVersionTypeMiddleware  = "middleware"
+	AppVersionTypeImportApp   = "import_app"
 )
 
 type AppVersion struct {
@@ -49,6 +57,7 @@ type AppVersion struct {
 	ScopeId        uint      `gorm:"not null;uniqueIndex:ScopeAppNameVersionUnique" json:"scope_id"`
 	PackageName    string    `gorm:"size:255;not null;uniqueIndex:ScopeAppNameVersionUnique" json:"package_name"`
 	PackageVersion string    `gorm:"size:255;not null;uniqueIndex:ScopeAppNameVersionUnique" json:"package_version"`
+	Type           string    `gorm:"size:255;not null;" json:"type"`
 	AppVersion     string    `gorm:"size:255;not null" json:"app_version"`
 	DefaultValues  string    `gorm:"type:text;not null" json:"default_values"`
 	ChartPath      string    `gorm:"size:255;not null" json:"chart_path"`
