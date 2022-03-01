@@ -17,7 +17,6 @@ type Project struct {
 
 const (
 	AppStatusUninstall    = "UnInstall"
-	AppStatusInstallError = "InstallError"
 	AppStatusUnReady      = "UnReady"
 	AppStatusRunningFault = "RunningFault"
 	AppStatusRunning      = "Running"
@@ -29,7 +28,6 @@ type ProjectApp struct {
 	Name         string      `gorm:"size:255;not null;uniqueIndex:ProjectNameUnique" json:"name"`
 	AppVersionId uint        `gorm:"" json:"app_version_id"`
 	AppVersion   *AppVersion `gorm:"-" json:"app_version"`
-	Values       string      `gorm:"type:text;not null;" json:"values"`
 	Status       string      `gorm:"not null;size:255" json:"status"`
 	CreateUser   string      `gorm:"size:255;not null" json:"create_user"`
 	UpdateUser   string      `gorm:"size:255;not null" json:"update_user"`
@@ -59,7 +57,7 @@ type AppVersion struct {
 	PackageVersion string    `gorm:"size:255;not null;uniqueIndex:ScopeAppNameVersionUnique" json:"package_version"`
 	Type           string    `gorm:"size:255;not null;" json:"type"`
 	AppVersion     string    `gorm:"size:255;not null" json:"app_version"`
-	DefaultValues  string    `gorm:"type:text;not null" json:"default_values"`
+	Values         string    `gorm:"type:text;not null" json:"values"`
 	ChartPath      string    `gorm:"size:255;not null" json:"chart_path"`
 	CreateUser     string    `gorm:"size:50;not null" json:"create_user"`
 	CreateTime     time.Time `gorm:"column:create_time;not null;autoCreateTime" json:"create_time"`

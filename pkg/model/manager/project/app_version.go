@@ -69,3 +69,25 @@ func (v *AppVersionManager) GetAppVersionChart(chartPath string) (*types.AppVers
 	}
 	return &appVersionChart, nil
 }
+
+func (v *AppVersionManager) UpdateAppVersion(appVersion *types.AppVersion, columns ...string) error {
+	appVersion.UpdateTime = time.Now()
+	if len(columns) == 0 {
+		columns = []string{"*"}
+	} else {
+		columns = append(columns, "update_time")
+	}
+	if err := v.DB.Model(appVersion).Select(columns).Updates(*appVersion).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func (a *AppVersionManager) ListAppVersions(scope string, scopeId uint) (*[]types.AppVersion, error) {
+	var appVersions []types.AppVersion
+	var err error
+	if err = a.DB.Where("scope = ? and scope_id = ?", scope, scopeId).Order("create_time desc").Find(&appVersions).Error; err != nil {
+		return nil, err
+	}
+	return &appVersions, nil
+}

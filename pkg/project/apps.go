@@ -55,7 +55,6 @@ func (a *AppService) CreateProjectApp(user *types.User, serializer serializers.P
 		app = &types.ProjectApp{
 			ProjectId:  serializer.ProjectId,
 			Name:       serializer.Name,
-			Values:     "",
 			Status:     types.AppStatusUninstall,
 			CreateUser: user.Name,
 			UpdateUser: user.Name,
@@ -95,7 +94,7 @@ func (a *AppService) CreateProjectApp(user *types.User, serializer serializers.P
 		PackageName:    serializer.Name,
 		PackageVersion: serializer.Version,
 		AppVersion:     serializer.Version,
-		DefaultValues:  serializer.Values,
+		Values:         serializer.Values,
 		Type:           types.AppVersionTypeOrdinaryApp,
 		CreateUser:     user.Name,
 		CreateTime:     time.Now(),
@@ -109,6 +108,13 @@ func (a *AppService) CreateProjectApp(user *types.User, serializer serializers.P
 }
 
 func (a *AppService) InstallApp(user *types.User, serializer serializers.ProjectInstallAppSerializer) *utils.Response {
+	versionApp, err := a.models.ProjectAppVersionManager.GetAppVersion(serializer.AppVersionId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	if versionApp.Scope != types.AppVersionScopeProjectApp && versionApp.ScopeId != serializer.ProjectAppId {
+		return &utils.Response{Code: code.ParamsError, Msg: "当前应用不存在该版本，请重新选择"}
+	}
 	projectApp, err := a.models.ProjectAppManager.GetProjectApp(serializer.ProjectAppId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
@@ -117,21 +123,24 @@ func (a *AppService) InstallApp(user *types.User, serializer serializers.Project
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
-	projectApp.UpdateUser = user.Name
-	if err = a.models.ProjectAppManager.UpdateProjectApp(projectApp, "update_user"); err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
-	}
-	installParmas := map[string]interface{}{
+	installParams := map[string]interface{}{
+		"name":       projectApp.Name,
 		"namespace":  project.Namespace,
-		"chart_path": projectApp.AppVersion.ChartPath,
+		"chart_path": versionApp.ChartPath,
 		"values":     serializer.Values,
 	}
-	resp := a.Helm.Create(project.ClusterId, installParmas)
+	resp := a.Helm.Create(project.ClusterId, installParams)
 	if !resp.IsSuccess() {
 		return resp
 	}
+	projectApp.AppVersionId = serializer.AppVersionId
+	projectApp.UpdateUser = user.Name
 	projectApp.Status = types.AppStatusUnReady
-	if err = a.models.ProjectAppManager.UpdateProjectApp(projectApp, "status"); err != nil {
+	if err = a.models.ProjectAppManager.UpdateProjectApp(projectApp, "status", "app_version_id", "update_user"); err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	versionApp.Values = serializer.Values
+	if err = a.models.ProjectAppVersionManager.UpdateAppVersion(versionApp, "values"); err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
 	return &utils.Response{Code: code.Success}
@@ -146,21 +155,17 @@ func (a *AppService) DestroyApp(user *types.User, serializer serializers.Project
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
-	projectApp.UpdateUser = user.Name
-	if err = a.models.ProjectAppManager.UpdateProjectApp(projectApp, "update_user"); err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	destroyParams := map[string]interface{}{
+		"namespace": project.Namespace,
+		"name":      projectApp.Name,
 	}
-	installParmas := map[string]interface{}{
-		"namespace":  project.Namespace,
-		"chart_path": projectApp.AppVersion.ChartPath,
-		"values":     serializer.Values,
-	}
-	resp := a.Helm.Delete(project.ClusterId, installParmas)
+	resp := a.Helm.Delete(project.ClusterId, destroyParams)
 	if !resp.IsSuccess() {
 		return resp
 	}
-	projectApp.Status = types.AppStatusUnReady
-	if err = a.models.ProjectAppManager.UpdateProjectApp(projectApp, "status"); err != nil {
+	projectApp.UpdateUser = user.Name
+	projectApp.Status = types.AppStatusUninstall
+	if err = a.models.ProjectAppManager.UpdateProjectApp(projectApp, "status", "update_user"); err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
 	return &utils.Response{Code: code.Success}
@@ -177,6 +182,7 @@ func (a *AppService) ListApp(serializer serializers.ProjectAppListSerializer) *u
 			"id":              app.ID,
 			"name":            app.Name,
 			"status":          app.Status,
+			"app_version_id":  app.AppVersionId,
 			"type":            app.AppVersion.Type,
 			"update_user":     app.UpdateUser,
 			"update_time":     app.UpdateTime,
@@ -186,4 +192,12 @@ func (a *AppService) ListApp(serializer serializers.ProjectAppListSerializer) *u
 		data = append(data, res)
 	}
 	return &utils.Response{Code: code.Success, Data: data}
+}
+
+func (a *AppService) ListAppVersions(serializer serializers.ProjectAppVersionListSerializer) *utils.Response {
+	appVersions, err := a.models.ProjectAppVersionManager.ListAppVersions(serializer.Scope, serializer.ScopeId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	return &utils.Response{Code: code.Success, Data: appVersions}
 }

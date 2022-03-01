@@ -28,3 +28,8 @@ type ProjectAppListSerializer struct {
 	Name      string `json:"name" form:"name"`
 	Status    string `json:"status" form:"status"`
 }
+
+type ProjectAppVersionListSerializer struct {
+	Scope   string `json:"scope" form:"scope"`
+	ScopeId uint   `json:"scope_id" form:"scope_id"`
+}

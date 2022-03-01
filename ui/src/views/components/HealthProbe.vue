@@ -3,14 +3,24 @@
     <el-row>
       <el-col :span="10" style="padding-right: 15px;">
         <div>
-          <span :class="probe.type === 'http' ? 'probe-select' : 'probe-unselect'" 
+          <el-form label-position="left" :model="probe" style="padding: 5px 0px 0px" label-width="0px">
+            <el-form-item label="" style="width: 700px">
+              <el-radio-group v-model="probe.type"  size="small">
+                <el-radio-button label="http">HTTP</el-radio-button>
+                <el-radio-button label="https">HTTPS</el-radio-button>
+                <el-radio-button label="tcp" >TCP</el-radio-button>
+                <el-radio-button label="command">命令行</el-radio-button>
+              </el-radio-group>
+            </el-form-item>
+          </el-form>
+          <!-- <span :class="probe.type === 'http' ? 'probe-select' : 'probe-unselect'" 
             class="probe-class" @click="probe.type = 'http';">HTTP</span>
           <span :class="probe.type === 'https' ? 'probe-select' : 'probe-unselect'" 
             class="probe-class" @click="probe.type = 'https';">HTTPS</span>
           <span :class="probe.type === 'tcp' ? 'probe-select' : 'probe-unselect'" 
             class="probe-class" @click="probe.type = 'tcp';">TCP</span>
           <span :class="probe.type === 'command' ? 'probe-select' : 'probe-unselect'" 
-            class="probe-class" @click="probe.type = 'command';">命令行</span>
+            class="probe-class" @click="probe.type = 'command';">命令行</span> -->
         </div>
         <div style="margin-top: 10px;" v-if="['http', 'https'].indexOf(probe.type) >= 0">
           <el-row>
@@ -18,8 +28,7 @@
               <span style="color: #8B959C; display: inline-block; width: 100px;">请求路径</span>
             </el-col>
             <el-col :span="19">
-              <el-input v-model="probe.handle.path" size="small" placeholder="如：/health"
-                ></el-input>
+              <el-input v-model="probe.handle.path" size="small" placeholder="如：/health"></el-input>
             </el-col>
           </el-row>
         </div>
@@ -46,7 +55,7 @@
           </el-row>
         </div>
       </el-col>
-      <el-col :span="12" style="border-left: 1px solid #DCDFE6; padding-left: 15px;">
+      <el-col :span="12" style="border-left: 1px solid #DCDFE6; padding-left: 15px; padding-bottom: 9px;">
         <el-row>
           <el-col :span="6" style="padding-right: 15px;">
             <div style="color: #8B959C; padding-bottom: 0px;">
@@ -54,9 +63,7 @@
             </div>
             <el-input v-model="probe.periodSeconds" size="small" 
               placeholder="默认为10">
-              <template slot="suffix">
-                秒
-              </template>  
+              <template slot="suffix">秒</template>  
             </el-input>
           </el-col>
           <el-col :span="6" style="padding-right: 15px;">
@@ -65,9 +72,7 @@
             </div>
             <el-input v-model="probe.initialDelaySeconds" size="small" 
               placeholder="默认为0" controls-position="right">
-              <template slot="suffix">
-                秒
-              </template>  
+              <template slot="suffix">秒</template>  
             </el-input>
           </el-col>
           <el-col :span="6" style="padding-right: 15px;">
@@ -76,9 +81,7 @@
             </div>
             <el-input v-model="probe.timeoutSeconds" size="small" 
               placeholder="默认为1">
-              <template slot="suffix">
-                秒
-              </template>  
+              <template slot="suffix">秒</template>  
             </el-input>
           </el-col>
         </el-row>
@@ -112,8 +115,6 @@
 </template>
 
 <script>
-import { getToken } from '@/utils/auth'
-import { Message } from 'element-ui'
 
 export default {
   name: 'HealthProbe',
@@ -128,7 +129,11 @@ export default {
       default: {}
     }
   },
+  // props: ['probe'],
   methods: {
+  },
+  beforeMount() {
+    console.log(this.probe)
   }
 }
 </script>
