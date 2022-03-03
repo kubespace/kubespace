@@ -1,3 +1,4 @@
+export { default as HealthProbe } from './HealthProbe'
 export { default as Container } from './container'
 export { default as PodVolume } from './pod_volume'
 export { default as PodNetwork } from './pod_network'
@@ -40,10 +41,20 @@ function transferWorkload(tpl) {
       if(!h.ip) return {err: `应用资源${tpl.kind}/${tpl.metadata.name}主机别名ip为空`}
       h.hostnames = [h.hostnames]
     }
-  } else {
-    delete tpl.spec.template.spec.hostAliases
   }
+  err = transferAffinity(tpl)
+  if(err) return err
   return {tpl}
+}
+
+function transferPodNetwork(tpl) {
+  if(tpl.spec.template.spec.hostAliases.length > 0) {
+    for(let h of tpl.spec.template.spec.hostAliases) {
+      if(!h.hostnames) return {err: `应用资源${tpl.kind}/${tpl.metadata.name}主机别名域名为空`}
+      if(!h.ip) return {err: `应用资源${tpl.kind}/${tpl.metadata.name}主机别名ip为空`}
+      h.hostnames = [h.hostnames]
+    }
+  }
 }
 
 function transferContainer(tpl) {
@@ -187,6 +198,21 @@ function transferPodVolume(tpl) {
   if(vols.length > 0) tpl.spec.template.spec.volumes = vols
 }
 
+function transferAffinity(tpl) {
+  let podSpec = tpl.spec.template.spec
+  if(podSpec.nodeSelector.length > 0) {
+    let ns = {}
+    for(let s of podSpec.nodeSelector) {
+      ns[s.key] = s.value
+    }
+    podSpec.nodeSelector = ns
+  }
+  let affinity = tpl.spec.template.spec.affinity
+  if(affinity.nodeAffinity.length == 0) affinity.nodeAffinity = {}
+  if(affinity.podAffinity.length == 0) affinity.podAffinity = {}
+  if(affinity.podAntiAffinity.length == 0) affinity.podAntiAffinity = {}
+}
+
 export function newPodVolume() {
   return {
     name: '',
@@ -248,4 +274,80 @@ function serviceTemplate() {
       type: 'ClusterIP',
     }
   }
+}
+
+export function resolveToTemplate(template) {
+  if(['Deployment', 'StatefulSet', 'DaemonSet', 'CronJob', 'Job'].indexOf(template.kind) >= 0){
+    resolveWorkload(template)
+  }
+}
+
+function resolveWorkload(tpl) {
+  resolveContainers(tpl)
+  resolveAffinity(tpl)
+  let podSpec = tpl.spec.template.spec
+  if(!podSpec.hostAliases) {
+    podSpec.hostAliases = []
+  }
+  if(!podSpec.securityContext) {
+    podSpec.securityContext = {sysctls: [], seLinuxOptions: {}}
+  }
+}
+
+function resolveContainers(tpl) {
+  let podSpec = tpl.spec.template.spec
+  if(podSpec.initContainers) {
+    for(let c of podSpec.initContainers) {
+      c.init = true
+      resolveContainer(c)
+      podSpec.containers.push(c)
+    }
+  }
+  for(let c of podSpec.containers) {
+    resolveContainer(c)
+  }
+  
+}
+
+function resolveContainer(c) {
+  c.livenessProbe = resolveProbe(c.livenessProbe)
+  c.readinessProbe = resolveProbe(c.readinessProbe)
+  if(c.command) c.command = JSON.stringify(c.command)
+  if(c.args) c.args = JSON.stringify(c.args)
+}
+
+function resolveProbe(probe) {
+  if(!probe) return {probe: false, type: 'http', handle: {}, successThreshold: 1, failureThreshold: 3,
+  initialDelaySeconds: 0, timeoutSeconds: 1, periodSeconds: 10}
+  probe.probe = true
+  if('httpGet' in probe) {
+    probe.type = 'http'
+    if(probe.httpGet.scheme == 'HTTPS') probe.type = 'https'
+    probe.handle = probe.httpGet
+    delete probe.httpGet
+  } else if('tcpSocket' in probe) {
+    probe.type = 'tcp'
+    probe.handle = probe.tcpSocket
+    delete probe.tcpSocket
+  } else if('exec' in probe) {
+    probe.type = 'command'
+    probe.handle = probe.exec
+    delete probe.exec
+  }
+  return probe
+}
+
+function resolveAffinity(tpl) {
+  let podSpec = tpl.spec.template.spec
+  podSpec.affinity = {nodeAffinity: [], podAffinity: [], podAntiAffinity: []}
+  if(podSpec.nodeSelector) {
+    let ns = []
+    for(let k in podSpec.nodeSelector) {
+      ns.push([{key: k, values: podSpec.nodeSelector[k]}])
+    }
+    podSpec.nodeSelector = ns
+  } else {
+    podSpec.nodeSelector = []
+  }
+  if(!podSpec.tolerations) podSpec.tolerations = []
 }

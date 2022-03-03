@@ -16,6 +16,13 @@ export function listAppVersions(params) {
   })
 }
 
+export function getAppVersion(id) {
+  return request({
+    url: `project/apps/version/${id}`,
+    method: 'get',
+  })
+}
+
 export function createApp(data) {
   return request({
     url: '/project/apps',

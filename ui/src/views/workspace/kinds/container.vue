@@ -356,8 +356,7 @@
 </template>
 
 <script>
-import { HealthProbe } from '@/views/components'
-import { newContainer } from '@/views/workspace/kinds'
+import { newContainer, HealthProbe } from '@/views/workspace/kinds'
 
 export default {
   name: 'Container',

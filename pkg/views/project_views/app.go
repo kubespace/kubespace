@@ -9,6 +9,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/views"
 	"github.com/kubespace/kubespace/pkg/views/serializers"
 	"net/http"
+	"strconv"
 )
 
 type ProjectApp struct {
@@ -23,6 +24,7 @@ func NewProjectApp(kr *kube_resource.KubeResources, models *model.Models) *Proje
 	vs := []*views.View{
 		views.NewView(http.MethodGet, "", app.listApps),
 		views.NewView(http.MethodGet, "/versions", app.listAppVersions),
+		views.NewView(http.MethodGet, "/version/:id", app.getAppVersion),
 		views.NewView(http.MethodGet, "/:id", app.getApp),
 		views.NewView(http.MethodPost, "", app.create),
 		views.NewView(http.MethodPost, "/install", app.install),
@@ -64,6 +66,14 @@ func (a *ProjectApp) listAppVersions(c *views.Context) *utils.Response {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
 	return a.AppService.ListAppVersions(ser)
+}
+
+func (a *ProjectApp) getAppVersion(c *views.Context) *utils.Response {
+	appVersionId, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	return a.AppService.GetAppVersion(uint(appVersionId))
 }
 
 func (a *ProjectApp) install(c *views.Context) *utils.Response {

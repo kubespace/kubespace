@@ -47,7 +47,7 @@
               <el-link :underline="false" class="operator-btn"
                 v-if="scope.row.status!='UnInstall'" @click="openInstallFormDialog(scope.row)">升级</el-link>
               <el-link :underline="false" class="operator-btn"
-                @click="openUpdateFormDialog(scope.row)">编辑</el-link>
+                @click="openEditApp(scope.row.app_version_id)">编辑</el-link>
               <el-link :underline="false" class="operator-btn" style="color: #F56C6C"
                 v-if="scope.row.status!='UnInstall'" @click="handleDestroyApp(scope.row.id, scope.row.name)">销毁</el-link>
               <el-link :underline="false" style="color: #F56C6C" v-if="scope.row.status=='UnInstall'"
@@ -183,9 +183,6 @@ export default {
   methods: {
     nameClick: function(id) {
       this.$router.push({name: 'workspaceOverview', params: {'workspaceId': id}})
-    },
-    handleEdit(index, row) {
-      console.log(index, row);
     },
     fetchApps() {
       this.loading = true
@@ -325,6 +322,9 @@ export default {
     },
     openCreateApp() {
       this.$router.push({name: 'workspaceCreateApp'})
+    },
+    openEditApp(id) {
+      this.$router.push({name: 'workspaceEditApp', params: {appVersionId: id}})
     }
   },
 };

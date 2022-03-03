@@ -33,3 +33,7 @@ type ProjectAppVersionListSerializer struct {
 	Scope   string `json:"scope" form:"scope"`
 	ScopeId uint   `json:"scope_id" form:"scope_id"`
 }
+
+type ProjectAppVersionGetSerializer struct {
+	AppVersionId string `json:"app_version_id" form:"app_version_id"`
+}

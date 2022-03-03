@@ -1,6 +1,7 @@
 package project
 
 import (
+	"bytes"
 	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
@@ -8,6 +9,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"github.com/kubespace/kubespace/pkg/views/serializers"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/chart/loader"
 	"k8s.io/klog"
 	"os"
 	"time"
@@ -200,4 +202,33 @@ func (a *AppService) ListAppVersions(serializer serializers.ProjectAppVersionLis
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
 	return &utils.Response{Code: code.Success, Data: appVersions}
+}
+
+func (a *AppService) GetAppVersion(appVersionId uint) *utils.Response {
+	appVersion, err := a.models.ProjectAppVersionManager.GetAppVersion(appVersionId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	app, err := a.models.ProjectAppManager.GetProjectApp(appVersion.ScopeId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	appCharts, err := a.models.ProjectAppVersionManager.GetAppVersionChart(appVersion.ChartPath)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	charts, err := loader.LoadArchive(bytes.NewReader(appCharts.Content))
+	if err != nil {
+		return &utils.Response{Code: code.GetError, Msg: err.Error()}
+	}
+	res := map[string]interface{}{
+		"id":              appVersion.ID,
+		"name":            app.Name,
+		"package_name":    appVersion.PackageName,
+		"package_version": appVersion.PackageVersion,
+		"type":            appVersion.Type,
+		"values":          appVersion.Values,
+		"templates":       charts.Templates,
+	}
+	return &utils.Response{Code: code.Success, Data: res}
 }

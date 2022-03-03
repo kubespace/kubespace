@@ -6,12 +6,15 @@
         <el-button size="small" class="bar-btn" type="primary" @click="createAppDialog">保 存</el-button>
       </div>
     </clusterbar>
-    <div class="dashboard-container app-create-container" :style="{margin: '0px', 'height': maxHeight + 'px'}" :max-height="maxHeight">
+    <div v-loading="loading" class="dashboard-container app-create-container" :style="{margin: '0px', 'height': maxHeight + 'px'}" :max-height="maxHeight">
       <div style="padding: 10px 8px 0px;">
         <div>基本信息</div>
         <el-form label-position="left" class="base-info-class" :model="form" :rules="rules" style="padding: 10px 20px 0px" label-width="100px">
           <el-form-item label="应用名称" style="width: 400px" prop="name">
-            <el-input v-model="form.name" @change="appFormNameChange" placeholder="请输入应用名称" size="small"></el-input>
+            <el-input v-model="form.name" :disabled="appVersionId?true:false" @change="appFormNameChange" placeholder="请输入应用名称" size="small"></el-input>
+          </el-form-item>
+          <el-form-item v-if="appVersionId" label="应用版本" style="width: 400px" prop="name">
+            <span style="color: #606266">{{ chart.version }}</span>
           </el-form-item>
         </el-form>
       </div>
@@ -26,7 +29,6 @@
                 添加资源<i class="el-icon-arrow-down el-icon--right"></i>
               </span>
               <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item @click.native.prevent="resourceAddClick('Workload')">Workload</el-dropdown-item>
                 <el-dropdown-item @click.native.prevent="resourceAddClick('Service')">Service</el-dropdown-item>
                 <el-dropdown-item @click.native.prevent="resourceAddClick('ConfigMap')">ConfigMap</el-dropdown-item>
                 <el-dropdown-item @click.native.prevent="resourceAddClick('Secret')">Secret</el-dropdown-item>
@@ -44,19 +46,22 @@
             </div>
             <div style="padding-bottom: 20px;">
               <workload v-if="workloadTypes.indexOf(t.kind) >= 0" :template="t" :noName="i == 0"></workload>
-              <service v-if="t.kind == 'Service'" :template="t"></service>
+              <service v-if="t.kind == 'Service'" :template="t" :containers="form.templates[0].spec.template.spec.containers"></service>
             </div>
           </el-tab-pane>
         </el-tabs>
       </div>
 
-      <el-dialog :title="updateFormVisible ? '升级应用' : '应用版本'" :visible.sync="createFormVisible"
+      <el-dialog :title="updateFormVisible ? '升级应用' : '保存应用版本'" :visible.sync="createFormVisible"
       @close="closeFormDialog" :destroy-on-close="true" :close-on-click-modal="false">
         <div v-loading="installLoading">
           <div class="dialogContent" style="">
             <el-form :model="form" :rules="rules" ref="form" label-position="left" label-width="105px">
               <el-form-item label="应用名称" prop="name">
                 <span>{{ form.name }}</span>
+              </el-form-item>
+              <el-form-item v-if="appVersionId" label="应用版本" prop="name">
+                <span>{{ chart.version }}</span>
               </el-form-item>
               <el-form-item label="三位版本号" prop="version">
                 <el-input v-model="form.version" placeholder="请输入应用三位版本号" size="small"></el-input>
@@ -82,9 +87,9 @@
 </template>
 <script>
 import { Clusterbar } from "@/views/components";
-import { createApp } from "@/api/project/apps";
+import { createApp, getAppVersion } from "@/api/project/apps";
 import { Message } from "element-ui";
-import { Workload, kindTemplate, Service, transferTemplate } from '@/views/workspace/kinds'
+import { Workload, kindTemplate, Service, transferTemplate, resolveToTemplate } from '@/views/workspace/kinds'
 import yaml from 'js-yaml'
 
 export default {
@@ -104,13 +109,11 @@ export default {
     };
   },
   data() {
-    let defaultWorkloadTpl = kindTemplate('Workload')
-    let defaultServiceTpl = kindTemplate('Service')
     return {
       maxHeight: window.innerHeight - 130,
       cellStyle: { border: 0 },
       titleName: ["应用管理", "创建"],
-      loading: true,
+      loading: false,
       createFormVisible: false,
       updateFormVisible: false,
       installLoading: false,
@@ -119,13 +122,15 @@ export default {
       chart: {
         templates: {},
         values: "",
+        version: "",
       },
       form: {
+        id: "",
         name: "",
         version: '0.0.1',
         fourthVersion: Math.ceil(Math.random() * 100000),
         description: '',
-        templates: [defaultWorkloadTpl, defaultServiceTpl],
+        templates: [],
       },
       rules: {
         name: [{ required: true, message: ' ', trigger: ['blur', 'change'] },],
@@ -134,15 +139,48 @@ export default {
     };
   },
   created() {
-    
+    if(this.appVersionId) {
+      this.getAppVersion()
+    } else {
+      let defaultWorkloadTpl = kindTemplate('Workload')
+      this.form.templates = [defaultWorkloadTpl]
+    }
   },
   computed: {
     projectId() {
       return this.$route.params.workspaceId
     },
+    appVersionId() {
+      return this.$route.params.appVersionId
+    }
   },
   methods: {
     kindTemplate,
+    getAppVersion() {
+      this.loading = true
+      getAppVersion(this.appVersionId).then((resp) => {
+        this.form.id = resp.data.id
+        this.form.name = resp.data.name
+        this.chart.version = resp.data.package_version
+        this.form.version = this.chart.version.split('-')[0]
+        let values = yaml.load(resp.data.values)
+        for(let tpl of resp.data.templates) {
+          let data = yaml.load(decodeURIComponent(atob(tpl.data)))
+          resolveToTemplate(data)
+          console.log(data)
+          if(this.workloadTypes.indexOf(data.kind) > -1) {
+            let podSpec = data.spec.template.spec
+            for(let c of podSpec.containers) {
+              c.image = values.workloads[data.metadata.name]['containers'][c.name]['image']
+            }
+          }
+          this.form.templates.push(data)
+        }
+        this.loading = false
+      }).catch((err) => {
+        this.loading = false
+      });
+    },
     appFormNameChange(value) {
       this.form.templates[0].metadata.name = value
       this.form.templates[0].spec.template.spec.containers[0].name = value
@@ -194,6 +232,7 @@ export default {
       }
       this.chart.templates = {}
       let valuesDict = {workloads: {}}
+      let idx = 0
       for(let template of this.form.templates) {
         let obj = transferTemplate(template)
         if(obj.err) {
@@ -209,18 +248,16 @@ export default {
           }
           valuesDict.workloads[template.metadata.name] = {containers: containers}
         }
-        let tplName = `${tpl.metadata.name}-${tpl.kind}.yaml`.toLowerCase()
-        if(tplName in this.chart.templates) {
-          Message.error(`应用资源${tpl.kind}/${tpl.metadata.name}名称重复`)
-          return
+        if(tpl.kind == 'Service') {
+          tpl.spec.selector = {
+            'kubespace.cn/app': this.form.name
+          }
         }
-        this.chart.templates[`${tplName}`] = yaml.dump(tpl)
+        let tplName = `${idx < 10 ? '0'+idx : ''+idx}${tpl.metadata.name}-${tpl.kind}.yaml`.toLowerCase()
+        this.chart.templates[tplName] = yaml.dump(tpl)
       }
       this.chart.values = yaml.dump(valuesDict)
-      console.log(this.chart)
       this.createFormVisible = true;
-    },
-    createCharts() {
     },
     cancelSaveApp() {
       this.$router.push({name: 'workspaceApp'})
@@ -251,6 +288,7 @@ export default {
         if(!hasService) tpl.metadata.name = this.form.name
       }
       this.form.templates.push(tpl)
+      this.resourceTabVal = (this.form.templates.length - 1) + ''
     },
   },
 };
