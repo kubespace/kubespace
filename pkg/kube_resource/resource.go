@@ -18,6 +18,7 @@ const (
 	CloseLogAction   = "closeLog"
 	APPLY            = "apply"
 	CREATE           = "create"
+	STATUS           = "status"
 )
 
 type KubeResource struct {
@@ -71,6 +72,10 @@ func (k *KubeResource) OpenLog(cluster string, params interface{}) *utils.Respon
 
 func (k *KubeResource) CloseLog(cluster string, params interface{}) *utils.Response {
 	return k.request(cluster, CloseLogAction, params)
+}
+
+func (k *KubeResource) Status(cluster string, params interface{}) *utils.Response {
+	return k.request(cluster, STATUS, params)
 }
 
 func (k *KubeResource) request(cluster, action string, params interface{}) *utils.Response {

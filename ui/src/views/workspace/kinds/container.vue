@@ -100,7 +100,7 @@
               </el-col>
               <el-col :span="4">
                 <div class="border-span-header" style="padding-right: 10px">
-                  <el-select v-model="item.protocal" placeholder="端口所属协议" >
+                  <el-select v-model="item.protocol" placeholder="端口所属协议" >
                     <el-option label="TCP" value="TCP"></el-option>
                     <el-option label="UDP" value="UDP"></el-option>
                     <el-option label="SCTP" value="SCTP"></el-option>
@@ -108,11 +108,11 @@
                 </div>
               </el-col>
               <el-col :span="5">
-                <el-button circle size="mini" style="" 
-                  @click="c.ports.splice(idx, 1)" icon="el-icon-minus"></el-button>
+                <el-button circle size="mini" style="padding: 4px"
+                  @click="c.ports.splice(idx, 1)" icon="el-icon-close"></el-button>
               </el-col>
             </el-row>
-            <el-button plain size="mini" @click="c.ports.push({protocal: 'TCP'})" icon="el-icon-plus"></el-button>
+            <el-button plain size="mini" @click="c.ports.push({protocol: 'TCP'})" icon="el-icon-plus"></el-button>
           </el-form-item>
 
           <el-divider></el-divider>
@@ -159,12 +159,12 @@
                   <el-input v-if="item.type === 'field'" 
                     v-model="item.value" size="small" placeholder="如：metadata.name, status.podIP"></el-input> 
                   <div v-if="item.type === 'configMap' || item.type === 'secret'">
-                    <el-select v-model="item.value" value-key="name" :placeholder="item.type" style="width: 130px;">
-                      <el-option :label="c.name" :value="c" :key="i" v-for="(c, i) in item.type === 'configMap' ? nsConfigmaps : nsSecrets"></el-option>
+                    <el-select v-model="item.value" value-key="name" :placeholder="item.type" style="width: 50%;">
+                      <el-option :label="c.name" :value="c" :key="i" v-for="(c, i) in item.type === 'configMap' ? appConfigmaps : appSecrets"></el-option>
                     </el-select>
-                    <span style="margin: 5px; font-wight: 800">.</span>
-                    <el-select v-model="item.key" placeholder="Key" style="width: 130px">
-                      <el-option :label="k" :value="k" :key="k" v-for="(v, k) in item.value ? item.value.data : {}"></el-option>
+                    <!-- <span style="margin: 5px; font-wight: 800">.</span> -->
+                    <el-select v-model="item.key" placeholder="Key" style="margin-left: 10px;width: 45%">
+                      <el-option :label="d.key" :value="d.key" :key="d.key" v-for="d of item.value ? item.value.data : {}"></el-option>
                     </el-select>
                   </div>
                   <el-select v-if="item.type === 'resource'" v-model="item.value" placeholder="容器资源" style="width:100%;">
@@ -178,8 +178,8 @@
                 </div>
               </el-col>
               <el-col :span="3">
-                <el-button plain circle size="mini"
-                  @click="c.env.splice(idx, 1)" icon="el-icon-minus"></el-button>
+                <el-button plain circle size="mini" style="padding: 4px"
+                  @click="c.env.splice(idx, 1)" icon="el-icon-close"></el-button>
               </el-col>
             </el-row>
             <el-button plain size="mini" @click="c.env.push({type: 'value'})" icon="el-icon-plus"></el-button>
@@ -224,8 +224,8 @@
                 </div>
               </el-col>
               <el-col :span="3">
-                <el-button plain circle size="mini" style="" 
-                  @click="c.volumeMounts.splice(idx, 1)" icon="el-icon-minus"></el-button>
+                <el-button plain circle size="mini" style="padding: 4px"
+                  @click="c.volumeMounts.splice(idx, 1)" icon="el-icon-close"></el-button>
               </el-col>
             </el-row>
             <el-button plain size="mini" @click="c.volumeMounts.push({})" icon="el-icon-plus"></el-button>
@@ -418,8 +418,32 @@ export default {
       ],
     }
   },
-  props: ['template'],
+  props: ['template', 'appResources'],
   computed: {
+    appConfigmaps() {
+      let c = []
+      for(let r of this.appResources) {
+        if(r.kind == 'ConfigMap') {
+          c.push({
+            name: r.metadata.name,
+            data: r.data
+          })
+        }
+      }
+      return c
+    },
+    appSecrets() {
+      let c = []
+      for(let r of this.appResources) {
+        if(r.kind == 'Secret') {
+          c.push({
+            name: r.metadata.name,
+            data: r.data
+          })
+        }
+      }
+      return c
+    }
   },
   methods: {
     addContainerTab() {

@@ -1,9 +1,10 @@
 import request from '@/utils/request'
 
-export function listConfigMaps(cluster) {
+export function listConfigMaps(cluster, params) {
   return request({
     url: `configmap/${cluster}`,
     method: 'get',
+    params
   })
 }
 

@@ -17,7 +17,7 @@ type Project struct {
 
 const (
 	AppStatusUninstall    = "UnInstall"
-	AppStatusUnReady      = "UnReady"
+	AppStatusNotReady     = "NotReady"
 	AppStatusRunningFault = "RunningFault"
 	AppStatusRunning      = "Running"
 )

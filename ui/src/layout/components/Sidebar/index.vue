@@ -50,9 +50,8 @@ export default {
   },
   created() {
     if (this.hasTopSelector && this.topSelectorType == 'cluster') {
+      this.$store.dispatch('watchNamespace', '')
       this.$store.dispatch('watchCluster', this.$route.params.name)
-    } else {
-      this.$store.dispatch('watchCluster', '')
     }
     this.fetchTopSelectors()
   },
@@ -63,9 +62,8 @@ export default {
     },
     topSelectorValue: function(newObj, oldObj) {
       if(this.topSelectorType == 'cluster') {
+        this.$store.dispatch('watchNamespace', '')
         this.$store.dispatch('watchCluster', newObj)
-      } else {
-        this.$store.dispatch('watchCluster', '')
       }
     }
   },
@@ -102,6 +100,10 @@ export default {
         } else if (this.topSelectorType == 'workspace') {
           this.fetchProjects()
         }
+      } else {
+        console.log("aaaa")
+        this.$store.dispatch('watchCluster', '')
+        this.$store.dispatch('watchNamespace', '')
       }
     },
     fetchClusters() {
@@ -144,9 +146,13 @@ export default {
         var projects = response.data ? response.data : []
         var cur_workspace = parseInt(this.$route.params.workspaceId)
         for (let workspace of projects) {
-          this.oriTopSelectors.push({'value': workspace.id, 'label': workspace.name})
+          this.oriTopSelectors.push({
+            'value': workspace.id, 'label': workspace.name, cluster_id: workspace.cluster_id, namespace: workspace.namespace,
+          })
           if(workspace.id == cur_workspace) {
             this.topSelectorValue = cur_workspace
+            this.$store.dispatch('watchCluster', workspace.cluster_id)
+            this.$store.dispatch('watchNamespace', workspace.namespace)
           }
         }
         this.topSelectorLoading = false;
@@ -156,11 +162,20 @@ export default {
     },
     topSelectorChange() {
       if (this.topSelectorType == 'cluster') {
-        this.$router.push({name: 'cluster', params: {'name': this.topSelectorValue}})
+        // this.$router.push({name: 'cluster', params: {'name': this.topSelectorValue}})
+        this.$router.push({name: this.$route.name, params: {'name': this.topSelectorValue}})
       } else if (this.topSelectorType == 'pipeline') {
         this.$router.push({name: 'pipeline', params: {'workspaceId': this.topSelectorValue}})
       } else if (this.topSelectorType == 'workspace') {
-        this.$router.push({name: 'workspaceOverview', params: {'workspaceId': this.topSelectorValue}})
+        for(let s of this.oriTopSelectors) {
+          if(s.value == this.topSelectorValue) {
+            this.$store.dispatch('watchCluster', s.cluster_id)
+            this.$store.dispatch('watchNamespace', s.namespace)
+          }
+        }
+        // this.$router.push({name: 'workspaceOverview', params: {'workspaceId': this.topSelectorValue}})
+        this.$router.push({name: this.$route.name, params: {'workspaceId': this.topSelectorValue}})
+        
       }
     },
     topSelectorReturn() {

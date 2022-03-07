@@ -18,15 +18,17 @@ type ProjectCreateAppSerializer struct {
 }
 
 type ProjectInstallAppSerializer struct {
-	ProjectAppId uint   `json:"project_app_id" form:"project_app_id"`
-	Values       string `json:"values" form:"values"`
-	AppVersionId uint   `json:"app_version_id" form:"app_version_id"`
+	ProjectAppId uint                   `json:"project_app_id" form:"project_app_id"`
+	Values       map[string]interface{} `json:"values" form:"values"`
+	AppVersionId uint                   `json:"app_version_id" form:"app_version_id"`
+	Upgrade      bool                   `json:"upgrade" form:"upgrade"`
 }
 
 type ProjectAppListSerializer struct {
-	ProjectId uint   `json:"project_id" form:"project_id"`
-	Name      string `json:"name" form:"name"`
-	Status    string `json:"status" form:"status"`
+	ProjectId     uint   `json:"project_id" form:"project_id"`
+	Name          string `json:"name" form:"name"`
+	Status        string `json:"status" form:"status"`
+	WithWorkloads bool   `json:"with_workloads" form:"with_workloads"`
 }
 
 type ProjectAppVersionListSerializer struct {

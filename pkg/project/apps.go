@@ -2,6 +2,7 @@ package project
 
 import (
 	"bytes"
+	"encoding/json"
 	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
@@ -10,8 +11,13 @@ import (
 	"github.com/kubespace/kubespace/pkg/views/serializers"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/release"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	yamlutil "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/klog"
 	"os"
+	"sigs.k8s.io/yaml"
+	"strings"
 	"time"
 )
 
@@ -131,17 +137,23 @@ func (a *AppService) InstallApp(user *types.User, serializer serializers.Project
 		"chart_path": versionApp.ChartPath,
 		"values":     serializer.Values,
 	}
-	resp := a.Helm.Create(project.ClusterId, installParams)
+	var resp *utils.Response
+	if serializer.Upgrade {
+		resp = a.Helm.UpdateObj(project.ClusterId, installParams)
+	} else {
+		resp = a.Helm.Create(project.ClusterId, installParams)
+	}
 	if !resp.IsSuccess() {
 		return resp
 	}
 	projectApp.AppVersionId = serializer.AppVersionId
 	projectApp.UpdateUser = user.Name
-	projectApp.Status = types.AppStatusUnReady
-	if err = a.models.ProjectAppManager.UpdateProjectApp(projectApp, "status", "app_version_id", "update_user"); err != nil {
+	projectApp.Status = types.AppStatusNotReady
+	if err = a.models.ProjectAppManager.UpdateProjectApp(projectApp, "status", "app_version_id", "update_user", "update_time"); err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
-	versionApp.Values = serializer.Values
+	values, _ := json.Marshal(serializer.Values)
+	versionApp.Values = string(values)
 	if err = a.models.ProjectAppVersionManager.UpdateAppVersion(versionApp, "values"); err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
@@ -167,16 +179,49 @@ func (a *AppService) DestroyApp(user *types.User, serializer serializers.Project
 	}
 	projectApp.UpdateUser = user.Name
 	projectApp.Status = types.AppStatusUninstall
-	if err = a.models.ProjectAppManager.UpdateProjectApp(projectApp, "status", "update_user"); err != nil {
+	if err = a.models.ProjectAppManager.UpdateProjectApp(projectApp, "status", "update_user", "update_time"); err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
 	return &utils.Response{Code: code.Success}
+}
+
+type AppRuntimeStatus struct {
+	Name      string                       `json:"name"`
+	Status    string                       `json:"status"`
+	Workloads []*unstructured.Unstructured `json:"workloads"`
 }
 
 func (a *AppService) ListApp(serializer serializers.ProjectAppListSerializer) *utils.Response {
 	projectApps, err := a.models.ProjectAppManager.ListProjectApps(serializer.ProjectId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	project, err := a.models.ProjectManager.Get(serializer.ProjectId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	var appNames []string
+	for _, app := range projectApps {
+		appNames = append(appNames, app.Name)
+	}
+	statusParams := map[string]interface{}{
+		"namespace": project.Namespace,
+		"names":     appNames,
+	}
+	nameStatusMap := map[string]*AppRuntimeStatus{}
+	res := a.KubeResources.Helm.Status(project.ClusterId, statusParams)
+	if res.IsSuccess() {
+		var appStatuses []*AppRuntimeStatus
+		dataBytes, _ := json.Marshal(res.Data)
+		err = json.Unmarshal(dataBytes, &appStatuses)
+		if err != nil {
+			klog.Error("unmarshal app status error: ", err.Error())
+		}
+		for _, status := range appStatuses {
+			nameStatusMap[status.Name] = status
+		}
+	} else {
+		klog.Error("get app status error: ", err.Error())
 	}
 	var data []map[string]interface{}
 	for _, app := range projectApps {
@@ -191,9 +236,170 @@ func (a *AppService) ListApp(serializer serializers.ProjectAppListSerializer) *u
 			"package_name":    app.AppVersion.PackageName,
 			"package_version": app.AppVersion.PackageVersion,
 		}
+		if _, ok := nameStatusMap[app.Name]; ok {
+			res["status"] = nameStatusMap[app.Name].Status
+		}
 		data = append(data, res)
+		appNames = append(appNames, app.Name)
 	}
+
 	return &utils.Response{Code: code.Success, Data: data}
+}
+
+func (a *AppService) GetApp(appId uint) *utils.Response {
+	projectApp, err := a.models.ProjectAppManager.GetProjectApp(appId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	project, err := a.models.ProjectManager.Get(projectApp.ProjectId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	data := map[string]interface{}{
+		"id":              projectApp.ID,
+		"name":            projectApp.Name,
+		"status":          projectApp.Status,
+		"cluster":         project.ClusterId,
+		"namespace":       project.Namespace,
+		"app_version_id":  projectApp.AppVersionId,
+		"type":            projectApp.AppVersion.Type,
+		"update_user":     projectApp.UpdateUser,
+		"create_time":     projectApp.CreateTime,
+		"update_time":     projectApp.UpdateTime,
+		"package_name":    projectApp.AppVersion.PackageName,
+		"package_version": projectApp.AppVersion.PackageVersion,
+	}
+	if projectApp.Status == types.AppStatusUninstall {
+		appCharts, err := a.models.ProjectAppVersionManager.GetAppVersionChart(projectApp.AppVersion.ChartPath)
+		if err != nil {
+			return &utils.Response{Code: code.DBError, Msg: err.Error()}
+		}
+		chart, err := loader.LoadArchive(bytes.NewReader(appCharts.Content))
+		if err != nil {
+			return &utils.Response{Code: code.GetError, Msg: err.Error()}
+		}
+		actionConfig := new(action.Configuration)
+		clientInstall := action.NewInstall(actionConfig)
+		clientInstall.ReleaseName = projectApp.Name
+		clientInstall.Namespace = project.Namespace
+		clientInstall.ClientOnly = true
+		clientInstall.DryRun = true
+		values := map[string]interface{}{}
+		yaml.Unmarshal([]byte(projectApp.AppVersion.Values), &values)
+		releaseDetail, err := clientInstall.Run(chart, values)
+		if err != nil {
+			klog.Errorf("install release error: %s", err)
+			return &utils.Response{Code: code.HelmError, Msg: err.Error()}
+		}
+		objects := a.GetReleaseObjects(releaseDetail)
+		data["release"] = map[string]interface{}{
+			"objects":       objects,
+			"name":          releaseDetail.Name,
+			"namespace":     releaseDetail.Namespace,
+			"version":       releaseDetail.Version,
+			"status":        releaseDetail.Info.Status,
+			"chart_name":    releaseDetail.Chart.Name() + "-" + releaseDetail.Chart.Metadata.Version,
+			"chart_version": releaseDetail.Chart.Metadata.Version,
+			"app_version":   releaseDetail.Chart.AppVersion(),
+			"last_deployed": releaseDetail.Info.LastDeployed,
+		}
+	} else {
+		statusParams := map[string]interface{}{
+			"namespace":      project.Namespace,
+			"name":           projectApp.Name,
+			"with_workloads": true,
+		}
+		nameStatusMap := map[string]*AppRuntimeStatus{}
+		res := a.KubeResources.Helm.Get(project.ClusterId, statusParams)
+		if res.IsSuccess() {
+			var appStatuses []*AppRuntimeStatus
+			dataBytes, _ := json.Marshal(res.Data)
+			err = json.Unmarshal(dataBytes, &appStatuses)
+			if err != nil {
+				klog.Error("unmarshal app status error: ", err.Error())
+			}
+			for _, status := range appStatuses {
+				nameStatusMap[status.Name] = status
+			}
+		} else {
+			klog.Error("get app status error: ", err.Error())
+		}
+		data["release"] = res.Data
+	}
+
+	return &utils.Response{Code: code.Success, Data: data}
+}
+
+func (a *AppService) GetReleaseObjects(release *release.Release) []*unstructured.Unstructured {
+	var objects []*unstructured.Unstructured
+	yamlList := strings.SplitAfter(release.Manifest, "\n---")
+	for _, objectYaml := range yamlList {
+		unstructuredObj := &unstructured.Unstructured{}
+		yamlBytes := []byte(objectYaml)
+		decoder := yamlutil.NewYAMLOrJSONDecoder(bytes.NewBuffer(yamlBytes), len(yamlBytes))
+		if err := decoder.Decode(unstructuredObj); err != nil {
+			klog.Error("decode k8sObject objectYaml: ", objectYaml)
+			klog.Error("decode k8sObject error: ", err)
+			continue
+		} else {
+			objects = append(objects, unstructuredObj)
+		}
+	}
+	return objects
+}
+
+func (a *AppService) ListAppStatus(serializer serializers.ProjectAppListSerializer) *utils.Response {
+	var projectApps []*types.ProjectApp
+	var err error
+	if serializer.Name != "" {
+		app, err := a.models.ProjectAppManager.GetProjectAppByName(serializer.ProjectId, serializer.Name)
+		if err != nil {
+			return &utils.Response{Code: code.DBError, Msg: err.Error()}
+		}
+		projectApps = append(projectApps, app)
+	} else {
+		projectApps, err = a.models.ProjectAppManager.ListProjectApps(serializer.ProjectId)
+		if err != nil {
+			return &utils.Response{Code: code.DBError, Msg: err.Error()}
+		}
+	}
+	project, err := a.models.ProjectManager.Get(serializer.ProjectId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	var appNames []string
+	for _, app := range projectApps {
+		appNames = append(appNames, app.Name)
+	}
+	statusParams := map[string]interface{}{
+		"namespace": project.Namespace,
+		"names":     appNames,
+	}
+	nameStatusMap := map[string]*AppRuntimeStatus{}
+	res := a.KubeResources.Helm.Status(project.ClusterId, statusParams)
+	if res.IsSuccess() {
+		var appStatuses []*AppRuntimeStatus
+		dataBytes, _ := json.Marshal(res.Data)
+		err = json.Unmarshal(dataBytes, &appStatuses)
+		if err != nil {
+			klog.Error("unmarshal app status error: ", err.Error())
+		}
+		for _, status := range appStatuses {
+			nameStatusMap[status.Name] = status
+		}
+		for _, app := range projectApps {
+			if _, ok := nameStatusMap[app.Name]; ok {
+				if app.Status != nameStatusMap[app.Name].Status {
+					app.Status = nameStatusMap[app.Name].Status
+					err = a.models.ProjectAppManager.UpdateProjectApp(app, "status")
+					if err != nil {
+						klog.Error("update project app status error: ", err.Error())
+					}
+				}
+			}
+		}
+	}
+	return &utils.Response{Code: code.Success, Msg: res.Msg, Data: res.Data}
 }
 
 func (a *AppService) ListAppVersions(serializer serializers.ProjectAppVersionListSerializer) *utils.Response {

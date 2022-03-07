@@ -50,15 +50,15 @@ service.interceptors.response.use(
       parent.location.href = loginUrl
     }
     const res = response.data
-
     // if the custom code is not Success, it is judged as an error.
     if (res.code !== "Success") {
-      Message({
-        message: res.msg || 'Error',
-        type: 'error',
-        duration: 5 * 1000
-      })
-
+      if(response.config.url != "project/apps/status") {
+        Message({
+          message: res.msg || 'Error',
+          type: 'error',
+          duration: 5 * 1000
+        })
+      }
       return Promise.reject(new Error(res.msg || 'Error'))
     } else {
       return res
@@ -88,7 +88,7 @@ service.interceptors.response.use(
       //   duration: 5 * 1000,
       //   offset: 12
       // })
-      Message.error(errMsg)
+      if(error.response.config.url != 'project/apps/status') Message.error(errMsg)
     }
     return Promise.reject(error)
   }

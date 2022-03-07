@@ -1,10 +1,6 @@
 <template>
   <div>
-    <clusterbar
-      :titleName="titleName"
-      :nsFunc="nsSearch"
-      :nameFunc="nameSearch"
-    />
+    <clusterbar :titleName="titleName" :nsFunc="projectId ? undefined : nsSearch" :nameFunc="nameSearch"/>
     <div class="dashboard-container">
       <el-table
         ref="multipleTable"
@@ -18,7 +14,7 @@
         :default-sort="{ prop: 'name' }"
         row-key="uid"
       >
-        <el-table-column type="selection" width="45"> </el-table-column>
+        <!-- <el-table-column type="selection" width="45"> </el-table-column> -->
         <el-table-column
           prop="name"
           label="名称"
@@ -138,6 +134,11 @@ export default {
   created() {
     this.fetchData()
   },
+  watch: {
+    cluster: function() {
+      this.fetchData()
+    }
+  },
   computed: {
     configMaps: function() {
       let data = []
@@ -152,7 +153,6 @@ export default {
         for (let s of c.keys) {
           str += s + ','
         }
-        console.log(str)
         if (str.length > 0) {
           str = str.substr(0, str.length - 1)
         }
@@ -161,6 +161,15 @@ export default {
       }
       return data
     },
+    projectId() {
+      return this.$route.params.workspaceId
+    },
+    cluster: function() {
+      return this.$store.state.cluster
+    },
+    namespace: function() {
+      return this.$store.state.namespace
+    }
   },
   methods: {
     nameClick: function(namespace, name) {
@@ -182,18 +191,20 @@ export default {
       this.loading = true
       this.originConfigMaps = []
       const cluster = this.$store.state.cluster
+      let params = {namespace: this.namespace}
+      if(this.projectId) params['labels'] = {'kubespace.cn/belong-to': "project"}
       if (cluster) {
-        listConfigMaps(cluster)
+        listConfigMaps(cluster, params)
           .then((response) => {
             this.loading = false
-            this.originConfigMaps = response.data
+            this.originConfigMaps = response.data || []
           })
           .catch(() => {
             this.loading = false
           })
       } else {
-        this.loading = false
-        Message.error('获取集群异常，请刷新重试.')
+        // this.loading = false
+        // Message.error('获取集群异常，请刷新重试.')
       }
     },
     getConfigMapYaml: function(namespace, name) {

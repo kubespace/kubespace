@@ -15,17 +15,21 @@ import (
 type ProjectApp struct {
 	Views      []*views.View
 	AppService *project.AppService
+	models     *model.Models
 }
 
 func NewProjectApp(kr *kube_resource.KubeResources, models *model.Models) *ProjectApp {
 	app := &ProjectApp{
 		AppService: project.NewAppService(kr, models),
+		models:     models,
 	}
 	vs := []*views.View{
 		views.NewView(http.MethodGet, "", app.listApps),
 		views.NewView(http.MethodGet, "/versions", app.listAppVersions),
 		views.NewView(http.MethodGet, "/version/:id", app.getAppVersion),
+		views.NewView(http.MethodGet, "/status", app.listAppStatus),
 		views.NewView(http.MethodGet, "/:id", app.getApp),
+		views.NewView(http.MethodDelete, "/:id", app.deleteApp),
 		views.NewView(http.MethodPost, "", app.create),
 		views.NewView(http.MethodPost, "/install", app.install),
 		views.NewView(http.MethodPost, "/destroy", app.destroy),
@@ -51,13 +55,32 @@ func (a *ProjectApp) listApps(c *views.Context) *utils.Response {
 	return a.AppService.ListApp(ser)
 }
 
-func (a *ProjectApp) getApp(c *views.Context) *utils.Response {
-	//projectId, err := strconv.ParseUint(c.Param("id"), 10, 64)
+func (a *ProjectApp) listAppStatus(c *views.Context) *utils.Response {
 	var ser serializers.ProjectAppListSerializer
 	if err := c.ShouldBindQuery(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	return a.AppService.ListApp(ser)
+	return a.AppService.ListAppStatus(ser)
+}
+
+func (a *ProjectApp) getApp(c *views.Context) *utils.Response {
+	appId, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	return a.AppService.GetApp(uint(appId))
+}
+
+func (a *ProjectApp) deleteApp(c *views.Context) *utils.Response {
+	appId, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	err = a.models.ProjectAppManager.DeleteProjectApp(uint(appId))
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	return &utils.Response{Code: code.Success}
 }
 
 func (a *ProjectApp) listAppVersions(c *views.Context) *utils.Response {

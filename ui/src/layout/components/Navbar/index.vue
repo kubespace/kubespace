@@ -36,8 +36,10 @@ export default {
 
   watch: {
     cluster: function (newObj) {
-      console.log(newObj)
-      if(newObj) {
+      const route = this.$route
+      const { meta } = route
+      let group = meta ? meta.group : ''
+      if(newObj && group == 'cluster') {
         this.importYaml = true
       } else {
         this.importYaml = false

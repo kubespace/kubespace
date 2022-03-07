@@ -22,11 +22,15 @@ const getters = {
 
 const state = {
   cluster: "",
+  namespace: "",
 }
 
 const mutations = {
   SET_CLUSTER: (state, cluster) => {
     state.cluster = cluster
+  },
+  SET_NAMESPACE: (state, namespace) => {
+    state.namespace = namespace
   },
 }
 
@@ -38,6 +42,9 @@ const actions = {
       wsConn.send(JSON.stringify({action: "watchCluster", params: {cluster: cluster}}))
     }
     commit('SET_CLUSTER', cluster)
+  },
+  watchNamespace({ commit }, namespace) {
+    commit('SET_NAMESPACE', namespace)
   },
 }
 

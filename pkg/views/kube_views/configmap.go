@@ -37,6 +37,7 @@ func (cm *ConfigMap) list(c *views.Context) *utils.Response {
 	reqParams := map[string]interface{}{
 		"name":      ser.Name,
 		"namespace": ser.Namespace,
+		"labels":    ser.Labels,
 	}
 	return cm.ConfigMap.List(c.Param("cluster"), reqParams)
 }

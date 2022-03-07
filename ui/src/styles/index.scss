@@ -140,4 +140,68 @@ div:focus {
   .name-class:hover {
     color: #409EFF;
   }
+
+  .detail-dashboard {
+    .el-table__expanded-cell[class*=cell] {
+      padding-top: 5px;
+    }
+    .table-expand {
+      font-size: 0;
+    }
+    .table-expand label {
+      width: 90px;
+      color: #99a9bf;
+      font-weight: 400;
+    }
+    .table-expand .el-form-item {
+      margin-right: 0;
+      margin-bottom: 0;
+      width: 100%;
+    }
+    
+    .pod-item {
+      margin: 20px 5px 30px 5px;
+      padding: 10px 20px;
+      font-size: 0;
+      box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+    }
+    .pod-item label {
+      /* width: 90px; */
+      color: #99a9bf;
+      font-weight: 400;
+    }
+    .pod-item .el-form-item {
+      margin-right: 0;
+      margin-bottom: 0;
+      width: 33%;
+    }
+    .pod-item span {
+      color: #606266;
+    }
+    /* .el-collapse {
+      border-top: 0px;
+    } */
+    .title-class {
+      margin-left: 5px;
+      color: #606266;
+      font-size: 13px;
+    }
+    .podCollapse .el-collapse-item__content {
+      padding: 0px 10px 15px;
+      /* font-size: 13px; */
+    }
+    .el-dialog__body {
+      padding-top: 5px;
+    }
+    /* .msgClass {
+      margin: 0px 25px;
+    } */
+    .msgClass {
+      margin: 8px 10px 15px 10px;
+      box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+    }
+    .msgClass .el-table::before {
+      height: 0px;
+    }
+  }
 }

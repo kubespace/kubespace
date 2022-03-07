@@ -1,12 +1,13 @@
 package serializers
 
 type ListSerializers struct {
-	Cluster       string      `json:"cluster" form:"cluster"`
-	Name          string      `json:"name" form:"name"`
-	Namespace     string      `json:"namespace" form:"namespace"`
-	LabelSelector interface{} `json:"label_selector" form:"label_selector"`
-	CronjobUID    string      `json:"cronjob_uid" form:"cronjob_uid"`
-	Names         []string    `json:"names"`
+	Cluster       string            `json:"cluster" form:"cluster"`
+	Name          string            `json:"name" form:"name"`
+	Namespace     string            `json:"namespace" form:"namespace"`
+	Labels        map[string]string `json:"labels" form:"labels"`
+	LabelSelector interface{}       `json:"label_selector" form:"label_selector"`
+	CronjobUID    string            `json:"cronjob_uid" form:"cronjob_uid"`
+	Names         []string          `json:"names"`
 }
 
 type GetSerializers struct {

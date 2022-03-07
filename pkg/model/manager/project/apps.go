@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"gorm.io/gorm"
+	"gorm.io/gorm/utils"
 	"time"
 )
 
@@ -93,15 +94,50 @@ func (a *AppManager) GetProjectApp(appId uint) (*types.ProjectApp, error) {
 	return &app, nil
 }
 
+func (a *AppManager) GetProjectAppByName(projectId uint, name string) (*types.ProjectApp, error) {
+	var app types.ProjectApp
+	var err error
+	if err = a.DB.First(&app, "project_id = ? and name = ?", projectId, name).Error; err != nil {
+		return nil, err
+	}
+	if app.AppVersion, err = a.AppVersionManager.GetAppVersion(app.AppVersionId); err != nil {
+		return nil, err
+	}
+	return &app, nil
+}
+
 func (a *AppManager) UpdateProjectApp(app *types.ProjectApp, columns ...string) error {
-	app.UpdateTime = time.Now()
 	if len(columns) == 0 {
 		columns = []string{"*"}
 	} else {
-		columns = append(columns, "update_time")
+		if utils.Contains(columns, "update_time") {
+			app.UpdateTime = time.Now()
+			columns = append(columns, "update_time")
+		}
 	}
 	if err := a.DB.Model(app).Select(columns).Updates(*app).Error; err != nil {
 		return err
 	}
 	return nil
+}
+
+func (a *AppManager) DeleteProjectApp(appId uint) error {
+	return a.DB.Transaction(func(tx *gorm.DB) error {
+		appVersions, err := a.ListAppVersions(types.AppVersionScopeProjectApp, appId)
+		if err != nil {
+			return err
+		}
+		for _, appVersion := range *appVersions {
+			if err = tx.Delete(&types.AppVersionChart{}, "path = ?", appVersion.ChartPath).Error; err != nil {
+				return err
+			}
+			if err = tx.Delete(&appVersion, "id = ?", appVersion.ID).Error; err != nil {
+				return err
+			}
+		}
+		if err = tx.Delete(&types.ProjectApp{}, "id = ?", appId).Error; err != nil {
+			return err
+		}
+		return nil
+	})
 }

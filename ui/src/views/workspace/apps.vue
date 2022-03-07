@@ -45,7 +45,7 @@
               <el-link :underline="false" class="operator-btn"
                 v-if="scope.row.status=='UnInstall'" @click="openInstallFormDialog(scope.row)">安装</el-link>
               <el-link :underline="false" class="operator-btn"
-                v-if="scope.row.status!='UnInstall'" @click="openInstallFormDialog(scope.row)">升级</el-link>
+                v-if="scope.row.status!='UnInstall'" @click="openInstallFormDialog(scope.row, true)">升级</el-link>
               <el-link :underline="false" class="operator-btn"
                 @click="openEditApp(scope.row.app_version_id)">编辑</el-link>
               <el-link :underline="false" class="operator-btn" style="color: #F56C6C"
@@ -100,8 +100,8 @@
           </div>
           <div slot="footer" class="dialogFooter" style="padding-top: 25px;">
             <el-button @click="installFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
-            <el-button type="primary" @click="updateFormVisible ? handleUpdateApp() : handleInstallApp()" >
-              {{ installFormVisible ? '安 装' : '升 级' }}
+            <el-button type="primary" @click="updateFormVisible ? handleInstallApp(true) : handleInstallApp()" >
+              {{ updateFormVisible ? '升 级' : '安 装' }}
             </el-button>
           </div>
         </div>
@@ -111,7 +111,7 @@
 </template>
 <script>
 import { Clusterbar } from "@/views/components";
-import { listApps, listAppVersions, installApp, destroyApp } from "@/api/project/apps";
+import { listApps, listAppStatus, listAppVersions, installApp, destroyApp, deleteApp } from "@/api/project/apps";
 import { Message } from "element-ui";
 import yaml from 'js-yaml'
 
@@ -142,6 +142,7 @@ export default {
       appVersions: [],
       fetchVersionLoading: false,
       installLoading: false,
+      refreshStatusTimer: undefined,
       form: {
         id: "",
         name: "",
@@ -153,13 +154,13 @@ export default {
       },
       statusNameMap: {
         "UnInstall": "未安装",
-        "UnReady": "未就绪",
+        "NotReady": "未就绪",
         "RunningFault": "运行故障",
         "Running": "运行中"
       },
       statusColorMap: {
         "UnInstall": "",
-        "UnReady": "#E6A23C",
+        "NotReady": "#E6A23C",
         "RunningFault": "#F56C6C",
         "Running": "#67C23A"
       },
@@ -175,6 +176,11 @@ export default {
   created() {
     this.fetchApps();
   },
+  beforeDestroy() {
+    if(this.refreshStatusTimer) {
+      clearTimeout(this.refreshStatusTimer)
+    }
+  },
   computed: {
     projectId() {
       return this.$route.params.workspaceId
@@ -182,19 +188,20 @@ export default {
   },
   methods: {
     nameClick: function(id) {
-      this.$router.push({name: 'workspaceOverview', params: {'workspaceId': id}})
+      this.$router.push({name: 'workspaceAppDetail', params: {'appId': id}})
     },
     fetchApps() {
       this.loading = true
       listApps({project_id: this.projectId}).then((resp) => {
         this.originApps = resp.data ? resp.data : []
         this.loading = false
+        this.getAppStatus()
       }).catch((err) => {
         console.log(err)
         this.loading = false
       })
     },
-    handleInstallApp() {
+    handleInstallApp(upgrade) {
       if(!this.form.id) {
         Message.error("获取安装应用失败，请刷新重试");
         return
@@ -203,11 +210,12 @@ export default {
         Message.error("请选择要安装的应用版本");
         return
       }
-      let values = yaml.dump(this.form.values_dict)
+      let values = this.form.values_dict
       let data = {
         project_app_id: this.form.id, 
         app_version_id: this.form.app_version_id, 
         values: values,
+        upgrade: upgrade ? true : false
       }
       this.installLoading = true
       installApp(data).then(() => {
@@ -260,16 +268,16 @@ export default {
     },
     handleDeleteApp(id, name) {
       if(!id) {
-        Message.error("获取密钥id参数异常，请刷新重试");
+        Message.error("获取应用id参数异常，请刷新重试");
         return
       }
-      this.$confirm(`请确认是否删除「${name}」此项目空间?`, '提示', {
+      this.$confirm(`请确认是否删除「${name}」此应用以及所有版本?`, '提示', {
           confirmButtonText: '确定',
           cancelButtonText: '取消',
           type: 'warning'
         }).then(() => {
-          deleteSecret(id).then(() => {
-            Message.success("删除项目空间成功")
+          deleteApp(id).then(() => {
+            Message.success("删除应用成功")
             this.fetchApps()
           }).catch((err) => {
             console.log(err)
@@ -281,6 +289,7 @@ export default {
       this.search_name = val;
     },
     openInstallFormDialog(app, isUpdate) {
+      console.log(isUpdate)
       if(isUpdate) this.updateFormVisible = true
       this.appVersions = []
       this.form = {
@@ -325,6 +334,31 @@ export default {
     },
     openEditApp(id) {
       this.$router.push({name: 'workspaceEditApp', params: {appVersionId: id}})
+    },
+    getAppStatus() {
+      listAppStatus({project_id: this.projectId}).then((resp) => {
+        let mapStatus = {}
+        for(let s of resp.data) {
+          mapStatus[s.name] = s
+        }
+        for(let app of this.originApps) {
+          if(app.name in mapStatus) {
+            app.status = mapStatus[app.name].status
+          }
+        }
+        this.refreshAppStatus()
+      }).catch(() => {
+        this.refreshAppStatus()
+      })
+    },
+    refreshAppStatus() {
+      let that = this
+      if(this.refreshStatusTimer) {
+        clearTimeout(this.refreshStatusTimer)
+      }
+      this.refreshStatusTimer = setTimeout(function () {
+          that.getAppStatus()
+      }, 5000);
     }
   },
 };

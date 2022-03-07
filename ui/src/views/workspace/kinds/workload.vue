@@ -1,7 +1,7 @@
 <template>
   <div class="template-class">
     <el-form label-position="left" :model="template.metadata" :rules="rules" style="padding: 10px 20px" label-width="100px">
-      <el-form-item v-if="!noName" label="负载名称" style="width: 400px" prop="name">
+      <el-form-item v-if="noName" label="负载名称" style="width: 400px" prop="name">
         <el-input v-model="template.metadata.name" placeholder="请输入工作负载名称" size="small"></el-input>
       </el-form-item>
       <el-form-item label="负载类型" style="width: 700px" prop="" required>
@@ -19,7 +19,7 @@
     </el-form>
     <el-tabs tab-position="left" style="" value="container">
       <el-tab-pane label="容器组" name="container">
-        <container :template="template"></container>
+        <container :template="template" :appResources="appResources"></container>
       </el-tab-pane>
       <el-tab-pane label="存储">
         <div class="border-workload-content">
@@ -47,8 +47,6 @@
 
 <script>
 import { Container, PodVolume, PodNetwork, PodAffinity, PodSecurity } from '@/views/workspace/kinds'
-import Pod_affinity from './pod_affinity.vue'
-import Pod_security from './pod_security.vue'
 
 export default {
   name: 'Workload',
@@ -66,7 +64,7 @@ export default {
       },
     }
   },
-  props: ['template', 'noName'],
+  props: ['template', 'noName', 'appResources'],
   computed: {
   },
   methods: {

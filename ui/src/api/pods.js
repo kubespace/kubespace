@@ -1,5 +1,6 @@
 import request from '@/utils/request';
 import { Selector } from 'k8s-selector';
+import { dateFormat } from '@/utils/utils';
 
 export function podMatch(selector, labels) {
   let s = Selector(selector)
@@ -120,7 +121,7 @@ export function buildPods(pod) {
     qos: pod.status.qosClass,
     status: pod.status.phase,
     ip: pod.status.podIP,
-    created: pod.metadata.creationTimestamp,
+    created: dateFormat(pod.metadata.creationTimestamp),
     node_name: pod.spec.nodeName,
     resource_version: pod.metadata.resourceVersion,
     labels: pod.metadata.labels,

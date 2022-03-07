@@ -45,8 +45,10 @@
               <div style="display: block; font-size: 14px; line-height: 20px; align: center; font-weight: 500">{{ t.metadata.name ? t.metadata.name : ' unnaming'}}</div>
             </div>
             <div style="padding-bottom: 20px;">
-              <workload v-if="workloadTypes.indexOf(t.kind) >= 0" :template="t" :noName="i == 0"></workload>
+              <workload v-if="workloadTypes.indexOf(t.kind) >= 0" :template="t" :appResources="form.templates"></workload>
               <service v-if="t.kind == 'Service'" :template="t" :containers="form.templates[0].spec.template.spec.containers"></service>
+              <config-map v-if="t.kind == 'ConfigMap'" :template="t"></config-map>
+              <secret v-if="t.kind == 'Secret'" :template="t"></secret>
             </div>
           </el-tab-pane>
         </el-tabs>
@@ -89,7 +91,7 @@
 import { Clusterbar } from "@/views/components";
 import { createApp, getAppVersion } from "@/api/project/apps";
 import { Message } from "element-ui";
-import { Workload, kindTemplate, Service, transferTemplate, resolveToTemplate } from '@/views/workspace/kinds'
+import { Workload, kindTemplate, Service, ConfigMap, Secret, transferTemplate, resolveToTemplate } from '@/views/workspace/kinds'
 import yaml from 'js-yaml'
 
 export default {
@@ -98,6 +100,8 @@ export default {
     Clusterbar,
     Workload,
     Service,
+    ConfigMap,
+    Secret,
   },
   mounted: function () {
     const that = this;
@@ -234,7 +238,7 @@ export default {
       let valuesDict = {workloads: {}}
       let idx = 0
       for(let template of this.form.templates) {
-        let obj = transferTemplate(template)
+        let obj = transferTemplate(template, this.form.name)
         if(obj.err) {
           Message.error(obj.err)
           return
@@ -255,8 +259,10 @@ export default {
         }
         let tplName = `${idx < 10 ? '0'+idx : ''+idx}${tpl.metadata.name}-${tpl.kind}.yaml`.toLowerCase()
         this.chart.templates[tplName] = yaml.dump(tpl)
+        idx++
       }
       this.chart.values = yaml.dump(valuesDict)
+      console.log(this.chart.templates)
       this.createFormVisible = true;
     },
     cancelSaveApp() {
@@ -333,6 +339,9 @@ export default {
   input {
     border-radius: 0px;
   } 
+  textarea {
+    border-radius: 0px;
+  }
   .el-form-item__label {
     width: 90px;
     color: #99a9bf;
