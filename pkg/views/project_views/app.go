@@ -1,7 +1,6 @@
 package project_views
 
 import (
-	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/project"
 	"github.com/kubespace/kubespace/pkg/utils"
@@ -18,9 +17,9 @@ type ProjectApp struct {
 	models     *model.Models
 }
 
-func NewProjectApp(kr *kube_resource.KubeResources, models *model.Models) *ProjectApp {
+func NewProjectApp(models *model.Models, appService *project.AppService) *ProjectApp {
 	app := &ProjectApp{
-		AppService: project.NewAppService(kr, models),
+		AppService: appService,
 		models:     models,
 	}
 	vs := []*views.View{
@@ -29,11 +28,11 @@ func NewProjectApp(kr *kube_resource.KubeResources, models *model.Models) *Proje
 		views.NewView(http.MethodGet, "/version/:id", app.getAppVersion),
 		views.NewView(http.MethodGet, "/status", app.listAppStatus),
 		views.NewView(http.MethodGet, "/:id", app.getApp),
-		views.NewView(http.MethodDelete, "/:id", app.deleteApp),
 		views.NewView(http.MethodPost, "", app.create),
 		views.NewView(http.MethodPost, "/install", app.install),
 		views.NewView(http.MethodPost, "/destroy", app.destroy),
-		//views.NewView(http.MethodDelete, "/:id", app.delete),
+		views.NewView(http.MethodPost, "/resolve", app.resolveChart),
+		views.NewView(http.MethodDelete, "/:id", app.deleteApp),
 	}
 	app.Views = vs
 	return app
@@ -113,4 +112,16 @@ func (a *ProjectApp) destroy(c *views.Context) *utils.Response {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
 	return a.AppService.DestroyApp(c.User, ser)
+}
+
+func (a *ProjectApp) resolveChart(c *views.Context) *utils.Response {
+	file, err := c.FormFile("file")
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: "get chart file error: " + err.Error()}
+	}
+	chartIn, err := file.Open()
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: "get chart file error: " + err.Error()}
+	}
+	return a.AppService.ResolveChart(chartIn)
 }

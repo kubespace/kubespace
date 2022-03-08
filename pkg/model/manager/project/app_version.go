@@ -23,11 +23,16 @@ func (v *AppVersionManager) NewPackageFilenameFromNameVersion(name string, versi
 	return filename
 }
 
-func (v *AppVersionManager) CreateAppVersion(chartFilePath string, scope string, scopeId uint, appVersion *types.AppVersion) (*types.AppVersion, error) {
+func (v *AppVersionManager) CreateAppVersionWithChartPath(chartFilePath string, scope string, scopeId uint, appVersion *types.AppVersion) (*types.AppVersion, error) {
 	content, err := os.ReadFile(chartFilePath)
 	if err != nil {
 		return nil, err
 	}
+	return v.CreateAppVersionWithChartByte(content, scope, scopeId, appVersion)
+}
+
+func (v *AppVersionManager) CreateAppVersionWithChartByte(chartBytes []byte, scope string, scopeId uint, appVersion *types.AppVersion) (*types.AppVersion, error) {
+	var err error
 	err = v.DB.Transaction(func(tx *gorm.DB) error {
 		path := v.NewPackageFilenameFromNameVersion(appVersion.PackageName, appVersion.PackageVersion)
 		appVersion.Scope = scope
@@ -38,7 +43,7 @@ func (v *AppVersionManager) CreateAppVersion(chartFilePath string, scope string,
 		}
 		chart := &types.AppVersionChart{
 			Path:       path,
-			Content:    content,
+			Content:    chartBytes,
 			CreateTime: time.Now(),
 			UpdateTime: time.Now(),
 		}

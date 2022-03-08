@@ -35,9 +35,21 @@ type ProjectApp struct {
 	UpdateTime   time.Time   `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`
 }
 
+const (
+	AppStoreTypeProject = "project"
+	AppStoreTypeCluster = "cluster"
+	AppStoreTypeAll     = "all"
+)
+
 type AppStore struct {
-	ID   uint
-	Name string
+	ID          uint
+	Name        string
+	Description string
+	Type        string
+	CreateUser  string
+	UpdateUser  string
+	CreateTime  time.Time
+	UpdateTime  time.Time
 }
 
 const (

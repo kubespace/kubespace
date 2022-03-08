@@ -25,7 +25,7 @@ func (a *AppManager) CreateProjectApp(chartFilePath string, app *types.ProjectAp
 				return err
 			}
 		}
-		appVersion, err = a.AppVersionManager.CreateAppVersion(chartFilePath, types.AppVersionScopeProjectApp, app.ID, appVersion)
+		appVersion, err = a.AppVersionManager.CreateAppVersionWithChartPath(chartFilePath, types.AppVersionScopeProjectApp, app.ID, appVersion)
 		if err != nil {
 			return err
 		}

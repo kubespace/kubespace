@@ -3,6 +3,7 @@ package router
 import (
 	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/model"
+	"github.com/kubespace/kubespace/pkg/project"
 	"github.com/kubespace/kubespace/pkg/views"
 	"github.com/kubespace/kubespace/pkg/views/kube_views"
 	"github.com/kubespace/kubespace/pkg/views/pipeline_views"
@@ -49,8 +50,13 @@ func NewViewSets(kr *kube_resource.KubeResources, models *model.Models) *ViewSet
 	settingsSecret := settings_views.NewSettingsSecret(models)
 	imageRegistry := settings_views.NewImageRegistry(models)
 
+	appBaseService := project.NewAppBaseService(models)
+	projectAppService := project.NewAppService(kr, appBaseService)
+	appStoreService := project.NewAppStoreService(appBaseService)
+
 	projectWorkspace := project_views.NewProject(models)
-	projectApps := project_views.NewProjectApp(kr, models)
+	projectApps := project_views.NewProjectApp(models, projectAppService)
+	appStore := project_views.NewAppStore(models, appStoreService)
 
 	viewsets := &ViewSets{
 		"cluster":        cluster.Views,
@@ -90,6 +96,7 @@ func NewViewSets(kr *kube_resource.KubeResources, models *model.Models) *ViewSet
 
 		"project/workspace": projectWorkspace.Views,
 		"project/apps":      projectApps.Views,
+		"appstore":          appStore.Views,
 	}
 
 	return viewsets

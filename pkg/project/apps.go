@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/kubespace/kubespace/pkg/kube_resource"
-	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
@@ -23,13 +22,13 @@ import (
 
 type AppService struct {
 	*kube_resource.KubeResources
-	models *model.Models
+	*AppBaseService
 }
 
-func NewAppService(kr *kube_resource.KubeResources, models *model.Models) *AppService {
+func NewAppService(kr *kube_resource.KubeResources, appBaseService *AppBaseService) *AppService {
 	return &AppService{
-		models:        models,
-		KubeResources: kr,
+		AppBaseService: appBaseService,
+		KubeResources:  kr,
 	}
 }
 
