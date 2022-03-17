@@ -23,6 +23,7 @@ type Models struct {
 	ProjectAppManager        *project.AppManager
 	ProjectAppVersionManager *project.AppVersionManager
 	ProjectManager           *project.ManagerProject
+	AppStoreManager          *project.AppStoreManager
 }
 
 func NewModels(redisOp *redis.Options, mysqlOptions *mysql.Options) (*Models, error) {
@@ -49,6 +50,7 @@ func NewModels(redisOp *redis.Options, mysqlOptions *mysql.Options) (*Models, er
 	projectMgr := project.NewManagerProject(db)
 	appVersionMgr := project.NewAppVersionManager(db)
 	projectAppMgr := project.NewAppManager(appVersionMgr, db)
+	appStoreMgr := project.NewAppStoreManager(appVersionMgr, db)
 
 	return &Models{
 		ClusterManager:           cm,
@@ -65,5 +67,6 @@ func NewModels(redisOp *redis.Options, mysqlOptions *mysql.Options) (*Models, er
 		ProjectAppManager:        projectAppMgr,
 		ProjectAppVersionManager: appVersionMgr,
 		ImageRegistryManager:     imageRegistry,
+		AppStoreManager:          appStoreMgr,
 	}, nil
 }

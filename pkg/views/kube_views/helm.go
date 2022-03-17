@@ -38,7 +38,6 @@ func NewHelm(kr *kube_resource.KubeResources, models *model.Models) *Helm {
 		views.NewView(http.MethodDelete, "/release/:cluster", helm.delete),
 	}
 	helm.Views = vs
-	helm.models.AppManager.Init()
 	return helm
 }
 

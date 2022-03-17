@@ -63,6 +63,7 @@ func (a *AppService) CreateProjectApp(user *types.User, serializer serializers.P
 			ProjectId:  serializer.ProjectId,
 			Name:       serializer.Name,
 			Status:     types.AppStatusUninstall,
+			Type:       types.AppTypeOrdinaryApp,
 			CreateUser: user.Name,
 			UpdateUser: user.Name,
 			CreateTime: time.Now(),
@@ -96,13 +97,12 @@ func (a *AppService) CreateProjectApp(user *types.User, serializer serializers.P
 	if err != nil {
 		return &utils.Response{Code: code.HelmError, Msg: err.Error()}
 	}
-	klog.Info(tgzPath)
 	appVersion := &types.AppVersion{
 		PackageName:    serializer.Name,
 		PackageVersion: serializer.Version,
 		AppVersion:     serializer.Version,
 		Values:         serializer.Values,
-		Type:           types.AppVersionTypeOrdinaryApp,
+		From:           types.AppVersionFromSpace,
 		CreateUser:     user.Name,
 		CreateTime:     time.Now(),
 		UpdateTime:     time.Now(),
@@ -229,7 +229,8 @@ func (a *AppService) ListApp(serializer serializers.ProjectAppListSerializer) *u
 			"name":            app.Name,
 			"status":          app.Status,
 			"app_version_id":  app.AppVersionId,
-			"type":            app.AppVersion.Type,
+			"type":            app.Type,
+			"from":            app.AppVersion.From,
 			"update_user":     app.UpdateUser,
 			"update_time":     app.UpdateTime,
 			"package_name":    app.AppVersion.PackageName,
@@ -261,7 +262,8 @@ func (a *AppService) GetApp(appId uint) *utils.Response {
 		"cluster":         project.ClusterId,
 		"namespace":       project.Namespace,
 		"app_version_id":  projectApp.AppVersionId,
-		"type":            projectApp.AppVersion.Type,
+		"type":            projectApp.Type,
+		"from":            projectApp.AppVersion.From,
 		"update_user":     projectApp.UpdateUser,
 		"create_time":     projectApp.CreateTime,
 		"update_time":     projectApp.UpdateTime,
@@ -401,14 +403,6 @@ func (a *AppService) ListAppStatus(serializer serializers.ProjectAppListSerializ
 	return &utils.Response{Code: code.Success, Msg: res.Msg, Data: res.Data}
 }
 
-func (a *AppService) ListAppVersions(serializer serializers.ProjectAppVersionListSerializer) *utils.Response {
-	appVersions, err := a.models.ProjectAppVersionManager.ListAppVersions(serializer.Scope, serializer.ScopeId)
-	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
-	}
-	return &utils.Response{Code: code.Success, Data: appVersions}
-}
-
 func (a *AppService) GetAppVersion(appVersionId uint) *utils.Response {
 	appVersion, err := a.models.ProjectAppVersionManager.GetAppVersion(appVersionId)
 	if err != nil {
@@ -431,7 +425,7 @@ func (a *AppService) GetAppVersion(appVersionId uint) *utils.Response {
 		"name":            app.Name,
 		"package_name":    appVersion.PackageName,
 		"package_version": appVersion.PackageVersion,
-		"type":            appVersion.Type,
+		"type":            app.Type,
 		"values":          appVersion.Values,
 		"templates":       charts.Templates,
 	}

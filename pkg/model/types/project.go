@@ -20,6 +20,10 @@ const (
 	AppStatusNotReady     = "NotReady"
 	AppStatusRunningFault = "RunningFault"
 	AppStatusRunning      = "Running"
+
+	AppTypeOrdinaryApp      = "ordinary_app"
+	AppTypeMiddleware       = "middleware"
+	AppTypeClusterComponent = "component"
 )
 
 type ProjectApp struct {
@@ -28,6 +32,7 @@ type ProjectApp struct {
 	Name         string      `gorm:"size:255;not null;uniqueIndex:ProjectNameUnique" json:"name"`
 	AppVersionId uint        `gorm:"" json:"app_version_id"`
 	AppVersion   *AppVersion `gorm:"-" json:"app_version"`
+	Type         string      `gorm:"size:255;not null" json:"type"`
 	Status       string      `gorm:"not null;size:255" json:"status"`
 	CreateUser   string      `gorm:"size:255;not null" json:"create_user"`
 	UpdateUser   string      `gorm:"size:255;not null" json:"update_user"`
@@ -35,30 +40,23 @@ type ProjectApp struct {
 	UpdateTime   time.Time   `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`
 }
 
-const (
-	AppStoreTypeProject = "project"
-	AppStoreTypeCluster = "cluster"
-	AppStoreTypeAll     = "all"
-)
-
 type AppStore struct {
-	ID          uint
-	Name        string
-	Description string
-	Type        string
-	CreateUser  string
-	UpdateUser  string
-	CreateTime  time.Time
-	UpdateTime  time.Time
+	ID          uint      `gorm:"primaryKey" json:"id"`
+	Name        string    `gorm:"size:255;not null;" json:"name"`
+	Description string    `gorm:"type:text;" json:"description"`
+	Type        string    `gorm:"size:255;not null;" json:"type"`
+	CreateUser  string    `gorm:"size:255;not null" json:"create_user"`
+	UpdateUser  string    `gorm:"size:255;not null" json:"update_user"`
+	CreateTime  time.Time `gorm:"column:create_time;not null;autoCreateTime" json:"create_time"`
+	UpdateTime  time.Time `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`
 }
 
 const (
 	AppVersionScopeProjectApp = "project_app"
 	AppVersionScopeStoreApp   = "store_app"
 
-	AppVersionTypeOrdinaryApp = "ordinary_app"
-	AppVersionTypeMiddleware  = "middleware"
-	AppVersionTypeImportApp   = "import_app"
+	AppVersionFromImport = "import"
+	AppVersionFromSpace  = "space"
 )
 
 type AppVersion struct {
@@ -67,9 +65,10 @@ type AppVersion struct {
 	ScopeId        uint      `gorm:"not null;uniqueIndex:ScopeAppNameVersionUnique" json:"scope_id"`
 	PackageName    string    `gorm:"size:255;not null;uniqueIndex:ScopeAppNameVersionUnique" json:"package_name"`
 	PackageVersion string    `gorm:"size:255;not null;uniqueIndex:ScopeAppNameVersionUnique" json:"package_version"`
-	Type           string    `gorm:"size:255;not null;" json:"type"`
+	From           string    `gorm:"size:255;not null;" json:"from"`
 	AppVersion     string    `gorm:"size:255;not null" json:"app_version"`
 	Values         string    `gorm:"type:text;not null" json:"values"`
+	Description    string    `gorm:"type:text;" json:"description"`
 	ChartPath      string    `gorm:"size:255;not null" json:"chart_path"`
 	CreateUser     string    `gorm:"size:50;not null" json:"create_user"`
 	CreateTime     time.Time `gorm:"column:create_time;not null;autoCreateTime" json:"create_time"`

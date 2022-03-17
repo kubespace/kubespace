@@ -64,14 +64,14 @@ func (a *AppManager) List(filters map[string]interface{}) ([]*types.App, error) 
 func (a *AppManager) Init() {
 	pwd, _ := os.Getwd()
 	//获取文件或目录相关信息
-	fileInfoList, err := ioutil.ReadDir(filepath.Join(pwd, "helm_apps"))
+	fileInfoList, err := ioutil.ReadDir(filepath.Join(pwd, "kubespace_apps"))
 	if err != nil {
 		klog.Errorf("read dir error: %v", err)
 	}
 	for i := range fileInfoList {
 		klog.Infof("start load %s", fileInfoList[i].Name())
 		if strings.HasSuffix(fileInfoList[i].Name(), ".tgz") {
-			a.loadApp(filepath.Join(pwd, "helm_apps", fileInfoList[i].Name()))
+			a.loadApp(filepath.Join(pwd, "kubespace_apps", fileInfoList[i].Name()))
 		}
 	}
 }

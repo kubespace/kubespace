@@ -31,7 +31,6 @@ func NewProjectApp(models *model.Models, appService *project.AppService) *Projec
 		views.NewView(http.MethodPost, "", app.create),
 		views.NewView(http.MethodPost, "/install", app.install),
 		views.NewView(http.MethodPost, "/destroy", app.destroy),
-		views.NewView(http.MethodPost, "/resolve", app.resolveChart),
 		views.NewView(http.MethodDelete, "/:id", app.deleteApp),
 	}
 	app.Views = vs
@@ -112,16 +111,4 @@ func (a *ProjectApp) destroy(c *views.Context) *utils.Response {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
 	return a.AppService.DestroyApp(c.User, ser)
-}
-
-func (a *ProjectApp) resolveChart(c *views.Context) *utils.Response {
-	file, err := c.FormFile("file")
-	if err != nil {
-		return &utils.Response{Code: code.ParamsError, Msg: "get chart file error: " + err.Error()}
-	}
-	chartIn, err := file.Open()
-	if err != nil {
-		return &utils.Response{Code: code.ParamsError, Msg: "get chart file error: " + err.Error()}
-	}
-	return a.AppService.ResolveChart(chartIn)
 }

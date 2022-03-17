@@ -39,3 +39,10 @@ type ProjectAppVersionListSerializer struct {
 type ProjectAppVersionGetSerializer struct {
 	AppVersionId string `json:"app_version_id" form:"app_version_id"`
 }
+
+type AppStoreCreateSerializer struct {
+	Name        string
+	Version     string
+	Description string
+	Type        string
+}
