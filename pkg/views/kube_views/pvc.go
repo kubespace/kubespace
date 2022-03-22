@@ -36,6 +36,7 @@ func (p *Pvc) list(c *views.Context) *utils.Response {
 	reqParams := map[string]interface{}{
 		"name":      ser.Name,
 		"namespace": ser.Namespace,
+		"labels":    ser.Labels,
 	}
 	return p.Pvc.List(c.Param("cluster"), reqParams)
 }

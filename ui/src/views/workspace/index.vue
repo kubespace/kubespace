@@ -108,16 +108,16 @@ export default {
     const that = this;
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150;
+        let heightStyle = window.innerHeight - 135;
         that.maxHeight = heightStyle;
       })();
     };
   },
   data() {
     return {
-      maxHeight: window.innerHeight - 150,
+      maxHeight: window.innerHeight - 135,
       cellStyle: { border: 0 },
-      titleName: ["项目空间"],
+      titleName: ["工作空间"],
       loading: true,
       createFormVisible: false,
       updateFormVisible: false,

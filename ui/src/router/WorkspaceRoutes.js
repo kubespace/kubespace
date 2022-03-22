@@ -10,7 +10,7 @@ const Routes = [
     meta: { title: '项目概览', icon: 'overview', 'group': 'workspace', object: 'pipeline' }
   },
   {
-    path: 'app',
+    path: 'work_apps',
     name: 'workspaceApp',
     component: () => import('@/views/workspace/apps'),
     meta: { title: '应用管理', icon: 'workspace_app', 'group': 'workspace', object: 'pipeline' }
@@ -51,7 +51,7 @@ const Routes = [
       {
         path: 'secrets',
         name: 'workspaceSecrets',
-        component: () => import('@/views/workspace/overview'),
+        component: () => import('@/views/cluster/secret'),
         meta: { title: '保密字典', group: 'workspace', object: 'secret' },
       },
     ],
@@ -65,13 +65,20 @@ const Routes = [
       { 
         path: 'services',
         name: 'workspaceServices',
-        component: () => import('@/views/workspace/overview'),
+        component: () => import('@/views/cluster/service'),
         meta: { title: '服务', group: 'workspace', object: 'service' },
+      },
+      {
+        path: 'services/:namespace/:serviceName',
+        name: 'workspaceServiceDetail',
+        hidden: true,
+        component: () => import('@/views/cluster/serviceDetail'),
+        meta: { title: '服务', group: 'workspace', sideName: 'workspaceServices', object: 'service' },
       },
       {
         path: 'ingress',
         name: 'workspaceIngress',
-        component: () => import('@/views/workspace/overview'),
+        component: () => import('@/views/cluster/ingress'),
         meta: { title: '路由', group: 'workspace', object: 'ingress' },
       },
     ],
@@ -79,7 +86,7 @@ const Routes = [
   {
     path: 'pvc',
     name: 'workspacePvc',
-    component: () => import('@/views/workspace/overview'),
+    component: () => import('@/views/cluster/persistentVolumeClaim'),
     meta: { title: '存储声明', icon: 'storage', group: 'workspace', object: 'pvc' },
   },
   {

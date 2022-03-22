@@ -36,6 +36,7 @@ func (d *Ingress) list(c *views.Context) *utils.Response {
 	reqParams := map[string]interface{}{
 		"name":      ser.Name,
 		"namespace": ser.Namespace,
+		"labels":    ser.Labels,
 	}
 	return d.Ingress.List(c.Param("cluster"), reqParams)
 }

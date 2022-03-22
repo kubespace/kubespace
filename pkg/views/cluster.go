@@ -166,7 +166,6 @@ func (clu *Cluster) createYaml(c *Context) *utils.Response {
 		klog.Errorf("bind params error: %s", err.Error())
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	klog.Info(ser.YamlStr)
 	return clu.Cluster.Create(c.Param("cluster"), ser)
 }
 

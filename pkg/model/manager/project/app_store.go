@@ -1,6 +1,8 @@
 package project
 
 import (
+	"encoding/json"
+	"errors"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"gorm.io/gorm"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -8,8 +10,6 @@ import (
 	"k8s.io/klog"
 	"os"
 	"path/filepath"
-	"sigs.k8s.io/yaml"
-	"strings"
 	"time"
 )
 
@@ -24,10 +24,22 @@ func NewAppStoreManager(versionManager *AppVersionManager, db *gorm.DB) *AppStor
 	return appStoreMgr
 }
 
+func (a *AppStoreManager) GetStoreApp(appId uint) (*types.AppStore, error) {
+	var app types.AppStore
+	var err error
+	if err = a.DB.First(&app, "id = ?", appId).Error; err != nil {
+		return nil, err
+	}
+	return &app, nil
+}
+
 func (a *AppStoreManager) GetStoreAppByName(name string) (*types.AppStore, error) {
 	var app types.AppStore
 	var err error
 	if err = a.DB.First(&app, "name = ?", name).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return &app, nil
@@ -53,6 +65,23 @@ func (a *AppStoreManager) CreateStoreApp(chartBytes []byte, storeApp *types.AppS
 	return storeApp, nil
 }
 
+func (a *AppStoreManager) UpdateStoreApp(appId uint, columns map[string]interface{}) error {
+	return a.DB.Model(&types.AppStore{}).Where("id=?", appId).Updates(columns).Error
+}
+
+func (a *AppStoreManager) DeleteStoreAppVersion(appId, versionId uint, user *types.User) error {
+	err := a.AppVersionManager.DeleteVersion(versionId)
+	if err != nil {
+		return err
+	}
+	versions, _ := a.AppVersionManager.ListAppVersions(types.AppVersionScopeStoreApp, appId)
+	if versions != nil && len(*versions) == 0 {
+		return a.DB.Delete(&types.AppStore{}, "id=?", appId).Error
+	} else {
+		return a.UpdateStoreApp(appId, map[string]interface{}{"update_user": user.Name})
+	}
+}
+
 func (a *AppStoreManager) ListStoreApps() ([]*types.AppStore, error) {
 	var apps []types.AppStore
 	var err error
@@ -66,6 +95,17 @@ func (a *AppStoreManager) ListStoreApps() ([]*types.AppStore, error) {
 	return rets, nil
 }
 
+func (a *AppStoreManager) GetLatestVersion(appId uint) (*types.AppVersion, error) {
+	var appVersion types.AppVersion
+	if err := a.DB.Order("create_time desc").First(&appVersion, "scope = ? and scope_id = ?", types.AppVersionScopeStoreApp, appId).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &appVersion, nil
+}
+
 func (a *AppStoreManager) Init() {
 	apps, err := a.ListStoreApps()
 	if err != nil {
@@ -75,62 +115,92 @@ func (a *AppStoreManager) Init() {
 	if len(apps) == 0 {
 		pwd, _ := os.Getwd()
 		//获取文件或目录相关信息
-		middlewareDir := filepath.Join(pwd, "kubespace_apps", "middleware")
-		fileInfoList, err := ioutil.ReadDir(middlewareDir)
+		appDir := filepath.Join(pwd, "apps")
+		fileInfoList, err := ioutil.ReadDir(appDir)
 		if err != nil {
 			klog.Errorf("read dir error: %v", err)
 		}
 		for i := range fileInfoList {
 			klog.Infof("start load %s", fileInfoList[i].Name())
-			if strings.HasSuffix(fileInfoList[i].Name(), ".tgz") {
-				a.loadApp(filepath.Join(middlewareDir, fileInfoList[i].Name()), types.AppTypeMiddleware)
-			}
-		}
+			a.loadApp(filepath.Join(appDir, fileInfoList[i].Name()))
 
-		componentDir := filepath.Join(pwd, "kubespace_apps", "component")
-		fileInfoList, err = ioutil.ReadDir(componentDir)
-		if err != nil {
-			klog.Errorf("read dir error: %v", err)
-		}
-		for i := range fileInfoList {
-			klog.Infof("start load %s", fileInfoList[i].Name())
-			if strings.HasSuffix(fileInfoList[i].Name(), ".tgz") {
-				a.loadApp(filepath.Join(middlewareDir, fileInfoList[i].Name()), types.AppTypeClusterComponent)
-			}
 		}
 	}
 }
 
-func (a *AppStoreManager) loadApp(filePath string, appType string) {
-	charts, err := loader.LoadFile(filePath)
+type AppFileMetadata struct {
+	Name     string   `json:"name"`
+	Versions []string `json:"versions"`
+	Type     string   `json:"type"`
+}
+
+func (a *AppStoreManager) loadApp(appPath string) {
+	metadataBytes, err := ioutil.ReadFile(filepath.Join(appPath, "metadata"))
 	if err != nil {
-		klog.Errorf("load %s file error: %s", filePath, err)
+		klog.Errorf("read app metadata %s error: %s", appPath, err)
 		return
 	}
+	var metadata AppFileMetadata
+	err = json.Unmarshal(metadataBytes, &metadata)
+	if err != nil {
+		klog.Errorf("unmarshal metadata %s error: %s", appPath, err)
+		return
+	}
+	if metadata.Name == "" {
+		klog.Errorf("metadata %s app name is empty", appPath)
+		return
+	}
+	if len(metadata.Versions) == 0 {
+		klog.Errorf("app %s versions is empty", appPath)
+		return
+	}
+	if metadata.Type == "" {
+		klog.Errorf("app %s type is empty", appPath)
+		return
+	}
+	icon, err := ioutil.ReadFile(filepath.Join(appPath, "icon.png"))
 
 	app := &types.AppStore{
-		Name:        charts.Name(),
-		Description: charts.Metadata.Description,
-		Type:        appType,
-		CreateUser:  "admin",
-		UpdateUser:  "admin",
-		CreateTime:  time.Now(),
-		UpdateTime:  time.Now(),
+		Name:       metadata.Name,
+		Type:       metadata.Type,
+		Icon:       icon,
+		CreateUser: "admin",
+		UpdateUser: "admin",
+		CreateTime: time.Now(),
+		UpdateTime: time.Now(),
 	}
-	valuesByte, _ := yaml.Marshal(charts.Values)
-	appVersion := &types.AppVersion{
-		PackageName:    charts.Name(),
-		PackageVersion: charts.Metadata.Version,
-		AppVersion:     charts.AppVersion(),
-		From:           types.AppVersionFromImport,
-		Values:         string(valuesByte),
-		CreateUser:     "admin",
-		CreateTime:     time.Now(),
-		UpdateTime:     time.Now(),
-	}
-	chartByte, _ := ioutil.ReadFile(filePath)
-	_, err = a.CreateStoreApp(chartByte, app, appVersion)
-	if err != nil {
-		klog.Errorf("create app %s-%s error: %s", app.Name, appVersion.PackageVersion, err)
+	for _, appVersion := range metadata.Versions {
+		versionPath := filepath.Join(appPath, appVersion)
+		charts, err := loader.LoadFile(versionPath)
+		if err != nil {
+			klog.Errorf("load %s file error: %s", versionPath, err)
+			break
+		}
+		values := ""
+		for _, rawFile := range charts.Raw {
+			if rawFile.Name == "values.yaml" {
+				values = string(rawFile.Data)
+				break
+			}
+		}
+		if app.Description == "" {
+			app.Description = charts.Metadata.Description
+		}
+		newAppVersion := &types.AppVersion{
+			PackageName:    charts.Name(),
+			PackageVersion: charts.Metadata.Version,
+			AppVersion:     charts.AppVersion(),
+			From:           types.AppVersionFromImport,
+			Values:         values,
+			Description:    "平台内置应用",
+			CreateUser:     "admin",
+			CreateTime:     time.Now(),
+			UpdateTime:     time.Now(),
+		}
+		chartByte, _ := ioutil.ReadFile(versionPath)
+		_, err = a.CreateStoreApp(chartByte, app, newAppVersion)
+		if err != nil {
+			klog.Errorf("create app %s-%s error: %s", app.Name, newAppVersion.PackageVersion, err)
+		}
 	}
 }

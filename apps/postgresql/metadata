@@ -1,0 +1,5 @@
+{
+    "name": "postgresql",
+    "versions": ["postgresql-10.10.3.tgz"],
+    "type": "middleware"
+}

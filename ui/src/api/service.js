@@ -1,9 +1,10 @@
 import request from '@/utils/request'
 
-export function listServices(cluster) {
+export function listServices(cluster, params) {
   return request({
     url: `service/${cluster}`,
     method: 'get',
+    params
   })
 }
 

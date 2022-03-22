@@ -31,6 +31,7 @@ func NewProjectApp(models *model.Models, appService *project.AppService) *Projec
 		views.NewView(http.MethodPost, "", app.create),
 		views.NewView(http.MethodPost, "/install", app.install),
 		views.NewView(http.MethodPost, "/destroy", app.destroy),
+		views.NewView(http.MethodPost, "/import_storeapp", app.importStoreapp),
 		views.NewView(http.MethodDelete, "/:id", app.deleteApp),
 	}
 	app.Views = vs
@@ -111,4 +112,12 @@ func (a *ProjectApp) destroy(c *views.Context) *utils.Response {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
 	return a.AppService.DestroyApp(c.User, ser)
+}
+
+func (a *ProjectApp) importStoreapp(c *views.Context) *utils.Response {
+	var ser serializers.ImportStoreAppSerializers
+	if err := c.ShouldBind(&ser); err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	return a.AppService.ImportStoreApp(ser, c.User)
 }

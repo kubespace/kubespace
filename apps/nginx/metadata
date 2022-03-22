@@ -1,0 +1,5 @@
+{
+    "name": "nginx",
+    "versions": ["nginx-9.5.2.tgz"],
+    "type": "middleware"
+}

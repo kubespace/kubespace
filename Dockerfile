@@ -3,7 +3,7 @@ FROM $BASEIMAGE
 
 COPY ospserver /
 COPY entrypoint.sh /
-COPY kubespace_apps /helm_apps
+COPY apps /apps
 COPY ui/dist/favicon.ico /favicon.ico
 
 CMD ["bash", "-c", "sh /entrypoint.sh"]

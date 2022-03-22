@@ -1,6 +1,7 @@
 package project
 
 import (
+	"errors"
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"gorm.io/gorm"
@@ -91,8 +92,31 @@ func (v *AppVersionManager) UpdateAppVersion(appVersion *types.AppVersion, colum
 func (v *AppVersionManager) ListAppVersions(scope string, scopeId uint) (*[]types.AppVersion, error) {
 	var appVersions []types.AppVersion
 	var err error
-	if err = v.DB.Where("scope = ? and scope_id = ?", scope, scopeId).Order("create_time desc").Find(&appVersions).Error; err != nil {
+	if err = v.DB.Where("scope = ? and scope_id = ?", scope, scopeId).Order("id desc").Find(&appVersions).Error; err != nil {
 		return nil, err
 	}
 	return &appVersions, nil
+}
+
+func (v *AppVersionManager) DeleteVersion(id uint) error {
+	var appVersion types.AppVersion
+	if err := v.DB.First(&appVersion, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return err
+	}
+	var chartCount int64
+	if err := v.DB.Model(&types.AppVersion{}).Where("chart_path=?", appVersion.ChartPath).Count(&chartCount).Error; err != nil {
+		return err
+	}
+	if err := v.DB.Delete(&appVersion, "id = ?", id).Error; err != nil {
+		return err
+	}
+	if chartCount == 1 {
+		if err := v.DB.Delete(&types.AppVersionChart{}, "path=?", appVersion.ChartPath).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }

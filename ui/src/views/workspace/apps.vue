@@ -1,6 +1,15 @@
 <template>
   <div>
-    <clusterbar :titleName="titleName" :nameFunc="nameSearch" :createFunc="openCreateApp" createDisplay="创建应用"/>
+    <clusterbar :titleName="titleName" :nameFunc="nameSearch" createDisplay="创建应用">
+      <div slot="right-btn" style="display: inline-block">
+        <el-button size="small" type="primary" @click="openCreateApp" icon="el-icon-plus">
+          创建应用
+        </el-button>
+        <el-button @click="openImportStoreAppDialog" type="primary" size="small">
+          导入应用
+        </el-button>
+      </div>
+    </clusterbar>
     <div class="dashboard-container" ref="tableCot">
       <el-table
         ref="multipleTable"
@@ -20,6 +29,9 @@
           </template>
         </el-table-column>
         <el-table-column prop="package_version" label="版本" show-overflow-tooltip min-width="15">
+          <template slot-scope="scope">
+            {{ scope.row.from == 'space' ? scope.row.package_version : scope.row.package_version + ' / ' + scope.row.app_version }}
+          </template>
         </el-table-column>
         <el-table-column prop="type" label="类型" show-overflow-tooltip min-width="15">
           <template slot-scope="scope">
@@ -39,35 +51,53 @@
             <span :style="{'font-weight': 430}">{{ statusNameMap[scope.row.status] }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150">
+        <el-table-column label="操作" width="170">
           <template slot-scope="scope">
             <div class="tableOperate">
               <el-link :underline="false" class="operator-btn"
                 v-if="scope.row.status=='UnInstall'" @click="openInstallFormDialog(scope.row)">安装</el-link>
               <el-link :underline="false" class="operator-btn"
                 v-if="scope.row.status!='UnInstall'" @click="openInstallFormDialog(scope.row, true)">升级</el-link>
-              <el-link :underline="false" class="operator-btn"
+              <el-link :underline="false" class="operator-btn" v-if="scope.row.from=='space'"
                 @click="openEditApp(scope.row.app_version_id)">编辑</el-link>
-              <el-link :underline="false" class="operator-btn" style="color: #F56C6C"
-                v-if="scope.row.status!='UnInstall'" @click="handleDestroyApp(scope.row.id, scope.row.name)">销毁</el-link>
-              <el-link :underline="false" style="color: #F56C6C" v-if="scope.row.status=='UnInstall'"
-                @click="handleDeleteApp(scope.row.id, scope.row.name)">删除</el-link>
+              
+              <el-dropdown style="font-size: 13px;">
+                <span class="el-dropdown-link operator-btn">
+                  更多操作
+                </span>
+                <el-dropdown-menu slot="dropdown">
+                  <el-dropdown-item>
+                    <el-link :underline="false" class="operator-btn" style="color:#0c81f5; font-weight: 400"
+                      @click="openEditApp(scope.row.app_version_id)">克隆</el-link>
+                  </el-dropdown-item>
+                  <el-dropdown-item>
+                    <el-link :underline="false" class="operator-btn" style="color:#0c81f5; font-weight: 400"
+                      @click="openEditApp(scope.row.app_version_id)">发布</el-link>
+                  </el-dropdown-item>
+                  <el-dropdown-item>
+                    <el-link :underline="false" class="operator-btn" style="color: #F56C6C; font-weight: 400"
+                      v-if="scope.row.status!='UnInstall'" @click="handleDestroyApp(scope.row.id, scope.row.name)">销毁</el-link>
+                    <el-link :underline="false" style="color: #F56C6C; font-weight: 400" v-if="scope.row.status=='UnInstall'"
+                      @click="handleDeleteApp(scope.row.id, scope.row.name)">删除</el-link>
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </el-dropdown>
             </div>
           </template>
         </el-table-column>
       </el-table>
 
       <el-dialog :title="updateFormVisible ? '升级应用' : '安装应用'" :visible.sync="installFormVisible"
-      @close="closeFormDialog" :destroy-on-close="true" :close-on-click-modal="false">
-        <div v-loading="installLoading">
-          <div class="dialogContent" style="">
+        @close="closeFormDialog" :destroy-on-close="true" :close-on-click-modal="false" top="5vh" width="70%">
+        <div v-loading="dialogLoading">
+          <div class="dialogContent" style="margin-top: -10px;">
             <el-form :model="form" :rules="rules" ref="form" label-position="left" label-width="105px">
-              <el-form-item label="名称" prop="" autofocus>
+              <el-form-item label="应用名称" prop="" autofocus>
                 <span>{{ form.name }}</span>
               </el-form-item>
               <div v-loading="fetchVersionLoading">
-                <el-form-item label="安装版本" prop="" :required="true">
-                  <el-select v-model="form.app_version_id" placeholder="请选择应用版本" size="small" style="width: 100%;"
+                <el-form-item label="安装版本" prop="" :required="true" style="margin-top: -10px;">
+                  <el-select v-model="form.app_version_id" placeholder="请选择应用版本" size="small" style="width: 50%;"
                     @change="changeInstallAppVersion">
                     <el-option
                       v-for="item in appVersions"
@@ -77,23 +107,28 @@
                     </el-option>
                   </el-select>
                 </el-form-item>
-                <el-row style="margin-bottom: 17px;">
-                  <el-col :span="7"><div style="color: #909399">负载容器</div></el-col>
-                  <el-col :span="12"><div style="color: #909399">镜像</div></el-col>
-                  <el-col :span="5"><div style="color: #909399">标签</div></el-col>
-                </el-row>
-                <div v-for="(v, k) of form.values_dict.workloads ? form.values_dict.workloads : {}" :key="k">
-                  <el-row style="margin-bottom: 17px;" v-for="(cv, ck) of v.containers" :key="ck">
-                    <el-col :span="7">
-                      <div style="padding-top: 6px; padding-right: 3px;">{{ k + "/" + ck }}</div>
-                    </el-col>
-                    <el-col :span="12" style="padding-right: 15px">
-                      <el-input v-model="cv.image" autocomplete="off" placeholder="请输入容器镜像" size="small"></el-input>
-                    </el-col>
-                    <el-col :span="5">
-                      <el-input v-model="cv.tag" autocomplete="off" placeholder="镜像Tag" size="small"></el-input>
-                    </el-col>
+                <template v-if="form.from == 'space'">
+                  <el-row style="line-height: 40px;">
+                    <el-col :span="7"><div style="padding-left: 10px; background-color: rgb(245, 247, 250);color: #909399">负载容器</div></el-col>
+                    <el-col :span="11"><div style="background-color: rgb(245, 247, 250);color: #909399">镜像</div></el-col>
+                    <el-col :span="6"><div style="background-color: rgb(245, 247, 250);color: #909399">标签</div></el-col>
                   </el-row>
+                  <div v-for="(v, k) of form.values_dict.workloads ? form.values_dict.workloads : {}" :key="k">
+                    <el-row style="margin-top: 10px;" v-for="(cv, ck) of v.containers" :key="ck">
+                      <el-col :span="7">
+                        <div style="padding-left: 10px;padding-top: 6px; padding-right: 3px;">{{ k + "/" + ck }}</div>
+                      </el-col>
+                      <el-col :span="11" style="padding-right: 15px">
+                        <el-input v-model="cv.image" autocomplete="off" placeholder="请输入容器镜像" size="small"></el-input>
+                      </el-col>
+                      <el-col :span="6">
+                        <el-input v-model="cv.tag" autocomplete="off" placeholder="镜像Tag" size="small"></el-input>
+                      </el-col>
+                    </el-row>
+                  </div>
+                </template>
+                <div v-if="form.from == 'import'">
+                  <yaml v-model="form.values"></yaml>
                 </div>
               </div>
             </el-form>
@@ -106,19 +141,58 @@
           </div>
         </div>
       </el-dialog>
+
+      <el-dialog title="应用商店导入" :visible.sync="importStoreFormVisible"
+        @close="importStoreFormVisible=false;importStoreAppForm={}" :destroy-on-close="true" :close-on-click-modal="false">
+        <div v-loading="dialogLoading">
+          <div class="dialogContent" style="">
+            <el-form :model="importStoreAppForm" :rules="rules" ref="form" label-position="left" label-width="105px">
+              <div v-loading="fetchVersionLoading">
+                <el-form-item label="应用名称" prop="" :required="true">
+                  <el-select v-model="importStoreAppForm.storeAppId" placeholder="请选择应用" size="small" style="width: 100%;"
+                    @change="storeAppChange" filterable>
+                    <el-option
+                      v-for="item in storeApps"
+                      :key="item.id"
+                      :label="item.name"
+                      :value="item.id">
+                    </el-option>
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="应用版本" prop="" :required="true">
+                  <el-select v-model="importStoreAppForm.storeAppVersion" placeholder="请选择应用版本" size="small" style="width: 100%;">
+                    <el-option
+                      v-for="item in storeAppVersions || []"
+                      :key="item.id"
+                      :label="item.package_version + ' / ' + item.app_version"
+                      :value="item.id">
+                    </el-option>
+                  </el-select>
+                </el-form-item>
+              </div>
+            </el-form>
+          </div>
+          <div slot="footer" class="dialogFooter" style="padding-top: 0px;">
+            <el-button @click="importStoreFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
+            <el-button type="primary" @click="handelImportStoreApp" >导 入</el-button>
+          </div>
+        </div>
+      </el-dialog>
     </div>
   </div>
 </template>
 <script>
-import { Clusterbar } from "@/views/components";
-import { listApps, listAppStatus, listAppVersions, installApp, destroyApp, deleteApp } from "@/api/project/apps";
+import { Clusterbar, Yaml } from "@/views/components";
+import { listApps, listAppStatus, listAppVersions, installApp, destroyApp, deleteApp, importStoreApp } from "@/api/project/apps";
 import { Message } from "element-ui";
+import { listStoreApps } from '@/api/project/appStore'
 import yaml from 'js-yaml'
 
 export default {
   name: "projectApps",
   components: {
     Clusterbar,
+    Yaml,
   },
   mounted: function () {
     const that = this;
@@ -141,13 +215,15 @@ export default {
       namespaces: [],
       appVersions: [],
       fetchVersionLoading: false,
-      installLoading: false,
+      dialogLoading: false,
       refreshStatusTimer: undefined,
       form: {
         id: "",
         name: "",
         app_version_id: "",
         values_dict: {},
+        values: '',
+        from: ''
       },
       rules: {
         // name: [{ required: true, message: '请输入空间名称', trigger: 'blur' },],
@@ -171,6 +247,12 @@ export default {
       },
       originApps: [],
       search_name: "",
+      importStoreFormVisible: false,
+      importStoreAppForm: {
+        storeAppId: '',
+        storeAppVersion: '',
+      },
+      storeApps: [],
     };
   },
   created() {
@@ -185,6 +267,14 @@ export default {
     projectId() {
       return this.$route.params.workspaceId
     },
+    storeAppVersions() {
+      if(!this.importStoreAppForm.storeAppId) return []
+      if(this.storeApps.length == 0) return []
+      for(let a of this.storeApps) {
+        if(a.id == this.importStoreAppForm.storeAppId && a.versions) return a.versions
+      }
+      return []
+    },
   },
   methods: {
     nameClick: function(id) {
@@ -193,7 +283,8 @@ export default {
     fetchApps() {
       this.loading = true
       listApps({project_id: this.projectId}).then((resp) => {
-        this.originApps = resp.data ? resp.data : []
+        let originApps = resp.data ? resp.data : []
+        this.$set(this, 'originApps', originApps)
         this.loading = false
         this.getAppStatus()
       }).catch((err) => {
@@ -210,21 +301,40 @@ export default {
         Message.error("请选择要安装的应用版本");
         return
       }
-      let values = this.form.values_dict
+      let values = this.form.values
+      if(this.form.from == 'space') {
+        let values_dict = JSON.parse(JSON.stringify(this.form.values_dict))
+        for(let wk in values_dict.workloads || {}) {
+          for(let ck in values_dict.workloads[wk].containers || {}) {
+            let image = values_dict.workloads[wk].containers[ck].image
+            let tag = values_dict.workloads[wk].containers[ck].tag
+            if(!image) {
+              Message.error("请输入应用容器镜像")
+              return
+            }
+            if(tag) image += ":"+tag
+            values_dict.workloads[wk].containers[ck].image = image
+            if(tag != undefined) {
+              delete values_dict.workloads[wk].containers[ck].tag
+            }
+          }
+        }
+        values = yaml.dump(values_dict)
+      }
       let data = {
         project_app_id: this.form.id, 
         app_version_id: this.form.app_version_id, 
         values: values,
         upgrade: upgrade ? true : false
       }
-      this.installLoading = true
+      this.dialogLoading = true
       installApp(data).then(() => {
-        this.installLoading = false
+        this.dialogLoading = false
         this.installFormVisible = false;
         Message.success("安装应用成功")
         this.fetchApps()
       }).catch((err) => {
-        this.installLoading = false
+        this.dialogLoading = false
       });
     },
     handleDestroyApp(id, name) {
@@ -246,24 +356,6 @@ export default {
           this.loading = false
         });
       }).catch(() => {       
-      });
-    },
-    handleUpdateApp() {
-      if(!this.form.id) {
-        Message.error("获取空间id参数异常，请刷新重试");
-        return
-      }
-      let project = {
-        name: this.form.name, 
-        description: this.form.description, 
-        owner: this.form.owner
-      }
-      updateSecret(this.form.id, project).then(() => {
-        this.installFormVisible = false;
-        Message.success("更新项目空间成功")
-        this.fetchApps()
-      }).catch((err) => {
-        console.log(err)
       });
     },
     handleDeleteApp(id, name) {
@@ -289,14 +381,15 @@ export default {
       this.search_name = val;
     },
     openInstallFormDialog(app, isUpdate) {
-      console.log(isUpdate)
       if(isUpdate) this.updateFormVisible = true
       this.appVersions = []
       this.form = {
         id: app.id,
         name: app.name,
         app_version_id: app.app_version_id,
-        values_dict: {}
+        values_dict: {},
+        values: '',
+        from: app.from,
       }
       this.installFormVisible = true;
       this.fetchVersionLoading = true;
@@ -313,19 +406,29 @@ export default {
       if(!this.appVersions || this.appVersions.length <= 0) return
       for(let v of this.appVersions) {
         if(v.id == app_version_id) {
-          this.form.values_dict = yaml.load(v.values)
+          let values_dict = yaml.load(v.values)
+          this.form.values = v.values
+          this.form.from = v.from
+          if(v.from == 'space') {
+            for(let wk in values_dict.workloads || {}) {
+              for(let ck in values_dict.workloads[wk].containers || {}) {
+                let imageTag = values_dict.workloads[wk].containers[ck].image
+                if(imageTag) {
+                  let s = imageTag.split(":")
+                  values_dict.workloads[wk].containers[ck].image = s[0]
+                  if(s.length > 1) {
+                    values_dict.workloads[wk].containers[ck].tag = s[1]
+                  }
+                }
+              }
+            }
+          }
+          this.form.values_dict = values_dict
           return
         }
       }
     },
     closeFormDialog() {
-      this.form = {
-        id: "",
-        name: "",
-        app_version_id: "",
-        values_dict: {}
-      }
-      this.appVersions = []
       this.updateFormVisible = false; 
       this.installFormVisible = false;
     },
@@ -358,7 +461,59 @@ export default {
       }
       this.refreshStatusTimer = setTimeout(function () {
           that.getAppStatus()
-      }, 5000);
+      }, 10000);
+    },
+    listStoreApps: function() {
+      this.dialogLoading = true
+      listStoreApps({with_versions: true}).then(response => {
+        this.storeApps = []
+        for(let a of response.data || []) {
+          if(a.type != 'component') this.storeApps.push(a)
+        }
+        this.storeApps.sort((a, b) => {return a.name > b.name ? 1 : -1})
+        this.dialogLoading = false
+      }).catch(() => {
+        this.dialogLoading = false
+      })
+    },
+    openImportStoreAppDialog() {
+      this.importStoreFormVisible = true
+      if(this.storeApps.length == 0) {
+        this.listStoreApps()
+      }
+    },
+    storeAppChange(val) {
+      if(this.storeAppVersions.length > 0) {
+        this.importStoreAppForm.storeAppVersion = this.storeAppVersions[0].id
+      } else {
+        this.importStoreAppForm.storeAppVersion = ''
+      }
+    },
+    handelImportStoreApp() {
+      console.log(this.importStoreAppForm)
+      var data = {
+        project_id: parseInt(this.projectId),
+        store_app_id: this.importStoreAppForm.storeAppId,
+        app_version_id: this.importStoreAppForm.storeAppVersion
+      }
+      console.log(data)
+      if(!data.store_app_id) {
+        Message.error("请选择应用")
+        return
+      }
+      if(!data.app_version_id) {
+        Message.error("请选择应用")
+        return
+      }
+      this.dialogLoading = true
+      importStoreApp(data).then(response => {
+        this.dialogLoading = false
+        Message.success("导入应用成功")
+        this.importStoreFormVisible = false
+        this.fetchApps()
+      }).catch(() => {
+        this.dialogLoading = false
+      })
     }
   },
 };
@@ -382,11 +537,6 @@ export default {
   vertical-align: middle; 
   border-radius: 25px; 
   margin: 0px 5px 3px 0px;
-}
-
-.operator-btn {
-  margin-right: 15px;
-  color:#0c81f5
 }
 
 </style>

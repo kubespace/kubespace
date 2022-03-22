@@ -1,0 +1,5 @@
+{
+    "name": "habor",
+    "versions": ["harbor-11.0.1.tgz"],
+    "type": "component"
+}

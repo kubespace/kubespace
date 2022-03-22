@@ -1,6 +1,7 @@
 <template>
   <div>
-    <clusterbar :titleName="titleName" :nsFunc="nsSearch" :nameFunc="nameSearch" :delFunc="delFunc"/>
+    <clusterbar :titleName="titleName" :nsFunc="projectId ? undefined : nsSearch" :nameFunc="nameSearch" 
+      :createFunc="openCreateFormDialog"/>
     <div class="dashboard-container">
       <!-- <div class="dashboard-text"></div> -->
       <el-table
@@ -16,10 +17,6 @@
         @selection-change="handleSelectionChange"
         row-key="uid"
         >
-        <el-table-column
-          type="selection"
-          width="45">
-        </el-table-column>
         <el-table-column
           prop="name"
           label="名称"
@@ -39,7 +36,7 @@
         </el-table-column>
         <el-table-column
           prop="rules"
-          label="访问域名"
+          label="主机名"
           min-width="75"
           show-overflow-tooltip>
           <template slot-scope="scope">
@@ -53,39 +50,187 @@
           label="创建时间"
           min-width="40"
           show-overflow-tooltip>
-        </el-table-column>
-        <el-table-column
-          label=""
-          show-overflow-tooltip
-          width="45">
           <template slot-scope="scope">
-            <el-dropdown size="medium" >
-              <el-link :underline="false"><svg-icon style="width: 1.3em; height: 1.3em;" icon-class="operate" /></el-link>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item @click.native.prevent="nameClick(scope.row.namespace, scope.row.name)">
-                  <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="detail" />
-                  <span style="margin-left: 5px;">详情</span>
-                </el-dropdown-item>
-                <el-dropdown-item v-if="$updatePerm()" @click.native.prevent="getIngressYaml(scope.row.namespace, scope.row.name)">
-                  <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="edit" />
-                  <span style="margin-left: 5px;">修改</span>
-                </el-dropdown-item>
-                <el-dropdown-item v-if="$deletePerm()" @click.native.prevent="deleteIngresses([{namespace: scope.row.namespace, name: scope.row.name}])">
-                  <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="delete" />
-                  <span style="margin-left: 5px;">删除</span>
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
+            <span>
+              {{ $dateFormat(scope.row.created) }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" show-overflow-tooltip width="110px">
+          <template slot-scope="scope">
+            <div class="tableOperate">
+              <el-link :underline="false" class="operator-btn" @click="openUpdateFormDialog(scope.row.namespace, scope.row.name)">编辑</el-link>
+              <el-link :underline="false" style="color: #F56C6C" @click="handleDeleteIngresses([{namespace: scope.row.namespace, name: scope.row.name}])">删除</el-link>
+            </div>
           </template>
         </el-table-column>
       </el-table>
     </div>
-    <el-dialog title="编辑" :visible.sync="yamlDialog" :close-on-click-modal="false" width="60%" top="55px">
-      <yaml v-if="yamlDialog" v-model="yamlValue" :loading="yamlLoading"></yaml>
-      <span slot="footer" class="dialog-footer">
-        <el-button plain @click="yamlDialog = false" size="small">取 消</el-button>
-        <el-button plain @click="updateIngress()" size="small">确 定</el-button>
-      </span>
+    <el-dialog :title="updateFormVisible ? '编辑Ingress' : '创建Ingress'" :visible.sync="createFormVisible"
+      @close="closeFormDialog" :destroy-on-close="true" width="70%" :close-on-click-modal="false" top="8vh">
+      <div v-loading="dialogLoading">
+        <div class="dialogContent" style="margin: 0px;">
+          <el-form :model="ingress.metadata" :rules="rules" ref="form" label-position="left" label-width="105px">
+            <el-form-item label="名称" prop="name" autofocus required>
+              <el-input v-model="ingress.metadata.name" style="width: 50%;" autocomplete="off" 
+                placeholder="只能包含小写字母数字以及-和.,数字或者字母开头或结尾" size="small" :disabled="updateFormVisible"></el-input>
+            </el-form-item>
+            <el-form-item label="命名空间" required>
+              <span v-if="namespace">{{ namespace }}</span>
+              <!-- <el-input v-else :disabled="updateFormVisible" v-model="ingress.metadata.namespace" style="width: 50%;"  autocomplete="off" placeholder="请输入空间描述" size="small"></el-input> -->
+              <el-select v-else :disabled="updateFormVisible" v-model="ingress.metadata.namespace" placeholder="请选择命名空间"
+                size="small" style="width: 50%;" >
+                <el-option
+                  v-for="item in namespaces"
+                  :key="item.name"
+                  :label="item.name"
+                  :value="item.name">
+                </el-option>
+              </el-select>
+            </el-form-item>
+            <el-form-item label="Annotations" prop="" >
+              <el-row style="margin-bottom: 5px; margin-top: 2px;">
+                <el-col :span="11" style="background-color: #F5F7FA; padding-left: 10px;">
+                  <div class="border-span-header">
+                    <span  class="border-span-content">*</span>Key
+                  </div>
+                </el-col>
+                <el-col :span="12" style="background-color: #F5F7FA">
+                  <div class="border-span-header">
+                    Value
+                  </div>
+                </el-col>
+                <!-- <el-col :span="5"><div style="width: 100px;"></div></el-col> -->
+              </el-row>
+              <el-row style="padding-top: 0px;" v-for="(d, i) in ingress.metadata.annotations" :key="i">
+                <el-col :span="11">
+                  <div class="border-span-header">
+                    <el-input v-model="d.key" size="small" style="padding-right: 10px" placeholder="Key"></el-input>
+                  </div>
+                </el-col>
+                <el-col :span="12">
+                  <div class="border-span-header">
+                    <el-input v-model="d.value" size="small" placeholder="Value"></el-input>
+                  </div>
+                </el-col>
+                <el-col :span="1" style="padding-left: 10px">
+                  <el-button circle size="mini" style="padding: 5px;" 
+                    @click="ingress.metadata.annotations.splice(i, 1)" icon="el-icon-close"></el-button>
+                </el-col>
+              </el-row>
+              <el-row>
+                <el-col :span="23">
+                <el-button style="width: 100%; border-radius: 0px; padding: 9px 15px; border-color: rgb(102, 177, 255); color: rgb(102, 177, 255)" plain size="mini" 
+                  @click="ingress.metadata.annotations.push({})" icon="el-icon-plus">添加注解</el-button>
+                </el-col>
+              </el-row>
+            </el-form-item>
+            <el-form-item label="路由规则" prop="" :required="true">
+              <el-card style="margin-bottom: 10px;" v-for="(r, idx) in ingress.spec.rules" :key="idx">
+                <el-row>
+                  <el-col :span="20">
+                    <el-form label-width="60px">
+                      <el-form-item label="Host" prop="name" autofocus>
+                        <el-input v-model="r.host" style="width: 50%;" autocomplete="off" 
+                          placeholder="请输入Host主机名，如kubespace.cn" size="small"></el-input>
+                      </el-form-item>
+                    </el-form>
+                  </el-col>
+                  <el-col :span="4">
+                    <div style="float: right;">
+                      <el-button style="float: right; padding: 3px 0" type="text"
+                        @click="ingress.spec.rules.splice(idx, 1)">删除</el-button>
+                    </div>
+                  </el-col>
+                </el-row>
+                
+                <el-row style="margin-bottom: 5px; margin-top: 0px;">
+                  <el-col :span="6" style="background-color: #F5F7FA; padding-left: 10px;">
+                    <div class="border-span-header">
+                      路径
+                    </div>
+                  </el-col>
+                  <el-col :span="6" style="background-color: #F5F7FA">
+                    <div class="border-span-header">
+                      路径类型
+                    </div>
+                  </el-col>
+                  <el-col :span="6" style="background-color: #F5F7FA">
+                    <div class="border-span-header">
+                      后端服务
+                    </div>
+                  </el-col>
+                  <el-col :span="5" style="background-color: #F5F7FA">
+                    <div class="border-span-header">
+                      服务端口
+                    </div>
+                  </el-col>
+                  <!-- <el-col :span="5"><div style="width: 100px;"></div></el-col> -->
+                </el-row>
+                <el-row style="padding-top: 0px;" v-for="(d, i) in r.http.paths" :key="i">
+                  <el-col :span="6">
+                    <div class="border-span-header">
+                      <el-input v-model="d.path" size="small" style="padding-right: 10px" placeholder="后端路径"></el-input>
+                    </div>
+                  </el-col>
+                  <el-col :span="6">
+                    <div class="border-span-header">
+                      <el-select v-model="d.pathType" placeholder="路径类型" @change="serviceChange(d)"
+                        size="small" style="width: 100%; padding-right: 10px" >
+                        <el-option value="ImplementationSpecific" label="ImplementationSpecific"></el-option>
+                        <el-option value="Exact" label="Exact"></el-option>
+                        <el-option value="Prefix" label="Prefix"></el-option>
+                      </el-select>
+                    </div>
+                  </el-col>
+                  <el-col :span="6">
+                    <div class="border-span-header">
+                      <el-select v-model="d.service" placeholder="后端服务" @change="serviceChange(d)"
+                        size="small" style="width: 100%; padding-right: 10px" clearable allow-create filterable>
+                        <el-option
+                          v-for="item in namespaceService"
+                          :key="item.name"
+                          :label="item.name"
+                          :value="item.name">
+                        </el-option>
+                      </el-select>
+                    </div>
+                  </el-col>
+                  <el-col :span="5">
+                    <div class="border-span-header">
+                      <el-select v-model="d.port" placeholder="服务端口"
+                        size="small" style="width: 100%;" clearable allow-create filterable>
+                        <el-option
+                          v-for="item in d.ports || []"
+                          :key="item.port"
+                          :label="item.port"
+                          :value="item.port">
+                        </el-option>
+                      </el-select>
+                    </div>
+                  </el-col>
+                  <el-col :span="1" style="padding-left: 10px">
+                    <el-button circle size="mini" style="padding: 5px;" 
+                      @click="r.http.paths.splice(i, 1)" icon="el-icon-close"></el-button>
+                  </el-col>
+                </el-row>
+                <el-row>
+                  <el-col :span="23">
+                    <el-button style="width: 100%; border-radius: 0px; padding: 9px 15px; border-color: rgb(102, 177, 255); color: rgb(102, 177, 255)" plain size="mini" 
+                      @click="r.http.paths.push({})" icon="el-icon-plus">添加路径</el-button>
+                  </el-col>
+                </el-row>
+              </el-card>
+              <el-button style="width: 50%; border-radius: 0px; padding: 9px 15px; border-color: rgb(102, 177, 255); color: rgb(102, 177, 255)" plain size="mini" 
+                @click="ingress.spec.rules.push({host: '', http: {paths: []}})" icon="el-icon-plus">添加规则</el-button>
+            </el-form-item>
+          </el-form>
+        </div>
+        <div slot="footer" class="dialogFooter" style="margin-top: 25px;">
+          <el-button @click="createFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
+          <el-button type="primary" @click="updateFormVisible ? handleUpdateIngress() : handleCreateIngress()" >确 定</el-button>
+        </div>
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -93,32 +238,55 @@
 <script>
 import { Clusterbar } from '@/views/components'
 import { listIngresses, getIngress, deleteIngresses, updateIngress } from '@/api/ingress'
+import { createYaml } from '@/api/cluster'
+import { listServices } from '@/api/service'
+import { projectLabels } from '@/api/project/project'
+import { listNamespace } from '@/api/namespace'
 import { Message } from 'element-ui'
-import { Yaml } from '@/views/components'
+import yaml from 'js-yaml'
 
 export default {
   name: 'Ingress',
   components: {
     Clusterbar,
-    Yaml
   },
   data() {
-      return {
-        yamlDialog: false,
-        yamlNamespace: "",
-        yamlName: "",
-        yamlValue: "",
-        yamlLoading: true,
-        cellStyle: {border: 0},
-        titleName: ["Ingresses"],
-        maxHeight: window.innerHeight - 150,
-        loading: true,
-        originIngresses: [],
-        search_ns: [],
-        search_name: '',
-        delFunc: undefined,
-        delIngresses: [],
-      }
+    return {
+      yamlDialog: false,
+      yamlNamespace: "",
+      yamlName: "",
+      yamlValue: "",
+      yamlLoading: true,
+      cellStyle: {border: 0},
+      titleName: ["Ingresses"],
+      maxHeight: window.innerHeight - 135,
+      loading: true,
+      originIngresses: [],
+      search_ns: [],
+      search_name: '',
+      delFunc: undefined,
+      delIngresses: [],
+      dialogLoading: false,
+      createFormVisible: false,
+      updateFormVisible: false,
+      ingressGroup: "extensions",
+      ingress: {
+        kind: "Ingress",
+        apiVersion: "extensions/v1beta1",
+        metadata: {
+          name: "",
+          annotations: [],
+        },
+        spec: {
+          backend: {},
+          rules: [],
+          tls: [],
+        },
+      },
+      rules: {},
+      namespaces: [],
+      services: [],
+    }
   },
   created() {
     this.fetchData()
@@ -127,7 +295,7 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150
+        let heightStyle = window.innerHeight - 135
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
@@ -155,6 +323,9 @@ export default {
           this.originIngresses = this.originIngresses.filter(( { uid } ) => uid !== newUid)
         }
       }
+    },
+    cluster: function() {
+      this.fetchData()
     }
   },
   computed: {
@@ -174,21 +345,43 @@ export default {
     },
     ingressesWatch: function() {
       return this.$store.getters["ws/ingressesWatch"]
+    },
+    projectId() {
+      return this.$route.params.workspaceId
+    },
+    cluster: function() {
+      return this.$store.state.cluster
+    },
+    namespace: function() {
+      return this.$store.state.namespace || ''
+    },
+    namespaceService: function() {
+      if(!this.ingress.metadata.namespace) return []
+      let services = []
+      for(let s of this.services) {
+        if(s.namespace == this.ingress.metadata.namespace) {
+          services.push(s)
+        }
+      }
+      return services
     }
   },
   methods: {
     fetchData: function() {
       this.loading = true
-      this.originIngresses = []
       const cluster = this.$store.state.cluster
+      let params = {namespace: this.namespace}
+      if(this.projectId) params['labels'] = projectLabels()
       if (cluster) {
-        listIngresses(cluster).then(response => {
+        listIngresses(cluster, params).then(response => {
           this.loading = false
-          this.originIngresses = response.data ? response.data : []
+          let originIngresses = response.data.ingresses ? response.data.ingresses : []
+          this.$set(this, 'originIngresses', originIngresses)
+          this.ingressGroup = response.data.group
         }).catch(() => {
           this.loading = false
         })
-      } else {
+      } else if(!this.projectId) {
         this.loading = false
         Message.error("获取集群异常，请刷新重试")
       }
@@ -219,9 +412,7 @@ export default {
     nameClick: function(namespace, name) {
       this.$router.push({name: 'ingressDetail', params: {namespace: namespace, ingressName: name}})
     },
-    getIngressYaml: function(namespace, name) {
-      this.yamlNamespace = ""
-      this.yamlName = ""
+    getIngress: function(namespace, name) {
       const cluster = this.$store.state.cluster
       if (!cluster) {
         Message.error("获取集群参数异常，请刷新重试")
@@ -235,54 +426,78 @@ export default {
         Message.error("获取Deployment名称参数异常，请刷新重试")
         return
       }
-      this.yamlValue = ""
-      this.yamlDialog = true
-      this.yamlLoading = true
-      getIngress(cluster, namespace, name, "yaml").then(response => {
-        this.yamlLoading = false
-        this.yamlValue = response.data
-        this.yamlNamespace = namespace
-        this.yamlName = name
+      this.dialogLoading = true
+      getIngress(cluster, namespace, name, ).then(response => {
+        let ingress = response.data
+        // let rules = []
+        for(let r of ingress.spec.rules) {
+          for(let p of r.http.paths) {
+            if(p.backend){
+              if(this.ingressGroup == 'extensions') {
+                p['service'] = p.backend.serviceName
+                p['port'] = p.backend.servicePort
+              } else if(p.backend.service) {
+                p['service'] = p.backend.service.name
+                if(p.backend.service.port) {
+                  p['port'] = p.backend.service.port.number || p.backend.service.port.name
+                }
+              }
+            }
+          }
+        }
+        let annotations = []
+        if(ingress.metadata.annotations){
+          for(let k in ingress.metadata.annotations) {
+            annotations.push({key: k, value: ingress.metadata.annotations[k]})
+          }
+        }
+        ingress.metadata.annotations = annotations
+        this.ingress = ingress
+        this.dialogLoading = false
       }).catch(() => {
-        this.yamlLoading = false
+        this.dialogLoading = false
       })
     },
-    deleteIngresses: function(ingresses) {
+    handleDeleteIngresses: function(ingresses) {
+      let cs = ''
+      for(let c of ingresses) {
+        cs += `${c.namespace}/${c.name},`
+      }
+      cs = cs.substr(0, cs.length - 1)
+      this.$confirm(`请确认是否删除「${cs}」Ingress?`, '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        this.loading = true
+        deleteIngresses(this.cluster, {resources: ingresses}).then(() => {
+          Message.success("删除Ingress成功")
+          this.fetchData()
+        }).catch(() => {
+          // console.log(e)
+        })
+      }).catch(() => {       
+      });
+    },
+    handleUpdateIngress: function() {
       const cluster = this.$store.state.cluster
       if (!cluster) {
         Message.error("获取集群参数异常，请刷新重试")
         return
       }
-      if ( ingresses.length <= 0 ){
-        Message.error("请选择要删除的Ingresses")
+      let ingress = JSON.parse(JSON.stringify(this.ingress))
+      let err = this.transferIngressRules(ingress)
+      if(err) {
+        Message.error(err)
         return
       }
-      let params = {
-        resources: ingresses
-      }
-      deleteIngresses(cluster, params).then(() => {
-        Message.success("删除成功")
-      }).catch(() => {
-        // console.log(e)
-      })
-    },
-    updateIngress: function() {
-      const cluster = this.$store.state.cluster
-      if (!cluster) {
-        Message.error("获取集群参数异常，请刷新重试")
-        return
-      }
-      if (!this.yamlNamespace) {
-        Message.error("获取命名空间参数异常，请刷新重试")
-        return
-      }
-      if (!this.yamlName) {
-        Message.error("获取Ingress参数异常，请刷新重试")
-        return
-      }
-      console.log(this.yamlValue)
-      updateIngress(cluster, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
-        Message.success("更新成功")
+      let yamlStr = yaml.dump(ingress)
+      this.dialogLoading = true
+      updateIngress(cluster, ingress.metadata.namespace, ingress.metadata.name, yamlStr).then(() => {
+        Message.success("更新Ingress成功")
+        this.dialogLoading = false
+        this.createFormVisible = false
+        this.fetchData()
       }).catch(() => {
         // console.log(e) 
       })
@@ -311,6 +526,159 @@ export default {
         hosts.push(r.host)
       }
       return hosts.join(',')
+    },
+    transferIngressRules(ingress) {
+      let rules = []
+      for(let r of ingress.spec.rules) {
+        let rule = {host: r.host, http: {paths: []}}
+        for(let p of r.http.paths) {
+          let path = {
+            path: p.path
+          }
+          let port = p.port
+          try{
+            port = parseInt(p.port)
+          }catch(e) {
+            port = p.port
+          }
+          if(p.pathType) path['pathType'] = p.pathType
+          if(this.ingressGroup == 'extensions') {
+            path['backend'] = {serviceName: p.service}
+            if(port) path['backend']['servicePort'] = port
+          } else {
+            path['backend'] = {service: {name: p.service}}
+            if(port) {
+              if(isNaN(port)){
+                path['backend']['service']['port'] = {'name': port}
+              } else {
+                path['backend']['service']['port'] = {'number': port}
+              }
+            }
+            if(!p.pathType) path['pathType'] = 'ImplementationSpecific'
+          }
+          rule.http.paths.push(path)
+        }
+        rules.push(rule)
+      }
+      ingress.spec.rules = rules
+      
+      let annotations = {}
+      for(let a of ingress.metadata.annotations) {
+        if(!a.key) {
+          return '注解Key不能为空'
+        }
+        annotations[a.key] = a.value || ''
+      }
+      ingress.metadata.annotations = annotations
+    },
+    handleCreateIngress: function() {
+      const cluster = this.$store.state.cluster
+      if (!cluster) {
+        Message.error("获取集群参数异常，请刷新重试")
+        return
+      }
+      let ingress = JSON.parse(JSON.stringify(this.ingress))
+      if(this.namespace){
+        ingress.metadata.namespace = this.namespace
+      }
+      if(!ingress.metadata.namespace) {
+        Message.error("命名空间不能为空")
+        return
+      }
+      if(this.projectId) {
+        ingress.metadata.labels = projectLabels()
+      }
+      let err = this.transferIngressRules(ingress)
+      if(err) {
+        Message.error(err)
+        return
+      }
+      if(this.ingressGroup == 'networking.k8s.io') {
+        ingress.apiVersion = 'networking.k8s.io/v1'
+      }
+      
+      let yamlStr = yaml.dump(ingress)
+      this.dialogLoading = true
+      createYaml(cluster, yamlStr).then(() => {
+        Message.success("创建Ingress成功")
+        this.dialogLoading = false
+        this.createFormVisible = false
+        this.fetchData()
+      }).catch(() => {
+        this.dialogLoading = false
+      })
+    },
+    fetchServices: function() {
+      let params = {namespace: this.namespace}
+      if (this.cluster) {
+        listServices(this.cluster, params).then(response => {
+          this.services = response.data || []
+        }).catch(() => {
+        })
+      } else if(!this.projectId) {
+        Message.error("获取集群异常，请刷新重试")
+      }
+    },
+    fetchNamespace: function() {
+      this.namespaces = []
+      const cluster = this.$store.state.cluster
+      if (cluster) {
+        listNamespace(cluster).then(response => {
+          this.namespaces = response.data
+          this.namespaces.sort((a, b) => {return a.name > b.name ? 1 : -1})
+        }).catch((err) => {
+          console.log(err)
+        })
+      } else {
+        Message.error("获取集群异常，请刷新重试")
+      }
+    },
+    openCreateFormDialog() {
+      if(!this.namespace && this.namespaces.length == 0) {
+        this.fetchNamespace()
+      }
+      if(this.services.length == 0) {
+        this.fetchServices()
+      }
+      this.createFormVisible = true
+    },
+    openUpdateFormDialog(namespace, name) {
+      this.createFormVisible = true
+      this.updateFormVisible = true
+      if(!this.namespace && this.namespaces.length == 0) {
+        this.fetchNamespace()
+      }
+      if(this.services.length == 0) {
+        this.fetchServices()
+      }
+      this.getIngress(namespace, name)
+    },
+    closeFormDialog() {
+      this.createFormVisible = false
+      this.updateFormVisible = false
+      this.ingress = {
+        kind: "Ingress",
+        apiVersion: "extensions/v1beta1",
+        metadata: {
+          name: "",
+          annotations: [],
+        },
+        spec: {
+          backend: {},
+          rules: [],
+          tls: [],
+        },
+      }
+    },
+    serviceChange(path) {
+      let service = {}
+      for(let s of this.namespaceService) {
+        if(s.name == path.service) {
+          service = s
+          break
+        }
+      }
+      path.ports = service.ports
     }
   }
 }

@@ -248,7 +248,7 @@ export default {
           let containers = {}
           for(let c of tpl.spec.template.spec.containers) {
             containers[c.name] = {image: c.image}
-            c.image = `{{ .Values.workloads.${template.metadata.name}.containers.${c.name}.image }}`
+            c.image = `{{ index .Values "workloads" "${template.metadata.name}" "containers" "${c.name}" "image" }}`
           }
           valuesDict.workloads[template.metadata.name] = {containers: containers}
         }

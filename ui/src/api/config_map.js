@@ -23,3 +23,11 @@ export function updateConfigMap(cluster, namespace, name, yaml) {
     data: { yaml, name, namespace }
   })
 }
+
+export function deleteConfigMaps(cluster, data) {
+  return request({
+    url: `configmap/${cluster}/delete`,
+    method: 'post',
+    data: data
+  })
+}

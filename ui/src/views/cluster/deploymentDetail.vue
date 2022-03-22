@@ -274,6 +274,7 @@
               <el-table-column
                 prop="name"
                 label="名称"
+                min-width="8"
                 show-overflow-tooltip>
                 <template slot-scope="scope">
                   <span class="name-class" @click="toogleExpand(scope.row)">
@@ -284,13 +285,13 @@
               <el-table-column
                 prop="image"
                 label="镜像"
-                min-width=""
+                min-width="15"
                 show-overflow-tooltip>
               </el-table-column>
               <el-table-column
                 prop="image_pull_policy"
                 label="镜像拉取策略"
-                min-width=""
+                min-width="4"
                 show-overflow-tooltip>
               </el-table-column>
             </el-table>

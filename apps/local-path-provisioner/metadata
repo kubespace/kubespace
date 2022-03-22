@@ -1,0 +1,5 @@
+{
+    "name": "local-path-provisioner",
+    "versions": ["local-path-provisioner-0.0.20.tgz"],
+    "type": "component"
+}

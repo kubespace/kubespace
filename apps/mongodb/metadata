@@ -1,0 +1,5 @@
+{
+    "name": "mongodb",
+    "versions": ["mongodb-10.26.3.tgz"],
+    "type": "middleware"
+}

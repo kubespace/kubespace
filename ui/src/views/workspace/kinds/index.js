@@ -1,3 +1,4 @@
+import { transferSecret, resolveSecret } from '@/api/secret'
 export { default as HealthProbe } from './HealthProbe'
 export { default as Container } from './container'
 export { default as PodVolume } from './pod_volume'
@@ -29,7 +30,7 @@ export function transferTemplate(template, appName) {
   if(['Deployment', 'StatefulSet'].indexOf(tpl.kind) > -1) return transferWorkload(tpl)
   if(tpl.kind == 'Service') return transferService(tpl)
   if(tpl.kind == 'ConfigMap') return transferConfigMap(tpl)
-  if(tpl.kind == 'Secret') return transferSecret(tpl)
+  if(tpl.kind == 'Secret') return toTransferSecret(tpl)
 
   return {err: `${tpl.kind}/${tpl.metadata.name}未找到对应的资源类型`}
 }
@@ -120,6 +121,8 @@ function transferContainer(tpl) {
     }
     err = transferEnv(c)
     if(err) return {err: `应用资源${tpl.kind}/${tpl.metadata.name}容器${err}`}
+    transferResource(c.resources.limits)
+    transferResource(c.resources.requests)
     if(c.init){
       initContainers.push(c)
     } else {
@@ -129,6 +132,22 @@ function transferContainer(tpl) {
   }
   tpl.spec.template.spec.containers = containers
   tpl.spec.template.spec.initContainers = initContainers
+}
+
+function transferResource(res) {
+  if(!res) return
+  if(res.memory) {
+    try{
+      res.memory = parseFloat(res.memory) + "M"
+    } catch(e){
+      
+    }
+  } else if(res.memory != undefined) {
+    delete res.memory
+  }
+  if(!res.cpu && res.cpu != undefined) {
+    delete res.cpu
+  }
 }
 
 function transferProbe(probe) {
@@ -369,6 +388,8 @@ function transferService(tpl) {
       } catch(e) {
         return {err: `应用资源${tpl.kind}/${tpl.metadata.name} nodePort ${p.targetPort}错误`}
       }
+    } else if(p.nodePort != undefined) {
+      delete p.nodePort
     }
   }
   return {tpl}
@@ -424,74 +445,16 @@ function secretTemplate() {
   }
 }
 
-function transferSecret(tpl) {
-  let data = {}
-  if(tpl.type == 'Opaque') {
-    for(let d of tpl.data) {
-      if(!d.key){
-        return {err: `应用资源${tpl.kind}/${tpl.metadata.name}配置项key为空`}
-      }
-      data[d.key] = btoa(encodeURIComponent(d.value))
-    }
-    tpl.data = data
-  } else if(tpl.type == 'kubernetes.io/tls') {
-    tpl.data = {
-      'tls.crt': btoa(encodeURIComponent(tpl.tls['crt'])),
-      'tls.key': btoa(encodeURIComponent(tpl.tls['key']))
-    }
-  } else if(tpl.type == 'kubernetes.io/basic-auth') {
-    tpl.data = {
-      'username': btoa(encodeURIComponent(tpl.userPass['username'])),
-      'password': btoa(encodeURIComponent(tpl.userPass['password']))
-    }
-  } else if(tpl.type == 'kubernetes.io/dockerconfigjson') {
-    if(!tpl.imagePass.url) {
-      return {err: `应用资源${tpl.kind}/${tpl.metadata.name}镜像仓库地址为空`}
-    }
-    let auth = {auths: {}}
-    auth.auths[tpl.imagePass.url] = {
-      'username': tpl.imagePass.username,
-      'password': tpl.imagePass.password,
-      'email': tpl.imagePass.email,
-      'auth': btoa(encodeURIComponent(`${tpl.imagePass.username}: ${tpl.imagePass.password}`))
-    }
-    tpl.data = {
-      '.dockerconfigjson': btoa(encodeURIComponent(JSON.stringify(auth)))
-    }
+function toTransferSecret(tpl) {
+  let err = transferSecret(tpl)
+  if(err) {
+    return {err: `应用资源${tpl.kind}/${tpl.metadata.name}${err}`}
   }
-  delete tpl.tls
-  delete tls.userPass
-  delete tls.imagePass
   return {tpl}
 }
 
-function resolveSecret(tpl) {
-  tpl.tls = {}
-  tpl.userPass = {}
-  tpl.imagePass = {}
-  let data = []
-  if(tpl.type == 'Opaque') {
-    for(let k in tpl.data) {
-      data.push({key: k, value: decodeURIComponent(atob(tpl.data[k]))})
-    }
-  } else if(tpl.type == 'kubernetes.io/tls') {
-    tpl.tls['crt'] = decodeURIComponent(atob(tpl.data['tls.crt']))
-    tpl.tls['key'] = decodeURIComponent(atob(tpl.data['tls.key']))
-  }  else if(tpl.type == 'kubernetes.io/basic-auth') {
-    tpl.userPass['username'] = decodeURIComponent(atob(tpl.data['username']))
-    tpl.userPass['password'] = decodeURIComponent(atob(tpl.data['password']))
-  } else if(tpl.type == 'kubernetes.io/dockerconfigjson') {
-    let auths = JSON.parse(decodeURIComponent(atob(tpl.data['.dockerconfigjson'])))
-    for(let k in auths.auths) {
-      tpl.imagePass = {
-        url: k,
-        username: auths.auths[k].username,
-        password: auths.auths[k].password,
-        email: auths.auths[k].email
-      }
-    }
-  }
-  tpl.data = data
+function toResolveSecret(tpl) {
+  resolveSecret(tpl)
 }
 
 export function resolveToTemplate(template) {
@@ -499,7 +462,7 @@ export function resolveToTemplate(template) {
     resolveWorkload(template)
   }
   else if(template.kind == 'ConfigMap') resolveConfigMap(template)
-  else if(template.kind == 'Secret') resolveSecret(template)
+  else if(template.kind == 'Secret') toResolveSecret(template)
 }
 
 function resolveWorkload(tpl) {

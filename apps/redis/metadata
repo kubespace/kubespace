@@ -1,0 +1,5 @@
+{
+    "name": "redis",
+    "versions": ["redis-15.0.3.tgz"],
+    "type": "middleware"
+}

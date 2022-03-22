@@ -36,6 +36,7 @@ func (d *Service) list(c *views.Context) *utils.Response {
 	reqParams := map[string]interface{}{
 		"name":      ser.Name,
 		"namespace": ser.Namespace,
+		"labels":    ser.Labels,
 	}
 	return d.Service.List(c.Param("cluster"), reqParams)
 }

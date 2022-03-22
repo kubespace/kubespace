@@ -1,0 +1,5 @@
+{
+    "name": "rabbitmq",
+    "versions": ["rabbitmq-8.22.3.tgz"],
+    "type": "middleware"
+}

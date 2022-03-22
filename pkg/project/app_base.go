@@ -22,7 +22,7 @@ func NewAppBaseService(models *model.Models) *AppBaseService {
 func (b *AppBaseService) ResolveChart(chartIn io.Reader) *utils.Response {
 	charts, err := loader.LoadArchive(chartIn)
 	if err != nil {
-		return &utils.Response{Code: code.GetError, Msg: err.Error()}
+		return &utils.Response{Code: code.GetError, Msg: "加载chart失败:" + err.Error()}
 	}
 	data := map[string]interface{}{
 		"package_name":    charts.Name(),

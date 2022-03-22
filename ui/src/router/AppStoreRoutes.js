@@ -3,7 +3,7 @@ import Layout from '@/layout'
 
 const appStoreRoutes = [
   {
-    path: 'appstore',
+    path: 'storeapp',
     component: Layout,
     hidden: true,
     children: [
@@ -11,7 +11,14 @@ const appStoreRoutes = [
         path: '',
         name: 'appstoreIndex',
         hidden: true,
-        component: () => import('@/views/appstore/index'),
+        component: () => import('@/views/appstore/store'),
+        meta: { title: '集群管理', 'group': 'appstore', object: 'cluster', noSidebar: true }
+      },
+      {
+        path: 'version/:appId',
+        name: 'appstoreVersions',
+        hidden: true,
+        component: () => import('@/views/appstore/appVersion'),
         meta: { title: '集群管理', 'group': 'appstore', object: 'cluster', noSidebar: true }
       },
     ]

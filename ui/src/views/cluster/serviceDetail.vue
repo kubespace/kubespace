@@ -56,7 +56,7 @@
         </el-form>
       </div>
 
-      <div style="padding: 0px 8px 0px 8px;" v-if="pods.length > 0">
+      <div style="padding: 0px 8px 0px 8px;" >
         <div>Pods</div>
         <div class="msgClass" style="margin: 15px 10px 30px 10px;">
           <el-table
@@ -258,6 +258,9 @@ export default {
         }
       }
     },
+    cluster: function() {
+      this.fetchData()
+    }
   },
   computed: {
     titleName: function() {
@@ -279,6 +282,9 @@ export default {
     serviceWatch: function() {
       return this.$store.getters["ws/servicesWatch"]
     },
+    projectId() {
+      return this.$route.params.workspaceId
+    },
   },
   methods: {
     fetchData: function() {
@@ -287,6 +293,7 @@ export default {
       this.loading = true
       const cluster = this.$store.state.cluster
       if (!cluster) {
+        if(this.projectId) return
         Message.error("获取集群参数异常，请刷新重试")
         this.loading = false
         return

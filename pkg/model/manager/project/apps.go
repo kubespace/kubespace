@@ -128,15 +128,33 @@ func (a *AppManager) DeleteProjectApp(appId uint) error {
 			return err
 		}
 		for _, appVersion := range *appVersions {
-			if err = tx.Delete(&types.AppVersionChart{}, "path = ?", appVersion.ChartPath).Error; err != nil {
-				return err
-			}
-			if err = tx.Delete(&appVersion, "id = ?", appVersion.ID).Error; err != nil {
+			if err = a.AppVersionManager.DeleteVersion(appVersion.ID); err != nil {
 				return err
 			}
 		}
 		if err = tx.Delete(&types.ProjectApp{}, "id = ?", appId).Error; err != nil {
 			return err
+		}
+		return nil
+	})
+}
+
+func (a *AppManager) ImportStoreApp(app *types.ProjectApp, appVersion *types.AppVersion) error {
+	return a.DB.Transaction(func(tx *gorm.DB) error {
+		if app.ID == 0 {
+			if err := tx.Create(app).Error; err != nil {
+				return err
+			}
+			appVersion.ScopeId = app.ID
+		}
+		if err := tx.Create(appVersion).Error; err != nil {
+			return err
+		}
+		if app.Status == types.AppStatusUninstall {
+			app.AppVersionId = appVersion.ID
+			if err := tx.Save(app).Error; err != nil {
+				return err
+			}
 		}
 		return nil
 	})

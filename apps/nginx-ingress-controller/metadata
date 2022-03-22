@@ -1,0 +1,5 @@
+{
+    "name": "nginx-ingress-controller",
+    "versions": ["nginx-ingress-controller-7.6.21.tgz"],
+    "type": "component"
+}

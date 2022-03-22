@@ -1,9 +1,10 @@
 import request from '@/utils/request'
 
-export function listPersistentVolumeClaim(cluster) {
+export function listPersistentVolumeClaim(cluster, params) {
   return request({
     url: `pvc/${cluster}`,
     method: 'get',
+    params
   })
 }
 

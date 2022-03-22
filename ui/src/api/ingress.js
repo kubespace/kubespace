@@ -1,9 +1,10 @@
 import request from '@/utils/request'
 
-export function listIngresses(cluster) {
+export function listIngresses(cluster, params) {
   return request({
     url: `ingress/${cluster}`,
     method: 'get',
+    params
   })
 }
 

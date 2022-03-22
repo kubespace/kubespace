@@ -1,6 +1,7 @@
 <template>
   <div>
-    <clusterbar :titleName="titleName" :nsFunc="nsSearch" :nameFunc="nameSearch" :delFunc="delFunc"/>
+    <clusterbar :titleName="titleName" :nsFunc="projectId ? undefined : nsSearch" 
+      :nameFunc="nameSearch"  :createFunc="openCreateFormDialog"/>
     <div class="dashboard-container">
       <!-- <div class="dashboard-text"></div> -->
       <el-table
@@ -16,10 +17,6 @@
         @selection-change="handleSelectionChange"
         row-key="uid"
         >
-        <el-table-column
-          type="selection"
-          width="45">
-        </el-table-column>
         <el-table-column
           prop="name"
           label="名称"
@@ -85,39 +82,139 @@
           label="创建时间"
           min-width="40"
           show-overflow-tooltip>
-        </el-table-column>
-        <el-table-column
-          label=""
-          show-overflow-tooltip
-          width="45">
           <template slot-scope="scope">
-            <el-dropdown size="medium" >
-              <el-link :underline="false"><svg-icon style="width: 1.3em; height: 1.3em;" icon-class="operate" /></el-link>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item @click.native.prevent="nameClick(scope.row.namespace, scope.row.name)">
-                  <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="detail" />
-                  <span style="margin-left: 5px;">详情</span>
-                </el-dropdown-item>
-                <el-dropdown-item v-if="$updatePerm()" @click.native.prevent="getServiceYaml(scope.row.namespace, scope.row.name)">
-                  <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="edit" />
-                  <span style="margin-left: 5px;">修改</span>
-                </el-dropdown-item>
-                <el-dropdown-item v-if="$deletePerm()" @click.native.prevent="deleteServices([{namespace: scope.row.namespace, name: scope.row.name}])">
-                  <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="delete" />
-                  <span style="margin-left: 5px;">删除</span>
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
+            <span>
+              {{ $dateFormat(scope.row.created) }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" show-overflow-tooltip width="110px">
+          <template slot-scope="scope">
+            <div class="tableOperate">
+              <el-link :underline="false" class="operator-btn" @click="openUpdateFormDialog(scope.row.namespace, scope.row.name)">编辑</el-link>
+              <el-link :underline="false" style="color: #F56C6C" @click="handleDeleteServices([{namespace: scope.row.namespace, name: scope.row.name}])">删除</el-link>
+            </div>
           </template>
         </el-table-column>
       </el-table>
     </div>
-    <el-dialog title="编辑" :visible.sync="yamlDialog" :close-on-click-modal="false" width="60%" top="55px">
-      <yaml v-if="yamlDialog" v-model="yamlValue" :loading="yamlLoading"></yaml>
-      <span slot="footer" class="dialog-footer">
-        <el-button plain @click="yamlDialog = false" size="small">取 消</el-button>
-        <el-button plain @click="updateService()" size="small">确 定</el-button>
-      </span>
+    <el-dialog :title="updateFormVisible ? '编辑Service' : '创建Service'" :visible.sync="createFormVisible"
+      @close="closeFormDialog" :destroy-on-close="true" width="70%" :close-on-click-modal="false">
+      <div v-loading="dialogLoading">
+        <div class="dialogContent" style="">
+          <el-form :model="service.metadata" :rules="rules" ref="form" label-position="left" label-width="105px">
+            <el-form-item label="服务名称" prop="name" required>
+              <el-input :disabled="updateFormVisible" v-model="service.metadata.name" style="width: 50%" placeholder="请输入服务名称" size="small"></el-input>
+            </el-form-item>
+            <el-form-item label="命名空间" prop="" required="">
+              <span v-if="namespace">{{ namespace }}</span>
+              <el-select v-else :disabled="updateFormVisible" v-model="service.metadata.namespace" placeholder="请选择命名空间"
+                size="small" style="width: 50%;" >
+                <el-option
+                  v-for="item in namespaces"
+                  :key="item.name"
+                  :label="item.name"
+                  :value="item.name">
+                </el-option>
+              </el-select>
+            </el-form-item>
+            <el-form-item label="服务类型" style="width: 100%" prop="" required>
+              <el-radio-group v-model="service.spec.type"  size="small">
+                <el-radio-button label="ClusterIP"></el-radio-button>
+                <el-radio-button label="NodePort"></el-radio-button>
+                <el-radio-button label="LoadBalancer"></el-radio-button>
+                <el-radio-button label="ExternalName"></el-radio-button>
+              </el-radio-group>
+            </el-form-item>
+            <el-form-item label="Pod选择器" prop="" required>
+              <div style="margin-bottom: 5px;" v-for="(l, i) in service.spec.selector" :key="i">
+                <el-input size="small" v-model="l.key" style="width: 25%;" placeholder="Key"></el-input> = 
+                <el-input size="small" v-model="l.value" style="width: 25%;" placeholder="Value"></el-input>
+                <el-button size="mini" circle style="padding: 5px; margin-left: 10px;" @click="service.spec.selector.splice(i, 1)" 
+                  icon="el-icon-close"></el-button>
+              </div>
+              <el-button plain size="small" @click="service.spec.selector.push({key: '', value: ''})" icon="el-icon-plus"
+                style="border-radius: 0px;">添加</el-button>
+            </el-form-item>
+
+            <el-form-item label="端口配置" required >
+              <el-row style="margin-bottom: 5px; margin-top: 8px;">
+                <el-col :span="service.spec.type == 'NodePort' ? 5 : 6" style="background-color: #F5F7FA; padding-left: 10px;">
+                  <div class="border-span-header">
+                    名称
+                  </div>
+                </el-col>
+                <el-col :span="service.spec.type == 'NodePort' ? 5 : 6" style="background-color: #F5F7FA">
+                  <div class="border-span-header">
+                    <span  class="border-span-content">*</span>服务端口
+                  </div>
+                </el-col>
+                <el-col :span="service.spec.type == 'NodePort' ? 5 : 6" style="background-color: #F5F7FA;">
+                  <div class="border-span-header">
+                    <span  class="border-span-content">*</span>容器端口
+                  </div>
+                </el-col>
+                <el-col v-if="service.spec.type == 'NodePort'" :span="5" style="background-color: #F5F7FA">
+                  <!-- <div class="border-span-header"> -->
+                    NodePort
+                  <!-- </div> -->
+                </el-col>
+                <el-col :span="service.spec.type == 'NodePort' ? 3 : 5" style="background-color: #F5F7FA">
+                  <div class="border-span-header">
+                    协议
+                  </div>
+                </el-col>
+                <!-- <el-col :span="5"><div style="width: 100px;"></div></el-col> -->
+              </el-row>
+              <el-row style="padding-top: 0px;" v-for="(item, idx) in service.spec.ports" :key="idx">
+                <el-col :span="service.spec.type == 'NodePort' ? 5 : 6">
+                  <div class="border-span-header">
+                    <el-input v-model="item.name" size="small" style="padding-right: 10px" placeholder="服务端口名称"></el-input>
+                  </div>
+                </el-col>
+                <el-col :span="service.spec.type == 'NodePort' ? 5 : 6">
+                  <div class="border-span-header">
+                    <el-input-number :controls="false" v-model="item.port" size="small" style="width:100%;padding-right: 10px" placeholder="服务暴露端口"></el-input-number>
+                  </div>
+                </el-col>
+                <el-col :span="service.spec.type == 'NodePort' ? 5 : 6">
+                  <div class="border-span-header">
+                    <el-input-number :controls="false" v-model="item.targetPort" size="small" style="width:100%;padding-right: 10px" placeholder="容器访问端口，如:80"></el-input-number>
+                  </div>
+                </el-col>
+                <el-col v-if="service.spec.type == 'NodePort'" :span="5">
+                  <!-- <div class="border-span-header"> -->
+                    <el-input-number :controls="false" v-model="item.nodePort" size="small" style="width:100%;padding-right: 10px" placeholder="宿主机暴露端口"></el-input-number>
+                  <!-- </div> -->
+                </el-col>
+                <el-col :span="service.spec.type == 'NodePort' ? 3 : 5">
+                  <div class="border-span-header">
+                    <el-select v-model="item.protocol" placeholder="端口所属协议" size="small">
+                      <el-option label="TCP" value="TCP"></el-option>
+                      <el-option label="UDP" value="UDP"></el-option>
+                      <el-option label="SCTP" value="SCTP"></el-option>
+                    </el-select>
+                  </div>
+                </el-col>
+                <el-col :span="1" style="padding-left: 10px">
+                  <el-button circle size="mini" style="padding: 5px;" 
+                    @click="service.spec.ports.splice(idx, 1)" icon="el-icon-close"></el-button>
+                </el-col>
+              </el-row>
+              <el-row>
+                <el-col :span="service.spec.type == 'NodePort' ? 23 : 23">
+                <el-button style="width: 100%; border-radius: 0px; padding: 9px 15px; border-color: rgb(102, 177, 255); color: rgb(102, 177, 255)" plain size="mini" 
+                  @click="service.spec.ports.push({protocol: 'TCP'})" icon="el-icon-plus">添加服务端口</el-button>
+                </el-col>
+              </el-row>
+            </el-form-item>
+          </el-form>
+        </div>
+        <div slot="footer" class="dialogFooter" style="margin-top: 20px;">
+          <el-button @click="createFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
+          <el-button type="primary" @click="updateFormVisible ? handleUpdateService() : handleCreateService()" >确 定</el-button>
+        </div>
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -125,32 +222,51 @@
 <script>
 import { Clusterbar } from '@/views/components'
 import { listServices, getService, deleteServices, updateService } from '@/api/service'
+import { createYaml } from '@/api/cluster'
+import { listNamespace } from '@/api/namespace'
+import { projectLabels } from '@/api/project/project'
 import { Message } from 'element-ui'
-import { Yaml } from '@/views/components'
+import yaml from 'js-yaml'
 
 export default {
   name: 'Service',
   components: {
     Clusterbar,
-    Yaml
   },
   data() {
-      return {
-        yamlDialog: false,
-        yamlNamespace: "",
-        yamlName: "",
-        yamlValue: "",
-        yamlLoading: true,
-        cellStyle: {border: 0},
-        titleName: ["Services"],
-        maxHeight: window.innerHeight - 150,
-        loading: true,
-        originServices: [],
-        search_ns: [],
-        search_name: '',
-        delFunc: undefined,
-        delServices: [],
-      }
+    return {
+      yamlDialog: false,
+      yamlNamespace: "",
+      yamlName: "",
+      yamlValue: "",
+      yamlLoading: true,
+      cellStyle: {border: 0},
+      titleName: ["Services"],
+      maxHeight: window.innerHeight - 135,
+      loading: true,
+      originServices: [],
+      search_ns: [],
+      search_name: '',
+      delFunc: undefined,
+      delServices: [],
+      dialogLoading: false,
+      createFormVisible: false,
+      updateFormVisible: false,
+      service: {
+        kind: "Service",
+        apiVersion: "v1",
+        metadata: {
+          name: "",
+        },
+        spec: {
+          ports: [],
+          selector: [{}],
+          type: 'ClusterIP',
+        }
+      },
+      rules: {},
+      namespaces: [],
+    }
   },
   created() {
     this.fetchData()
@@ -159,7 +275,7 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150
+        let heightStyle = window.innerHeight - 135
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
@@ -187,6 +303,9 @@ export default {
           this.originServices = this.originServices.filter(( { uid } ) => uid !== newUid)
         }
       }
+    },
+    cluster: function() {
+      this.fetchData()
     }
   },
   computed: {
@@ -202,21 +321,32 @@ export default {
     },
     servicesWatch: function() {
       return this.$store.getters["ws/servicesWatch"]
+    },
+    projectId() {
+      return this.$route.params.workspaceId
+    },
+    cluster: function() {
+      return this.$store.state.cluster
+    },
+    namespace: function() {
+      return this.$store.state.namespace || ''
     }
   },
   methods: {
     fetchData: function() {
       this.loading = true
-      this.originServices = []
       const cluster = this.$store.state.cluster
+      let params = {namespace: this.namespace}
+      if(this.projectId) params['labels'] = projectLabels()
       if (cluster) {
-        listServices(cluster).then(response => {
+        listServices(cluster, params).then(response => {
           this.loading = false
-          this.originServices = response.data
+          let originServices = response.data || []
+          this.$set(this, 'originServices', originServices)
         }).catch(() => {
           this.loading = false
         })
-      } else {
+      } else if(!this.projectId) {
         this.loading = false
         Message.error("获取集群异常，请刷新重试")
       }
@@ -247,11 +377,10 @@ export default {
       return p
     },
     nameClick: function(namespace, name) {
-      this.$router.push({name: 'serviceDetail', params: {namespace: namespace, serviceName: name}})
+      let routeName = this.projectId ? 'workspaceServiceDetail' : 'serviceDetail'
+      this.$router.push({name: routeName, params: {namespace: namespace, serviceName: name}})
     },
-    getServiceYaml: function(namespace, name) {
-      this.yamlNamespace = ""
-      this.yamlName = ""
+    getService: function(namespace, name) {
       const cluster = this.$store.state.cluster
       if (!cluster) {
         Message.error("获取集群参数异常，请刷新重试")
@@ -265,56 +394,128 @@ export default {
         Message.error("获取Service名称参数异常，请刷新重试")
         return
       }
-      this.yamlValue = ""
-      this.yamlDialog = true
-      this.yamlLoading = true
-      getService(cluster, namespace, name, "yaml").then(response => {
-        this.yamlLoading = false
-        this.yamlValue = response.data
-        this.yamlNamespace = namespace
-        this.yamlName = name
+      this.dialogLoading = true
+      getService(cluster, namespace, name,).then(response => {
+        let service = response.data
+        let selector = []
+        for(let k in service.spec.selector) {
+          selector.push({key: k, value: service.spec.selector[k]})
+        }
+        service.spec.selector = selector
+        this.service = service
+        this.dialogLoading = false
       }).catch(() => {
-        this.yamlLoading = false
+        this.dialogLoading = false
       })
     },
-    deleteServices: function(services) {
+    handleDeleteServices: function(services) {
+      let cs = ''
+      for(let c of services) {
+        cs += `${c.namespace}/${c.name},`
+      }
+      cs = cs.substr(0, cs.length - 1)
+      this.$confirm(`请确认是否删除「${cs}」Service?`, '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        this.loading = true
+        deleteServices(this.cluster, {resources: services}).then(() => {
+          Message.success("删除Service成功")
+          this.loading = false
+          this.fetchData()
+        }).catch((err) => {
+          this.loading = false
+        });
+      }).catch(() => {       
+      });
+    },
+    handleCreateService: function() {
       const cluster = this.$store.state.cluster
       if (!cluster) {
         Message.error("获取集群参数异常，请刷新重试")
         return
       }
-      if ( services.length <= 0 ){
-        Message.error("请选择要删除的Services")
+      // if(this.service.spec.selector.length == 0) {
+      //   Message.error("Pod选择器不能为空")
+      //   return
+      // }
+      let service = JSON.parse(JSON.stringify(this.service))
+      if(this.namespace){
+        service.metadata.namespace = this.namespace
+      }
+      if(!service.metadata.namespace) {
+        Message.error("命名空间不能为空")
         return
       }
-      let params = {
-        resources: services
+      if(this.projectId) {
+        service.metadata.labels = projectLabels()
       }
-      deleteServices(cluster, params).then(() => {
-        Message.success("删除成功")
+      let selector = {}
+      for(let s of service.spec.selector) {
+        if(!s.key) {
+          Message.error("Pod选择器Key不能为空")
+          return
+        }
+        selector[s.key] = s.value
+      }
+      service.spec.selector = selector
+      for(let p of service.spec.ports) {
+        try{
+          p['port'] = parseInt(p.port)
+          p['targetPort'] = parseInt(p.targetPort)
+          if(p.nodePort) p['nodePort'] = parseInt(p.nodePort)
+        } catch(e) {
+          Message.error("端口错误")
+          return
+        }
+      }
+      let yamlStr = yaml.dump(service)
+      this.dialogLoading = true
+      createYaml(cluster, yamlStr).then(() => {
+        Message.success("创建Service成功")
+        this.dialogLoading = false
+        this.createFormVisible = false
+        this.fetchData()
       }).catch(() => {
-        // console.log(e)
+        this.dialogLoading = false
       })
     },
-    updateService: function() {
+    handleUpdateService: function() {
       const cluster = this.$store.state.cluster
       if (!cluster) {
         Message.error("获取集群参数异常，请刷新重试")
         return
       }
-      if (!this.yamlNamespace) {
-        Message.error("获取命名空间参数异常，请刷新重试")
-        return
+      let service = JSON.parse(JSON.stringify(this.service))
+      let selector = {}
+      for(let s of service.spec.selector) {
+        if(!s.key) {
+          Message.error("Pod选择器Key不能为空")
+          return
+        }
+        selector[s.key] = s.value
       }
-      if (!this.yamlName) {
-        Message.error("获取Service参数异常，请刷新重试")
-        return
+      service.spec.selector = selector
+      for(let p of service.spec.ports) {
+        try{
+          p['port'] = parseInt(p.port)
+          if(p.targetPort) p['targetPort'] = parseInt(p.targetPort)
+          if(p.nodePort) p['nodePort'] = parseInt(p.nodePort)
+        } catch(e) {
+          Message.error("端口错误")
+          return
+        }
       }
-      console.log(this.yamlValue)
-      updateService(cluster, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
-        Message.success("更新成功")
+      let yamlStr = yaml.dump(service)
+      this.dialogLoading = true
+      updateService(cluster, this.service.metadata.namespace, this.service.metadata.name, yamlStr).then(() => {
+        this.dialogLoading = false
+        this.createFormVisible = false
+        Message.success("编辑Service成功")
+        this.fetchData()
       }).catch(() => {
-        // console.log(e) 
+        this.dialogLoading = false
       })
     },
     _delServicesFunc: function() {
@@ -323,7 +524,7 @@ export default {
         for (var p of this.delServices) {
           delServices.push({namespace: p.namespace, name: p.name})
         }
-        this.deleteServices(delServices)
+        this.handleDeleteServices(delServices)
       }
     },
     handleSelectionChange(val) {
@@ -346,6 +547,50 @@ export default {
         pd.push(pds)
       }
       return pd.join(',')
+    },
+    fetchNamespace: function() {
+      this.namespaces = []
+      const cluster = this.$store.state.cluster
+      if (cluster) {
+        listNamespace(cluster).then(response => {
+          this.namespaces = response.data
+          this.namespaces.sort((a, b) => {return a.name > b.name ? 1 : -1})
+        }).catch((err) => {
+          console.log(err)
+        })
+      } else {
+        Message.error("获取集群异常，请刷新重试")
+      }
+    },
+    openCreateFormDialog() {
+      if(!this.namespace && this.namespaces.length == 0) {
+        this.fetchNamespace()
+      }
+      this.createFormVisible = true
+    },
+    openUpdateFormDialog(namespace, name) {
+      this.createFormVisible = true
+      this.updateFormVisible = true
+      if(!this.namespace && this.namespaces.length == 0) {
+        this.fetchNamespace()
+      }
+      this.getService(namespace, name)
+    },
+    closeFormDialog() {
+      this.createFormVisible = false
+      this.updateFormVisible = false
+      this.service = {
+        kind: "Service",
+        apiVersion: "v1",
+        metadata: {
+          name: "",
+        },
+        spec: {
+          ports: [],
+          selector: [{}],
+          type: 'ClusterIP',
+        }
+      }
     }
   }
 }

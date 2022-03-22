@@ -29,3 +29,9 @@ export function deleteProject(id) {
     method: 'delete',
   })
 }
+
+export function projectLabels() {
+  return {
+    "kubespace.cn/belong-to": "project"
+  }
+}

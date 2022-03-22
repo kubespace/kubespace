@@ -126,6 +126,12 @@ func auth(m *model.Models, c *gin.Context) *utils.Response {
 		}
 	}
 	if token == "" {
+		tokenCookie, err := c.Request.Cookie("osp-token")
+		if err == nil {
+			token = tokenCookie.Value
+		}
+	}
+	if token == "" {
 		resp.Code = code.ParamsError
 		resp.Msg = "not found token"
 		return &resp

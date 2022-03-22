@@ -36,6 +36,7 @@ func (s *Secret) list(c *views.Context) *utils.Response {
 	reqParams := map[string]interface{}{
 		"name":      ser.Name,
 		"namespace": ser.Namespace,
+		"labels":    ser.Labels,
 	}
 	return s.Secret.List(c.Param("cluster"), reqParams)
 }

@@ -1,7 +1,6 @@
 package project_views
 
 import (
-	"bytes"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/project"
 	"github.com/kubespace/kubespace/pkg/utils"
@@ -9,7 +8,9 @@ import (
 	"github.com/kubespace/kubespace/pkg/views"
 	"github.com/kubespace/kubespace/pkg/views/serializers"
 	"io"
+	"k8s.io/klog"
 	"net/http"
+	"strconv"
 )
 
 type AppStore struct {
@@ -25,28 +26,33 @@ func NewAppStore(models *model.Models, appStoreService *project.AppStoreService)
 	}
 	vs := []*views.View{
 		views.NewView(http.MethodGet, "", app.list),
-		views.NewView(http.MethodGet, "/versions", app.listAppVersions),
+		views.NewView(http.MethodGet, "/:id", app.get),
 		views.NewView(http.MethodPost, "/resolve", app.resolveChart),
 		views.NewView(http.MethodPost, "/create", app.create),
+		views.NewView(http.MethodDelete, "/:appId/:versionId", app.deleteVersion),
 	}
 	app.Views = vs
 	return app
 }
 
 func (s *AppStore) list(c *views.Context) *utils.Response {
-	apps, err := s.models.AppStoreManager.ListStoreApps()
-	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: "获取应用商店列表失败:" + err.Error()}
-	}
-	return &utils.Response{Code: code.Success, Data: apps}
-}
-
-func (s *AppStore) listAppVersions(c *views.Context) *utils.Response {
-	var ser serializers.ProjectAppVersionListSerializer
+	var ser serializers.GetStoreAppSerializer
 	if err := c.ShouldBindQuery(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	return s.AppStoreService.ListAppVersions(ser)
+	return s.AppStoreService.ListStoreApp(&ser)
+}
+
+func (s *AppStore) get(c *views.Context) *utils.Response {
+	var ser serializers.GetStoreAppSerializer
+	if err := c.ShouldBindQuery(&ser); err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	appId, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	return s.AppStoreService.GetStoreApp(uint(appId), ser)
 }
 
 func (s *AppStore) create(c *views.Context) *utils.Response {
@@ -54,6 +60,7 @@ func (s *AppStore) create(c *views.Context) *utils.Response {
 	if err := c.ShouldBind(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
+	klog.Info(ser)
 
 	file, err := c.FormFile("file")
 	if err != nil {
@@ -63,10 +70,31 @@ func (s *AppStore) create(c *views.Context) *utils.Response {
 	if err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: "get chart file error: " + err.Error()}
 	}
-	return s.AppStoreService.CreateStoreApp(c.User, ser, chartIn)
+
+	var iconIn io.Reader
+	icon, err := c.FormFile("icon")
+	if err == nil {
+		iconIn, _ = icon.Open()
+		klog.Info(icon)
+	}
+	return s.AppStoreService.CreateStoreApp(c.User, ser, chartIn, iconIn)
+}
+
+func (s *AppStore) deleteVersion(c *views.Context) *utils.Response {
+	appId, err := strconv.ParseUint(c.Param("appId"), 10, 64)
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	versionId, err := strconv.ParseUint(c.Param("versionId"), 10, 64)
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	return s.AppStoreService.DeleteVersion(uint(appId), uint(versionId), c.User)
 }
 
 func (s *AppStore) resolveChart(c *views.Context) *utils.Response {
+	//a, _ := ioutil.ReadAll(c.Request)
+	klog.Info(c.Request.Form)
 	file, err := c.FormFile("file")
 	if err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: "get chart file error: " + err.Error()}
@@ -75,8 +103,6 @@ func (s *AppStore) resolveChart(c *views.Context) *utils.Response {
 	if err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: "get chart file error: " + err.Error()}
 	}
-	buf := bytes.NewBuffer(nil)
-	io.Copy(buf, chartIn)
-	buf.Bytes()
+
 	return s.AppStoreService.ResolveChart(chartIn)
 }

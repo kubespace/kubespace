@@ -174,7 +174,7 @@
               <el-table-column
                 prop="kind"
                 label="类型"
-                min-width="10"
+                min-width="7"
                 show-overflow-tooltip>
                 <template slot-scope="scope">
                   <span>{{ scope.row.kind }}</span>
@@ -192,7 +192,7 @@
               <el-table-column
                 prop=""
                 label="镜像"
-                min-width="14"
+                min-width="17"
                 show-overflow-tooltip>
                 <template slot-scope="scope">
                   <span v-for="s in scope.row.spec.template.spec.containers" :key="s.name" class="back-class">

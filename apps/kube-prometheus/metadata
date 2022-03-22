@@ -1,0 +1,5 @@
+{
+    "name": "kube-prometheus",
+    "versions": ["kube-prometheus-6.1.8.tgz"],
+    "type": "component"
+}

@@ -45,6 +45,7 @@ type AppStore struct {
 	Name        string    `gorm:"size:255;not null;" json:"name"`
 	Description string    `gorm:"type:text;" json:"description"`
 	Type        string    `gorm:"size:255;not null;" json:"type"`
+	Icon        []byte    `gorm:"type:mediumblob" json:"icon"`
 	CreateUser  string    `gorm:"size:255;not null" json:"create_user"`
 	UpdateUser  string    `gorm:"size:255;not null" json:"update_user"`
 	CreateTime  time.Time `gorm:"column:create_time;not null;autoCreateTime" json:"create_time"`
@@ -67,7 +68,7 @@ type AppVersion struct {
 	PackageVersion string    `gorm:"size:255;not null;uniqueIndex:ScopeAppNameVersionUnique" json:"package_version"`
 	From           string    `gorm:"size:255;not null;" json:"from"`
 	AppVersion     string    `gorm:"size:255;not null" json:"app_version"`
-	Values         string    `gorm:"type:text;not null" json:"values"`
+	Values         string    `gorm:"type:longtext;not null" json:"values"`
 	Description    string    `gorm:"type:text;" json:"description"`
 	ChartPath      string    `gorm:"size:255;not null" json:"chart_path"`
 	CreateUser     string    `gorm:"size:50;not null" json:"create_user"`

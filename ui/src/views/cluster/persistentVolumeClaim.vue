@@ -1,6 +1,7 @@
 <template>
   <div>
-    <clusterbar :titleName="titleName" :nsFunc="nsSearch" :nameFunc="nameSearch" :delFunc="delFunc" />
+    <clusterbar :titleName="titleName" :nsFunc="projectId ? undefined : nsSearch" 
+     :nameFunc="nameSearch" :createFunc="openCreateFormDialog" />
     <div class="dashboard-container">
       <el-table
         ref="multipleTable"
@@ -16,16 +17,12 @@
         row-key="uid"
       >
         <el-table-column
-          type="selection"
-          width="45">
-        </el-table-column>
-        <el-table-column
           prop="name"
           label="名称"
           min-width="40"
           show-overflow-tooltip>
           <template slot-scope="scope">
-            <span class="name-class" v-on:click="nameClick(scope.row.namespace, scope.row.name)">
+            <span>
               {{ scope.row.name }}
             </span>
           </template>
@@ -41,6 +38,11 @@
           label="容量"
           min-width="25"
           show-overflow-tooltip>
+          <template slot-scope="scope">
+            <span>
+              {{ scope.row.capacity }}
+            </span>
+          </template>
         </el-table-column>
         <el-table-column
           prop="access_modes"
@@ -65,56 +67,90 @@
           label="创建时间"
           min-width="45"
           show-overflow-tooltip>
-        </el-table-column>
-        <el-table-column
-          label=""
-          show-overflow-tooltip
-          width="45">
           <template slot-scope="scope">
-            <el-dropdown size="medium" >
-              <el-link :underline="false"><svg-icon style="width: 1.3em; height: 1.3em;" icon-class="operate" /></el-link>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item @click.native.prevent="nameClick(scope.row.namespace, scope.row.name)">
-                  <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="detail" />
-                  <span style="margin-left: 5px;">详情</span>
-                </el-dropdown-item>
-                <el-dropdown-item v-if="$updatePerm()" @click.native.prevent="getPersistentVolumeClaimYaml(scope.row.namespace, scope.row.name)">
-                  <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="edit" />
-                  <span style="margin-left: 5px;">修改</span>
-                </el-dropdown-item>
-                <el-dropdown-item v-if="$deletePerm()" @click.native.prevent="deletePvcs([{namespace: scope.row.namespace, name: scope.row.name}])">
-                  <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="delete" />
-                  <span style="margin-left: 5px;">删除</span>
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
+            <span>
+              {{ $dateFormat(scope.row.create_time) }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" show-overflow-tooltip width="110px">
+          <template slot-scope="scope">
+            <div class="tableOperate">
+              <el-link :underline="false" class="operator-btn" @click="openUpdateFormDialog(scope.row.namespace, scope.row.name)">编辑</el-link>
+              <el-link :underline="false" style="color: #F56C6C" @click="handleDeletePvcs([{namespace: scope.row.namespace, name: scope.row.name}])">删除</el-link>
+            </div>
           </template>
         </el-table-column>
       </el-table>
     </div>
     
-    <el-dialog title="编辑" :visible.sync="yamlDialog" :close-on-click-modal="false" width="60%" top="55px">
-      <yaml v-if="yamlDialog" v-model="yamlValue" :loading="yamlLoading"></yaml>
-      <span slot="footer" class="dialog-footer">
-        <el-button plain @click="yamlDialog = false" size="small">取 消</el-button>
-        <el-button plain @click="updatePvc()" size="small">确 定</el-button>
-      </span>
+    <el-dialog :title="updateFormVisible ? '编辑PVC' : '创建PVC'" :visible.sync="createFormVisible"
+      @close="closeFormDialog" :destroy-on-close="true" width="70%" :close-on-click-modal="false">
+      <div v-loading="dialogLoading">
+        <div class="dialogContent" style="margin: 0px;">
+          <el-form :model="pvc.metadata" :rules="rules" ref="form" label-position="left" label-width="105px">
+            <el-form-item label="名称" prop="name" autofocus required>
+              <el-input v-model="pvc.metadata.name" style="width: 100%;" autocomplete="off" 
+                placeholder="只能包含小写字母数字以及-和.,数字或者字母开头或结尾" size="small" :disabled="updateFormVisible"></el-input>
+            </el-form-item>
+            <el-form-item label="命名空间" required>
+              <span v-if="namespace">{{ namespace }}</span>
+              <!-- <el-input v-else :disabled="updateFormVisible" v-model="pvc.metadata.namespace" style="width: 50%;"  autocomplete="off" placeholder="请输入空间描述" size="small"></el-input> -->
+              <el-select v-else :disabled="updateFormVisible" v-model="pvc.metadata.namespace" placeholder="请选择命名空间"
+                size="small" style="width: 100%;" >
+                <el-option
+                  v-for="item in namespaces"
+                  :key="item.name"
+                  :label="item.name"
+                  :value="item.name">
+                </el-option>
+              </el-select>
+            </el-form-item>
+            <el-form-item label="申请大小" required>
+              <el-input v-model="pvc.spec.resources.requests.storage" style="width: 139px;"
+                placeholder="存储卷申请大小" size="small">
+                <span v-if="!updateFormVisible" slot="suffix" style="padding-right: 5px;" >Gi </span>
+              </el-input>
+            </el-form-item>
+            <el-form-item label="访问模式">
+              <el-select v-model="pvc.spec.accessModes" placeholder="访问模式" multiple size="small" style="width: 100%;" >
+                <el-option label="ReadWriteOnce" value="ReadWriteOnce"></el-option>
+                <el-option label="ReadWriteMany" value="ReadWriteMany"></el-option>
+                <el-option label="ReadOnlyMany" value="ReadOnlyMany"></el-option>
+              </el-select>
+            </el-form-item>
+            <el-form-item label="存储类">
+              <el-input v-model="pvc.spec.storageClassName" style="width: 100%;" placeholder="存储类" size="small"></el-input>
+            </el-form-item>
+            <el-form-item label="存储卷">
+              <el-input v-model="pvc.spec.volumeName" style="width: 100%;" placeholder="存储卷" size="small"></el-input>
+            </el-form-item>
+          </el-form>
+        </div>
+        <div slot="footer" class="dialogFooter" style="margin-top: 25px;">
+          <el-button @click="createFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
+          <el-button type="primary" @click="updateFormVisible ? handleUpdatePvc() : handleCreatePvc()" >确 定</el-button>
+        </div>
+      </div>
     </el-dialog>
 
   </div>
 </template>
 
 <script>
-import { Clusterbar, Yaml } from '@/views/components'
+import { Clusterbar, } from '@/views/components'
 import { Message } from 'element-ui'
 import { listPersistentVolumeClaim, getPersistentVolumeClaim, deletePersistentVolumeClaims, 
 updatePersistentVolumeClaim, buildPvc } from '@/api/persistent_volume_claim'
+import { createYaml } from '@/api/cluster'
+import { projectLabels } from '@/api/project/project'
+import { listNamespace } from '@/api/namespace'
+import yaml from 'js-yaml'
 
 export default {
   name: "PersistentVolumeClaim",
   components: {
     Clusterbar,
-    Yaml
   },
   data() {
     return {
@@ -131,6 +167,22 @@ export default {
       yamlLoading: true,
       delFunc: undefined,
       delPvcs: [],
+      dialogLoading: false,
+      createFormVisible: false,
+      updateFormVisible: false,
+      pvc: {
+        apiVersion: "v1",
+        kind: "PersistentVolumeClaim",
+        metadata: {
+          name: "",
+        },
+        spec: {
+          resources: {requests: {}},
+          accessModes: [],
+        }
+      },
+      rules: {},
+      namespaces: [],
     }
   },
   created() {
@@ -158,6 +210,9 @@ export default {
           this.originPersistentVolumeClaims = this.originPersistentVolumeClaims.filter(( { uid } ) => uid !== newUid)
         }
       }
+    },
+    cluster: function() {
+      this.fetchData()
     }
   },
   computed: {
@@ -172,6 +227,15 @@ export default {
     },
     pvcsWatch: function() {
       return this.$store.getters["ws/pvcsWatch"]
+    },
+    projectId() {
+      return this.$route.params.workspaceId
+    },
+    cluster: function() {
+      return this.$store.state.cluster
+    },
+    namespace: function() {
+      return this.$store.state.namespace
     }
   },
   methods: {
@@ -193,85 +257,69 @@ export default {
     },
     fetchData: function() {
       this.loading = true
-      this.originConfigMaps = []
       const cluster = this.$store.state.cluster
+      let params = {namespace: this.namespace}
+      if(this.projectId) params['labels'] = projectLabels()
       if (cluster) {
-        listPersistentVolumeClaim(cluster).then(response => {
+        listPersistentVolumeClaim(cluster, params).then(response => {
           this.loading = false
-          this.originPersistentVolumeClaims = response.data ? response.data : []
+          this.$set(this, 'originPersistentVolumeClaims', response.data ? response.data : [])
         }).catch(() => {
           this.loading = false
         })
-      } else {
+      } else if(!this.projectId) {
         this.loading = false
         Message.error("获取集群异常，请刷新重试.")
       }
     },
-    getPersistentVolumeClaimYaml: function(namespace, name) {
-      this.yamlNamespace = ""
-      this.yamlName = ""
-      const cluster = this.$store.state.cluster
-      if (!cluster) {
-        Message.error("获取集群参数异常，请刷新重试")
-        return
-      }
-      if (!namespace) {
-        Message.error("获取命名空间参数异常，请刷新重试")
-        return
-      }
-      if (!name) {
-        Message.error("获取名称参数异常，请刷新重试")
-        return
-      }
-      this.yamlLoading = true
-      this.yamlDialog = true
-      getPersistentVolumeClaim(cluster, namespace, name, "yaml").then(response => {
-        this.yamlLoading = false
-        this.yamlValue = response.data
-        this.yamlName = name
-        this.yamlNamespace = namespace
+    getPersistentVolumeClaim: function(namespace, name) {
+      this.dialogLoading = true
+      getPersistentVolumeClaim(this.cluster, namespace, name, ).then(response => {
+        this.pvc = response.data
+        this.dialogLoading = false
       }).catch(() => {
-        this.yamlLoading = false
+        this.dialogLoading = false
       })
     },
-    updatePvc: function() {
+    handleUpdatePvc: function() {
       const cluster = this.$store.state.cluster
       if (!cluster) {
         Message.error("获取集群参数异常，请刷新重试")
         return
       }
-      if (!this.yamlNamespace) {
-        Message.error("获取命名空间参数异常，请刷新重试")
-        return
-      }
-      if (!this.yamlName) {
-        Message.error("获取存储声明参数异常，请刷新重试")
-        return
-      }
-      updatePersistentVolumeClaim(cluster, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
-        Message.success("更新成功")
+      let pvc = JSON.parse(JSON.stringify(this.pvc))
+      let yamlStr = yaml.dump(pvc)
+      this.dialogLoading = true
+      updatePersistentVolumeClaim(cluster, pvc.metadata.namespace, pvc.metadata.name, yamlStr).then(() => {
+        Message.success("更新PVC成功")
+        this.dialogLoading = false
+        this.fetchData()
       }).catch(() => {
         // console.log(e)
+        this.dialogLoading = false
       })
     },
-    deletePvcs: function(pvcs) {
-      const cluster = this.$store.state.cluster
-      if (!cluster) {
-        Message.error("获取集群参数异常，请刷新重试")
-        return
+    handleDeletePvcs: function(pvcs) {
+      let cs = ''
+      for(let c of pvcs) {
+        cs += `${c.namespace}/${c.name},`
       }
-      if ( pvcs.length <= 0 ){
-        Message.error("请选择要删除的存储声明")
-        return
-      }
-      let params = {
-        resources: pvcs
-      }
-      deletePersistentVolumeClaims(cluster, params).then(() => {
-        Message.success("删除成功")
-      }).catch(() => {
-        // console.log(e)
-      })
+      cs = cs.substr(0, cs.length - 1)
+      this.$confirm(`请确认是否删除「${cs}」PVC?`, '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        this.loading = true
+        deletePersistentVolumeClaims(this.cluster, {resources: cms}).then(() => {
+          Message.success("删除PVC成功")
+          this.loading = false
+          this.fetchData()
+        }).catch((err) => {
+          this.loading = false
+        });
+      }).catch(() => {       
+      });
     },
     _delPvcsFunc: function() {
       if (this.delPvcs.length > 0){
@@ -290,6 +338,89 @@ export default {
         this.delFunc = undefined
       }
     },
+    fetchNamespace: function() {
+      this.namespaces = []
+      const cluster = this.$store.state.cluster
+      if (cluster) {
+        listNamespace(cluster).then(response => {
+          this.namespaces = response.data
+          this.namespaces.sort((a, b) => {return a.name > b.name ? 1 : -1})
+        }).catch((err) => {
+          console.log(err)
+        })
+      } else {
+        Message.error("获取集群异常，请刷新重试")
+      }
+    },
+    handleCreatePvc() {
+      let pvc = JSON.parse(JSON.stringify(this.pvc))
+      if(!pvc.metadata.name) {
+        Message.error("请输入名称")
+        return
+      }
+      if(this.namespace){
+        pvc.metadata.namespace = this.namespace
+      }
+      if(!pvc.metadata.namespace) {
+        Message.error("命名空间不能为空")
+        return
+      }
+      if(pvc.spec.resources.requests.storage) {
+        pvc.spec.resources.requests.storage += 'Gi'
+      }
+      if(pvc.spec.resources.limits && pvc.spec.resources.limits.storage) {
+        pvc.spec.resources.limits.storage += 'Gi'
+      }
+      if(this.projectId) {
+        pvc.metadata.labels = projectLabels()
+      }
+      let yamlStr = yaml.dump(pvc)
+      this.dialogLoading = true
+      createYaml(this.cluster, yamlStr).then((response) => {
+        this.dialogLoading = false
+        this.createFormVisible = false
+        Message.success("创建PVC成功")
+        this.fetchData()
+      }).catch(() => {
+        this.dialogLoading = false
+      })
+    },
+    openCreateFormDialog() {
+      if(this.namespaces.length == 0) {
+        this.fetchNamespace()
+      }
+      this.createFormVisible = true
+    },
+    openUpdateFormDialog(namespace, name) {
+      this.createFormVisible = true
+      this.updateFormVisible = true
+      if(this.namespaces.length == 0) {
+        this.fetchNamespace()
+      }
+      this.getPersistentVolumeClaim(namespace, name)
+    },
+    closeFormDialog() {
+      this.createFormVisible = false
+      this.updateFormVisible = false
+      this.pvc = {
+        apiVersion: "v1",
+        kind: "PersistentVolumeClaim",
+        metadata: {
+          name: "",
+        },
+        spec: {
+          resources: {requests: {}},
+          accessModes: [],
+        }
+      }
+    },
+    storeageUnit(res) {
+      if(!res) return 'Gi'
+      if(res.indexOf('G') > -1) return 'Gi'
+      if(res.indexOf('T') > -1) return 'Ti'
+      if(res.indexOf('M') > -1) return 'Mi'
+      return 'Gi'
+    }
   }
 }
 </script>

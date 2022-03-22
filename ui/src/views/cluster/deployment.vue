@@ -237,7 +237,7 @@ export default {
       if (cluster) {
         listDeployments(cluster).then(response => {
           this.loading = false
-          this.originDeployments = response.data
+          this.originDeployments = response.data || []
         }).catch(() => {
           this.loading = false
         })

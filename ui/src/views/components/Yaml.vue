@@ -26,7 +26,7 @@ export default {
   },
   computed: {
     yamlHeight() {
-      return window.innerHeight - 250
+      return window.innerHeight - 300
     }
   },
   watch: {

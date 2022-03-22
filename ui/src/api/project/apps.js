@@ -76,3 +76,11 @@ export function updateApp(id, data) {
     data,
   })
 }
+
+export function importStoreApp(data) {
+  return request({
+    url: `/project/apps/import_storeapp`,
+    method: 'post',
+    data,
+  })
+}

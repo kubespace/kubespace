@@ -1,0 +1,5 @@
+{
+    "name": "kafka",
+    "versions": ["kafka-14.2.0.tgz"],
+    "type": "middleware"
+}

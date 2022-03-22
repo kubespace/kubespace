@@ -1,0 +1,5 @@
+{
+    "name": "zookeeper",
+    "versions": ["zookeeper-7.4.4.tgz"],
+    "type": "middleware"
+}

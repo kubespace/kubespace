@@ -3,7 +3,7 @@
         <div class="login-box">
             <el-row style="margin-bottom: 25px;">
                 <el-col :span="16" :offset="4" align="center">
-                    <span class='login-title'>OpenSpace</span>
+                    <span class='login-title'>KubeSpace</span>
                 </el-col>
             </el-row>
             <el-row style="margin-bottom: 8px">

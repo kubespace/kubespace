@@ -1,8 +1,9 @@
 <template>
   <div class="cluster-bar">
     <el-breadcrumb class="app-breadcrumb" separator-class="el-icon-arrow-right">
-        <el-breadcrumb-item v-for="t in titleName" :key="t" class="no-redirect">
-          {{ t }}
+        <el-breadcrumb-item v-for="(t, i) in titleName" :key="i" class="no-redirect">
+          <span v-if='linkWithTitle(i)' @click="routeLink(linkWithTitle(i))" class="linkTitleClass">{{ t }}</span>
+          <span v-else>{{ t }}</span>
         </el-breadcrumb-item>
     </el-breadcrumb>
     
@@ -13,7 +14,6 @@
     </span>
     <div class="right">
       <slot name="right-btn"></slot>
-      <!-- <el-button v-if="typeof delFunc !== 'undefined'"  size="small" plain @click="delFunc()">删 除</el-button> -->
       <template v-if="$deletePerm()">
         <el-button v-if="typeof delFunc !== 'undefined'" size="small" plain @click="delFunc()"
           type="danger" icon="el-icon-delete" >
@@ -67,6 +67,10 @@ export default {
     titleName: {
       type: Array,
       required: true,
+      default: () => {return []}
+    },
+    titleLink: {
+      type: Array,
       default: () => {return []}
     },
     nsFunc: {
@@ -131,6 +135,12 @@ export default {
     }
   },
   methods: {
+    routeLink(link) {
+      this.$router.push({name: link})
+    },
+    linkWithTitle(idx) {
+      return this.titleLink[idx]
+    },
     nsChange(vals) {
       if (this.nsFunc) {
         this.nsFunc(vals)
@@ -239,6 +249,9 @@ export default {
       }
     }
 
+  }
+  .linkTitleClass:hover{
+    cursor: pointer;
   }
 }
 </style>

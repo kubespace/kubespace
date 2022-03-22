@@ -1,0 +1,5 @@
+{
+    "name": "mysql",
+    "versions": ["mysql-8.8.3.tgz"],
+    "type": "middleware"
+}
