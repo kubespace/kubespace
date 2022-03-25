@@ -59,3 +59,10 @@ type AppStoreCreateSerializer struct {
 type GetStoreAppSerializer struct {
 	WithVersions bool `json:"with_versions" form:"with_versions"`
 }
+
+type DuplicateAppSerializer struct {
+	AppId     uint   `json:"app_id" form:"app_id"`
+	VersionId uint   `json:"version_id" form:"version_id"`
+	Scope     string `json:"scope" form:"scope"`
+	ScopeId   uint   `json:"scope_id" form:"scope_id"`
+}

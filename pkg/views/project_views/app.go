@@ -32,6 +32,7 @@ func NewProjectApp(models *model.Models, appService *project.AppService) *Projec
 		views.NewView(http.MethodPost, "/install", app.install),
 		views.NewView(http.MethodPost, "/destroy", app.destroy),
 		views.NewView(http.MethodPost, "/import_storeapp", app.importStoreapp),
+		views.NewView(http.MethodPost, "/duplicate_app", app.duplicateApp),
 		views.NewView(http.MethodDelete, "/:id", app.deleteApp),
 	}
 	app.Views = vs
@@ -51,7 +52,11 @@ func (a *ProjectApp) listApps(c *views.Context) *utils.Response {
 	if err := c.ShouldBindQuery(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	return a.AppService.ListApp(ser)
+	data, err := a.AppService.ListApp(ser.ProjectId)
+	if err != nil {
+		return &utils.Response{Code: code.GetError, Msg: err.Error()}
+	}
+	return &utils.Response{Code: code.Success, Data: data}
 }
 
 func (a *ProjectApp) listAppStatus(c *views.Context) *utils.Response {
@@ -120,4 +125,12 @@ func (a *ProjectApp) importStoreapp(c *views.Context) *utils.Response {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
 	return a.AppService.ImportStoreApp(ser, c.User)
+}
+
+func (a *ProjectApp) duplicateApp(c *views.Context) *utils.Response {
+	var ser serializers.DuplicateAppSerializer
+	if err := c.ShouldBind(&ser); err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	return a.AppService.DuplicateApp(&ser, c.User)
 }

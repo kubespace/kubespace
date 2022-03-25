@@ -39,11 +39,12 @@ func (p *ManagerProject) List() ([]types.Project, error) {
 }
 
 func (p *ManagerProject) Delete(project *types.Project) error {
+	//err := p.DB.Transaction(func(tx *gorm.DB) error {
+	//
+	//})
 	result := p.DB.Delete(project)
 	if result.Error != nil {
 		return result.Error
 	}
 	return nil
 }
-
-

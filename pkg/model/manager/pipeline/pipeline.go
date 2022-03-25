@@ -106,3 +106,30 @@ func (p *ManagerPipeline) Stages(pipelineId uint) ([]types.PipelineStage, error)
 
 	return stages, nil
 }
+
+func (p *ManagerPipeline) Delete(pipelineId uint) error {
+	return p.DB.Transaction(func(tx *gorm.DB) error {
+		var pipelineRuns []types.PipelineRun
+		if err := tx.Order("id desc").Where("pipeline_id = ?", pipelineId).Find(&pipelineRuns).Error; err != nil {
+			return err
+		}
+		for _, pipelineRun := range pipelineRuns {
+			if err := tx.Delete(&types.PipelineRunJobLog{}, "pipeline_run_id=?", pipelineRun.ID).Error; err != nil {
+				return err
+			}
+			if err := tx.Delete(&types.PipelineRunJob{}, "pipeline_run_id=?", pipelineRun.ID).Error; err != nil {
+				return err
+			}
+			if err := tx.Delete(&types.PipelineStage{}, "pipeline_run_id=?", pipelineRun.ID).Error; err != nil {
+				return err
+			}
+		}
+		if err := tx.Delete(&types.PipelineRun{}, "pipeline_id=?", pipelineId).Error; err != nil {
+			return err
+		}
+		if err := tx.Delete(&types.Pipeline{}, "id=?", pipelineId).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+}

@@ -53,8 +53,9 @@ func NewViewSets(kr *kube_resource.KubeResources, models *model.Models) *ViewSet
 	appBaseService := project.NewAppBaseService(models)
 	projectAppService := project.NewAppService(kr, appBaseService)
 	appStoreService := project.NewAppStoreService(appBaseService)
+	projectService := project.NewProjectService(models, kr, projectAppService)
 
-	projectWorkspace := project_views.NewProject(models)
+	projectWorkspace := project_views.NewProject(models, projectService)
 	projectApps := project_views.NewProjectApp(models, projectAppService)
 	appStore := project_views.NewAppStore(models, appStoreService)
 

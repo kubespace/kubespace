@@ -30,6 +30,7 @@ type ProjectApp struct {
 	ID           uint        `gorm:"primaryKey" json:"id"`
 	ProjectId    uint        `gorm:"not null;uniqueIndex:ProjectNameUnique" json:"project_app_id"`
 	Name         string      `gorm:"size:255;not null;uniqueIndex:ProjectNameUnique" json:"name"`
+	Description  string      `gorm:"type:text;" json:"description"`
 	AppVersionId uint        `gorm:"" json:"app_version_id"`
 	AppVersion   *AppVersion `gorm:"-" json:"app_version"`
 	Type         string      `gorm:"size:255;not null" json:"type"`

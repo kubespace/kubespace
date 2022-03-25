@@ -41,7 +41,7 @@ func NewModels(redisOp *redis.Options, mysqlOptions *mysql.Options) (*Models, er
 	user := manager.NewUserManager(db)
 	pipelinePluginMgr := pipeline.NewPipelinePluginManager(db)
 	pipelineMgr := pipeline.NewPipelineManager(db)
-	pipelineWorkspaceMgr := pipeline.NewWorkspaceManager(db)
+	pipelineWorkspaceMgr := pipeline.NewWorkspaceManager(db, pipelineMgr)
 	pipelineRunMgr := pipeline.NewPipelineRunManager(db, pipelinePluginMgr)
 
 	secrets := manager.NewSettingsSecretManager(db)

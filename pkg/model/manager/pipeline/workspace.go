@@ -8,11 +8,13 @@ import (
 
 type WorkspaceManager struct {
 	*manager.CommonManager
+	PipelineManager *ManagerPipeline
 }
 
-func NewWorkspaceManager(db *gorm.DB) *WorkspaceManager {
+func NewWorkspaceManager(db *gorm.DB, pipelineManager *ManagerPipeline) *WorkspaceManager {
 	return &WorkspaceManager{
-		CommonManager: manager.NewCommonManager(nil, db, "", false),
+		CommonManager:   manager.NewCommonManager(nil, db, "", false),
+		PipelineManager: pipelineManager,
 	}
 }
 
@@ -42,9 +44,17 @@ func (w *WorkspaceManager) List() ([]types.PipelineWorkspace, error) {
 }
 
 func (w *WorkspaceManager) Delete(workspace *types.PipelineWorkspace) error {
-	result := w.DB.Delete(workspace)
-	if result.Error != nil {
-		return result.Error
+	var pipelines []types.Pipeline
+	if err := w.DB.Where("workspace_id = ?", workspace.ID).Find(&pipelines).Error; err != nil {
+		return err
+	}
+	for _, pipeline := range pipelines {
+		if err := w.PipelineManager.Delete(pipeline.ID); err != nil {
+			return err
+		}
+	}
+	if err := w.DB.Delete(workspace).Error; err != nil {
+		return err
 	}
 	return nil
 }

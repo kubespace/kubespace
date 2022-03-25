@@ -95,6 +95,21 @@ func (a *AppStoreManager) ListStoreApps() ([]*types.AppStore, error) {
 	return rets, nil
 }
 
+func (a *AppStoreManager) ImportApp(storeApp *types.AppStore, appVersion *types.AppVersion) error {
+	return a.DB.Transaction(func(tx *gorm.DB) error {
+		if storeApp.ID == 0 {
+			if err := tx.Create(storeApp).Error; err != nil {
+				return err
+			}
+			appVersion.ScopeId = storeApp.ID
+		}
+		if err := tx.Create(appVersion).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
 func (a *AppStoreManager) GetLatestVersion(appId uint) (*types.AppVersion, error) {
 	var appVersion types.AppVersion
 	if err := a.DB.Order("create_time desc").First(&appVersion, "scope = ? and scope_id = ?", types.AppVersionScopeStoreApp, appId).Error; err != nil {

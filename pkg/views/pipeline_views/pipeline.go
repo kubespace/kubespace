@@ -29,6 +29,7 @@ func NewPipeline(models *model.Models) *Pipeline {
 		views.NewView(http.MethodGet, "/:pipelineId", pw.get),
 		views.NewView(http.MethodPost, "", pw.create),
 		views.NewView(http.MethodPut, "", pw.update),
+		views.NewView(http.MethodDelete, "/:pipelineId", pw.delete),
 	}
 	pw.Views = vs
 	return pw
@@ -70,4 +71,17 @@ func (p *Pipeline) update(c *views.Context) *utils.Response {
 		}
 	}
 	return p.pipelineService.Update(&ser, c.User)
+}
+
+func (p *Pipeline) delete(c *views.Context) *utils.Response {
+	resp := &utils.Response{Code: code.Success}
+	id, err := strconv.ParseUint(c.Param("pipelineId"), 10, 64)
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	err = p.models.ManagerPipeline.Delete(uint(id))
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: "删除流水线失败：" + err.Error()}
+	}
+	return resp
 }

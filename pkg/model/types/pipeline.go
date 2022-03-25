@@ -16,7 +16,7 @@ const (
 
 const (
 	WorkspaceCodeTypeHttps = "https"
-	WorkspaceCodeTypeGit = "git"
+	WorkspaceCodeTypeGit   = "git"
 )
 
 const (
@@ -44,11 +44,11 @@ const (
 type PipelineWorkspace struct {
 	ID           uint      `gorm:"primaryKey" json:"id"`
 	Name         string    `gorm:"size:255;not null;uniqueIndex" json:"name"`
-	Description string `gorm:"type:text;" json:"description"`
+	Description  string    `gorm:"type:text;" json:"description"`
 	Type         string    `gorm:"size:20;not null" json:"type"`
-	CodeType string `gorm:"size:20;" json:"code_type"`
+	CodeType     string    `gorm:"size:20;" json:"code_type"`
 	CodeUrl      string    `gorm:"size:512" json:"code_url"`
-	CodeSecretId uint  `gorm:"" json:"code_secret_id"`
+	CodeSecretId uint      `gorm:"" json:"code_secret_id"`
 	CreateUser   string    `gorm:"size:50;not null" json:"create_user"`
 	UpdateUser   string    `gorm:"size:50;not null" json:"update_user"`
 	CreateTime   time.Time `gorm:"column:create_time;not null;autoCreateTime" json:"create_time"`
@@ -159,10 +159,10 @@ const (
 )
 
 type PipelinePluginParamsSpec struct {
-	ParamName string `json:"param_name"`
-	From      string `json:"from"`
-	FromName  string `json:"from_name"`
-	Default interface{} `json:"default"`
+	ParamName string      `json:"param_name"`
+	From      string      `json:"from"`
+	FromName  string      `json:"from_name"`
+	Default   interface{} `json:"default"`
 }
 
 func (p *PipelinePluginParams) Scan(value interface{}) error {
@@ -259,7 +259,7 @@ type PipelineRunStage struct {
 	Status         string          `gorm:"size:50;not null" json:"status"`
 	Env            Map             `gorm:"type:json" json:"env"`
 	Jobs           PipelineRunJobs `gorm:"-" json:"jobs"`
-	ExecTime     time.Time       `gorm:"not null;autoCreateTime" json:"exec_time"`
+	ExecTime       time.Time       `gorm:"not null;autoCreateTime" json:"exec_time"`
 	CreateTime     time.Time       `gorm:"not null;autoCreateTime" json:"create_time"`
 	UpdateTime     time.Time       `gorm:"not null;autoUpdateTime" json:"update_time"`
 }
@@ -267,22 +267,25 @@ type PipelineRunStage struct {
 type PipelineRunJobs []*PipelineRunJob
 
 type PipelineRunJob struct {
-	ID         uint            `gorm:"primaryKey" json:"id"`
-	StageRunId uint            `gorm:"not null" json:"stage_run_id"`
-	Name       string          `gorm:"size:50;not null" json:"name"`
-	PluginKey  string          `gorm:"size:255;not null" json:"plugin_key"`
-	Status     string          `gorm:"size:50;not null" json:"status"`
-	Params     Map             `gorm:"type:json;not null" json:"params"`
-	Result     *utils.Response `gorm:"type:json;" json:"result"`
-	CreateTime time.Time       `gorm:"not null;autoCreateTime" json:"create_time"`
-	UpdateTime time.Time       `gorm:"not null;autoUpdateTime" json:"update_time"`
+	ID            uint            `gorm:"primaryKey" json:"id"`
+	PipelineRunId uint            `gorm:"not null" json:"pipeline_run_id"`
+	StageRunId    uint            `gorm:"not null" json:"stage_run_id"`
+	Name          string          `gorm:"size:50;not null" json:"name"`
+	PluginKey     string          `gorm:"size:255;not null" json:"plugin_key"`
+	Status        string          `gorm:"size:50;not null" json:"status"`
+	Params        Map             `gorm:"type:json;not null" json:"params"`
+	Result        *utils.Response `gorm:"type:json;" json:"result"`
+	CreateTime    time.Time       `gorm:"not null;autoCreateTime" json:"create_time"`
+	UpdateTime    time.Time       `gorm:"not null;autoUpdateTime" json:"update_time"`
 }
 
 type PipelineRunJobLog struct {
-	ID         uint      `gorm:"primaryKey"`
-	JobRunId   uint      `gorm:"column:job_run_id;not null"`
-	JobName    string    `gorm:"not null"`
-	Logs       string    `gorm:"type:longtext"`
-	CreateTime time.Time `gorm:"not null;autoCreateTime"`
-	UpdateTime time.Time `gorm:"not null;autoUpdateTime"`
+	ID            uint      `gorm:"primaryKey"`
+	PipelineRunId uint      `gorm:"not null" json:"pipeline_run_id"`
+	StageRunId    uint      `gorm:"not null" json:"stage_run_id"`
+	JobRunId      uint      `gorm:"column:job_run_id;not null"`
+	JobName       string    `gorm:"not null"`
+	Logs          string    `gorm:"type:longtext"`
+	CreateTime    time.Time `gorm:"not null;autoCreateTime"`
+	UpdateTime    time.Time `gorm:"not null;autoUpdateTime"`
 }

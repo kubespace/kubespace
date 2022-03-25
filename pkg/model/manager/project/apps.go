@@ -139,7 +139,7 @@ func (a *AppManager) DeleteProjectApp(appId uint) error {
 	})
 }
 
-func (a *AppManager) ImportStoreApp(app *types.ProjectApp, appVersion *types.AppVersion) error {
+func (a *AppManager) ImportApp(app *types.ProjectApp, appVersion *types.AppVersion) error {
 	return a.DB.Transaction(func(tx *gorm.DB) error {
 		if app.ID == 0 {
 			if err := tx.Create(app).Error; err != nil {
