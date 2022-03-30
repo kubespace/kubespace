@@ -47,10 +47,10 @@ func NewModels(redisOp *redis.Options, mysqlOptions *mysql.Options) (*Models, er
 	secrets := manager.NewSettingsSecretManager(db)
 	imageRegistry := manager.NewSettingsImageRegistryManager(db)
 
-	projectMgr := project.NewManagerProject(db)
 	appVersionMgr := project.NewAppVersionManager(db)
 	projectAppMgr := project.NewAppManager(appVersionMgr, db)
 	appStoreMgr := project.NewAppStoreManager(appVersionMgr, db)
+	projectMgr := project.NewManagerProject(db, projectAppMgr)
 
 	return &Models{
 		ClusterManager:           cm,

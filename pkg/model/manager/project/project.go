@@ -7,10 +7,11 @@ import (
 
 type ManagerProject struct {
 	*gorm.DB
+	ProjectAppManager *AppManager
 }
 
-func NewManagerProject(db *gorm.DB) *ManagerProject {
-	return &ManagerProject{DB: db}
+func NewManagerProject(db *gorm.DB, appManager *AppManager) *ManagerProject {
+	return &ManagerProject{DB: db, ProjectAppManager: appManager}
 }
 
 func (p *ManagerProject) Create(project *types.Project) (*types.Project, error) {
@@ -39,9 +40,16 @@ func (p *ManagerProject) List() ([]types.Project, error) {
 }
 
 func (p *ManagerProject) Delete(project *types.Project) error {
-	//err := p.DB.Transaction(func(tx *gorm.DB) error {
-	//
-	//})
+	var apps []types.ProjectApp
+	var err error
+	if err = p.DB.Where("project_id = ?", project.ID).Find(&apps).Error; err != nil {
+		return err
+	}
+	for _, app := range apps {
+		if err = p.ProjectAppManager.DeleteProjectApp(app.ID); err != nil {
+			return err
+		}
+	}
 	result := p.DB.Delete(project)
 	if result.Error != nil {
 		return result.Error

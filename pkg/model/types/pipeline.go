@@ -289,3 +289,14 @@ type PipelineRunJobLog struct {
 	CreateTime    time.Time `gorm:"not null;autoCreateTime"`
 	UpdateTime    time.Time `gorm:"not null;autoUpdateTime"`
 }
+
+type PipelineResource struct {
+	ID          uint
+	PipelineId  uint
+	Name        string
+	Type        string
+	SecretId    uint
+	Description string
+	CreateTime  time.Time `gorm:"not null;autoCreateTime"`
+	UpdateTime  time.Time `gorm:"not null;autoUpdateTime"`
+}
