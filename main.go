@@ -2,23 +2,25 @@ package main
 
 import (
 	"flag"
+	conf2 "github.com/kubespace/kubespace/pkg/conf"
 	"github.com/kubespace/kubespace/pkg/core"
 	"github.com/kubespace/kubespace/pkg/options"
 	"k8s.io/klog"
 )
 
 var (
-	insecurePort  = flag.Int("insecure-port", 80, "Server insecure port to listen.")
-	port          = flag.Int("port", 443, "Server port to listen.")
-	redisAddress  = flag.String("redis-address", "localhost:6379", "redis address used.")
-	redisDB       = flag.Int("redis-db", 0, "redis db used.")
-	redisPassword = flag.String("redis-password", "", "redis password used.")
-	certFile      = flag.String("cert-file", "", "cert file path for tls used.")
-	keyFile       = flag.String("cert-key-file", "", "cert key file path for tls used.")
-	mysqlHost     = flag.String("mysql-host", "127.0.0.1:3306", "mysql address used.")
-	mysqlUser     = flag.String("mysql-user", "root", "mysql db user.")
-	mysqlPassword = flag.String("mysql-password", "", "mysql password used.")
-	mysqlDbName   = flag.String("mysql-dbname", "kubespace", "mysql db used.")
+	insecurePort      = flag.Int("insecure-port", 80, "Server insecure port to listen.")
+	port              = flag.Int("port", 443, "Server port to listen.")
+	redisAddress      = flag.String("redis-address", "localhost:6379", "redis address used.")
+	redisDB           = flag.Int("redis-db", 0, "redis db used.")
+	redisPassword     = flag.String("redis-password", "", "redis password used.")
+	certFile          = flag.String("cert-file", "", "cert file path for tls used.")
+	keyFile           = flag.String("cert-key-file", "", "cert key file path for tls used.")
+	mysqlHost         = flag.String("mysql-host", "127.0.0.1:3306", "mysql address used.")
+	mysqlUser         = flag.String("mysql-user", "root", "mysql db user.")
+	mysqlPassword     = flag.String("mysql-password", "", "mysql password used.")
+	mysqlDbName       = flag.String("mysql-dbname", "kubespace", "mysql db used.")
+	pipelinePluginUrl = flag.String("pipeline-plugin-url", "http://127.0.0.1:8181/api/v1", "pipeline plugin url.")
 )
 
 func createServerOptions() *options.ServerOptions {
@@ -53,6 +55,8 @@ func main() {
 	flag.VisitAll(func(flag *flag.Flag) {
 		klog.Infof("FLAG: --%s=%q", flag.Name, flag.Value)
 	})
+	var err error
+	conf2.AppConfig.PipelinePluginUrl = *pipelinePluginUrl
 	server, err := buildServer()
 	if err != nil {
 		panic(err)

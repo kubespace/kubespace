@@ -138,6 +138,17 @@ type PipelineJob struct {
 	Params    map[string]interface{} `json:"params"`
 }
 
+const (
+	BuiltinPluginBuildCodeToImage = "build_code_to_image"
+	BuiltinPluginExecuteShell     = "execute_shell"
+
+	// BuiltinPluginUpgradeApp 根据构建出来的代码镜像，升级项目应用
+	BuiltinPluginUpgradeApp = "upgrade_app"
+
+	// BuiltinPluginRelease 发布版本，给代码及镜像打发布tag号
+	BuiltinPluginRelease = "release"
+)
+
 type PipelinePlugin struct {
 	ID         uint                    `gorm:"primaryKey"`
 	Name       string                  `gorm:"size:255;not null;uniqueIndex:idx_plugin_name"`
@@ -154,8 +165,11 @@ type PipelinePluginParams struct {
 }
 
 const (
-	PluginParamsFromEnv = "env"
-	PluginParamsFromJob = "job"
+	PluginParamsFromEnv              = "env"
+	PluginParamsFromJob              = "job"
+	PluginParamsFromCodeSecret       = "code_secret"
+	PluginParamsFromImageRegistry    = "image_registry"
+	PluginParamsFromPipelineResource = "pipeline_resource"
 )
 
 type PipelinePluginParamsSpec struct {
@@ -292,8 +306,8 @@ type PipelineRunJobLog struct {
 
 type PipelineResource struct {
 	ID          uint            `gorm:"primaryKey" json:"id"`
-	WorkspaceId uint            `gorm:"not null" json:"workspace_id"`
-	Name        string          `gorm:"size:255;not null;" json:"name"`
+	WorkspaceId uint            `gorm:"not null;uniqueIndex:idx_workspace_resource" json:"workspace_id"`
+	Name        string          `gorm:"size:255;not null;uniqueIndex:idx_workspace_resource" json:"name"`
 	Global      bool            `gorm:"default:false" json:"global"`
 	Type        string          `gorm:"size:50;not null" json:"type"`
 	Value       string          `gorm:"size:500; not null;" json:"value"`
