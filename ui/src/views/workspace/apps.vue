@@ -30,7 +30,7 @@
         </el-table-column>
         <el-table-column prop="package_version" label="版本" show-overflow-tooltip min-width="15">
           <template slot-scope="scope">
-            {{ scope.row.from == 'space' ? scope.row.package_version : scope.row.package_version + ' / ' + scope.row.app_version }}
+            {{ scope.row.app_version.from == 'space' ? scope.row.app_version.package_version : scope.row.app_version.package_version + ' / ' + scope.row.app_version.app_version }}
           </template>
         </el-table-column>
         <el-table-column prop="type" label="类型" show-overflow-tooltip min-width="15">
@@ -58,7 +58,7 @@
                 v-if="scope.row.status=='UnInstall'" @click="openInstallFormDialog(scope.row)">安装</el-link>
               <el-link :underline="false" class="operator-btn"
                 v-if="scope.row.status!='UnInstall'" @click="openInstallFormDialog(scope.row, true)">升级</el-link>
-              <el-link :underline="false" class="operator-btn" v-if="scope.row.from=='space'"
+              <el-link :underline="false" class="operator-btn" v-if="scope.row.app_version.from=='space'"
                 @click="openEditApp(scope.row.app_version_id)">编辑</el-link>
               
               <el-dropdown style="font-size: 13px;">
@@ -68,11 +68,11 @@
                 <el-dropdown-menu slot="dropdown">
                   <el-dropdown-item>
                     <el-link :underline="false" class="operator-btn" style="color:#0c81f5; font-weight: 400"
-                      @click="openEditApp(scope.row.app_version_id)">克隆</el-link>
+                      @click="openCloneAppDiloag(scope.row, 'project_app')">克隆</el-link>
                   </el-dropdown-item>
                   <el-dropdown-item>
                     <el-link :underline="false" class="operator-btn" style="color:#0c81f5; font-weight: 400"
-                      @click="openEditApp(scope.row.app_version_id)">发布</el-link>
+                      @click="openCloneAppDiloag(scope.row, 'store_app')">发布</el-link>
                   </el-dropdown-item>
                   <el-dropdown-item>
                     <el-link :underline="false" class="operator-btn" style="color: #F56C6C; font-weight: 400"
@@ -96,7 +96,7 @@
                 <span>{{ form.name }}</span>
               </el-form-item>
               <div v-loading="fetchVersionLoading">
-                <el-form-item label="安装版本" prop="" :required="true" style="margin-top: -10px;">
+                <el-form-item label="安装版本" prop="" :required="true" style="margin-top: 0px;">
                   <el-select v-model="form.app_version_id" placeholder="请选择应用版本" size="small" style="width: 50%;"
                     @change="changeInstallAppVersion">
                     <el-option
@@ -108,7 +108,7 @@
                   </el-select>
                 </el-form-item>
                 <template v-if="form.from == 'space'">
-                  <el-row style="line-height: 40px;">
+                  <el-row style="line-height: 38px; margin-top: 10px;">
                     <el-col :span="7"><div style="padding-left: 10px; background-color: rgb(245, 247, 250);color: #909399">负载容器</div></el-col>
                     <el-col :span="11"><div style="background-color: rgb(245, 247, 250);color: #909399">镜像</div></el-col>
                     <el-col :span="6"><div style="background-color: rgb(245, 247, 250);color: #909399">标签</div></el-col>
@@ -178,12 +178,43 @@
           </div>
         </div>
       </el-dialog>
+
+      <el-dialog :title="cloneForm.scope == 'project_app' ? '克隆应用' : '发布应用'" :visible.sync="cloneFormVisible"
+        @close="cloneFormVisible=false;cloneForm={}" :destroy-on-close="true" :close-on-click-modal="false">
+        <div v-loading="dialogLoading">
+          <div class="dialogContent" style="">
+            <el-form :model="cloneForm" :rules="rules" ref="form" label-position="left" label-width="105px">
+              <el-form-item v-if="cloneForm.scope == 'project_app'" label="工作空间" prop="" :required="true">
+                <el-select v-model="cloneForm.project_id" placeholder="请选择工作空间" size="small" style="width: 100%;">
+                  <el-option
+                    v-for="item in projects"
+                    :key="item.id"
+                    :label="item.name"
+                    :value="item.id">
+                  </el-option>
+                </el-select>
+              </el-form-item>
+              <el-form-item label="应用名称" prop="" :required="true">
+                <el-input v-model="cloneForm.name" placeholder="请输入应用名称" size="small"></el-input>
+              </el-form-item>
+              <el-form-item label="应用版本" prop="" autofocus>
+                <span>{{ cloneForm.package_version }}</span>
+              </el-form-item>
+            </el-form>
+          </div>
+          <div slot="footer" class="dialogFooter" style="padding-top: 0px;">
+            <el-button @click="cloneFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
+            <el-button type="primary" @click="handleDuplicateApp" >{{ cloneForm.scope == 'project_app' ? '克 隆' : '发 布' }}</el-button>
+          </div>
+        </div>
+      </el-dialog>
     </div>
   </div>
 </template>
 <script>
 import { Clusterbar, Yaml } from "@/views/components";
-import { listApps, listAppStatus, listAppVersions, installApp, destroyApp, deleteApp, importStoreApp } from "@/api/project/apps";
+import { listProjects } from "@/api/project/project";
+import { listApps, listAppStatus, listAppVersions, installApp, destroyApp, deleteApp, importStoreApp, duplicateApp } from "@/api/project/apps";
 import { Message } from "element-ui";
 import { listStoreApps } from '@/api/project/appStore'
 import yaml from 'js-yaml'
@@ -253,6 +284,11 @@ export default {
         storeAppVersion: '',
       },
       storeApps: [],
+      cloneFormVisible: false,
+      cloneForm: {
+
+      },
+      projects: [],
     };
   },
   created() {
@@ -288,7 +324,6 @@ export default {
         this.loading = false
         this.getAppStatus()
       }).catch((err) => {
-        console.log(err)
         this.loading = false
       })
     },
@@ -389,7 +424,7 @@ export default {
         app_version_id: app.app_version_id,
         values_dict: {},
         values: '',
-        from: app.from,
+        from: app.app_version.from,
       }
       this.installFormVisible = true;
       this.fetchVersionLoading = true;
@@ -511,6 +546,73 @@ export default {
         Message.success("导入应用成功")
         this.importStoreFormVisible = false
         this.fetchApps()
+      }).catch(() => {
+        this.dialogLoading = false
+      })
+    },
+    fetchProjects() {
+      this.dialogLoading = true
+      listProjects().then(response => {
+        this.projects = response.data
+        this.projects.sort((a, b) => {return a.name > b.name ? 1 : -1})
+        this.dialogLoading = false
+      }).catch(() => {
+        this.dialogLoading = false
+      })
+    },
+    openCloneAppDiloag(app, scope) {
+      this.cloneForm = {
+        app_id: app.id,
+        name: app.name,
+        package_version: app.app_version.package_version,
+        version_id: app.app_version_id,
+        scope: scope
+      }
+      if(scope == 'project_app' && this.projects.length == 0) {
+        this.fetchProjects()
+      }
+      this.cloneFormVisible = true
+    },
+    handleDuplicateApp() {
+      if(!this.cloneForm.scope) {
+        Message.error("克隆参数scope错误，请刷新重试")
+        return
+      }
+      var data = {
+        scope: this.cloneForm.scope
+      }
+      if(this.cloneForm.scope == 'project_app') {
+        if(!this.cloneForm.project_id) {
+          Message.error("克隆参数project_id错误，请刷新重试")
+          return
+        }
+        data['scope_id'] = this.cloneForm.project_id
+      }
+      if(!this.cloneForm.app_id) {
+        Message.error("克隆参数app_id错误，请刷新重试")
+        return
+      }
+      data['app_id'] = this.cloneForm.app_id
+      if(!this.cloneForm.version_id) {
+        Message.error("克隆参数version_id错误，请刷新重试")
+        return
+      }
+      data["version_id"] = this.cloneForm.version_id
+      if(!this.cloneForm.name) {
+        Message.error("克隆参数name错误，请刷新重试")
+        return
+      }
+      data["name"] = this.cloneForm.name
+      
+      this.dialogLoading = true
+      duplicateApp(data).then(response => {
+        if(this.cloneForm.scope=='project_app') {
+          Message.success("克隆应用到工作空间成功")
+        } else {
+          Message.success("发布应用到应用商店成功")
+        }
+        this.dialogLoading = false
+        this.cloneFormVisible = false
       }).catch(() => {
         this.dialogLoading = false
       })

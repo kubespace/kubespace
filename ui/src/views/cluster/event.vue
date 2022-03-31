@@ -75,6 +75,11 @@
           label="触发时间"
           min-width="50"
           show-overflow-tooltip>
+          <template slot-scope="scope">
+            <span>
+              {{ $dateFormat(scope.row.event_time) }}
+            </span>
+          </template>
         </el-table-column>
         <!-- <el-table-column
           label=""

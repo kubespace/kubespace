@@ -84,3 +84,11 @@ export function importStoreApp(data) {
     data,
   })
 }
+
+export function duplicateApp(data) {
+  return request({
+    url: `/project/apps/duplicate_app`,
+    method: 'post',
+    data,
+  })
+}

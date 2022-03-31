@@ -65,3 +65,13 @@ type PipelineStageManualSerializer struct {
 type PipelineStageRetrySerializer struct {
 	StageRunId uint `json:"stage_run_id"`
 }
+
+type PipelineResourceSerializer struct {
+	WorkspaceId uint   `json:"workspace_id" form:"workspace_id"`
+	Global      bool   `json:"global" form:"global"`
+	Name        string `json:"name" form:"name"`
+	Type        string `json:"type" form:"type"`
+	Value       string `json:"value" form:"value"`
+	SecretId    uint   `json:"secret_id" form:"secret_id"`
+	Description string `json:"description" form:"description"`
+}

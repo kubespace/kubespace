@@ -63,6 +63,7 @@
               :limit="1"
               :data="form"
               :on-success="fileResolve"
+              :on-remove="fileRemove"
               action="/api/v1/appstore/resolve">
               <i class="el-icon-upload"></i>
               <div class="el-upload__text">将charts包文件拖到此处，或<em>点击上传</em></div>
@@ -90,32 +91,32 @@
               <el-button size="small" type="primary" style="border-radius: 0px;">上传应用图标</el-button>
             </el-upload>
           </el-form-item>
-          <el-form-item v-if="form.name" label="应用名称" prop="" required style="margin-top: -10px;">
+          <el-form-item v-if="form.name" label="应用名称" prop="" required style="margin-top: 0px;">
             <el-input v-model="form.name" autocomplete="off" placeholder="请输入应用名称" size="small"></el-input>
           </el-form-item>
-          <el-form-item v-if="form.name" label="chart版本" prop="" required style="margin-top: -10px;">
+          <el-form-item v-if="form.name" label="chart版本" prop="" required style="margin-top: 0px;">
             {{ form.package_version }}
           </el-form-item>
-          <el-form-item v-if="form.name" label="app版本" prop="" required style="margin-top: -10px;">
+          <el-form-item v-if="form.name" label="app版本" prop="" required style="margin-top: 0px;">
             {{ form.app_version }}
           </el-form-item>
-          <el-form-item v-if="form.name" label="应用类型" prop="secret_type" style="margin-top: -10px;" required>
+          <el-form-item v-if="form.name" label="应用类型" prop="secret_type" style="margin-top: 0px;" required>
             <el-radio-group v-model="form.type" name="middleware" size="small">
               <el-radio-button label="middleware">中间件</el-radio-button>
               <el-radio-button label="component">集群组件</el-radio-button>
               <el-radio-button label="ordinary_app">普通应用</el-radio-button>
             </el-radio-group>
           </el-form-item>
-          <el-form-item v-if="form.name" label="应用描述" prop="" required style="margin-top: -5px;">
+          <el-form-item v-if="form.name" label="应用描述" prop="" required style="margin-top: 0px;">
             <el-input type="textarea" v-model="form.description" autocomplete="off" placeholder="请输入应用描述" size="small"></el-input>
           </el-form-item>
-          <el-form-item v-if="form.name" label="版本说明" prop="" required style="margin-top: -5px;">
+          <el-form-item v-if="form.name" label="版本说明" prop="" required style="margin-top: 0px;">
             <el-input type="textarea" v-model="form.version_description" autocomplete="off" placeholder="请输入应用版本说明" size="small"></el-input>
           </el-form-item>
           
         </el-form>
       </div>
-      <div slot="footer" class="dialogFooter" style="margin-top: -10px;">
+      <div slot="footer" class="dialogFooter" style="margin-top: 0px;">
         <el-button @click="createFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
         <el-button type="primary" @click="handleImportApp" >导 入</el-button>
       </div>
@@ -218,11 +219,13 @@ export default {
       this.$router.push({name: 'appstoreVersions', params: {'appId': app.id}})
     },
     openImportAppDialog() {
-      this.form['icon'] = ''
+      this.form = {
+        icon: ''
+      }
       this.createFormVisible = true 
     },
     closeImportAppDialog() {
-      this.form = {icon: "", type: "middleware"}
+      // this.form = {icon: "", type: "middleware"}
       this.resolveErrMsg = ''
     },
     handleImportApp() {
@@ -286,6 +289,11 @@ export default {
           version_description: '',
           type: 'middleware'
         }
+      }
+    },
+    fileRemove(file) {
+      this.form = {
+        icon: '',
       }
     },
     handlePictureCardPreview(file) {

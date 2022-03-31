@@ -1,6 +1,6 @@
 <template>
   <div>
-    <clusterbar :titleName="titleName">
+    <clusterbar :titleName="titleName" :titleLink="['workspaceApp']" >
       <div slot="right-btn">
         <el-button size="small" class="bar-btn" type="" @click="cancelSaveApp">取 消</el-button>
         <el-button size="small" class="bar-btn" type="primary" @click="createAppDialog">保 存</el-button>
@@ -10,11 +10,11 @@
       <div style="padding: 10px 8px 0px;">
         <div>基本信息</div>
         <el-form label-position="left" class="base-info-class" :model="form" :rules="rules" style="padding: 10px 20px 0px" label-width="100px">
-          <el-form-item label="应用名称" style="width: 400px" prop="name">
-            <el-input v-model="form.name" :disabled="appVersionId?true:false" @change="appFormNameChange" placeholder="请输入应用名称" size="small"></el-input>
+          <el-form-item label="应用名称" style="width: 500px" prop="name">
+            <el-input v-model="form.name" :disabled="appVersionId?true:false" @input="appFormNameChange" placeholder="请输入应用名称" size="small"></el-input>
           </el-form-item>
-          <el-form-item v-if="appVersionId" label="应用版本" style="width: 400px" prop="name">
-            <span style="color: #606266">{{ chart.version }}</span>
+          <el-form-item label="应用描述" style="width: 500px" prop="description">
+            <el-input v-model="form.description" type="textarea" placeholder="请输入应用描述" size="small"></el-input>
           </el-form-item>
         </el-form>
       </div>
@@ -49,6 +49,7 @@
               <service v-if="t.kind == 'Service'" :template="t" :containers="form.templates[0].spec.template.spec.containers"></service>
               <config-map v-if="t.kind == 'ConfigMap'" :template="t"></config-map>
               <secret v-if="t.kind == 'Secret'" :template="t"></secret>
+              <pvc v-if="t.kind == 'PersistentVolumeClaim'" :template="t"></pvc>
             </div>
           </el-tab-pane>
         </el-tabs>
@@ -65,14 +66,14 @@
               <el-form-item v-if="appVersionId" label="应用版本" prop="name">
                 <span>{{ chart.version }}</span>
               </el-form-item>
-              <el-form-item label="三位版本号" prop="version">
+              <el-form-item label="三位版本号" prop="version" required>
                 <el-input v-model="form.version" placeholder="请输入应用三位版本号" size="small"></el-input>
               </el-form-item>
-              <el-form-item label="第四位版本号">
+              <el-form-item label="第四位版本号" required>
                 <el-input v-model="form.fourthVersion" placeholder="请输入应用第四位版本号" size="small"></el-input>
               </el-form-item>
-              <el-form-item label="版本描述">
-                <el-input type="textarea" v-model="form.description" placeholder="请输入应用版本描述" size="small"></el-input>
+              <el-form-item label="版本说明" required>
+                <el-input type="textarea" v-model="form.version_description" placeholder="请输入应用版本说明" size="small"></el-input>
               </el-form-item>
             </el-form>
           </div>
@@ -91,7 +92,7 @@
 import { Clusterbar } from "@/views/components";
 import { createApp, getAppVersion } from "@/api/project/apps";
 import { Message } from "element-ui";
-import { Workload, kindTemplate, Service, ConfigMap, Secret, transferTemplate, resolveToTemplate } from '@/views/workspace/kinds'
+import { Workload, kindTemplate, Service, ConfigMap, Secret, pvc, transferTemplate, resolveToTemplate } from '@/views/workspace/kinds'
 import yaml from 'js-yaml'
 
 export default {
@@ -102,6 +103,7 @@ export default {
     Service,
     ConfigMap,
     Secret,
+    pvc,
   },
   mounted: function () {
     const that = this;
@@ -134,11 +136,13 @@ export default {
         version: '0.0.1',
         fourthVersion: Math.ceil(Math.random() * 100000),
         description: '',
+        version_description: "",
         templates: [],
       },
       rules: {
         name: [{ required: true, message: ' ', trigger: ['blur', 'change'] },],
         version: [{ required: true, message: ' ', trigger: ['blur', 'change'] },],
+        description: [{ required: true, message: ' ', trigger: ['blur', 'change'] },],
       },
     };
   },
@@ -165,17 +169,28 @@ export default {
       getAppVersion(this.appVersionId).then((resp) => {
         this.form.id = resp.data.id
         this.form.name = resp.data.name
+        this.form.description = resp.data.description
         this.chart.version = resp.data.package_version
         this.form.version = this.chart.version.split('-')[0]
         let values = yaml.load(resp.data.values)
         for(let tpl of resp.data.templates) {
-          let data = yaml.load(decodeURIComponent(atob(tpl.data)))
+          try{
+            var data = yaml.load(atob(decodeURIComponent(tpl.data)))
+          } catch(e){
+            console.log(e)
+            Message.error(e)
+            return
+          }
           resolveToTemplate(data)
-          console.log(data)
           if(this.workloadTypes.indexOf(data.kind) > -1) {
             let podSpec = data.spec.template.spec
             for(let c of podSpec.containers) {
               c.image = values.workloads[data.metadata.name]['containers'][c.name]['image']
+            }
+            if(['Deployment', 'StatefulSet'].indexOf(data.kind) > -1) {
+              if(values.workloads[data.metadata.name].replicas) {
+                data.spec.replicas = values.workloads[data.metadata.name].replicas
+              }
             }
           }
           this.form.templates.push(data)
@@ -197,6 +212,10 @@ export default {
         Message.error("应用版本为空");
         return
       }
+      if(!this.form.version_description) {
+        Message.error("请输入版本说明")
+        return
+      }
       let version = this.form.version
       if(this.form.fourthVersion) {
         version += '-' + this.form.fourthVersion
@@ -205,7 +224,8 @@ export default {
         apiVersion: 'v2',
         name: this.form.name,
         version: version,
-        appVersion: version
+        appVersion: version,
+        description: this.form.description,
       }
       let chartYaml = yaml.dump(chartDict)
       let data = {
@@ -214,7 +234,9 @@ export default {
         version: version,
         chart: chartYaml,
         templates: this.chart.templates,
-        values: this.chart.values
+        values: this.chart.values,
+        description: this.form.description,
+        version_description: this.form.version_description
       }
       this.loading = true
       createApp(data).then(() => {
@@ -234,6 +256,10 @@ export default {
         Message.error("应用名称为空")
         return
       }
+      if(!this.form.description) {
+        Message.error("请输入应用描述")
+        return
+      }
       this.chart.templates = {}
       let valuesDict = {workloads: {}}
       let idx = 0
@@ -244,13 +270,29 @@ export default {
           return
         }
         let tpl = obj.tpl
+        console.log(tpl)
         if(this.workloadTypes.indexOf(template.kind) > -1) {
           let containers = {}
-          for(let c of tpl.spec.template.spec.containers) {
+          let spec = {}
+          if(template.kind == 'CronJob') {
+            spec = tpl.spec.jobTemplate.spec
+          } else {
+            spec = tpl.spec
+          }
+          for(let c of spec.template.spec.containers) {
+            containers[c.name] = {image: c.image}
+            c.image = `{{ index .Values "workloads" "${template.metadata.name}" "containers" "${c.name}" "image" }}`
+          }
+          for(let c of spec.template.spec.initContainers) {
             containers[c.name] = {image: c.image}
             c.image = `{{ index .Values "workloads" "${template.metadata.name}" "containers" "${c.name}" "image" }}`
           }
           valuesDict.workloads[template.metadata.name] = {containers: containers}
+          if(['Deployment', 'StatefulSet'].indexOf(template.kind) > -1) {
+            valuesDict.workloads[template.metadata.name].replicas = tpl.spec.replicas
+            tpl.spec.replicas = `{{ index .Values "workloads" "${template.metadata.name}" "replicas" }}`
+          }
+          valuesDict.workloads[template.metadata.name].kind = template.kind
         }
         if(tpl.kind == 'Service') {
           tpl.spec.selector = {
@@ -263,6 +305,7 @@ export default {
       }
       this.chart.values = yaml.dump(valuesDict)
       console.log(this.chart.templates)
+      this.form.fourthVersion = (Math.floor(new Date() / 1000)).toString(36)
       this.createFormVisible = true;
     },
     cancelSaveApp() {
@@ -339,8 +382,17 @@ export default {
   input {
     border-radius: 0px;
   } 
+  .el-input-group__prepend {
+    border-radius: 0px;
+  }
   textarea {
     border-radius: 0px;
+  }
+  .el-link.el-link--default {
+    color: #99a9bf
+  }
+  .el-link.el-link--default:hover {
+    color: #409EFF;
   }
   .el-form-item__label {
     width: 90px;

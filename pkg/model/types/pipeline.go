@@ -291,12 +291,17 @@ type PipelineRunJobLog struct {
 }
 
 type PipelineResource struct {
-	ID          uint
-	PipelineId  uint
-	Name        string
-	Type        string
-	SecretId    uint
-	Description string
-	CreateTime  time.Time `gorm:"not null;autoCreateTime"`
-	UpdateTime  time.Time `gorm:"not null;autoUpdateTime"`
+	ID          uint            `gorm:"primaryKey" json:"id"`
+	WorkspaceId uint            `gorm:"not null" json:"workspace_id"`
+	Name        string          `gorm:"size:255;not null;" json:"name"`
+	Global      bool            `gorm:"default:false" json:"global"`
+	Type        string          `gorm:"size:50;not null" json:"type"`
+	Value       string          `gorm:"size:500; not null;" json:"value"`
+	SecretId    uint            `gorm:"" json:"secret_id"`
+	Secret      *SettingsSecret `gorm:"-" json:"secret"`
+	Description string          `gorm:"size:2000" json:"description"`
+	CreateUser  string          `gorm:"size:50;not null" json:"create_user"`
+	UpdateUser  string          `gorm:"size:50;not null" json:"update_user"`
+	CreateTime  time.Time       `gorm:"not null;autoCreateTime" json:"create_time"`
+	UpdateTime  time.Time       `gorm:"not null;autoUpdateTime" json:"update_time"`
 }

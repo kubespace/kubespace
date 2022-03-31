@@ -102,6 +102,11 @@ func (a *AppStoreManager) ImportApp(storeApp *types.AppStore, appVersion *types.
 				return err
 			}
 			appVersion.ScopeId = storeApp.ID
+		} else {
+			storeApp.UpdateTime = time.Now()
+			if err := tx.Model(storeApp).Select("update_user, update_time").Updates(*storeApp).Error; err != nil {
+				return err
+			}
 		}
 		if err := tx.Create(appVersion).Error; err != nil {
 			return err

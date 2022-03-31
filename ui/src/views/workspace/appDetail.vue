@@ -1,21 +1,21 @@
 <template>
   <div>
-    <clusterbar :titleName="titleName"/>
+    <clusterbar :titleName="titleName" :titleLink="['workspaceApp']"/>
     <div class="dashboard-container detail-dashboard" ref="tableCot" v-loading="loading">
       <div style="padding: 10px 8px 0px;">
         <div>基本信息</div>
         <el-form label-position="left" inline class="pod-item" label-width="80px" style="margin: 15px 10px 30px 10px;">
-          <el-form-item label="名称">
+          <el-form-item label="应用名称">
             <span>{{ originApp.name }}</span>
           </el-form-item>
           <el-form-item label="状态">
             <span :style="{color: statusColorMap[originApp.status]}">{{ statusNameMap[originApp.status] }}</span>
           </el-form-item>
-          <el-form-item label="集群">
+          <el-form-item label="绑定集群">
             <span>{{ originApp.cluster }}</span>
           </el-form-item>
-          <el-form-item label="版本">
-            <span>{{ originApp.package_version }}</span>
+          <el-form-item label="应用版本">
+            <span>{{ originApp.from == 'space' ? originApp.package_version : originApp.package_version + " / " + originApp.app_version }}</span>
           </el-form-item>
           <el-form-item label="更新时间">
             <span>{{ $dateFormat(originApp.update_time) }}</span>
@@ -186,7 +186,7 @@
                 min-width="4"
                 show-overflow-tooltip>
                 <template slot-scope="scope">
-                  <span>{{ scope.row.spec.replicas }}</span>
+                  <span>{{ scope.row.spec.replicas ? scope.row.spec.replicas : '-' }}</span>
                 </template>
               </el-table-column>
               <el-table-column
@@ -195,9 +195,16 @@
                 min-width="17"
                 show-overflow-tooltip>
                 <template slot-scope="scope">
-                  <span v-for="s in scope.row.spec.template.spec.containers" :key="s.name" class="back-class">
-                    {{ s.image }}
-                  </span>
+                  <template v-if="scope.row.kind != 'CronJob'">
+                    <span v-for="s in scope.row.spec.template.spec.containers" :key="s.name" class="back-class">
+                      {{ s.image }}
+                    </span>
+                  </template>
+                  <template v-else>
+                    <span v-for="s in scope.row.spec.jobTemplate.spec.template.spec.containers" :key="s.name" class="back-class">
+                      {{ s.image }}
+                    </span>
+                  </template>
                 </template>
               </el-table-column>
               <el-table-column v-if="originApp.status != 'UnInstall'"
@@ -206,7 +213,12 @@
                 min-width="5"
                 show-overflow-tooltip>
                 <template slot-scope="scope">
-                  <span>{{ scope.row.status.readyReplicas }}/{{ scope.row.status.replicas }}</span>
+                  <template v-if="scope.row.kind != 'CronJob' || scope.row.kind != 'Job'">
+                    <span>{{ scope.row.status.readyReplicas }}/{{ scope.row.status.replicas }}</span>
+                  </template>
+                  <template v-else>
+                    -
+                  </template>
                 </template>
               </el-table-column>
               <el-table-column v-if="originApp.status != 'UnInstall'"
@@ -222,18 +234,168 @@
           </div>
         </el-tab-pane>
         <el-tab-pane label="Service" name="service">
+          <div class="msgClass">
+            <el-table
+            ref="table"
+            :data="services"
+            class="table-fix"
+            tooltip-effect="dark"
+            style="width: 100%"
+            :cell-style="cellStyle"
+            :default-sort = "{prop: 'name'}"
+            >
+              <el-table-column
+                prop="name"
+                label="名称"
+                min-width="10"
+                show-overflow-tooltip>
+                <template slot-scope="scope">
+                  <span>{{ scope.row.metadata.name }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                prop="kind"
+                label="类型"
+                min-width="7"
+                show-overflow-tooltip>
+                <template slot-scope="scope">
+                  <span>{{ scope.row.spec.type }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                prop=""
+                label="端口"
+                min-width="10"
+                show-overflow-tooltip>
+                <template slot-scope="scope">
+                  <span v-for="p of scope.row.spec.ports" :key="p.port" class="back-class">
+                    {{ p.port + (p.nodePort ? ":" + p.nodePort : '') }}
+                  </span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                prop=""
+                label="ClusterIP"
+                min-width="9"
+                show-overflow-tooltip>
+                <template slot-scope="scope">
+                  <template v-if="originApp.status != 'UnInstall'">
+                    <span>{{ scope.row.spec.clusterIP }}</span>
+                  </template>
+                  <template v-else>
+                    -
+                  </template>
+                </template>
+              </el-table-column>
+              <el-table-column v-if="originApp.status != 'UnInstall'"
+                prop=""
+                label="创建时间"
+                min-width="10"
+                show-overflow-tooltip>
+                <template slot-scope="scope">
+                  <span>{{ $dateFormat(scope.row.metadata.creationTimestamp) }}</span>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
         </el-tab-pane>
         <el-tab-pane label="ConfigMap" name="configmap">
+          <div class="msgClass">
+            <el-table
+            ref="table"
+            :data="configmaps"
+            class="table-fix"
+            tooltip-effect="dark"
+            style="width: 100%"
+            :cell-style="cellStyle"
+            :default-sort = "{prop: 'name'}"
+            >
+              <el-table-column
+                prop="name"
+                label="名称"
+                min-width="10"
+                show-overflow-tooltip>
+                <template slot-scope="scope">
+                  <span>{{ scope.row.metadata.name }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                prop="kind"
+                label="Keys"
+                min-width="20"
+                show-overflow-tooltip>
+                <template slot-scope="scope">
+                  <template v-for="(v, k) in scope.row.data">
+                    <el-tooltip :key="k" class="item" effect="light" placement="right-end">
+                      <div slot="content" style="max-width: 400px;white-space: pre-line;">
+                        {{ v }}
+                      </div>
+                      <span class="back-class">
+                        {{ k }}
+                      </span>
+                    </el-tooltip>
+                  </template>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
         </el-tab-pane>
         <el-tab-pane label="Secret" name="secret">
+          <div class="msgClass">
+            <el-table
+            ref="table"
+            :data="secrets"
+            class="table-fix"
+            tooltip-effect="dark"
+            style="width: 100%"
+            :cell-style="cellStyle"
+            :default-sort = "{prop: 'name'}"
+            >
+              <el-table-column
+                prop="name"
+                label="名称"
+                min-width="10"
+                show-overflow-tooltip>
+                <template slot-scope="scope">
+                  <span>{{ scope.row.metadata.name }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                prop="kind"
+                label="Keys"
+                min-width="20"
+                show-overflow-tooltip>
+                <template slot-scope="scope">
+                  <template v-for="(v, k) in scope.row.data">
+                    <el-tooltip :key="k" class="item" effect="light" placement="right-end">
+                      <div slot="content" style="max-width: 400px;white-space: pre-line;">
+                        {{ decodeBase(v) }}
+                      </div>
+                      <span class="back-class">
+                        {{ k }}
+                      </span>
+                    </el-tooltip>
+                  </template>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
         </el-tab-pane>
       </el-tabs>
+
+      <el-dialog title="终端" :visible.sync="terminalDialog" :close-on-click-modal="false" width="80%" top="55px">
+        <terminal v-if="terminalDialog" :cluster="originApp.cluster" :namespace="originApp.namespace" :pod="selectPodName" :container="selectContainer"></terminal>
+      </el-dialog>
+
+      <el-dialog title="日志" :visible.sync="logDialog" :close-on-click-modal="false" width="80%" top="55px">
+        <log v-if="logDialog" :cluster="originApp.cluster" :namespace="originApp.namespace" :pod="selectPodName" :container="selectContainer"></log>
+      </el-dialog>
     </div>
   </div>
 </template>
 
 <script>
-import { Clusterbar } from '@/views/components'
+import { Clusterbar, Log, Terminal } from '@/views/components'
 import { getApp } from '@/api/project/apps'
 import { containerClass, buildPods } from '@/api/pods'
 import { Message } from 'element-ui'
@@ -241,7 +403,9 @@ import { Message } from 'element-ui'
 export default {
   name: 'AppDetail',
   components: {
-    Clusterbar
+    Clusterbar,
+    Log,
+    Terminal
   },
   data() {
     return {
@@ -266,6 +430,10 @@ export default {
         "RunningFault": "#F56C6C",
         "Running": "#67C23A"
       },
+      selectorContainer: "",
+      selectorPod: "",
+      logDialog: false,
+      terminalDialog: false,
     }
   },
   created() {
@@ -306,10 +474,50 @@ export default {
         }
       }
       return workloads
+    },
+    services() {
+      let svcs = []
+      if(this.originApp.release) {
+        for(let obj of this.originApp.release.objects) {
+          if(obj.kind == 'Service'){
+            svcs.push(obj)
+          }
+        }
+      }
+      return svcs
+    },
+    configmaps() {
+      let cms = []
+      if(this.originApp.release) {
+        for(let obj of this.originApp.release.objects) {
+          if(obj.kind == 'ConfigMap'){
+            cms.push(obj)
+          }
+        }
+      }
+      return cms
+    },
+    secrets() {
+      let secs = []
+      if(this.originApp.release) {
+        for(let obj of this.originApp.release.objects) {
+          if(obj.kind == 'Secret'){
+            secs.push(obj)
+          }
+        }
+      }
+      return secs
     }
   },
   methods: {
     containerClass,
+    decodeBase(val) {
+      try{
+        return atob(val)
+      } catch(e) {
+        return val
+      }
+    },
     fetchData() {
       if(!this.appId) {
         Message.error("获取应用id错误，请刷新重试")

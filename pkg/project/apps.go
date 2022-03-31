@@ -58,16 +58,19 @@ func (a *AppService) CreateProjectApp(user *types.User, serializer serializers.P
 			return &utils.Response{Code: code.ParamsError, Msg: "该应用已存在相同版本，请重新输入版本号"}
 		}
 		app.UpdateUser = user.Name
+		app.UpdateTime = time.Now()
+		app.Description = serializer.Description
 	} else {
 		app = &types.ProjectApp{
-			ProjectId:  serializer.ProjectId,
-			Name:       serializer.Name,
-			Status:     types.AppStatusUninstall,
-			Type:       types.AppTypeOrdinaryApp,
-			CreateUser: user.Name,
-			UpdateUser: user.Name,
-			CreateTime: time.Now(),
-			UpdateTime: time.Now(),
+			ProjectId:   serializer.ProjectId,
+			Name:        serializer.Name,
+			Status:      types.AppStatusUninstall,
+			Type:        types.AppTypeOrdinaryApp,
+			Description: serializer.Description,
+			CreateUser:  user.Name,
+			UpdateUser:  user.Name,
+			CreateTime:  time.Now(),
+			UpdateTime:  time.Now(),
 		}
 	}
 	tmpChartDir, err := os.MkdirTemp("/tmp", "")
@@ -102,7 +105,7 @@ func (a *AppService) CreateProjectApp(user *types.User, serializer serializers.P
 		PackageVersion: serializer.Version,
 		AppVersion:     serializer.Version,
 		Values:         serializer.Values,
-		Description:    serializer.Description,
+		Description:    serializer.VersionDescription,
 		From:           types.AppVersionFromSpace,
 		CreateUser:     user.Name,
 		CreateTime:     time.Now(),
@@ -251,6 +254,7 @@ func (a *AppService) GetApp(appId uint) *utils.Response {
 		"cluster":         project.ClusterId,
 		"namespace":       project.Namespace,
 		"app_version_id":  projectApp.AppVersionId,
+		"app_version":     projectApp.AppVersion.AppVersion,
 		"type":            projectApp.Type,
 		"from":            projectApp.AppVersion.From,
 		"update_user":     projectApp.UpdateUser,
@@ -417,6 +421,7 @@ func (a *AppService) GetAppVersion(appVersionId uint) *utils.Response {
 	res := map[string]interface{}{
 		"id":              appVersion.ID,
 		"name":            app.Name,
+		"description":     app.Description,
 		"package_name":    appVersion.PackageName,
 		"package_version": appVersion.PackageVersion,
 		"type":            app.Type,
@@ -469,8 +474,8 @@ func (a *AppService) ImportStoreApp(ser serializers.ImportStoreAppSerializers, u
 	return &utils.Response{Code: code.Success}
 }
 
-func (a *AppService) ImportProjectApp(originApp *types.ProjectApp, version *types.AppVersion, destProjectId uint, user *types.User) *utils.Response {
-	app, err := a.models.ProjectAppManager.GetByName(destProjectId, originApp.Name)
+func (a *AppService) ImportProjectApp(originApp *types.ProjectApp, version *types.AppVersion, destProjectId uint, destAppName string, user *types.User) *utils.Response {
+	app, err := a.models.ProjectAppManager.GetByName(destProjectId, destAppName)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
@@ -486,7 +491,7 @@ func (a *AppService) ImportProjectApp(originApp *types.ProjectApp, version *type
 	} else {
 		app = &types.ProjectApp{
 			ProjectId:  destProjectId,
-			Name:       originApp.Name,
+			Name:       destAppName,
 			Status:     types.AppStatusUninstall,
 			Type:       originApp.Type,
 			CreateUser: user.Name,
@@ -504,8 +509,8 @@ func (a *AppService) ImportProjectApp(originApp *types.ProjectApp, version *type
 	return &utils.Response{Code: code.Success}
 }
 
-func (a *AppService) ImportToStore(originApp *types.ProjectApp, version *types.AppVersion, user *types.User) *utils.Response {
-	app, err := a.models.AppStoreManager.GetStoreAppByName(originApp.Name)
+func (a *AppService) ImportToStore(originApp *types.ProjectApp, version *types.AppVersion, destAppName string, user *types.User) *utils.Response {
+	app, err := a.models.AppStoreManager.GetStoreAppByName(destAppName)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
@@ -520,9 +525,9 @@ func (a *AppService) ImportToStore(originApp *types.ProjectApp, version *types.A
 		app.UpdateUser = user.Name
 	} else {
 		app = &types.AppStore{
-			Name:        app.Name,
-			Description: app.Description,
-			Type:        app.Type,
+			Name:        destAppName,
+			Description: originApp.Description,
+			Type:        originApp.Type,
 			Icon:        nil,
 			CreateUser:  user.Name,
 			UpdateUser:  user.Name,
@@ -549,9 +554,9 @@ func (a *AppService) DuplicateApp(ser *serializers.DuplicateAppSerializer, user 
 		return &utils.Response{Code: code.DBError, Msg: "获取应用版本失败：" + err.Error()}
 	}
 	if ser.Scope == types.AppVersionScopeProjectApp {
-		return a.ImportProjectApp(originApp, version, ser.ScopeId, user)
+		return a.ImportProjectApp(originApp, version, ser.ScopeId, ser.Name, user)
 	} else if ser.Scope == types.AppVersionScopeStoreApp {
-		return a.ImportToStore(originApp, version, user)
+		return a.ImportToStore(originApp, version, ser.Name, user)
 	} else {
 		return &utils.Response{Code: code.ParamsError, Msg: "参数scope错误"}
 	}

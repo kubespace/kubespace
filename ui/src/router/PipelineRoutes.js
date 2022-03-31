@@ -19,7 +19,7 @@ const Routes = [
   {
     path: 'resource',
     name: 'pipelineResource',
-    component: () => import('@/views/pipeline/pipeline'),
+    component: () => import('@/views/pipeline/resource'),
     meta: { title: '资源管理', icon: 'resource', 'group': 'pipeline', object: 'pipeline' }
   },
   {

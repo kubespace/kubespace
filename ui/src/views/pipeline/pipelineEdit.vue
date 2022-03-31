@@ -1,6 +1,6 @@
 <template>
   <div>
-    <clusterbar :titleName="titleName">
+    <clusterbar :titleName="titleName" :titleLink="['pipeline']">
       <div slot="right-btn">
         <el-button size="small" class="bar-btn" type="" @click="cancelEdit">取消</el-button>
         <el-button size="small" class="bar-btn" type="primary" @click="savePipeline">保存</el-button>
@@ -92,7 +92,7 @@
 
     <el-dialog :title="dialogTitleMap[dialogType]" :visible.sync="dialogVisible" :destroy-on-close="true" 
       @close="dialogType=''; dialogData={}" top="3vh" width="70%" :close-on-click-modal="false">
-      <div class="dialogContent" style="padding: 0px 40px;">
+      <div class="dialogContent" style="padding: 0px 30px;">
         <template v-if="dialogType == 'edit_stage' || dialogType == 'add_stage'">
           <pipeline-stage :stage="dialogData"></pipeline-stage>
         </template>

@@ -18,7 +18,7 @@
           </el-col>
           <!-- <el-col :span="5"><div style="width: 100px;"></div></el-col> -->
         </el-row>
-        <el-row style="padding-top: 0px;" v-for="(d, i) in template.data" :key="i">
+        <el-row style="padding-bottom: 5px;" v-for="(d, i) in template.data" :key="i">
           <el-col :span="7">
             <div class="border-span-header">
               <el-input v-model="d.key" size="small" style="padding-right: 10px" placeholder="配置项Key"></el-input>
@@ -31,12 +31,13 @@
           </el-col>
           <el-col :span="2" style="padding-left: 10px">
             <el-button circle size="mini" style="padding: 5px;" 
-              @click="template.data.splice(idx, 1)" icon="el-icon-close"></el-button>
+              @click="template.data.splice(i, 1)" icon="el-icon-close"></el-button>
           </el-col>
         </el-row>
         <el-row>
           <el-col :span="17">
-          <el-button style="width: 100%; border-radius: 0px; padding: 9px 15px; border-color: rgb(102, 177, 255); color: rgb(102, 177, 255)" plain size="mini" 
+          <el-button style="width: 100%; border-radius: 0px; padding: 9px 15px;
+            border-color: rgb(102, 177, 255); color: rgb(102, 177, 255)" plain size="mini" 
             @click="template.data.push({})" icon="el-icon-plus">添加配置项</el-button>
           </el-col>
         </el-row>

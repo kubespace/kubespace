@@ -40,9 +40,16 @@
           show-overflow-tooltip
         >
           <template slot-scope="scope">
-            <span v-for="s of scope.row.keys" :key="s" class="back-class">
-              {{ s }}
-            </span>
+            <template v-for="(v, k) in scope.row.data">
+              <el-tooltip :key="k" class="item" effect="light" placement="right-end">
+                <div slot="content" style="max-width: 400px;white-space: pre-wrap;">
+                  {{ v }}
+                </div>
+                <span class="back-class">
+                  {{ k }}
+                </span>
+              </el-tooltip>
+            </template>
           </template>
         </el-table-column>
         <el-table-column
@@ -126,7 +133,7 @@
             </el-form-item>
           </el-form>
         </div>
-        <div slot="footer" class="dialogFooter" style="margin-top: 50px;">
+        <div slot="footer" class="dialogFooter" style="margin-top: 25px;">
           <el-button @click="createFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
           <el-button type="primary" @click="updateFormVisible ? handleUpdateConfigMap() : handleCreateConfigMap()" >确 定</el-button>
         </div>
@@ -385,22 +392,9 @@ export default {
       }
     },
     openCreateFormDialog() {
-      if(this.namespaces.length == 0) {
+      if(this.namespaces.length == 0 && !this.namespace) {
         this.fetchNamespace()
       }
-      this.createFormVisible = true
-    },
-    openUpdateFormDialog(namespace, name) {
-      this.createFormVisible = true
-      this.updateFormVisible = true
-      if(this.namespaces.length == 0) {
-        this.fetchNamespace()
-      }
-      this.getConfigMap(namespace, name)
-    },
-    closeFormDialog() {
-      this.createFormVisible = false
-      this.updateFormVisible = false
       this.configMap = {
         apiVersion: "v1",
         kind: "ConfigMap",
@@ -409,6 +403,19 @@ export default {
         },
         data: []
       }
+      this.createFormVisible = true
+    },
+    openUpdateFormDialog(namespace, name) {
+      this.createFormVisible = true
+      this.updateFormVisible = true
+      if(this.namespaces.length == 0 && !this.namespace) {
+        this.fetchNamespace()
+      }
+      this.getConfigMap(namespace, name)
+    },
+    closeFormDialog() {
+      this.createFormVisible = false
+      this.updateFormVisible = false
     }
   },
 }

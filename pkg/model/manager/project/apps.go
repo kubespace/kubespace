@@ -24,6 +24,10 @@ func (a *AppManager) CreateProjectApp(chartFilePath string, app *types.ProjectAp
 			if err = tx.Create(app).Error; err != nil {
 				return err
 			}
+		} else {
+			if err = a.DB.Model(app).Select("update_user", "update_time", "description").Updates(*app).Error; err != nil {
+				return err
+			}
 		}
 		appVersion, err = a.AppVersionManager.CreateAppVersionWithChartPath(chartFilePath, types.AppVersionScopeProjectApp, app.ID, appVersion)
 		if err != nil {
@@ -146,13 +150,18 @@ func (a *AppManager) ImportApp(app *types.ProjectApp, appVersion *types.AppVersi
 				return err
 			}
 			appVersion.ScopeId = app.ID
+		} else {
+			app.UpdateTime = time.Now()
+			if err := tx.Model(app).Select("update_user, update_time").Updates(*app).Error; err != nil {
+				return err
+			}
 		}
 		if err := tx.Create(appVersion).Error; err != nil {
 			return err
 		}
 		if app.Status == types.AppStatusUninstall {
 			app.AppVersionId = appVersion.ID
-			if err := tx.Save(app).Error; err != nil {
+			if err := tx.Model(app).Select("app_version_id").Updates(*app).Error; err != nil {
 				return err
 			}
 		}

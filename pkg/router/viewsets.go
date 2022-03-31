@@ -46,6 +46,7 @@ func NewViewSets(kr *kube_resource.KubeResources, models *model.Models) *ViewSet
 	pipelineWorkspace := pipeline_views.NewPipelineWorkspace(models)
 	pipeline := pipeline_views.NewPipeline(models)
 	pipelineRun := pipeline_views.NewPipelineRun(models)
+	pipelineResource := pipeline_views.NewPipelineResource(models)
 
 	settingsSecret := settings_views.NewSettingsSecret(models)
 	imageRegistry := settings_views.NewImageRegistry(models)
@@ -91,6 +92,7 @@ func NewViewSets(kr *kube_resource.KubeResources, models *model.Models) *ViewSet
 		"pipeline/workspace": pipelineWorkspace.Views,
 		"pipeline/pipeline":  pipeline.Views,
 		"pipeline/build":     pipelineRun.Views,
+		"pipeline/resource":  pipelineResource.Views,
 
 		"settings/secret":         settingsSecret.Views,
 		"settings/image_registry": imageRegistry.Views,

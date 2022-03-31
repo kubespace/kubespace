@@ -135,7 +135,7 @@
                 </div>
               </el-col>
             </el-row>
-            <el-row style="padding-top: 10px;" v-for="(item, idx) in c.env" :key="idx">
+            <el-row style="padding-top: 0px;" v-for="(item, idx) in c.env" :key="idx">
               <el-col :span="5">
                 <div class="border-span-header">
                   <el-input v-model="item.name" size="small" style="padding-right: 10px;" placeholder="变量名称"></el-input>
@@ -160,11 +160,16 @@
                     v-model="item.value" size="small" placeholder="如：metadata.name, status.podIP"></el-input> 
                   <div v-if="item.type === 'configMap' || item.type === 'secret'">
                     <el-select v-model="item.value" value-key="name" :placeholder="item.type" style="width: 50%;">
-                      <el-option :label="c.name" :value="c" :key="i" v-for="(c, i) in item.type === 'configMap' ? appConfigmaps : appSecrets"></el-option>
+                      <el-option :label="i" :value="i" :key="i" v-for="(c, i) in item.type === 'configMap' ? appConfigmaps : appSecrets"></el-option>
                     </el-select>
                     <!-- <span style="margin: 5px; font-wight: 800">.</span> -->
                     <el-select v-model="item.key" placeholder="Key" style="margin-left: 10px;width: 45%">
-                      <el-option :label="d.key" :value="d.key" :key="d.key" v-for="d of item.value ? item.value.data : {}"></el-option>
+                      <template v-if="item.type == 'configMap'">
+                        <el-option :label="d.key" :value="d.key" :key="d.key" v-for="d of resData(item.type, item.value)"></el-option>
+                      </template>
+                      <template v-else>
+                        <el-option :label="k" :value="k" :key="k" v-for="(d, k) in resData(item.type, item.value)"></el-option>
+                      </template>
                     </el-select>
                   </div>
                   <el-select v-if="item.type === 'resource'" v-model="item.value" placeholder="容器资源" style="width:100%;">
@@ -189,12 +194,12 @@
 
           <el-form-item label="存储挂载" prop="volumeMounts">
             <el-row style="margin-bottom: -15px;" v-if="c.volumeMounts.length > 0">
-              <el-col :span="5">
+              <el-col :span="6">
                 <div class="border-span-header">
                   <span  class="border-span-content">*</span>卷名称
                 </div>
               </el-col>
-              <el-col :span="5">
+              <el-col :span="6">
                 <div class="border-span-header">
                   <span  class="border-span-content">*</span>容器挂载路径
                 </div>
@@ -205,20 +210,20 @@
                 </div>
               </el-col>
             </el-row>
-            <el-row style="padding-top: 10px;" v-for="(item, idx) in c.volumeMounts" :key="idx">
-              <el-col :span="5" style="padding-right: 10px;">
+            <el-row style="padding-top: 0px;" v-for="(item, idx) in c.volumeMounts" :key="idx">
+              <el-col :span="6" style="padding-right: 10px;">
                 <div class="border-span-header">
                   <el-select v-model="item.name" placeholder="请选择存储卷名称" style="width: 100%;">
                     <el-option :label="v.name" :value="v.name" v-for="v in volumes" :key="v.name"></el-option>
                   </el-select>
                 </div>
               </el-col>
-              <el-col :span="5" style="padding-right: 10px;">
+              <el-col :span="6" style="padding-right: 10px;">
                 <div class="border-span-header">
                   <el-input v-model="item.mountPath" size="small" placeholder="挂载路径，如：/data"></el-input>
                 </div>
               </el-col>
-              <el-col :span="7" style="padding-right: 10px;">
+              <el-col :span="5" style="padding-right: 10px;">
                 <div class="border-span-header">
                   <el-input v-model="item.subPath" size="small" placeholder="存储卷内部子路径"></el-input>
                 </div>
@@ -357,6 +362,7 @@
 
 <script>
 import { newContainer, HealthProbe } from '@/views/workspace/kinds'
+import { transferSecret } from '@/api/secret'
 
 export default {
   name: 'Container',
@@ -421,31 +427,40 @@ export default {
   props: ['template', 'appResources'],
   computed: {
     appConfigmaps() {
-      let c = []
+      let c = {}
       for(let r of this.appResources) {
-        if(r.kind == 'ConfigMap') {
-          c.push({
-            name: r.metadata.name,
-            data: r.data
-          })
+        if(r.kind == 'ConfigMap' && r.metadata.name) {
+          c[r.metadata.name] = r
         }
       }
       return c
     },
     appSecrets() {
-      let c = []
+      let c = {}
       for(let r of this.appResources) {
-        if(r.kind == 'Secret') {
-          c.push({
-            name: r.metadata.name,
-            data: r.data
-          })
+        if(r.kind == 'Secret' && r.metadata.name) {
+          let secret = JSON.parse(JSON.stringify(r))
+          let err = transferSecret(secret)
+          if(!err) {
+            c[r.metadata.name] = secret
+          }
         }
       }
       return c
     }
   },
   methods: {
+    resData(type, name) {
+      if(type == 'configMap') {
+        let data = []
+        data = this.appConfigmaps[name] ? this.appConfigmaps[name].data : []
+        return data
+      } else {
+        let data = {}
+        data = this.appSecrets[name] ? this.appSecrets[name].data : {}
+        return data
+      }
+    },
     addContainerTab() {
       var c = newContainer();
       this.containers.push(c)

@@ -1,25 +1,46 @@
 <template>
-  <div >
+  <div v-loading="loading">
     <el-form :model="params" ref="stage" label-position="left" label-width="105px">
-      <el-form-item label="编译镜像" prop="" :required="true">
-        <el-input style="width: 320px;" v-model="params.code_build_image" autocomplete="off" size="small"></el-input>
+      <el-form-item label="编译" prop="">
+        <el-switch v-model="params.code_build"></el-switch>
       </el-form-item>
-      <el-form-item label="编译方式" prop="">
-        <el-radio-group v-model="params.code_build_type">
-          <el-radio label="file">脚本文件</el-radio>
-          <el-radio label="script">自定义脚本</el-radio>
-        </el-radio-group>
-      </el-form-item>
-      <el-form-item label="编译文件" prop="" v-if="params.code_build_type == 'file'">
-        <el-input style="width: 320px;" v-model="params.code_build_file" autocomplete="off" size="small"
-          placeholder="默认为当前代码库根目录下的「build.sh」文件"></el-input>
-      </el-form-item>
-      <el-form-item label="编译脚本" prop="" v-if="params.code_build_type == 'script'">
-        <el-input type="textarea" :rows="6" v-model="params.code_build_script" autocomplete="off" size="small"></el-input>
-      </el-form-item>
+      <template v-if="params.code_build">
+        <el-form-item label="编译镜像" prop="" :required="true">
+          <!-- <el-input style="width: 320px;" v-model="params.code_build_image" autocomplete="off" size="small"></el-input> -->
+          <el-select v-model="params.code_build_image" placeholder="请选择编译镜像" size="small" style="width: 320px">
+            <el-option
+              v-for="res in imageResources"
+              :key="res.id"
+              :label="res.name"
+              :value="res.id">
+            </el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="编译方式" prop="">
+          <el-radio-group v-model="params.code_build_type">
+            <el-radio label="file">脚本文件</el-radio>
+            <el-radio label="script">自定义脚本</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="编译文件" prop="" v-if="params.code_build_type == 'file'">
+          <el-input style="width: 320px;" v-model="params.code_build_file" autocomplete="off" size="small"
+            placeholder="默认为当前代码库根目录下的「build.sh」文件"></el-input>
+        </el-form-item>
+        <el-form-item label="编译脚本" prop="" v-if="params.code_build_type == 'script'">
+          <el-input type="textarea" :rows="6" v-model="params.code_build_script" autocomplete="off" size="small"></el-input>
+        </el-form-item>
+      </template>
       <el-divider></el-divider>
       <el-form-item label="镜像仓库" prop="" :required="true">
-        <el-input style="width: 320px" v-model="params.image_build_server" autocomplete="off" size="small"></el-input>
+        <!-- <el-input style="width: 320px" v-model="params.image_build_server" autocomplete="off" size="small"></el-input> -->
+        <el-select v-model="params.image_build_registry" placeholder="请选择镜像要推送的仓库" size="small" style="width: 320px">
+          <el-option
+            v-for="res in registry"
+            :key="res.id"
+            :label="res.registry"
+            :value="res.id">
+          </el-option>
+        </el-select>
       </el-form-item>
       <el-form-item label="构建镜像" prop="" :required="true">
         <el-row :gutter="20">
@@ -51,6 +72,8 @@
 </template>
 
 <script>
+import { listResources } from "@/api/pipeline/resource";
+import { listImageRegistry } from "@/api/settings/image_registry";
 
 export default {
   name: 'CodeToImage',
@@ -58,12 +81,32 @@ export default {
     return {
       image_builds: [],
       // params: {},
+      resources: [],
+      registry: [],
+      loading: false,
     }
   },
-  props: ['params'],
+  props: ['params',],
+  computed: {
+    workspaceId() {
+      return this.$route.params.workspaceId
+    },
+    imageResources() {
+      let res = []
+      for(let r of this.resources) {
+        if(r.type == 'image') {
+          res.push(r)
+        }
+      }
+      return res
+    }
+  },
   beforeMount() {
     // console.log(this.params)
     // let params = this.params
+    if(this.params.code_build == undefined) {
+      this.$set(this.params, 'code_build', true)
+    }
     if(!this.params.code_build_type) {
       // this.params.code_build_type = 'file'
       this.$set(this.params, 'code_build_type', 'file')
@@ -74,11 +117,32 @@ export default {
         'image_name': ''
       }])
     }
+    this.fetchResources()
+    this.fetchImageRegistry()
     // this.params = this.params
     // this.image_builds = this.params.image_build_infos
     // console.log(this.job)
   },
   methods: {
+    fetchResources() {
+      this.loading = true
+      listResources(this.workspaceId).then((resp) => {
+        this.resources = resp.data ? resp.data : []
+        this.loading = false
+      }).catch((err) => {
+        this.loading = false
+      })
+    },
+    fetchImageRegistry() {
+      this.loading = true
+      listImageRegistry().then((resp) => {
+        this.registry = resp.data ? resp.data : []
+        this.loading = false
+      }).catch((err) => {
+        console.log(err)
+        this.loading = false
+      })
+    },
     addBuildInfo() {
       // let infos = this.params.image_build_infos
       this.params.image_build_infos.push({

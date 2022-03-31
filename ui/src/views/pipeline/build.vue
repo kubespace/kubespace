@@ -1,6 +1,6 @@
 <template>
   <div>
-    <clusterbar :titleName="titleName" :nameFunc="nameSearch" createDisplay="构建">
+    <clusterbar :titleName="titleName" :nameFunc="nameSearch" createDisplay="构建" :titleLink="['pipeline']">
       <!-- <div> -->
         <el-button  slot="right-btn" size="small" type="primary" @click="openBuildParams" icon="el-icon-video-play">构 建</el-button>
       <!-- </div> -->

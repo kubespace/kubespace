@@ -39,6 +39,7 @@ func DbMigrate(db *gorm.DB) error {
 		&types.PipelineRunStage{},
 		&types.PipelineRunJob{},
 		&types.PipelineRunJobLog{},
+		&types.PipelineResource{},
 
 		&types.SettingsSecret{},
 		&types.SettingsImageRegistry{},

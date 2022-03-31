@@ -9,13 +9,14 @@ type ProjectSerializer struct {
 }
 
 type ProjectCreateAppSerializer struct {
-	ProjectId   uint              `json:"project_id" form:"project_id"`
-	Name        string            `json:"name" form:"name"`
-	Description string            `json:"description" form:"description"`
-	Version     string            `json:"version" form:"version"`
-	Chart       string            `json:"chart" form:"chart"`
-	Templates   map[string]string `json:"templates" form:"templates"`
-	Values      string            `json:"values" form:"values"`
+	ProjectId          uint              `json:"project_id" form:"project_id"`
+	Name               string            `json:"name" form:"name"`
+	Description        string            `json:"description" form:"description"`
+	VersionDescription string            `json:"version_description" form:"version_description"`
+	Version            string            `json:"version" form:"version"`
+	Chart              string            `json:"chart" form:"chart"`
+	Templates          map[string]string `json:"templates" form:"templates"`
+	Values             string            `json:"values" form:"values"`
 }
 
 type ProjectInstallAppSerializer struct {
@@ -61,6 +62,7 @@ type GetStoreAppSerializer struct {
 }
 
 type DuplicateAppSerializer struct {
+	Name      string `json:"name" form:"name"`
 	AppId     uint   `json:"app_id" form:"app_id"`
 	VersionId uint   `json:"version_id" form:"version_id"`
 	Scope     string `json:"scope" form:"scope"`

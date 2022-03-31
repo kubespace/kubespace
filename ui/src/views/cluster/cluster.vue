@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="dashboard-container" v-loading="loading">
+    <div class="dashboard-container" v-loading="loading" style="margin-top: 20px;">
       <el-row :gutter="20" style="margin-bottom: 10px;" class="row-class">
         <el-col :span="24">
           <div class="border-class">
@@ -167,9 +167,9 @@
       <el-row>
         <div class="border-class event-class" >
           <div style="margin: 5px 0px 10px;">事件</div>
-          <el-timeline v-if="events && events.length > 0" style="max-height: 200px;">
+          <el-timeline v-if="events && events.length > 0" :style="{height: maxHeight + 'px', 'overflow': 'auto'}" :max-height="maxHeight">
             <template v-for="e of events">
-              <el-timeline-item :key="e.uid" :timestamp="e.event_time" placement="top">
+              <el-timeline-item :key="e.uid" :timestamp="$dateFormat(e.event_time)" placement="top">
                 <el-card shadow="never">
                   <p class="event-title">{{ e.object.kind }}/{{ e.object.name }}</p>
                   <p class="event-body">{{ e.message }}</p>
@@ -196,6 +196,7 @@ export default {
       cluster_detail: {},
       originEvents: [],
       loading: true,
+      maxHeight: window.innerHeight - 530,
     }
   },
   components: {

@@ -25,7 +25,7 @@
             </div>
           </el-col>
         </el-row>
-        <el-row style="padding-top: 0px;" v-for="(d, i) in template.data" :key="i">
+        <el-row style="padding-bottom: 5px;" v-for="(d, i) in template.data" :key="i">
           <el-col :span="7">
             <div class="border-span-header">
               <el-input v-model="d.key" size="small" style="padding-right: 10px" placeholder="配置项Key"></el-input>
@@ -38,7 +38,7 @@
           </el-col>
           <el-col :span="2" style="padding-left: 10px">
             <el-button circle size="mini" style="padding: 5px;" 
-              @click="template.data.splice(idx, 1)" icon="el-icon-close"></el-button>
+              @click="template.data.splice(i, 1)" icon="el-icon-close"></el-button>
           </el-col>
         </el-row>
         <el-row>

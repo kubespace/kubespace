@@ -13,14 +13,6 @@
               </el-radio-group>
             </el-form-item>
           </el-form>
-          <!-- <span :class="probe.type === 'http' ? 'probe-select' : 'probe-unselect'" 
-            class="probe-class" @click="probe.type = 'http';">HTTP</span>
-          <span :class="probe.type === 'https' ? 'probe-select' : 'probe-unselect'" 
-            class="probe-class" @click="probe.type = 'https';">HTTPS</span>
-          <span :class="probe.type === 'tcp' ? 'probe-select' : 'probe-unselect'" 
-            class="probe-class" @click="probe.type = 'tcp';">TCP</span>
-          <span :class="probe.type === 'command' ? 'probe-select' : 'probe-unselect'" 
-            class="probe-class" @click="probe.type = 'command';">命令行</span> -->
         </div>
         <div style="margin-top: 10px;" v-if="['http', 'https'].indexOf(probe.type) >= 0">
           <el-row>

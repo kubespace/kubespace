@@ -7,7 +7,6 @@ import (
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"github.com/kubespace/kubespace/pkg/views"
 	"github.com/kubespace/kubespace/pkg/views/serializers"
-	"k8s.io/klog"
 	"net/http"
 	"strconv"
 	"time"
@@ -70,7 +69,6 @@ func (s *SettingsSecret) update(c *views.Context) *utils.Response {
 		resp.Msg = err.Error()
 		return resp
 	}
-	klog.Info(ser)
 	secretId, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
