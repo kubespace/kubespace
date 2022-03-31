@@ -126,27 +126,6 @@ var BuiltinPlugins = []types.PipelinePlugin{
 	},
 	{
 		Name: "执行shell脚本",
-		Key:  "execute_shell",
-		Url:  conf.AppConfig.PipelinePluginUrl + "/" + types.BuiltinPluginExecuteShell,
-		Params: types.PipelinePluginParams{
-			Params: []*types.PipelinePluginParamsSpec{
-				{
-					ParamName: "resource",
-					From:      types.PluginParamsFromPipelineResource,
-					FromName:  "resource",
-					Default:   nil,
-				},
-				{
-					ParamName: "script",
-					From:      types.PluginParamsFromJob,
-					FromName:  "script",
-					Default:   "",
-				},
-			},
-		},
-	},
-	{
-		Name: "执行shell脚本",
 		Key:  types.BuiltinPluginExecuteShell,
 		Url:  conf.AppConfig.PipelinePluginUrl + "/" + types.BuiltinPluginExecuteShell,
 		Params: types.PipelinePluginParams{
