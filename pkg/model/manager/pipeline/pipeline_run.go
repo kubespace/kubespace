@@ -5,6 +5,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"gorm.io/gorm"
+	"k8s.io/klog"
 	"strings"
 	"time"
 )
@@ -196,33 +197,61 @@ func (p *ManagerPipelineRun) GetStageRunStatus(stageRun *types.PipelineRunStage)
 	return status
 }
 
-func (p *ManagerPipelineRun) GetStageRunEnv(stageRun *types.PipelineRunStage) types.Map {
-	return nil
+func (p *ManagerPipelineRun) GetStageRunEnv(envs map[string]interface{}, stageRun *types.PipelineRunStage) types.Map {
+	if envs == nil {
+		return nil
+	}
+	if stageRun.Env == nil {
+		return envs
+	} else {
+		return utils.MergeMap(stageRun.Env, envs)
+	}
 }
 
-func (p *ManagerPipelineRun) UpdatePipelineStageRun(stageRunId uint, stageRunStatus string, stageRunJobs types.PipelineRunJobs) (*types.PipelineRun, *types.PipelineRunStage, error) {
+type UpdateStageObj struct {
+	StageRunId     uint
+	StageRunStatus string
+	JobRunEnvs     map[string]interface{}
+	StageRunJobs   types.PipelineRunJobs
+}
+
+func (p *ManagerPipelineRun) UpdatePipelineStageRun(updateStageObj *UpdateStageObj) (*types.PipelineRun, *types.PipelineRunStage, error) {
+	if updateStageObj == nil {
+		klog.Info("parameter stageObj is empty")
+		return nil, nil, errors.New("parameter is empty")
+	}
+	if updateStageObj.StageRunId == 0 {
+		klog.Info("parameter stageRunId is empty")
+		return nil, nil, errors.New("parameter stageRunId is empty")
+	}
 	var stageRun types.PipelineRunStage
 	var pipelineRun types.PipelineRun
 	err := p.DB.Transaction(func(tx *gorm.DB) error {
 		var err error
 
-		if err = tx.Set("gorm:query_option", "FOR UPDATE").First(&stageRun, stageRunId).Error; err != nil {
+		if err = tx.Set("gorm:query_option", "FOR UPDATE").First(&stageRun, updateStageObj.StageRunId).Error; err != nil {
 			return err
 		}
 
-		if stageRunJobs != nil {
-			for _, runJob := range stageRunJobs {
+		if updateStageObj.StageRunJobs != nil {
+			for _, runJob := range updateStageObj.StageRunJobs {
 				if err := tx.Save(runJob).Error; err != nil {
 					return err
 				}
 			}
 		}
+		if updateStageObj.JobRunEnvs != nil {
+			stageEnvs := p.GetStageRunEnv(updateStageObj.JobRunEnvs, &stageRun)
+			if stageEnvs != nil {
+				stageRun.Env = stageEnvs
+			}
+		}
 
-		if stageRunStatus != "" {
-			stageRun.Status = stageRunStatus
+		if updateStageObj.StageRunStatus != "" {
+			stageRun.Status = updateStageObj.StageRunStatus
 		} else {
 			var runJobs []types.PipelineRunJob
-			if err = tx.Where("stage_run_id = ?", stageRunId).Find(&runJobs).Error; err != nil {
+			if err = tx.Where("stage_run_id = ?", updateStageObj.StageRunId).Find(&runJobs).Error; err != nil {
 				return err
 			}
 			stageRun.Jobs = types.PipelineRunJobs{}

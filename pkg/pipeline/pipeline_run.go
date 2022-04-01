@@ -11,6 +11,7 @@ import (
 	sshgit "github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/kubespace/kubespace/pkg/model"
+	"github.com/kubespace/kubespace/pkg/model/manager/pipeline"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
@@ -296,7 +297,10 @@ func (r *ServicePipelineRun) Execute(pipelineRun *types.PipelineRun, prevStageId
 	}
 	if nextStage.TriggerMode == types.StageTriggerModeManual && trigger == types.StageTriggerModeAuto {
 		klog.Infof("current stage id=%d trigger mode is manual, pausing...", nextStage.ID)
-		if _, _, err = r.models.ManagerPipelineRun.UpdatePipelineStageRun(nextStage.ID, types.PipelineStatusPause, nil); err != nil {
+		if _, _, err = r.models.ManagerPipelineRun.UpdatePipelineStageRun(&pipeline.UpdateStageObj{
+			StageRunId:     nextStage.ID,
+			StageRunStatus: types.PipelineStatusPause,
+		}); err != nil {
 			klog.Errorf("update stage id=%d status to pause error: %v", nextStage.ID, err)
 		}
 		return
@@ -310,7 +314,10 @@ func (r *ServicePipelineRun) Execute(pipelineRun *types.PipelineRun, prevStageId
 	runJobs := nextStage.Jobs
 	for _, runJob := range runJobs {
 		runJob.Status = types.PipelineStatusDoing
-		_, nextStage, _ = r.models.ManagerPipelineRun.UpdatePipelineStageRun(nextStage.ID, "", types.PipelineRunJobs{runJob})
+		_, nextStage, _ = r.models.ManagerPipelineRun.UpdatePipelineStageRun(&pipeline.UpdateStageObj{
+			StageRunId:   nextStage.ID,
+			StageRunJobs: types.PipelineRunJobs{runJob},
+		})
 		resp := r.ExecuteJob(nextStage, runJob)
 		if !resp.IsSuccess() {
 			runJob.Result = resp
@@ -319,7 +326,10 @@ func (r *ServicePipelineRun) Execute(pipelineRun *types.PipelineRun, prevStageId
 	}
 	for _, runJob := range runJobs {
 		if runJob.Status == types.PipelineStatusError {
-			_, nextStage, _ = r.models.ManagerPipelineRun.UpdatePipelineStageRun(nextStage.ID, "", types.PipelineRunJobs{runJob})
+			_, nextStage, _ = r.models.ManagerPipelineRun.UpdatePipelineStageRun(&pipeline.UpdateStageObj{
+				StageRunId:   nextStage.ID,
+				StageRunJobs: types.PipelineRunJobs{runJob},
+			})
 		}
 	}
 }
@@ -440,6 +450,34 @@ func (r *ServicePipelineRun) ExecuteJob(stageRun *types.PipelineRunStage, runJob
 	return &ret
 }
 
+func (r *ServicePipelineRun) getJobRunResultEnvs(jobRun *types.PipelineRunJob) map[string]interface{} {
+	if jobRun == nil {
+		return nil
+	}
+	if jobRun.Status != types.PipelineStatusOK {
+		return nil
+	}
+	if jobRun.Result.Data == nil {
+		return nil
+	}
+	plugin, err := r.models.PipelinePluginManager.GetByKey(jobRun.PluginKey)
+	if err != nil {
+		klog.Errorf("get jobRun %s(%s) plugin error: %s", jobRun.ID, jobRun.Name, err.Error())
+		return nil
+	}
+	if len(plugin.ResultEnv.EnvPath) == 0 {
+		return nil
+	}
+	var envs = map[string]interface{}{}
+	resData := jobRun.Result.Data.(map[string]interface{})
+	for _, envPath := range plugin.ResultEnv.EnvPath {
+		if v, ok := resData[envPath.ResultName]; ok {
+			envs[envPath.EnvName] = v
+		}
+	}
+	return envs
+}
+
 func (r *ServicePipelineRun) Callback(callbackSer serializers.PipelineCallbackSerializer) *utils.Response {
 	callbackJobRun, err := r.models.ManagerPipelineRun.GetJobRun(callbackSer.JobId)
 	if err != nil {
@@ -464,8 +502,14 @@ func (r *ServicePipelineRun) Callback(callbackSer serializers.PipelineCallbackSe
 	} else {
 		callbackJobRun.Status = types.PipelineStatusError
 	}
-	pipelineRun, stageRun, err := r.models.ManagerPipelineRun.UpdatePipelineStageRun(stageRun.ID, "", types.PipelineRunJobs{callbackJobRun})
-	if stageRun.Status == types.PipelineStatusOK {
+	envs := r.getJobRunResultEnvs(callbackJobRun)
+	//pipelineRun, stageRun, err := r.models.ManagerPipelineRun.UpdatePipelineStageRun(stageRun.ID, "", types.PipelineRunJobs{callbackJobRun})
+	pipelineRun, stageRun, err := r.models.ManagerPipelineRun.UpdatePipelineStageRun(&pipeline.UpdateStageObj{
+		StageRunId:   stageRun.ID,
+		JobRunEnvs:   envs,
+		StageRunJobs: types.PipelineRunJobs{callbackJobRun},
+	})
+	if stageRun != nil && stageRun.Status == types.PipelineStatusOK {
 		go r.Execute(pipelineRun, stageRun.ID, types.StageTriggerModeAuto)
 	}
 	return &utils.Response{Code: code.Success}
@@ -493,7 +537,11 @@ func (r *ServicePipelineRun) RetryStage(retrySer *serializers.PipelineStageRetry
 		klog.Infof("current stage run id=%v status is %v, not error", stageRun.ID, stageRun.Status)
 		return &utils.Response{Code: code.RequestError, Msg: "current stage run id=%v status is %v, not error"}
 	}
-	pipelineRun, stageRun, err := r.models.ManagerPipelineRun.UpdatePipelineStageRun(stageRun.ID, types.PipelineStatusDoing, nil)
+	//pipelineRun, stageRun, err := r.models.ManagerPipelineRun.UpdatePipelineStageRun(stageRun.ID, types.PipelineStatusDoing, nil)
+	pipelineRun, stageRun, err := r.models.ManagerPipelineRun.UpdatePipelineStageRun(&pipeline.UpdateStageObj{
+		StageRunId:     stageRun.ID,
+		StageRunStatus: types.PipelineStatusDoing,
+	})
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}

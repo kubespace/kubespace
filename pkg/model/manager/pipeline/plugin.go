@@ -146,7 +146,7 @@ var BuiltinPlugins = []types.PipelinePlugin{
 		},
 	},
 	{
-		Name: "升级项目应用",
+		Name: "升级空间应用",
 		Key:  types.BuiltinPluginUpgradeApp,
 		Url:  "builtin",
 		Params: types.PipelinePluginParams{
@@ -167,6 +167,12 @@ var BuiltinPlugins = []types.PipelinePlugin{
 					ParamName: "apps",
 					From:      types.PluginParamsFromJob,
 					FromName:  "apps",
+					Default:   "",
+				},
+				{
+					ParamName: "with_install",
+					From:      types.PluginParamsFromJob,
+					FromName:  "with_install",
 					Default:   "",
 				},
 			},
