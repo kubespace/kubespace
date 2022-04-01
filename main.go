@@ -20,7 +20,7 @@ var (
 	mysqlUser         = flag.String("mysql-user", "root", "mysql db user.")
 	mysqlPassword     = flag.String("mysql-password", "", "mysql password used.")
 	mysqlDbName       = flag.String("mysql-dbname", "kubespace", "mysql db used.")
-	pipelinePluginUrl = flag.String("pipeline-plugin-url", "http://127.0.0.1:8181/api/v1", "pipeline plugin url.")
+	pipelinePluginUrl = flag.String("pipeline-plugin-url", "http://127.0.0.1:8081/api/v1/plugin", "pipeline plugin url.")
 )
 
 func createServerOptions() *options.ServerOptions {
@@ -57,6 +57,7 @@ func main() {
 	})
 	var err error
 	conf2.AppConfig.PipelinePluginUrl = *pipelinePluginUrl
+	klog.Info(conf2.AppConfig.PipelinePluginUrl)
 	server, err := buildServer()
 	if err != nil {
 		panic(err)

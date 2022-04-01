@@ -1,9 +1,17 @@
 <template>
-  <div >
+  <div v-loading="loading">
     <el-form :model="params" ref="job" label-position="left" label-width="105px">
       <el-form-item label="目标资源" prop="" :required="true">
-        <el-input style="width: 250px;" v-model="params.resource" autocomplete="off" size="small"
-          placeholder=""></el-input>
+        <!-- <el-input style="width: 250px;" v-model="params.resource" autocomplete="off" size="small"
+          placeholder=""></el-input> -->
+        <el-select v-model="params.code_build_image" placeholder="请选择要执行的目标资源" size="small" style="width: 320px">
+          <el-option
+            v-for="res in resources"
+            :key="res.id"
+            :label="res.name"
+            :value="res.id">
+          </el-option>
+        </el-select>
       </el-form-item>
       <el-form-item label="脚本类型" prop="">
         <el-radio-group v-model="params.shell">
@@ -19,18 +27,38 @@
 </template>
 
 <script>
+import { listResources } from "@/api/pipeline/resource";
 
 export default {
   name: 'ExecuteShell',
   data() {
     return {
+      loading: false,
+      resources: []
     }
   },
   props: ['params'],
+  computed: {
+    workspaceId() {
+      return this.$route.params.workspaceId
+    },
+  },
   beforeMount() {
     if(!this.params.shell) {
       this.$set(this.params, 'shell', 'bash')
     }
+    this.fetchResources()
+  },
+  methods: {
+    fetchResources() {
+      this.loading = true
+      listResources(this.workspaceId).then((resp) => {
+        this.resources = resp.data ? resp.data : []
+        this.loading = false
+      }).catch((err) => {
+        this.loading = false
+      })
+    },
   }
 }
 </script>

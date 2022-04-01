@@ -80,7 +80,11 @@ func MergeMap(mObj ...map[string]interface{}) map[string]interface{} {
 	newObj := map[string]interface{}{}
 	for _, m := range mObj {
 		for k, v := range m {
-			newObj[k] = v
+			if _, ok := newObj[k]; ok {
+				newObj[k] = fmt.Sprintf("%v,%v", newObj[k], v)
+			} else {
+				newObj[k] = v
+			}
 		}
 	}
 	return newObj

@@ -149,6 +149,8 @@ const (
 	BuiltinPluginRelease = "release"
 )
 
+const PipelinePluginBuiltinUrl = "builtin"
+
 type PipelinePlugin struct {
 	ID         uint                    `gorm:"primaryKey"`
 	Name       string                  `gorm:"size:255;not null;uniqueIndex:idx_plugin_name"`

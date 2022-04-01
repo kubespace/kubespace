@@ -56,7 +56,7 @@ var BuiltinPlugins = []types.PipelinePlugin{
 				{
 					ParamName: "code_commit_id",
 					From:      types.PluginParamsFromEnv,
-					FromName:  "PIPELINE_CODE_URL",
+					FromName:  "PIPELINE_CODE_COMMIT_ID",
 					Default:   "",
 				},
 				{
@@ -193,7 +193,7 @@ var BuiltinPlugins = []types.PipelinePlugin{
 				{
 					ParamName: "code_commit_id",
 					From:      types.PluginParamsFromEnv,
-					FromName:  "PIPELINE_CODE_URL",
+					FromName:  "PIPELINE_CODE_COMMIT_ID",
 					Default:   "",
 				},
 				{
@@ -242,9 +242,12 @@ func (p *ManagerPipelinePlugin) Init() {
 	if err := p.DB.Model(&types.PipelinePlugin{}).Count(&cnt).Error; err != nil {
 		return
 	}
-	if cnt == 0 {
+	if cnt >= 0 {
 		now := time.Now()
 		for _, plugin := range BuiltinPlugins {
+			if plugin.Url != types.PipelinePluginBuiltinUrl {
+				plugin.Url = conf.AppConfig.PipelinePluginUrl + "/" + plugin.Key
+			}
 			plugin.CreateTime = now
 			plugin.UpdateTime = now
 			if err := p.DB.Create(&plugin).Error; err != nil {

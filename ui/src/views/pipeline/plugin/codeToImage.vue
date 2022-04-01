@@ -52,17 +52,17 @@
           </el-col>
           <el-col :span="3"></el-col>
         </el-row>
-        <el-row :gutter="20" v-for="(build,i) in params.image_build_infos" :key="i">
+        <el-row :gutter="20" v-for="(build,i) in params.image_builds" :key="i">
           <el-col :span="8">
-            <el-input v-model="build.docker_file_path" placeholder="默认为Dockerfile" autocomplete="off" size="small"></el-input>
+            <el-input v-model="build.dockerfile" placeholder="默认为Dockerfile" autocomplete="off" size="small"></el-input>
           </el-col>
           <el-col :span="13">
-            <el-input v-model="build.image_name" autocomplete="off" size="small"></el-input>
+            <el-input v-model="build.image" autocomplete="off" size="small"></el-input>
           </el-col>
           <el-col :span="3">
-            <span v-if="params.image_build_infos.length > 1" class="build-info-operator"
-              style="margin-right: 5px;" @click="params.image_build_infos.splice(i, 1)">—</span>
-            <span @click="addBuildInfo()" v-if="i +1 == params.image_build_infos.length"
+            <span v-if="params.image_builds.length > 1" class="build-info-operator"
+              style="margin-right: 5px;" @click="params.image_builds.splice(i, 1)">—</span>
+            <span @click="addBuildInfo()" v-if="i +1 == params.image_builds.length"
               class="build-info-operator">+</span>
           </el-col>
         </el-row>
@@ -111,10 +111,10 @@ export default {
       // this.params.code_build_type = 'file'
       this.$set(this.params, 'code_build_type', 'file')
     }
-    if(!this.params.image_build_infos) {
-      this.$set(this.params, 'image_build_infos', [{
+    if(!this.params.image_builds) {
+      this.$set(this.params, 'image_builds', [{
         'dockerfile': '',
-        'image_name': ''
+        'image': ''
       }])
     }
     this.fetchResources()

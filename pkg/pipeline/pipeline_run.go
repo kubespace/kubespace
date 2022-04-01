@@ -324,6 +324,79 @@ func (r *ServicePipelineRun) Execute(pipelineRun *types.PipelineRun, prevStageId
 	}
 }
 
+func (r *ServicePipelineRun) getJobExecParam(envs map[string]interface{}, jobParams map[string]interface{}, pluginParam *types.PipelinePluginParamsSpec) interface{} {
+	if pluginParam == nil {
+		return nil
+	}
+	res := pluginParam.Default
+	if pluginParam.From == types.PluginParamsFromEnv {
+		if _, ok := envs[pluginParam.FromName]; ok {
+			return envs[pluginParam.FromName]
+		}
+	} else if pluginParam.From == types.PluginParamsFromJob {
+		if _, ok := jobParams[pluginParam.FromName]; ok {
+			return jobParams[pluginParam.FromName]
+		}
+	} else if pluginParam.From == types.PluginParamsFromCodeSecret {
+		workspaceId, err := strconv.ParseUint(fmt.Sprintf("%v", envs["PIPELINE_WORKSPACE_ID"]), 10, 64)
+		if err != nil {
+			return &utils.Response{Code: code.RequestError, Msg: "获取流水线空间失败：" + err.Error()}
+		}
+		workspace, _ := r.models.PipelineWorkspaceManager.Get(uint(workspaceId))
+		if workspace != nil && workspace.CodeSecretId != 0 {
+			secret, _ := r.models.SettingsSecretManager.Get(workspace.CodeSecretId)
+			if secret != nil {
+				return map[string]interface{}{
+					"type":         secret.Type,
+					"user":         secret.User,
+					"password":     secret.Password,
+					"private_key":  secret.PrivateKey,
+					"access_token": secret.AccessToken,
+				}
+			}
+		}
+	} else if pluginParam.From == types.PluginParamsFromImageRegistry {
+		if imageRegistry, ok := jobParams[pluginParam.FromName]; ok {
+			registryId, err := strconv.ParseUint(fmt.Sprintf("%v", imageRegistry), 10, 64)
+			if err == nil {
+				registry, _ := r.models.ImageRegistryManager.Get(uint(registryId))
+				if registry != nil {
+					return map[string]interface{}{
+						"registry": registry.Registry,
+						"user":     registry.User,
+						"password": registry.Password,
+					}
+				}
+			}
+
+		}
+	} else if pluginParam.From == types.PluginParamsFromPipelineResource {
+		if resourceParam, ok := jobParams[pluginParam.FromName]; ok {
+			resourceId, err := strconv.ParseUint(fmt.Sprintf("%v", resourceParam), 10, 64)
+			if err == nil {
+				resource, _ := r.models.PipelineResourceManager.Get(uint(resourceId))
+				if resource != nil {
+					res := map[string]interface{}{
+						"type":  resource.Type,
+						"value": resource.Value,
+					}
+					if resource.Secret != nil {
+						res["secret"] = map[string]string{
+							"type":         resource.Secret.Type,
+							"user":         resource.Secret.User,
+							"password":     resource.Secret.Password,
+							"private_key":  resource.Secret.PrivateKey,
+							"access_token": resource.Secret.AccessToken,
+						}
+					}
+					return res
+				}
+			}
+		}
+	}
+	return res
+}
+
 func (r *ServicePipelineRun) ExecuteJob(stageRun *types.PipelineRunStage, runJob *types.PipelineRunJob) (resp *utils.Response) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -351,32 +424,7 @@ func (r *ServicePipelineRun) ExecuteJob(stageRun *types.PipelineRunStage, runJob
 		if pluginParam.ParamName == "" {
 			continue
 		}
-		executeParams[pluginParam.ParamName] = pluginParam.Default
-		if pluginParam.From == types.PluginParamsFromEnv {
-			if _, ok := envs[pluginParam.FromName]; ok {
-				executeParams[pluginParam.ParamName] = envs[pluginParam.FromName]
-			}
-		} else if pluginParam.From == types.PluginParamsFromJob {
-			if _, ok := runJob.Params[pluginParam.FromName]; ok {
-				executeParams[pluginParam.ParamName] = runJob.Params[pluginParam.FromName]
-			}
-		}
-	}
-	if plugin.Key == "build_code_to_image" {
-		workspaceId, err := strconv.ParseUint(fmt.Sprintf("%v", envs["PIPELINE_WORKSPACE_ID"]), 10, 64)
-		if err != nil {
-			return &utils.Response{Code: code.RequestError, Msg: "获取流水线空间失败：" + err.Error()}
-		}
-		workspace, _ := r.models.PipelineWorkspaceManager.Get(uint(workspaceId))
-		if workspace.CodeSecretId != 0 {
-			secret, _ := r.models.SettingsSecretManager.Get(workspace.CodeSecretId)
-			executeParams["code_secret"] = map[string]interface{}{
-				"type":        secret.Type,
-				"user":        secret.User,
-				"password":    secret.Password,
-				"private_key": secret.PrivateKey,
-			}
-		}
+		executeParams[pluginParam.ParamName] = r.getJobExecParam(envs, runJob.Params, pluginParam)
 	}
 	data, err := utils.HttpPost(plugin.Url, executeParams)
 	if err != nil {
