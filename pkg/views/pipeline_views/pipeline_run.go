@@ -7,6 +7,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"github.com/kubespace/kubespace/pkg/views"
 	"github.com/kubespace/kubespace/pkg/views/serializers"
+	"io"
 	"net/http"
 	"strconv"
 )
@@ -38,7 +39,7 @@ func NewPipelineRun(models *model.Models) *PipelineRun {
 func (p *PipelineRun) build(c *views.Context) *utils.Response {
 	var ser serializers.PipelineBuildSerializer
 	if err := c.ShouldBind(&ser); err != nil {
-		return &utils.Response{Code: code.ParamsError, Msg:  err.Error()}
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
 	return p.pipelineRunService.Build(&ser, c.User)
 }
@@ -46,9 +47,33 @@ func (p *PipelineRun) build(c *views.Context) *utils.Response {
 func (p *PipelineRun) list(c *views.Context) *utils.Response {
 	var ser serializers.PipelineBuildListSerializer
 	if err := c.ShouldBindQuery(&ser); err != nil {
-		return &utils.Response{Code: code.ParamsError, Msg:  err.Error(),}
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
 	return p.pipelineRunService.ListPipelineRun(ser.PipelineId)
+}
+
+func stream(c *views.Context) {
+	c.Done()
+	w := c.Writer
+	clientGone := w.CloseNotify()
+	for {
+		select {
+		case <-clientGone:
+			return
+		default:
+
+			w.Flush()
+			break
+		}
+	}
+}
+
+func (p *PipelineRun) sse(c *views.Context) *utils.Response {
+	c.Stream(func(w io.Writer) bool {
+		return false
+	})
+	stream(c)
+	return nil
 }
 
 func (p *PipelineRun) get(c *views.Context) *utils.Response {

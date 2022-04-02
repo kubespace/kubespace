@@ -8,6 +8,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/model/mysql"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/redis"
+	"github.com/kubespace/kubespace/pkg/sse"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	views2 "github.com/kubespace/kubespace/pkg/views"
@@ -51,6 +52,7 @@ func NewRouter(redisOptions *redis.Options, mysqlOptions *mysql.Options) (*Route
 		return nil, err
 	}
 	kubeResources := kube_resource.NewKubeResources(kubeMessage)
+	sse.Stream = sse.NewStream(redisOptions)
 
 	// 统一认证的api接口
 	apiGroup := engine.Group("/api/v1")
@@ -111,7 +113,9 @@ func apiWrapper(m *model.Models, handler views2.ViewHandler) gin.HandlerFunc {
 		} else {
 			context := &views2.Context{Context: c, User: authRes.Data.(*types.User)}
 			res := handler(context)
-			c.JSON(200, res)
+			if res != nil {
+				c.JSON(200, res)
+			}
 		}
 	}
 }
