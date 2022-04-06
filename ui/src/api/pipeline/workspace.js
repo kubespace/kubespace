@@ -7,6 +7,13 @@ export function listWorkspaces() {
   })
 }
 
+export function getWorkspace(id) {
+  return request({
+    url: `pipeline/workspace/${id}`,
+    method: 'get',
+  })
+}
+
 export function createWorkspace(data) {
   return request({
     url: '/pipeline/workspace',

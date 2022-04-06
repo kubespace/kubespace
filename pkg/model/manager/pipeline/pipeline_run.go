@@ -2,7 +2,10 @@ package pipeline
 
 import (
 	"errors"
+	"fmt"
+	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/model/types"
+	"github.com/kubespace/kubespace/pkg/sse"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"gorm.io/gorm"
 	"k8s.io/klog"
@@ -13,16 +16,23 @@ import (
 type ManagerPipelineRun struct {
 	DB            *gorm.DB
 	PluginManager *ManagerPipelinePlugin
+	middleMessage *kube_resource.MiddleMessage
 }
 
-func NewPipelineRunManager(db *gorm.DB, pluginManager *ManagerPipelinePlugin) *ManagerPipelineRun {
-	return &ManagerPipelineRun{DB: db, PluginManager: pluginManager}
+func NewPipelineRunManager(db *gorm.DB, pluginManager *ManagerPipelinePlugin, middleMessage *kube_resource.MiddleMessage) *ManagerPipelineRun {
+	return &ManagerPipelineRun{DB: db, PluginManager: pluginManager, middleMessage: middleMessage}
 }
 
-func (p *ManagerPipelineRun) ListPipelineRun(pipelineId uint) ([]types.PipelineRun, error) {
+func (p *ManagerPipelineRun) ListPipelineRun(pipelineId uint, lastBuildNumber int) ([]types.PipelineRun, error) {
 	var pipelineRuns []types.PipelineRun
-	if err := p.DB.Order("id desc").Where("pipeline_id = ?", pipelineId).Find(&pipelineRuns).Error; err != nil {
-		return nil, err
+	if lastBuildNumber == 0 {
+		if err := p.DB.Order("id desc").Limit(20).Where("pipeline_id = ?", pipelineId).Find(&pipelineRuns).Error; err != nil {
+			return nil, err
+		}
+	} else {
+		if err := p.DB.Order("id desc").Limit(20).Where("pipeline_id = ? and build_number < ?", pipelineId, lastBuildNumber).Find(&pipelineRuns).Error; err != nil {
+			return nil, err
+		}
 	}
 	return pipelineRuns, nil
 }
@@ -164,6 +174,14 @@ func (p *ManagerPipelineRun) UpdateStageRun(stageRun *types.PipelineRunStage) er
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	var pipelineRun types.PipelineRun
+	if err = p.DB.First(&pipelineRun, stageRun.PipelineRunId).Error; err != nil {
+		return err
+	}
+	p.StreamPipelineRun(&pipelineRun)
 	return err
 }
 
@@ -286,28 +304,67 @@ func (p *ManagerPipelineRun) UpdatePipelineStageRun(updateStageObj *UpdateStageO
 	if err != nil {
 		return nil, nil, err
 	}
+	p.StreamPipelineRun(&pipelineRun)
 	return &pipelineRun, &stageRun, nil
 }
 
 func (p *ManagerPipelineRun) UpdatePipelineRun(pipelineRun *types.PipelineRun) error {
 	pipelineRun.UpdateTime = time.Now()
-	return p.DB.Save(pipelineRun).Error
+	if err := p.DB.Save(pipelineRun).Error; err != nil {
+		return err
+	}
+	p.StreamPipelineRun(pipelineRun)
+	return nil
+}
+
+func (p *ManagerPipelineRun) StreamPipelineRun(pipelineRun *types.PipelineRun) {
+	stageRuns, _ := p.StagesRun(pipelineRun.ID)
+	event := sse.Event{
+		Labels: map[string]string{
+			sse.EventLabelType:       sse.EventTypePipelineRun,
+			sse.EventTypePipelineRun: fmt.Sprintf("%d", pipelineRun.ID),
+			sse.EventTypePipeline:    fmt.Sprintf("%d", pipelineRun.PipelineId),
+		},
+		Object: map[string]interface{}{
+			"pipeline_run": pipelineRun,
+			"stages_run":   stageRuns,
+		},
+	}
+	p.middleMessage.SendGlobalWatch(event)
 }
 
 func (p *ManagerPipelineRun) GetEnvBeforeStageRun(stageRun *types.PipelineRunStage) (envs map[string]interface{}, err error) {
-	var curStageId uint = 0
-	var pipelineRun types.PipelineRun
-	if err = p.DB.Last(&pipelineRun, "id = ?", stageRun.PipelineRunId).Error; err != nil {
-		return nil, err
-	}
-	envs = utils.MergeMap(pipelineRun.Env)
-	for curStageId != stageRun.ID {
-		var curStageRun types.PipelineRunStage
-		if err = p.DB.Last(&curStageRun, "prev_stage_run_id = ? and pipeline_run_id = ?", curStageId, stageRun.PipelineRunId).Error; err != nil {
+	if stageRun.PrevStageRunId == 0 {
+		var pipelineRun types.PipelineRun
+		if err = p.DB.Last(&pipelineRun, "id = ?", stageRun.PipelineRunId).Error; err != nil {
 			return nil, err
 		}
-		envs = utils.MergeMap(envs, curStageRun.Env)
-		curStageId = curStageRun.ID
+		return pipelineRun.Env, nil
+	} else {
+		var prevStageRun types.PipelineRunStage
+		if err = p.DB.Last(&prevStageRun, "id = ? and pipeline_run_id = ?", stageRun.PrevStageRunId, stageRun.PipelineRunId).Error; err != nil {
+			return nil, err
+		}
+		return prevStageRun.Env, nil
 	}
-	return envs, nil
+}
+
+func (p *ManagerPipelineRun) GetJobRunLog(jobRunId uint, withLog bool) (*types.PipelineRunJobLog, error) {
+	var jobLog types.PipelineRunJobLog
+	if withLog {
+		if err := p.DB.Last(&jobLog, "job_run_id = ?", jobRunId).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, nil
+			}
+			return nil, err
+		}
+	} else {
+		if err := p.DB.Select("id", "job_run_id", "create_time", "update_time").Last(&jobLog, "job_run_id = ?", jobRunId).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, nil
+			}
+			return nil, err
+		}
+	}
+	return &jobLog, nil
 }

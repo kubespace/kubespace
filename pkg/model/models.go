@@ -1,6 +1,7 @@
 package model
 
 import (
+	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/model/manager"
 	"github.com/kubespace/kubespace/pkg/model/manager/pipeline"
 	"github.com/kubespace/kubespace/pkg/model/manager/project"
@@ -29,6 +30,7 @@ type Models struct {
 
 func NewModels(redisOp *redis.Options, mysqlOptions *mysql.Options) (*Models, error) {
 	client := redis.NewRedisClient(redisOp)
+	middleMessage := kube_resource.NewMiddleMessageWithClient(nil, client)
 	cm := manager.NewClusterManager(client)
 	role := manager.NewRoleManager(client)
 	tk := manager.NewTokenManager(client)
@@ -43,7 +45,7 @@ func NewModels(redisOp *redis.Options, mysqlOptions *mysql.Options) (*Models, er
 	pipelinePluginMgr := pipeline.NewPipelinePluginManager(db)
 	pipelineMgr := pipeline.NewPipelineManager(db)
 	pipelineWorkspaceMgr := pipeline.NewWorkspaceManager(db, pipelineMgr)
-	pipelineRunMgr := pipeline.NewPipelineRunManager(db, pipelinePluginMgr)
+	pipelineRunMgr := pipeline.NewPipelineRunManager(db, pipelinePluginMgr, middleMessage)
 	pipelineResourceMgr := pipeline.NewResourceManager(db)
 
 	secrets := manager.NewSettingsSecretManager(db)

@@ -24,6 +24,7 @@ func NewPipelineWorkspace(models *model.Models) *PipelineWorkspace {
 	}
 	vs := []*views.View{
 		views.NewView(http.MethodGet, "", pipelineWs.list),
+		views.NewView(http.MethodGet, "/:id", pipelineWs.get),
 		views.NewView(http.MethodPost, "", pipelineWs.create),
 		views.NewView(http.MethodDelete, "/:id", pipelineWs.delete),
 	}
@@ -52,6 +53,18 @@ func (p *PipelineWorkspace) list(c *views.Context) *utils.Response {
 	}
 	resp.Data = workspaces
 	return resp
+}
+
+func (p *PipelineWorkspace) get(c *views.Context) *utils.Response {
+	workspaceId, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	workspace, err := p.models.PipelineWorkspaceManager.Get(uint(workspaceId))
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: "获取流水线空间失败：" + err.Error()}
+	}
+	return &utils.Response{Code: code.Success, Data: workspace}
 }
 
 func (p *PipelineWorkspace) delete(c *views.Context) *utils.Response {

@@ -7,7 +7,7 @@ const Routes = [
     path: '',
     name: 'workspaceOverview',
     component: () => import('@/views/workspace/overview'),
-    meta: { title: '项目概览', icon: 'overview', 'group': 'workspace', object: 'pipeline' }
+    meta: { title: '空间概览', icon: 'overview', 'group': 'workspace', object: 'pipeline' }
   },
   {
     path: 'work_apps',

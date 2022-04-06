@@ -296,14 +296,11 @@ type PipelineRunJob struct {
 }
 
 type PipelineRunJobLog struct {
-	ID            uint      `gorm:"primaryKey"`
-	PipelineRunId uint      `gorm:"not null" json:"pipeline_run_id"`
-	StageRunId    uint      `gorm:"not null" json:"stage_run_id"`
-	JobRunId      uint      `gorm:"column:job_run_id;not null"`
-	JobName       string    `gorm:"not null"`
-	Logs          string    `gorm:"type:longtext"`
-	CreateTime    time.Time `gorm:"not null;autoCreateTime"`
-	UpdateTime    time.Time `gorm:"not null;autoUpdateTime"`
+	ID         uint      `gorm:"primaryKey" json:"id"`
+	JobRunId   uint      `gorm:"column:job_run_id;not null" json:"job_run_id"`
+	Logs       string    `gorm:"type:longtext" json:"logs"`
+	CreateTime time.Time `gorm:"not null;autoCreateTime" json:"create_time"`
+	UpdateTime time.Time `gorm:"not null;autoUpdateTime" json:"update_time"`
 }
 
 type PipelineResource struct {

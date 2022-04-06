@@ -1,12 +1,12 @@
 <template>
   <div>
     <clusterbar :titleName="titleName" :nameFunc="nameSearch" createDisplay="构建" :titleLink="['pipeline']">
-      <!-- <div> -->
-        <el-button  slot="right-btn" size="small" type="primary" @click="openBuildParams" icon="el-icon-video-play">构 建</el-button>
-      <!-- </div> -->
+      <el-button  slot="right-btn" size="small" type="primary" @click="openBuildParams">
+        <i class="el-icon-video-play" style=""></i> 构 建
+      </el-button>
     </clusterbar>
-    <div class="dashboard-container dashboard-container-build" :style="{height: maxHeight + 'px'}" :max-height="maxHeight">
-      <div class="build-list" v-for="build in builds" :key="build.pipeline_run.id">
+    <div v-loading="loading" class="dashboard-container dashboard-container-build" :style="{'max-height': maxHeight + 'px'}" :max-height="maxHeight">
+      <div class="build-list" v-for="build in builds || []" :key="build.pipeline_run.id">
         <div style="border-bottom: 1px solid #EBEEF5;">
           <div class="build-info">
             <div class="build-info__left" @click="clickBuildDetail(build, 'source')">
@@ -49,13 +49,19 @@
                       <template v-if="stage.status == 'ok'">
                         <i class="el-icon-circle-check" style="font-size: 18px;"></i>
                         <div class="el-steps-stage-exectime">
-                          {{ getStageExecTime(stage.create_time, stage.update_time) }}
+                          {{ getStageExecTime(stage.exec_time, stage.update_time) }}
+                        </div>
+                      </template>
+                      <template v-if="stage.status == 'doing'">
+                        <i class="el-icon-refresh" style="font-size: 18px;"></i>
+                        <div class="el-steps-stage-exectime">
+                          {{ getStageExecTimeStr(refreshStages[stage.id]) }}
                         </div>
                       </template>
                       <template v-if="stage.status == 'error'">
                         <i class="el-icon-circle-close" style="font-size: 18px;"></i>
                         <div class="el-steps-stage-exectime">
-                          {{ getStageExecTime(stage.create_time, stage.update_time) }}
+                          {{ getStageExecTime(stage.exec_time, stage.update_time) }}
                         </div>
                       </template>
                       <template v-if="stage.status == 'wait'">
@@ -128,8 +134,11 @@
           </div>
         </div>
       </div>
+      <div v-if="loadMore" style="text-align: center; margin: 15px 15px 5px;">
+          <el-button style="border-radius:0px;" type="primary" @click="fetchBuilds" size="small">加 载 更 多</el-button>
+      </div>
 
-      <div v-if="builds.length == 0" style="text-align: center; margin-top: 30px; margin-left: -100px; color: #606266; font-size: 14px;">
+      <div v-if="builds && builds.length == 0" style="text-align: center; margin-top: 30px; margin-left: -100px; color: #606266; font-size: 14px;">
         暂无流水线构建记录，<span @click="openBuildParams" class="build-span" style="color:#409EFF">执行流水线</span>
       </div>
     </div>
@@ -174,18 +183,25 @@ export default {
       dialogVisible: false,
       pipeline: [],
       builds: [],
-      tableData: [{
-            commitId: '64a986150874cd1ed1c984889229b1204c9503d1',
-            author: 'lizeen',
-            comment: 'add helm application and crd'
-          },],
       buildDetails: {},
-      buildParams: {}
+      buildParams: {},
+      pipelineSSE: null,
+      refreshExecTimer: 0,
+      refreshStages: {},
+      loadMore: false
     }
   },
   created() {
+    this.loading = true
     this.fetchPipeline();
     this.fetchBuilds();
+    this.fetchPipelineSSE();
+  },
+  destroyed() {
+    this.pipelineSSE.close()
+    if(this.refreshExecTimer) {
+      clearTimeout(this.refreshExecTimer)
+    }
   },
   mounted() {
     const that = this
@@ -204,26 +220,107 @@ export default {
   },
   methods: {
     fetchPipeline() {
-      getPipeline(this.pipelineId)
-        .then((response) => {
-          this.pipeline = response.data || {};
-          if (this.pipeline){
-            this.titleName = ["流水线", this.pipeline.pipeline.name]
-          }
-        }).catch(() => {
-          
-        })
+      getPipeline(this.pipelineId).then((response) => {
+        this.pipeline = response.data || {};
+        if (this.pipeline){
+          this.titleName = ["流水线", this.pipeline.pipeline.name]
+        }
+      }).catch(() => {
+        
+      })
     },
     fetchBuilds() {
       this.loading = true
-      listBuilds(this.pipelineId)
-        .then((response) => {
-          this.loading = false
-          this.builds = response.data || [];
-        })
-        .catch(() => {
-          this.loading = false
-        })
+      let lastBuildNumber = 0
+      if(this.builds.length > 0) {
+        lastBuildNumber = this.builds[this.builds.length - 1].pipeline_run.build_number
+      }
+      listBuilds(this.pipelineId, lastBuildNumber).then((response) => {
+        this.loading = false
+        let res = response.data || []
+        for(let r of res) this.builds.push(r)
+        if(res.length == 20) this.loadMore = true
+        else this.loadMore = false
+        this.processExecTime()
+      }).catch(() => {
+        this.loading = false
+      })
+    },
+    processExecTime() {
+      var hasDoing = false
+      for(let build of this.builds) {
+        for(let s of build.stages_run) {
+          if(build.pipeline_run.status == 'doing') {
+            if(s.status == 'doing') {
+              if(!this.refreshStages[s.id]) {
+                var endTime = new Date();
+                var execTime = new Date(s.exec_time);
+                this.$set(this.refreshStages, s.id, Math.floor((endTime.getTime()-execTime.getTime()) / 1000))
+                // this.refreshStages[s.id] = 
+              }
+              hasDoing = true
+            } else if(this.refreshStages[s.id]) {
+              // delete this.refreshStages[s.id]
+              this.$delete(this.refreshStages, s.id)
+            }
+          } else if(this.refreshStages[s.id]) {
+            this.$delete(this.refreshStages, s.id)
+          }
+        }
+      }
+      if(!this.refreshExecTimer  && hasDoing) {
+        this.refreshExecTime()
+      } else if(!hasDoing && this.refreshExecTimer) {
+        clearTimeout(this.refreshExecTimer)
+        this.refreshExecTimer = 0
+      }
+    },
+    refreshExecTime() {
+      let that = this
+      if(this.refreshExecTimer) {
+        clearTimeout(this.refreshExecTimer)
+        this.refreshExecTimer = 0
+      }
+      this.refreshExecTimer = setTimeout(function () {
+        let rs = that.refreshStages
+        for(let s in rs) {
+          let t = rs[s]
+          if(t != undefined) that.$set(that.refreshStages, s, t + 1)
+        }
+        // that.$set(that, 'refresthStages', rs)
+        that.refreshExecTime()
+      }, 1000);
+    },
+    fetchPipelineSSE() {
+      let url = `/api/v1/pipeline/pipeline/${this.pipelineId}/sse`
+      this.pipelineSSE = new EventSource(url);
+      this.pipelineSSE.addEventListener('message', event => {
+        // console.log(event.data);
+        if(event.data) {
+          let data = JSON.parse(event.data)
+          // console.log(data)
+          if(data.object) {
+            let obj = data.object
+            for(let i in this.builds){
+              let build = this.builds[i]
+              if(build.pipeline_run.id == obj.pipeline_run.id) {
+                this.$set(this.builds, i, obj)
+                this.processExecTime()
+                break
+              }
+            }
+          }
+        }
+      });
+      this.pipelineSSE.addEventListener('error', event => {
+        if (event.readyState == EventSource.CLOSED) {
+          console.log('event was closed');
+        };
+      });
+      this.pipelineSSE.addEventListener('close', event => {
+        console.log(event.type);
+        this.pipelineSSE.close();
+      });
     },
     nameClick: function(id) {
       this.$router.push({name: "pipelineBuilds", params: { pipelineId: id },});
@@ -242,6 +339,7 @@ export default {
       buildPipeline(this.pipelineId, this.buildParams).then((response) => {
         this.$message({message: '构建成功', type: 'success'});
         this.fetchBuilds()
+        this.dialogVisible = false
       }).catch( (err) => {
         console.log(err)
       })
@@ -260,31 +358,35 @@ export default {
       return ''
     },
     getStageExecTime(execTimeStr, endTimeStr) {
-      console.log(execTimeStr, endTimeStr)  
       if(!endTimeStr) var endTime = new Date();
       else var endTime = new Date(endTimeStr)
 
       var execTime = new Date(execTimeStr)
-      var diffTime = endTime.getTime()-execTime.getTime()
+      var diffTime = Math.floor((endTime.getTime()-execTime.getTime()) / 1000)
+      return this.getStageExecTimeStr(diffTime)
+    },
+    
+    getStageExecTimeStr(diffTime) {
       var stageTime = ''
 
-      var days = Math.floor(diffTime / (24*3600*1000))
+      var days = Math.floor(diffTime / (24*3600))
       if (days) stageTime = days + 'd'
 
-      var leave1 = diffTime % (24*3600*1000)
-      var hours = Math.floor(leave1/(3600*1000))
+      var leave1 = diffTime % (24*3600)
+      var hours = Math.floor(leave1/(3600))
       if(hours) stageTime += hours + 'h'
 
-      var leave2=leave1%(3600*1000)        //计算小时数后剩余的毫秒数
-      var minutes=Math.floor(leave2/(60*1000))
+      var leave2=leave1%(3600)        //计算小时数后剩余的毫秒数
+      var minutes=Math.floor(leave2/(60))
       if(minutes) stageTime += minutes + 'm'
 
-      var leave3 = leave2 % (60*1000)
-      var seconds=Math.round(leave3/1000)
+      var leave3 = leave2 % (60)
+      var seconds=Math.round(leave3)
       if(seconds) stageTime += seconds + 's'
       if(!stageTime) stageTime = '1s'
       return stageTime
     },
+    
     clickBuildDetail(build, type, stage) {
       var clickDetail = build.clickDetail
       if(clickDetail){
@@ -329,7 +431,7 @@ export default {
 }
 
 .dashboard-container-build {
-  margin: 15px 20px;
+  margin: 10px 20px;
   overflow:scroll;
 }
 
@@ -419,7 +521,9 @@ export default {
   cursor: pointer;
 }
 </style>
-<style>
+<style lang="scss">
+.dashboard-container-build {
+
   .build-list .el-steps--simple {
     border-radius: 0px;
   }
@@ -436,4 +540,5 @@ export default {
   .build-detail .el-table td, .build-detail .el-table th {
     padding: 0px 0;
   }
+}
 </style>

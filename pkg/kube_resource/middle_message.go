@@ -152,7 +152,7 @@ func (m *MiddleMessage) ReceiveGlobalWatch(reqHandle func(string)) error {
 			klog.Errorf("receive message error: %s", err.Error())
 			return err
 		}
-		klog.V(1).Info(data.Payload)
+		//klog.V(1).Info(data.Payload)
 		reqHandle(data.Payload)
 	}
 }
@@ -178,6 +178,7 @@ func (m *MiddleMessage) SendGlobalWatch(data interface{}) {
 		klog.Error("publish watch response error: %s", err.Error())
 		return
 	}
+	//klog.V(1).Infof("send global watch %s", string(respData))
 }
 
 func (m *MiddleMessage) ClusterWatchQueueKey(cluster string) string {

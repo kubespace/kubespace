@@ -45,7 +45,8 @@ type PipelineListSerializer struct {
 }
 
 type PipelineBuildListSerializer struct {
-	PipelineId uint `json:"pipeline_id" form:"pipeline_id"`
+	PipelineId      uint `json:"pipeline_id" form:"pipeline_id"`
+	LastBuildNumber int  `json:"last_build_number" form:"last_build_number"`
 }
 
 type PipelineBuildSerializer struct {

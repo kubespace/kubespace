@@ -2,9 +2,9 @@
   <div>
     <clusterbar :titleName="titleName" :titleLink="['workspaceApp']"/>
     <div class="dashboard-container detail-dashboard" ref="tableCot" v-loading="loading">
-      <div style="padding: 10px 8px 0px;">
+      <div style="padding: 10px 0px 0px;">
         <div>基本信息</div>
-        <el-form label-position="left" inline class="pod-item" label-width="80px" style="margin: 15px 10px 30px 10px;">
+        <el-form label-position="left" inline class="pod-item" label-width="80px" style="margin: 15px 10px 20px 10px;">
           <el-form-item label="应用名称">
             <span>{{ originApp.name }}</span>
           </el-form-item>
@@ -26,7 +26,7 @@
         </el-form>
       </div>
 
-      <div style="padding: 0px 8px;" v-if="['Running', 'RunningFault', 'NotReady'].indexOf(originApp.status) > -1">
+      <div style="padding: 0px 0px;" v-if="['Running', 'RunningFault', 'NotReady'].indexOf(originApp.status) > -1">
         <div>Pods</div>
         <div class="msgClass" style="margin: 15px 10px 20px 10px;">
             <el-table
@@ -150,7 +150,7 @@
           </div>
       </div>
 
-      <el-tabs value="workloads" style="padding: 0px 8px;">
+      <el-tabs value="workloads" style="padding: 0px 0px;">
         <el-tab-pane label="Workloads" name="workloads">
           <div class="msgClass">
             <el-table

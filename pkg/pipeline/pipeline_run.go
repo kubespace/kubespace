@@ -40,8 +40,8 @@ func NewPipelineRunService(models *model.Models) *ServicePipelineRun {
 	}
 }
 
-func (r *ServicePipelineRun) ListPipelineRun(pipelineId uint) *utils.Response {
-	pipelineRuns, err := r.models.ManagerPipelineRun.ListPipelineRun(pipelineId)
+func (r *ServicePipelineRun) ListPipelineRun(pipelineId uint, lastBuildNumber int) *utils.Response {
+	pipelineRuns, err := r.models.ManagerPipelineRun.ListPipelineRun(pipelineId, lastBuildNumber)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
@@ -69,9 +69,24 @@ func (r *ServicePipelineRun) GetPipelineRun(pipelineRunId uint) *utils.Response 
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
+	pipeline, err := r.models.ManagerPipeline.Get(pipelineRun.PipelineId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	workspace, err := r.models.PipelineWorkspaceManager.Get(pipeline.WorkspaceId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
 	data := map[string]interface{}{
+		"pipeline":     pipeline,
 		"pipeline_run": pipelineRun,
 		"stages_run":   stagesRun,
+		"workspace": map[string]interface{}{
+			"id":       workspace.ID,
+			"name":     workspace.Name,
+			"type":     workspace.Type,
+			"code_url": workspace.CodeUrl,
+		},
 	}
 	return &utils.Response{Code: code.Success, Data: data}
 }
@@ -121,6 +136,7 @@ func (r *ServicePipelineRun) getCodeBranchCommit(codeUrl, branch string, secretI
 		klog.Errorf("git clone %s error: %v", codeUrl, err)
 		return nil, err
 	}
+	defer os.RemoveAll("/tmp/" + uuid)
 	commits, err := ref.Log(&git.LogOptions{})
 	if err != nil {
 		klog.Errorf("git log %s error: %v", codeUrl, err)
@@ -305,6 +321,9 @@ func (r *ServicePipelineRun) Execute(pipelineRun *types.PipelineRun, prevStageId
 		}
 		return
 	}
+	envs, _ := r.models.ManagerPipelineRun.GetEnvBeforeStageRun(nextStage)
+	klog.Info(envs)
+	nextStage.Env = envs
 	nextStage.ExecTime = time.Now()
 	err = r.models.ManagerPipelineRun.UpdateStageRun(nextStage)
 	if err != nil {
@@ -422,11 +441,6 @@ func (r *ServicePipelineRun) ExecuteJob(stageRun *types.PipelineRunStage, runJob
 		klog.Errorf("get plugin key=%s error: %v", runJob.PluginKey, err)
 		return &utils.Response{Code: code.DBError, Msg: fmt.Sprintf("获取执行插件错误:%v", err)}
 	}
-	envs, err := r.models.ManagerPipelineRun.GetEnvBeforeStageRun(stageRun)
-	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
-	}
-	klog.Info(envs)
 	executeParams := map[string]interface{}{
 		"job_id": runJob.ID,
 	}
@@ -434,7 +448,7 @@ func (r *ServicePipelineRun) ExecuteJob(stageRun *types.PipelineRunStage, runJob
 		if pluginParam.ParamName == "" {
 			continue
 		}
-		executeParams[pluginParam.ParamName] = r.getJobExecParam(envs, runJob.Params, pluginParam)
+		executeParams[pluginParam.ParamName] = r.getJobExecParam(stageRun.Env, runJob.Params, pluginParam)
 	}
 	data, err := utils.HttpPost(plugin.Url, executeParams)
 	if err != nil {
@@ -546,5 +560,10 @@ func (r *ServicePipelineRun) RetryStage(retrySer *serializers.PipelineStageRetry
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
 	go r.Execute(pipelineRun, stageRun.PrevStageRunId, types.StageTriggerModeManual)
+	return &utils.Response{Code: code.Success}
+}
+
+func (r *ServicePipelineRun) JobLog(jobRunId uint) *utils.Response {
+
 	return &utils.Response{Code: code.Success}
 }

@@ -24,7 +24,7 @@
                 代码库源
               </span>
               <div style="font-size: 12px; padding: 10px 0px 0px; font-weight: 450">
-                https://github.com/openspacee/osp.git
+                {{ workspace ? workspace.code_url : '' }}
               </div>
             </div>
           </div>
@@ -67,7 +67,7 @@
                       <div class="stage-job-block__job">
                         <div class="stage-job-block__job-circle">
                            <div :class="checkJobError(job) ? 'stage-job-line__circle' : 'stage-job-line__circle-error'" 
-                            @click="openEditJobDialog(stage, 0); dialogVisible=true;">
+                            @click="openEditJobDialog(stage, ji); dialogVisible=true;">
                             <span style="margin-top: -5px;">{{ checkJobError(job) ? '' : '!' }}</span>
                           </div>
                         </div>
@@ -132,7 +132,8 @@
 <script>
 import { Clusterbar } from '@/views/components'
 import { PipelineStage, CodeToImage, ExecuteShell } from '@/views/pipeline/plugin'
-import { getPipeline, updatePipeline } from '@/api/pipeline/pipeline'
+import { getPipeline, updatePipeline, createPipeline } from '@/api/pipeline/pipeline'
+import { getWorkspace } from '@/api/pipeline/workspace'
 import { Message } from 'element-ui'
 
 export default {
@@ -145,13 +146,15 @@ export default {
   },
   data() {
     return {
-      titleName: ["流水线", ""],
+      titleName: ["流水线"],
       users: [],
       cellStyle: {border: 0, padding: '1px 0', 'line-height': '35px'},
       maxHeight: window.innerHeight - 145,
       loading: true,
       pipeline: {},
+      workspace: {},
       editPipeline: {
+        workspace_id: parseInt(this.$route.params.workspaceId),
         id: 0,
         name: "",
         triggers: [],
@@ -199,19 +202,27 @@ export default {
     }
   },
   created() {
-    this.fetchPipeline();
+    this.fetchWorkspace()
+    if(this.pipelineId) this.fetchPipeline();
+    else {
+      this.titleName = ["流水线", "创建"]
+      this.loading = false
+    }
   },
   mounted() {
     const that = this
     window.onresize = () => {
       return (() => {
         let heightStyle = window.innerHeight - 145
-        console.log(heightStyle)
+        console.log(heightStyle)  
         that.maxHeight = heightStyle
       })()
     }
   },
   computed: {
+    workspaceId() {
+      return this.$route.params.workspaceId
+    },
     pipelineId() {
       return this.$route.params.pipelineId
     },
@@ -227,6 +238,15 @@ export default {
     }
   },
   methods: {
+    fetchWorkspace() {
+      this.loading = true
+      getWorkspace(this.workspaceId).then((response) => {
+        this.workspace = response.data || {};
+        this.loading = false
+      }).catch(() => {
+        this.loading = false
+      })
+    },
     fetchPipeline() {
       this.loading = true
       getPipeline(this.pipelineId).then((response) => {
@@ -258,16 +278,26 @@ export default {
       // console.log(this.pipeline)
       // console.log(this.editPipeline)
       this.loading = true
-      updatePipeline(this.editPipeline).then((response) => {
-        Message.success("编辑流水线成功")
-        this.$router.push({name: 'pipeline', params: {'workspaceId': this.pipeline.workspace.id}})
-        // this.loading = false
-      }).catch(() => {
-        this.loading = false
-      })
+      if(this.pipelineId) {
+        updatePipeline(this.editPipeline).then((response) => {
+          Message.success("编辑流水线成功")
+          this.$router.push({name: 'pipeline', params: {'workspaceId': this.workspaceId}})
+          // this.loading = false
+        }).catch(() => {
+          this.loading = false
+        })
+      } else {
+        createPipeline(this.editPipeline).then((response) => {
+          Message.success("创建流水线成功")
+          this.$router.push({name: 'pipeline', params: {'workspaceId': this.workspaceId}})
+          // this.loading = false
+        }).catch(() => {
+          this.loading = false
+        })
+      }
     },
     cancelEdit() {
-      this.$router.push({name: 'pipeline', params: {'workspaceId': this.pipeline.workspace.id}})
+      this.$router.push({name: 'pipeline', params: {'workspaceId': this.workspaceId}})
     },
     dialogSave() {
       if (this.dialogType == 'edit_stage') {

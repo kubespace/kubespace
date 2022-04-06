@@ -131,7 +131,6 @@ export default {
       this.search_name = val
     },
     getBuildBranch(build) {
-      console.log(build)
       if(build) {
         let branch = ''
         let author = ''

@@ -163,7 +163,11 @@ export default {
     topSelectorChange() {
       if (this.topSelectorType == 'cluster') {
         // this.$router.push({name: 'cluster', params: {'name': this.topSelectorValue}})
-        this.$router.push({name: this.$route.name, params: {'name': this.topSelectorValue}})
+        let changeRoute = this.$route.name
+        if(this.$route.meta.sideName) {
+          changeRoute = this.$route.meta.sideName
+        }
+        this.$router.push({name: changeRoute, params: {'name': this.topSelectorValue}})
       } else if (this.topSelectorType == 'pipeline') {
         this.$router.push({name: 'pipeline', params: {'workspaceId': this.topSelectorValue}})
       } else if (this.topSelectorType == 'workspace') {
@@ -173,8 +177,12 @@ export default {
             this.$store.dispatch('watchNamespace', s.namespace)
           }
         }
+        let changeRoute = this.$route.name
+        if(this.$route.meta.sideName) {
+          changeRoute = this.$route.meta.sideName
+        }
         // this.$router.push({name: 'workspaceOverview', params: {'workspaceId': this.topSelectorValue}})
-        this.$router.push({name: this.$route.name, params: {'workspaceId': this.topSelectorValue}})
+        this.$router.push({name: changeRoute, params: {'workspaceId': this.topSelectorValue}})
         
       }
     },

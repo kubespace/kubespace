@@ -248,7 +248,7 @@ func (p *ManagerPipelinePlugin) Init() {
 	if err := p.DB.Model(&types.PipelinePlugin{}).Count(&cnt).Error; err != nil {
 		return
 	}
-	if cnt >= 0 {
+	if cnt == 0 {
 		now := time.Now()
 		for _, plugin := range BuiltinPlugins {
 			if plugin.Url != types.PipelinePluginBuiltinUrl {

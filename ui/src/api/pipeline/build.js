@@ -1,10 +1,10 @@
 import request from '@/utils/request'
 
-export function listBuilds(pipeline_id) {
+export function listBuilds(pipeline_id, last_build_number) {
   return request({
     url: `pipeline/build/list`,
     method: 'get',
-    params: {'pipeline_id': pipeline_id}
+    params: {'pipeline_id': pipeline_id, last_build_number: last_build_number}
   })
 }
 
@@ -20,5 +20,12 @@ export function buildPipeline(pipeline_id, params) {
     url: `pipeline/build`,
     method: 'post',
     data: {'pipeline_id': parseInt(pipeline_id), 'params': params}
+  })
+}
+
+export function getJobLog(job_id, with_sse) {
+  return request({
+    url: `pipeline/build/log/${job_id}${with_sse? "/sse" : ""}`,
+    method: 'get',
   })
 }

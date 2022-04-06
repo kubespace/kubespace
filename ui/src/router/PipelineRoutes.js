@@ -13,7 +13,7 @@ const Routes = [
     path: 'create',
     name: 'pipelineCreate',
     hidden: true,
-    component: () => import('@/views/pipeline/pipelineCreate'),
+    component: () => import('@/views/pipeline/pipelineEdit'),
     meta: { title: '流水线', icon: 'pipeline', sideName: 'pipeline', 'group': 'pipeline', object: 'cluster'}
   },
   {
@@ -50,7 +50,7 @@ const Routes = [
     ]
   }, 
   {
-    path: 'pipeline/build/:buildId',
+    path: 'pipeline/:pipelineId/build/:buildId',
     name: 'pipelineBuildDetail',
     hidden: true,
     component: () => import('@/views/pipeline/buildDetail'),

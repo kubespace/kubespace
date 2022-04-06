@@ -3,13 +3,15 @@ package pipeline_views
 import (
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/pipeline"
+	"github.com/kubespace/kubespace/pkg/sse"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"github.com/kubespace/kubespace/pkg/views"
 	"github.com/kubespace/kubespace/pkg/views/serializers"
-	"io"
+	"k8s.io/klog"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type PipelineRun struct {
@@ -28,9 +30,12 @@ func NewPipelineRun(models *model.Models) *PipelineRun {
 	vs := []*views.View{
 		views.NewView(http.MethodGet, "list", pw.list),
 		views.NewView(http.MethodGet, "/:pipelineRunId", pw.get),
+		views.NewView(http.MethodGet, "/:pipelineRunId/sse", pw.sse),
 		views.NewView(http.MethodPost, "", pw.build),
 		views.NewView(http.MethodPost, "/manual_execute", pw.manual),
 		views.NewView(http.MethodPost, "/retry", pw.retry),
+		views.NewView(http.MethodGet, "/log/:jobRunId", pw.log),
+		views.NewView(http.MethodGet, "/log/:jobRunId/sse", pw.logStream),
 	}
 	pw.Views = vs
 	return pw
@@ -49,31 +54,7 @@ func (p *PipelineRun) list(c *views.Context) *utils.Response {
 	if err := c.ShouldBindQuery(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	return p.pipelineRunService.ListPipelineRun(ser.PipelineId)
-}
-
-func stream(c *views.Context) {
-	c.Done()
-	w := c.Writer
-	clientGone := w.CloseNotify()
-	for {
-		select {
-		case <-clientGone:
-			return
-		default:
-
-			w.Flush()
-			break
-		}
-	}
-}
-
-func (p *PipelineRun) sse(c *views.Context) *utils.Response {
-	c.Stream(func(w io.Writer) bool {
-		return false
-	})
-	stream(c)
-	return nil
+	return p.pipelineRunService.ListPipelineRun(ser.PipelineId, ser.LastBuildNumber)
 }
 
 func (p *PipelineRun) get(c *views.Context) *utils.Response {
@@ -82,6 +63,45 @@ func (p *PipelineRun) get(c *views.Context) *utils.Response {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
 	return p.pipelineRunService.GetPipelineRun(uint(pipelineRunId))
+}
+
+func (p *PipelineRun) sse(c *views.Context) *utils.Response {
+	if c.Param("pipelineRunId") == "" {
+		return &utils.Response{Code: code.ParamsError, Msg: "get param pipeline run id error"}
+	}
+
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Set("Connection", "keep-alive")
+	//c.Writer.Header().Set("Transfer-Encoding", "chunked")
+
+	streamClient := sse.StreamClient{
+		ClientId: utils.CreateUUID(),
+		Catalog:  sse.CatalogDatabase,
+		WatchSelector: map[string]string{
+			sse.EventTypePipelineRun: c.Param("pipelineRunId"),
+		},
+		ClientChan: make(chan sse.Event),
+	}
+	sse.Stream.AddClient(streamClient)
+	defer sse.Stream.RemoveClient(streamClient)
+	w := c.Writer
+	clientGone := w.CloseNotify()
+	c.SSEvent("message", "")
+	w.Flush()
+	//c.Stream()
+
+	for {
+		klog.Infof("select for channel")
+		select {
+		case <-clientGone:
+			klog.Info("client gone")
+			return nil
+		case event := <-streamClient.ClientChan:
+			c.SSEvent("message", event)
+			c.Writer.Flush()
+		}
+	}
 }
 
 func (p *PipelineRun) manual(c *views.Context) *utils.Response {
@@ -104,4 +124,73 @@ func (p *PipelineRun) retry(c *views.Context) *utils.Response {
 		}
 	}
 	return p.pipelineRunService.RetryStage(&ser)
+}
+
+func (p *PipelineRun) log(c *views.Context) *utils.Response {
+	jobRunId, err := strconv.ParseUint(c.Param("jobRunId"), 10, 64)
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	jobLog, err := p.models.ManagerPipelineRun.GetJobRunLog(uint(jobRunId), true)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	if jobLog == nil {
+		return &utils.Response{Code: code.Success, Data: ""}
+	}
+	return &utils.Response{Code: code.Success, Data: jobLog.Logs}
+}
+
+func (p *PipelineRun) logStream(c *views.Context) *utils.Response {
+	if c.Param("jobRunId") == "" {
+		return &utils.Response{Code: code.ParamsError, Msg: "get param job run id error"}
+	}
+	jobRunId, err := strconv.ParseUint(c.Param("jobRunId"), 10, 64)
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	lastJobLog, err := p.models.ManagerPipelineRun.GetJobRunLog(uint(jobRunId), true)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Set("Connection", "keep-alive")
+	c.Writer.Header().Set("Transfer-Encoding", "chunked")
+
+	w := c.Writer
+	clientGone := w.CloseNotify()
+	if lastJobLog == nil {
+		c.SSEvent("message", "")
+	} else {
+		c.SSEvent("message", lastJobLog.Logs)
+	}
+	w.Flush()
+	//c.Stream()
+	tick := time.NewTicker(5 * time.Second)
+	for {
+		klog.Infof("select for log channel")
+		select {
+		case <-clientGone:
+			klog.Info("log client gone")
+			return nil
+		case <-tick.C:
+			//c.SSEvent("message", event)
+			currJobLog, err := p.models.ManagerPipelineRun.GetJobRunLog(uint(jobRunId), false)
+			if err == nil {
+				if currJobLog != nil && (lastJobLog == nil || currJobLog.UpdateTime != lastJobLog.UpdateTime) {
+					lastJobLog, err = p.models.ManagerPipelineRun.GetJobRunLog(uint(jobRunId), true)
+					if err != nil {
+						klog.Errorf("get job id=%s log error: %s", jobRunId, err.Error())
+					} else {
+						c.SSEvent("message", lastJobLog.Logs)
+						w.Flush()
+					}
+				}
+			} else {
+				klog.Errorf("get job id=%s log error: %s", jobRunId, err.Error())
+			}
+		}
+	}
 }

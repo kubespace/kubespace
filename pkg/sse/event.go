@@ -1,11 +1,18 @@
 package sse
 
-type EventType string
+const (
+	EventTypePipeline    string = "pipeline"
+	EventTypePipelineRun string = "pipeline_run"
+)
 
-const EventTypePipeline EventType = "pipeline"
+const EventLabelType = "__event_type"
+
+const (
+	CatalogDatabase = "database"
+	CatalogCluster  = "cluster"
+)
 
 type Event struct {
-	Type   EventType
-	Key    string
-	Object interface{}
+	Labels map[string]string `json:"labels"`
+	Object interface{}       `json:"object"`
 }
