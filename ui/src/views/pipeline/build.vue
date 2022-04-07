@@ -93,12 +93,20 @@
                 </el-table-column>
                 <el-table-column
                   prop="author"
-                  label="author"
-                  width="120">
+                  label="Author"
+                  width="100">
+                </el-table-column>
+                <el-table-column
+                  prop="when"
+                  label="When"
+                  width="160">
+                  <template slot-scope="scope">
+                    {{ scope.row.when ? $dateFormat(scope.row.when) : "" }}
+                  </template>
                 </el-table-column>
                 <el-table-column
                   prop="message"
-                  label="comment"
+                  label="Comment"
                   width="">
                 </el-table-column>
               </el-table>
@@ -187,7 +195,7 @@ export default {
       dialogVisible: false,
       pipeline: {},
       pipelineName: '',
-      builds: [],
+      builds: null,
       buildDetails: {},
       buildParams: {},
       pipelineSSE: null,
@@ -240,7 +248,7 @@ export default {
       this.loading = true
       if(lastBuildNumber == undefined) {
         lastBuildNumber = 0
-        if(this.builds.length > 0) {
+        if(this.builds && this.builds.length > 0) {
           lastBuildNumber = this.builds[this.builds.length - 1].pipeline_run.build_number
         }
       }
@@ -419,6 +427,7 @@ export default {
           commitId: build.pipeline_run.env.PIPELINE_CODE_COMMIT_ID,
           author: build.pipeline_run.env.PIPELINE_CODE_COMMIT_AUTHOR,
           message: build.pipeline_run.env.PIPELINE_CODE_COMMIT_MESSAGE,
+          when: build.pipeline_run.env.PIPELINE_CODE_COMMIT_TIME,
         }
         this.$set(build, 'clickDetail', {type: type, commit: [commit]})
       } else {

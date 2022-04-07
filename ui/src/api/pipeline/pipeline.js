@@ -30,3 +30,10 @@ export function createPipeline(data) {
     data: data,
   })
 }
+
+export function deletePipeline(id) {
+  return request({
+    url: `pipeline/pipeline/${id}`,
+    method: 'delete',
+  })
+}

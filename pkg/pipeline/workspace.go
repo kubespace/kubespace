@@ -48,7 +48,79 @@ func (w *WorkspaceService) checkCodeUrl(codeType string, codeUrl string) bool {
 	return re.MatchString(codeUrl)
 }
 
+func (w *WorkspaceService) defaultCodePipelines() ([]*types.Pipeline, error) {
+	branchPipeline := &types.Pipeline{
+		Name:       "分支流水线",
+		CreateUser: "admin",
+		UpdateUser: "admin",
+		CreateTime: time.Now(),
+		UpdateTime: time.Now(),
+		Triggers: types.PipelineTriggers{
+			&types.PipelineTrigger{
+				Type:       types.WorkspaceTypeCode,
+				BranchType: types.PipelineBranchTypeBranch,
+				Operator:   types.PipelineTriggerOperatorExclude,
+				Branch:     "master",
+			},
+		},
+		Stages: []*types.PipelineStage{
+			{
+				Name:        "构建代码镜像",
+				TriggerMode: types.StageTriggerModeAuto,
+				Jobs: types.PipelineJobs{
+					&types.PipelineJob{
+						Name:      "代码构建镜像",
+						PluginKey: types.BuiltinPluginBuildCodeToImage,
+						Params:    map[string]interface{}{},
+					},
+				},
+			},
+		},
+	}
+	masterPipeline := &types.Pipeline{
+		Name:       "主干流水线",
+		CreateUser: "admin",
+		UpdateUser: "admin",
+		CreateTime: time.Now(),
+		UpdateTime: time.Now(),
+		Triggers: types.PipelineTriggers{
+			&types.PipelineTrigger{
+				Type:       types.WorkspaceTypeCode,
+				BranchType: types.PipelineBranchTypeBranch,
+				Operator:   types.PipelineTriggerOperatorEqual,
+				Branch:     "master",
+			},
+		},
+		Stages: []*types.PipelineStage{
+			{
+				Name:        "构建代码镜像",
+				TriggerMode: types.StageTriggerModeAuto,
+				Jobs: types.PipelineJobs{
+					&types.PipelineJob{
+						Name:      "代码构建镜像",
+						PluginKey: types.BuiltinPluginBuildCodeToImage,
+						Params:    map[string]interface{}{},
+					},
+				},
+			},
+			{
+				Name:        "发布",
+				TriggerMode: types.StageTriggerModeManual,
+				Jobs: types.PipelineJobs{
+					&types.PipelineJob{
+						Name:      "发布",
+						PluginKey: types.BuiltinPluginRelease,
+						Params:    map[string]interface{}{},
+					},
+				},
+			},
+		},
+	}
+	return []*types.Pipeline{branchPipeline, masterPipeline}, nil
+}
+
 func (w *WorkspaceService) Create(workspaceSer *serializers.WorkspaceSerializer, user *types.User) *utils.Response {
+	var err error
 	if !w.checkCodeUrl(workspaceSer.CodeType, workspaceSer.CodeUrl) {
 		return &utils.Response{Code: code.ParamsError, Msg: "代码地址格式不正确"}
 	}
@@ -71,7 +143,14 @@ func (w *WorkspaceService) Create(workspaceSer *serializers.WorkspaceSerializer,
 		}
 	}
 	resp := &utils.Response{Code: code.Success}
-	workspace, err := w.models.PipelineWorkspaceManager.Create(workspace)
+	var defaultPipeline []*types.Pipeline
+	if workspace.Type == types.WorkspaceTypeCode {
+		defaultPipeline, err = w.defaultCodePipelines()
+		if err != nil {
+			return &utils.Response{Code: code.CreateError, Msg: "创建默认流水线失败: " + err.Error()}
+		}
+	}
+	workspace, err = w.models.PipelineWorkspaceManager.Create(workspace, defaultPipeline)
 	if err != nil {
 		resp.Code = code.DBError
 		resp.Msg = err.Error()

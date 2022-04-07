@@ -26,9 +26,10 @@ import (
 )
 
 type codeCommit struct {
-	CommitId string
-	Author   string
-	Message  string
+	CommitId   string
+	Author     string
+	Message    string
+	CommitTime time.Time
 }
 
 type ServicePipelineRun struct {
@@ -152,9 +153,10 @@ func (r *ServicePipelineRun) getCodeBranchCommit(codeUrl, branch string, secretI
 		return nil, err
 	}
 	return &codeCommit{
-		CommitId: commit.Hash.String(),
-		Author:   commit.Author.Name,
-		Message:  commit.Message,
+		CommitId:   commit.Hash.String(),
+		Author:     commit.Author.Name,
+		Message:    commit.Message,
+		CommitTime: commit.Author.When,
 	}, nil
 }
 
@@ -181,6 +183,9 @@ func (r *ServicePipelineRun) getCodeBranchCommitId(codeUrl, branch string, secre
 
 func (r *ServicePipelineRun) MatchTriggerBranch(triggers types.PipelineTriggers, branch string) bool {
 	for _, trigger := range triggers {
+		if trigger.Branch == "" && trigger.Operator != types.PipelineTriggerOperatorExclude {
+			return true
+		}
 		if trigger.Operator == types.PipelineTriggerOperatorEqual && trigger.Branch != branch {
 			return false
 		}
@@ -286,6 +291,7 @@ func (r *ServicePipelineRun) ManualExecutePipeline(pipelineRun *types.PipelineRu
 		pipelineRun.Env["PIPELINE_CODE_COMMIT_ID"] = commit.CommitId
 		pipelineRun.Env["PIPELINE_CODE_COMMIT_AUTHOR"] = commit.Author
 		pipelineRun.Env["PIPELINE_CODE_COMMIT_MESSAGE"] = commit.Message
+		pipelineRun.Env["PIPELINE_CODE_COMMIT_TIME"] = commit.CommitTime
 		err = r.models.ManagerPipelineRun.UpdatePipelineRun(pipelineRun)
 		if err != nil {
 			klog.Errorf("update pipeline run %d envs error: %v", pipelineRun.ID, err)

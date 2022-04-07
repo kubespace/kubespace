@@ -153,7 +153,7 @@
                 </el-col>
                 <el-col :span="10">
                   <div class="border-span-header">
-                    <el-input style="border-radius: 0px;" v-model="d.branch" size="small" placeholder="匹配分支"></el-input>
+                    <el-input style="border-radius: 0px;" v-model="d.branch" size="small" placeholder="匹配分支，空表示所有分支"></el-input>
                   </div>
                 </el-col>
                 <el-col :span="2" style="padding-left: 10px">
@@ -212,7 +212,7 @@ export default {
         workspace_id: parseInt(this.$route.params.workspaceId),
         id: 0,
         name: "",
-        triggers: [{"branch_type": "branch", "operator": "equal", "branch": ""}],
+        triggers: [{"type": "code", "branch_type": "branch", "operator": "equal", "branch": ""}],
         stages: []
       },
       operatorMap: {
@@ -331,6 +331,10 @@ export default {
       // console.log(this.pipeline)
       // console.log(this.editPipeline)
       this.loading = true
+      if(!this.editPipeline.name) {
+        Message.error("请输入流水线名称")
+        return
+      }
       if(this.pipelineId) {
         updatePipeline(this.editPipeline).then((response) => {
           Message.success("编辑流水线成功")

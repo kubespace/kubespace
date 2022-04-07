@@ -60,6 +60,7 @@ type Pipeline struct {
 	Name        string           `gorm:"size:50;not null;uniqueIndex:idx_workspace_name" json:"name"`
 	WorkspaceId uint             `gorm:"not null;uniqueIndex:idx_workspace_name" json:"workspace_id"`
 	Triggers    PipelineTriggers `gorm:"type:json" json:"triggers"`
+	Stages      []*PipelineStage `gorm:"-" json:"stages"`
 	CreateUser  string           `gorm:"size:50;not null" json:"create_user"`
 	UpdateUser  string           `gorm:"size:50;not null" json:"update_user"`
 	CreateTime  time.Time        `gorm:"not null;autoCreateTime" json:"create_time"`
@@ -88,6 +89,11 @@ func (pt PipelineTriggers) Value() (driver.Value, error) {
 	}
 	return string(bytes), nil
 }
+
+const (
+	PipelineBranchTypeBranch  = "branch"
+	PipelineBranchTypeRequest = "request"
+)
 
 type PipelineTrigger struct {
 	Type       string `json:"type"`

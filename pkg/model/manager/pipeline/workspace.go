@@ -18,10 +18,27 @@ func NewWorkspaceManager(db *gorm.DB, pipelineManager *ManagerPipeline) *Workspa
 	}
 }
 
-func (w *WorkspaceManager) Create(workspace *types.PipelineWorkspace) (*types.PipelineWorkspace, error) {
-	result := w.DB.Create(workspace)
-	if result.Error != nil {
-		return nil, result.Error
+func (w *WorkspaceManager) Create(workspace *types.PipelineWorkspace, defaultPipelines []*types.Pipeline) (*types.PipelineWorkspace, error) {
+	err := w.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(workspace).Error; err != nil {
+			return err
+		}
+		for _, pipeline := range defaultPipelines {
+			pipeline.WorkspaceId = workspace.ID
+			if err := tx.Create(pipeline).Error; err != nil {
+				return err
+			}
+			for _, stage := range pipeline.Stages {
+				stage.PipelineId = pipeline.ID
+				if err := tx.Create(stage).Error; err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return workspace, nil
 }

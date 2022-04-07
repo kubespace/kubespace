@@ -69,7 +69,7 @@ var BuiltinPlugins = []types.PipelinePlugin{
 					ParamName: "code_build",
 					From:      types.PluginParamsFromJob,
 					FromName:  "code_build",
-					Default:   "",
+					Default:   true,
 				},
 				{
 					ParamName: "code_build_type",

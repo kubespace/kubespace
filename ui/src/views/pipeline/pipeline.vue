@@ -55,7 +55,7 @@
             <div class="tableOperate">
               <el-link :underline="false" style="margin-right: 15px; color:#409EFF" @click="nameClick(scope.row.id)">构建</el-link>
               <el-link :underline="false" style="margin-right: 15px; color:#409EFF" @click="editPipelineOperate(scope.row.pipeline.id)">编辑</el-link>
-              <el-link :underline="false" style="color: #F56C6C" @click="handleDeleteWorkspace(scope.row.id, scope.row.name)">删除</el-link>
+              <el-link :underline="false" style="color: #F56C6C" @click="handleDeletePipeline(scope.row.pipeline.id, scope.row.pipeline.name)">删除</el-link>
             </div>
           </template>
         </el-table-column>
@@ -66,7 +66,7 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { listPipelines } from '@/api/pipeline/pipeline'
+import { listPipelines, deletePipeline } from '@/api/pipeline/pipeline'
 import { Message } from 'element-ui'
 
 export default {
@@ -163,7 +163,26 @@ export default {
       if(status == 'doing') return 'el-icon-refresh'
       if(status == 'wait') return 'el-icon-remove'
       return ''
-    }
+    },
+    handleDeletePipeline(id, name) {
+      if(!id) {
+        Message.error("获取流水线id参数异常，请刷新重试");
+        return
+      }
+      this.$confirm(`请确认是否删除「${name}」此流水线以及所有构建?`, '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+          deletePipeline(id).then(() => {
+            Message.success("删除流水线成功")
+            this.fetchData()
+          }).catch((err) => {
+            console.log(err)
+          });
+        }).catch(() => {       
+        });
+    },
   },
 }
 </script>
