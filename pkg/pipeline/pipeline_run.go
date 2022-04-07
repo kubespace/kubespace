@@ -13,6 +13,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/manager/pipeline"
 	"github.com/kubespace/kubespace/pkg/model/types"
+	"github.com/kubespace/kubespace/pkg/pipeline/plugins"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"github.com/kubespace/kubespace/pkg/views/serializers"
@@ -31,13 +32,16 @@ type codeCommit struct {
 }
 
 type ServicePipelineRun struct {
-	models *model.Models
+	models         *model.Models
+	builtInPlugins *plugins.Plugins
 }
 
 func NewPipelineRunService(models *model.Models) *ServicePipelineRun {
-	return &ServicePipelineRun{
+	r := &ServicePipelineRun{
 		models: models,
 	}
+	r.builtInPlugins = plugins.NewPlugins(r.Callback)
+	return r
 }
 
 func (r *ServicePipelineRun) ListPipelineRun(pipelineId uint, lastBuildNumber int) *utils.Response {
@@ -464,18 +468,28 @@ func (r *ServicePipelineRun) ExecuteJob(stageRun *types.PipelineRunStage, runJob
 		}
 		executeParams[pluginParam.ParamName] = r.getJobExecParam(stageRun.Env, runJob.Params, pluginParam)
 	}
-	data, err := utils.HttpPost(plugin.Url, executeParams)
-	if err != nil {
-		klog.Errorf("request %s error: %v", plugin.Url, err)
-		return &utils.Response{Code: code.RequestError, Msg: "请求插件接口失败:" + err.Error()}
+	if plugin.Url == types.PipelinePluginBuiltinUrl {
+		pluginParams := &plugins.PluginParams{
+			Models:    r.models,
+			JobId:     runJob.ID,
+			PluginKey: plugin.Key,
+			Params:    executeParams,
+		}
+		return r.builtInPlugins.Execute(pluginParams)
+	} else {
+		data, err := utils.HttpPost(plugin.Url, executeParams)
+		if err != nil {
+			klog.Errorf("request %s error: %v", plugin.Url, err)
+			return &utils.Response{Code: code.RequestError, Msg: "请求插件接口失败:" + err.Error()}
+		}
+		var ret utils.Response
+		err = json.Unmarshal(data, &ret)
+		if err != nil {
+			klog.Errorf("unmarshal data error: %v", err)
+			return &utils.Response{Code: code.RequestError, Msg: "插件接口返回失败:" + err.Error()}
+		}
+		return &ret
 	}
-	var ret utils.Response
-	err = json.Unmarshal(data, &ret)
-	if err != nil {
-		klog.Errorf("unmarshal data error: %v", err)
-		return &utils.Response{Code: code.RequestError, Msg: "插件接口返回失败:" + err.Error()}
-	}
-	return &ret
 }
 
 func (r *ServicePipelineRun) getJobRunResultEnvs(jobRun *types.PipelineRunJob) map[string]interface{} {

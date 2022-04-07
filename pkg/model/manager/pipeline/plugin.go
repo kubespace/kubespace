@@ -148,11 +148,11 @@ var BuiltinPlugins = []types.PipelinePlugin{
 	{
 		Name: "升级空间应用",
 		Key:  types.BuiltinPluginUpgradeApp,
-		Url:  "builtin",
+		Url:  types.PipelinePluginBuiltinUrl,
 		Params: types.PipelinePluginParams{
 			Params: []*types.PipelinePluginParamsSpec{
 				{
-					ParamName: "project",
+					ParamName: "project_id",
 					From:      types.PluginParamsFromJob,
 					FromName:  "project",
 					Default:   "",

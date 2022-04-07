@@ -18,4 +18,5 @@ const (
 	DataNotExists  = "DataNotExists"
 	AuthError      = "AuthError"
 	HelmError      = "HelmError"
+	PluginError    = "PluginError"
 )

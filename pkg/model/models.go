@@ -20,6 +20,7 @@ type Models struct {
 	PipelineWorkspaceManager *pipeline.WorkspaceManager
 	PipelinePluginManager    *pipeline.ManagerPipelinePlugin
 	PipelineResourceManager  *pipeline.ResourceManager
+	PipelineJobLogManager    *pipeline.JobLog
 	*manager.SettingsSecretManager
 	*manager.ImageRegistryManager
 	ProjectAppManager        *project.AppManager
@@ -47,6 +48,7 @@ func NewModels(redisOp *redis.Options, mysqlOptions *mysql.Options) (*Models, er
 	pipelineWorkspaceMgr := pipeline.NewWorkspaceManager(db, pipelineMgr)
 	pipelineRunMgr := pipeline.NewPipelineRunManager(db, pipelinePluginMgr, middleMessage)
 	pipelineResourceMgr := pipeline.NewResourceManager(db)
+	jobLogMgr := pipeline.NewJobLogManager(db)
 
 	secrets := manager.NewSettingsSecretManager(db)
 	imageRegistry := manager.NewSettingsImageRegistryManager(db)
@@ -67,6 +69,7 @@ func NewModels(redisOp *redis.Options, mysqlOptions *mysql.Options) (*Models, er
 		PipelineWorkspaceManager: pipelineWorkspaceMgr,
 		PipelinePluginManager:    pipelinePluginMgr,
 		PipelineResourceManager:  pipelineResourceMgr,
+		PipelineJobLogManager:    jobLogMgr,
 		SettingsSecretManager:    secrets,
 		ProjectManager:           projectMgr,
 		ProjectAppManager:        projectAppMgr,
