@@ -163,7 +163,6 @@ func (r *ServicePipelineRun) getCodeBranchCommitId(codeUrl, branch string, secre
 		Name: "origin",
 		URLs: []string{codeUrl},
 	})
-	klog.Info(auth)
 	refs, err := rem.List(&git.ListOptions{Auth: auth, InsecureSkipTLS: true})
 	if err != nil {
 		return "", fmt.Errorf("获取代码远程分支" + branch + "失败：" + err.Error())
@@ -174,6 +173,18 @@ func (r *ServicePipelineRun) getCodeBranchCommitId(codeUrl, branch string, secre
 		}
 	}
 	return "", fmt.Errorf("获取代码远程分支失败：未找到%s分支", branch)
+}
+
+func (r *ServicePipelineRun) MatchTriggerBranch(triggers types.PipelineTriggers, branch string) bool {
+	for _, trigger := range triggers {
+		if trigger.Operator == types.PipelineTriggerOperatorEqual && trigger.Branch != branch {
+			return false
+		}
+		if trigger.Operator == types.PipelineTriggerOperatorExclude && trigger.Branch == branch {
+			return false
+		}
+	}
+	return true
 }
 
 func (r *ServicePipelineRun) InitialEnvs(pipeline *types.Pipeline, workspace *types.PipelineWorkspace, params map[string]interface{}) (map[string]interface{}, error) {
@@ -190,13 +201,16 @@ func (r *ServicePipelineRun) InitialEnvs(pipeline *types.Pipeline, workspace *ty
 		} else {
 			return nil, fmt.Errorf("未获取到代码分支参数")
 		}
-
+		if !r.MatchTriggerBranch(pipeline.Triggers, branch.(string)) {
+			return nil, fmt.Errorf("代码分支未匹配到该流水线")
+		}
 		_, err := r.getCodeBranchCommitId(workspace.CodeUrl, branch.(string), workspace.CodeSecretId)
 		if err != nil {
 			return nil, err
 		}
 		//envs["PIPELINE_CODE_COMMIT_ID"] = commitId
 	}
+
 	return envs, nil
 }
 

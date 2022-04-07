@@ -78,7 +78,7 @@
                 >
                   <el-table-column prop="name" label="流水线环境参数" show-overflow-tooltip>
                   </el-table-column>
-                  <el-table-column prop="value" label="值">
+                  <el-table-column prop="value" label="参数值">
                   </el-table-column>
                 </el-table>
               </div>

@@ -19,12 +19,17 @@
         <div>阶段任务</div>
         <div class="stage-job-outer">
           <div class="stage-job-line">
-            <div class="pipeline-source-outer" style="display:inline-block">
+            <div class="pipeline-source-outer" style="display:inline-block" v-if="workspace.type == 'code'"
+              @click="openEditSource()">
               <span class="pipeline-source-outer__span">
                 代码库源
               </span>
               <div style="font-size: 12px; padding: 10px 0px 0px; font-weight: 450">
                 {{ workspace ? workspace.code_url : '' }}
+              </div>
+              <div v-for="(t, i) in editPipeline.triggers" :key="i"
+                style="font-size: 12px; padding: 5px 10px 0px; font-weight: 400" >
+                 <svg-icon icon-class="branch" /> {{ operatorMap[t.operator] }} {{ t.branch }}
               </div>
             </div>
           </div>
@@ -117,6 +122,55 @@
             </div>
           </el-form>
         </template>
+        <template v-if="dialogType == 'source'">
+          <el-form :model="dialogData" label-position="left" label-width="105px">
+            <el-form-item label="代码库源" prop="" :required="true">
+              <el-input :disabled="true" style="width: 450px;" v-model="workspace.code_url" size="small"></el-input>
+            </el-form-item>
+            <el-form-item label="触发分支" prop="" :required="true">
+              <el-row style="margin-bottom: 5px; margin-top: 8px;">
+                <el-col :span="7" style="background-color: #F5F7FA; padding-left: 10px;">
+                  <div class="border-span-header">
+                    <span  class="border-span-content">*</span>匹配方式
+                  </div>
+                </el-col>
+                <el-col :span="10" style="background-color: #F5F7FA">
+                  <div class="border-span-header">
+                    分支
+                  </div>
+                </el-col>
+                <!-- <el-col :span="5"><div style="width: 100px;"></div></el-col> -->
+              </el-row>
+              <el-row style="padding-bottom: 5px;" v-for="(d, i) in editPipeline.triggers" :key="i">
+                <el-col :span="7">
+                  <div class="border-span-header" style="margin-right: 10px;">
+                    <el-select v-model="d.operator" placeholder="匹配方式" size="small" style="width: 100%;">
+                      <el-option label="精确匹配" value="equal"></el-option>
+                      <el-option label="精确排除" value="exclude"></el-option>
+                      <el-option label="正则匹配" value="regex"></el-option>
+                    </el-select>
+                  </div>
+                </el-col>
+                <el-col :span="10">
+                  <div class="border-span-header">
+                    <el-input style="border-radius: 0px;" v-model="d.branch" size="small" placeholder="匹配分支"></el-input>
+                  </div>
+                </el-col>
+                <el-col :span="2" style="padding-left: 10px">
+                  <el-button circle size="mini" style="padding: 5px;" 
+                    @click="editPipeline.triggers.splice(i, 1)" icon="el-icon-close"></el-button>
+                </el-col>
+              </el-row>
+              <el-row>
+                <el-col :span="17">
+                <el-button style="width: 100%; border-radius: 0px; padding: 9px 15px;
+                  border-color: rgb(102, 177, 255); color: rgb(102, 177, 255)" plain size="mini" 
+                  @click="editPipeline.triggers.push({type: 'code', branch_type: 'branch', operator: 'equal', branch: ''})" icon="el-icon-plus">添加匹配</el-button>
+                </el-col>
+              </el-row>
+            </el-form-item>
+          </el-form>
+        </template>
       </div>
       <div slot="footer" class="dialogFooter">
         <el-button @click="dialogVisible = false" style="margin-right: 20px;" >取 消</el-button>
@@ -126,6 +180,7 @@
         <el-button type="primary" @click="dialogSave">确 定</el-button>
       </div>
     </el-dialog>
+
   </div>
 </template>
 
@@ -157,8 +212,13 @@ export default {
         workspace_id: parseInt(this.$route.params.workspaceId),
         id: 0,
         name: "",
-        triggers: [],
+        triggers: [{"branch_type": "branch", "operator": "equal", "branch": ""}],
         stages: []
+      },
+      operatorMap: {
+        "equal": "==",
+        "exclude": "<>",
+        "regex": "~="
       },
       dialogVisible: false,
       dialogOriginData: {},
@@ -177,27 +237,20 @@ export default {
         name: '发布',
         component: 'Release'
       }, {
-        key: 'approve',
-        name: '审批',
-        component: 'Approve'
-      }, {
         key: 'k8s_deploy',
         name: 'Kubernetes资源部署',
         component: 'K8sDeploy'
       }, {
         key: 'project_app_integration',
-        name: '项目应用集成',
+        name: '空间应用部署',
         component: 'AppIntegration'
-      }, {
-        key: 'project_app_deploy',
-        name: '项目应用部署',
-        component: 'AppDeploy'
       }],
       dialogTitleMap: {
         'edit_stage': '编辑阶段',
         'edit_job': '编辑任务',
         'add_stage': '添加阶段',
-        'add_job': '添加任务'
+        'add_job': '添加任务',
+        "source": '流水线源'
       }
     }
   },
@@ -379,7 +432,14 @@ export default {
       if(job.name == '') return false
       if(job.plugin_key == '') return false
       return true
-    }
+    },
+    openEditSource() {
+      this.dialogType = 'source'
+      this.dialogData = {
+      }
+      console.log(this.editPipeline)
+      this.dialogVisible = true
+    },
   }
 }
 </script>

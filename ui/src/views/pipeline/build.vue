@@ -145,17 +145,21 @@
 
     <el-dialog title="执行流水线" :visible.sync="dialogVisible" :destroy-on-close="true" 
       @close="buildParams = {};" :close-on-click-modal="false">
-      <div class="dialogContent" style="padding: 0px 40px;">
-        <el-form :model="buildParams" ref="" label-position="left" label-width="105px">
-          
-          <el-form-item label="构建分支" prop="" :required="true">
-            <el-input style="width: 250px;" placeholder="请输入分支" v-model="buildParams.branch" autocomplete="off" size="small"></el-input>
-          </el-form-item>
-        </el-form>
-      </div>
-      <div slot="footer" class="dialogFooter">
-        <el-button @click="dialogVisible = false" style="margin-right: 20px;" >取 消</el-button>
-        <el-button type="primary" @click="buildPipeline">确 定</el-button>
+      <div v-loading="dialogLoading">
+        <div class="dialogContent" style="padding: 0px 40px;">
+          <el-form :model="buildParams" ref="" label-position="left" label-width="105px">
+            <el-form-item label="流水线" prop="" :required="true">
+              <el-input :disabled="true" style="width: 250px;" placeholder="" v-model="pipelineName" autocomplete="off" size="small"></el-input>
+            </el-form-item>
+            <el-form-item label="构建分支" prop="" :required="true">
+              <el-input style="width: 250px;" placeholder="请输入构建分支" v-model="buildParams.branch" autocomplete="off" size="small"></el-input>
+            </el-form-item>
+          </el-form>
+        </div>
+        <div slot="footer" class="dialogFooter" style="margin-top: 20px;">
+          <el-button @click="dialogVisible = false" style="margin-right: 20px;" >取 消</el-button>
+          <el-button type="primary" @click="buildPipeline">确 定</el-button>
+        </div>
       </div>
     </el-dialog>
   </div>
@@ -181,14 +185,16 @@ export default {
       maxHeight: window.innerHeight - 145,
       loading: true,
       dialogVisible: false,
-      pipeline: [],
+      pipeline: {},
+      pipelineName: '',
       builds: [],
       buildDetails: {},
       buildParams: {},
       pipelineSSE: null,
       refreshExecTimer: 0,
       refreshStages: {},
-      loadMore: false
+      loadMore: false,
+      dialogLoading: false
     }
   },
   created() {
@@ -224,21 +230,28 @@ export default {
         this.pipeline = response.data || {};
         if (this.pipeline){
           this.titleName = ["流水线", this.pipeline.pipeline.name]
+          this.pipelineName = this.pipeline.pipeline.name
         }
       }).catch(() => {
         
       })
     },
-    fetchBuilds() {
+    fetchBuilds(lastBuildNumber) {
       this.loading = true
-      let lastBuildNumber = 0
-      if(this.builds.length > 0) {
-        lastBuildNumber = this.builds[this.builds.length - 1].pipeline_run.build_number
+      if(lastBuildNumber == undefined) {
+        lastBuildNumber = 0
+        if(this.builds.length > 0) {
+          lastBuildNumber = this.builds[this.builds.length - 1].pipeline_run.build_number
+        }
       }
       listBuilds(this.pipelineId, lastBuildNumber).then((response) => {
         this.loading = false
         let res = response.data || []
-        for(let r of res) this.builds.push(r)
+        if(lastBuildNumber == 0) {
+          this.$set(this, 'builds', res)
+        } else {
+          for(let r of res) this.builds.push(r)
+        }
         if(res.length == 20) this.loadMore = true
         else this.loadMore = false
         this.processExecTime()
@@ -336,12 +349,14 @@ export default {
         Message.error("请输入构建分支")
         return
       }
+      this.dialogLoading = true
       buildPipeline(this.pipelineId, this.buildParams).then((response) => {
         this.$message({message: '构建成功', type: 'success'});
-        this.fetchBuilds()
+        this.dialogLoading = false
+        this.fetchBuilds(0)
         this.dialogVisible = false
       }).catch( (err) => {
-        console.log(err)
+        this.dialogLoading = false
       })
     },
     getStageStatus(status) {

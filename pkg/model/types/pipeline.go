@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	WorkspaceTypeCode   = "code"
-	WorkspaceTypeCustom = "custom"
+	WorkspaceTypeCode     = "code"
+	WorkspaceTypePipeline = "pipeline"
 )
 
 const (
@@ -38,7 +38,7 @@ const (
 
 	PipelineTriggerOperatorEqual   = "equal"
 	PipelineTriggerOperatorExclude = "exclude"
-	PipelineTriggerOperatorInclude = "include"
+	PipelineTriggerOperatorInclude = "regex"
 )
 
 type PipelineWorkspace struct {
@@ -90,14 +90,13 @@ func (pt PipelineTriggers) Value() (driver.Value, error) {
 }
 
 type PipelineTrigger struct {
-	Type        string                      `json:"type"`
-	Expressions []PipelineTriggerExpression `json:"expressions"`
-}
-
-type PipelineTriggerExpression struct {
-	Key      string `json:"key"`
-	Operator string `json:"operator"`
-	Value    string `json:"value"`
+	Type       string `json:"type"`
+	Workspace  uint   `json:"workspace"`
+	Pipeline   uint   `json:"pipeline"`
+	Stage      uint   `json:"stage"`
+	BranchType string `json:"branch_type"`
+	Operator   string `json:"operator"`
+	Branch     string `json:"branch"`
 }
 
 type PipelineStage struct {
