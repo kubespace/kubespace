@@ -10,6 +10,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	sshgit "github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v5/storage/memory"
+	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/manager/pipeline"
 	"github.com/kubespace/kubespace/pkg/model/types"
@@ -37,11 +38,11 @@ type ServicePipelineRun struct {
 	builtInPlugins *plugins.Plugins
 }
 
-func NewPipelineRunService(models *model.Models) *ServicePipelineRun {
+func NewPipelineRunService(models *model.Models, kr *kube_resource.KubeResources) *ServicePipelineRun {
 	r := &ServicePipelineRun{
 		models: models,
 	}
-	r.builtInPlugins = plugins.NewPlugins(r.Callback)
+	r.builtInPlugins = plugins.NewPlugins(models, kr, r.Callback)
 	return r
 }
 
@@ -476,7 +477,6 @@ func (r *ServicePipelineRun) ExecuteJob(stageRun *types.PipelineRunStage, runJob
 	}
 	if plugin.Url == types.PipelinePluginBuiltinUrl {
 		pluginParams := &plugins.PluginParams{
-			Models:    r.models,
 			JobId:     runJob.ID,
 			PluginKey: plugin.Key,
 			Params:    executeParams,

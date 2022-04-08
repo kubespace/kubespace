@@ -3,6 +3,7 @@ package router
 import (
 	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/model"
+	"github.com/kubespace/kubespace/pkg/pipeline"
 	"github.com/kubespace/kubespace/pkg/project"
 	"github.com/kubespace/kubespace/pkg/views"
 	"github.com/kubespace/kubespace/pkg/views/kube_views"
@@ -44,8 +45,10 @@ func NewViewSets(kr *kube_resource.KubeResources, models *model.Models) *ViewSet
 	crd := kube_views.NewCrd(kr)
 
 	pipelineWorkspace := pipeline_views.NewPipelineWorkspace(models)
-	pipeline := pipeline_views.NewPipeline(models)
-	pipelineRun := pipeline_views.NewPipelineRun(models)
+	pipelineViews := pipeline_views.NewPipeline(models)
+
+	pipelineRunService := pipeline.NewPipelineRunService(models, kr)
+	pipelineRun := pipeline_views.NewPipelineRun(models, pipelineRunService)
 	pipelineResource := pipeline_views.NewPipelineResource(models)
 
 	settingsSecret := settings_views.NewSettingsSecret(models)
@@ -89,10 +92,10 @@ func NewViewSets(kr *kube_resource.KubeResources, models *model.Models) *ViewSet
 		"helm":           helm.Views,
 		"crd":            crd.Views,
 
-		"pipeline/workspace": pipelineWorkspace.Views,
-		"pipeline/pipeline":  pipeline.Views,
-		"pipeline/build":     pipelineRun.Views,
-		"pipeline/resource":  pipelineResource.Views,
+		"pipelineViews/workspace":     pipelineWorkspace.Views,
+		"pipelineViews/pipelineViews": pipelineViews.Views,
+		"pipelineViews/build":         pipelineRun.Views,
+		"pipelineViews/resource":      pipelineResource.Views,
 
 		"settings/secret":         settingsSecret.Views,
 		"settings/image_registry": imageRegistry.Views,

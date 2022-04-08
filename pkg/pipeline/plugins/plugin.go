@@ -3,6 +3,7 @@ package plugins
 import (
 	"bytes"
 	"fmt"
+	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/utils"
@@ -34,7 +35,6 @@ func (l *PluginLogger) Log(format string, a ...interface{}) {
 }
 
 type PluginParams struct {
-	Models    *model.Models
 	JobId     uint
 	PluginKey string
 	Params    map[string]interface{}
@@ -46,12 +46,16 @@ type PluginCallback func(callbackSer serializers.PipelineCallbackSerializer) *ut
 type Plugins struct {
 	Plugins  map[string]PluginExecutor
 	callback PluginCallback
+	*kube_resource.KubeResources
+	*model.Models
 }
 
-func NewPlugins(callback PluginCallback) *Plugins {
+func NewPlugins(models *model.Models, kr *kube_resource.KubeResources, callback PluginCallback) *Plugins {
 	p := &Plugins{
-		Plugins:  make(map[string]PluginExecutor),
-		callback: callback,
+		Plugins:       make(map[string]PluginExecutor),
+		callback:      callback,
+		Models:        models,
+		KubeResources: kr,
 	}
 	p.Plugins[types.BuiltinPluginUpgradeApp] = UpgradeAppPlugin{}
 	return p
@@ -66,7 +70,6 @@ func (b *Plugins) Execute(pluginParams *PluginParams) *utils.Response {
 		return &utils.Response{Code: code.PluginError, Msg: "not found plugin executor: " + pluginParams.PluginKey}
 	}
 	pluginParams.Logger = &PluginLogger{
-		models: pluginParams.Models,
 		jobId:  pluginParams.JobId,
 		Buffer: new(bytes.Buffer),
 	}
