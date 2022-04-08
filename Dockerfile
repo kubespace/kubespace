@@ -1,7 +1,7 @@
 ARG BASEIMAGE=openspacee/ospserver-base:latest
 FROM $BASEIMAGE
 
-COPY ospserver /
+COPY kubespace /
 COPY entrypoint.sh /
 COPY apps /apps
 COPY ui/dist/favicon.ico /favicon.ico

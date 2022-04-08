@@ -22,7 +22,7 @@
                     <i class="el-icon-remove"></i>
                   </template>
                   <template v-if="build.pipeline_run.status == 'doing'">
-                    <i class="el-icon-refresh"></i>
+                    <i class="el-icon-refresh refresh-rotate"></i>
                   </template>
                   <span class="build-info__left__number" @click="clickBuildNumber(build)"> #{{ build.pipeline_run.build_number }}</span>
                   <!-- #{{ build.pipeline_run.build_number }} -->
@@ -53,7 +53,7 @@
                         </div>
                       </template>
                       <template v-if="stage.status == 'doing'">
-                        <i class="el-icon-refresh" style="font-size: 18px;"></i>
+                        <i class="el-icon-refresh refresh-rotate" style="font-size: 18px;"></i>
                         <div class="el-steps-stage-exectime">
                           {{ getStageExecTimeStr(refreshStages[stage.id]) }}
                         </div>
@@ -543,6 +543,19 @@ export default {
 }
 .build-span:hover{
   cursor: pointer;
+}
+
+@-webkit-keyframes rotation{
+    from {-webkit-transform: rotate(0deg);}
+    to {-webkit-transform: rotate(360deg);}
+}
+
+.refresh-rotate {
+  -webkit-transform: rotate(360deg);
+  animation: rotation 2s linear infinite;
+  -moz-animation: rotation 2s linear infinite;
+  -webkit-animation: rotation 2s linear infinite;
+  -o-animation: rotation 2s linear infinite;
 }
 </style>
 <style lang="scss">

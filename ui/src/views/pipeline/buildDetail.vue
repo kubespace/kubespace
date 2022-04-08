@@ -138,7 +138,7 @@ export default {
         ok: "el-icon-success",
         error: "el-icon-error",
         wait: "el-icon-remove",
-        doing: "el-icon-refresh",
+        doing: "el-icon-refresh refresh-rotate",
       },
       statusColorMap: {
         ok: '#67c23a',
@@ -320,6 +320,16 @@ export default {
           }
         } else if(this.runningStatus.indexOf(this.mainContent.mainJob.status) == -1 && this.jobLogSSE) {
           this.jobLogSSE.close()
+          getJobLog(this.mainContent.mainJob.id).then((response) => {
+            this.$set(this.mainContent, 'jobLog', response.data)
+            this.$nextTick(() => {
+              if (that.scrollToBottom) {
+                let logDiv = document.getElementById('jobLogDiv')
+                logDiv.scrollTop = logDiv.scrollHeight // 滚动高度
+              }
+            })
+          }).catch(() => {
+          })
         }
       } else if(this.jobLogSSE) {
         this.jobLogSSE.close()
@@ -358,6 +368,19 @@ export default {
 <style lang="scss" scoped>
 .click-main-content:hover {
   cursor: pointer;
+}
+
+@-webkit-keyframes rotation{
+    from {-webkit-transform: rotate(0deg);}
+    to {-webkit-transform: rotate(360deg);}
+}
+
+.refresh-rotate {
+  -webkit-transform: rotate(360deg);
+  animation: rotation 2s linear infinite;
+  -moz-animation: rotation 2s linear infinite;
+  -webkit-animation: rotation 2s linear infinite;
+  -o-animation: rotation 2s linear infinite;
 }
 </style>
 <style lang="scss">
