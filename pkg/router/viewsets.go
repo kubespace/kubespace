@@ -44,10 +44,10 @@ func NewViewSets(kr *kube_resource.KubeResources, models *model.Models) *ViewSet
 	helm := kube_views.NewHelm(kr, models)
 	crd := kube_views.NewCrd(kr)
 
-	pipelineWorkspace := pipeline_views.NewPipelineWorkspace(models)
-	pipelineViews := pipeline_views.NewPipeline(models)
-
 	pipelineRunService := pipeline.NewPipelineRunService(models, kr)
+
+	pipelineWorkspace := pipeline_views.NewPipelineWorkspace(models)
+	pipelineViews := pipeline_views.NewPipeline(models, pipelineRunService)
 	pipelineRun := pipeline_views.NewPipelineRun(models, pipelineRunService)
 	pipelineResource := pipeline_views.NewPipelineResource(models)
 
@@ -92,10 +92,10 @@ func NewViewSets(kr *kube_resource.KubeResources, models *model.Models) *ViewSet
 		"helm":           helm.Views,
 		"crd":            crd.Views,
 
-		"pipelineViews/workspace":     pipelineWorkspace.Views,
-		"pipelineViews/pipelineViews": pipelineViews.Views,
-		"pipelineViews/build":         pipelineRun.Views,
-		"pipelineViews/resource":      pipelineResource.Views,
+		"pipeline/workspace": pipelineWorkspace.Views,
+		"pipeline/pipeline":  pipelineViews.Views,
+		"pipeline/build":     pipelineRun.Views,
+		"pipeline/resource":  pipelineResource.Views,
 
 		"settings/secret":         settingsSecret.Views,
 		"settings/image_registry": imageRegistry.Views,

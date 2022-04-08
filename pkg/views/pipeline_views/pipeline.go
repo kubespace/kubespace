@@ -20,11 +20,11 @@ type Pipeline struct {
 	pipelineRunService *pipeline.ServicePipelineRun
 }
 
-func NewPipeline(models *model.Models) *Pipeline {
+func NewPipeline(models *model.Models, pipelineRunService *pipeline.ServicePipelineRun) *Pipeline {
 	pw := &Pipeline{
 		models:             models,
 		pipelineService:    pipeline.NewPipelineService(models),
-		pipelineRunService: pipeline.NewPipelineRunService(models),
+		pipelineRunService: pipelineRunService,
 	}
 	vs := []*views.View{
 		views.NewView(http.MethodGet, "", pw.list),

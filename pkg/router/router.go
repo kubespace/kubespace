@@ -64,7 +64,7 @@ func NewRouter(redisOptions *redis.Options, mysqlOptions *mysql.Options) (*Route
 		}
 	}
 
-	pipelineCallbackView := pipeline_views.NewPipelineCallback(models)
+	pipelineCallbackView := pipeline_views.NewPipelineCallback(models, kubeResources)
 	apiGroup.POST("/pipeline/callback", pipelineCallbackView.Callback)
 
 	clusterAgent := views2.NewClusterAgent(models)

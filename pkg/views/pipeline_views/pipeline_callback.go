@@ -2,6 +2,7 @@ package pipeline_views
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/pipeline"
 	"github.com/kubespace/kubespace/pkg/utils"
@@ -16,11 +17,11 @@ type PipelineCallback struct {
 	pipelineRunService *pipeline.ServicePipelineRun
 }
 
-func NewPipelineCallback(models *model.Models) *PipelineCallback {
+func NewPipelineCallback(models *model.Models, kr *kube_resource.KubeResources) *PipelineCallback {
 	pc := &PipelineCallback{
 		models:             models,
 		pipelineService:    pipeline.NewPipelineService(models),
-		pipelineRunService: pipeline.NewPipelineRunService(models),
+		pipelineRunService: pipeline.NewPipelineRunService(models, kr),
 	}
 	return pc
 }
