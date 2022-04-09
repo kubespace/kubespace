@@ -98,13 +98,29 @@ func (p *ManagerPipeline) List(workspaceId uint) ([]types.Pipeline, error) {
 	return ps, nil
 }
 
-func (p *ManagerPipeline) Stages(pipelineId uint) ([]types.PipelineStage, error) {
+func (p *ManagerPipeline) Stages(pipelineId uint) ([]*types.PipelineStage, error) {
 	var stages []types.PipelineStage
 	if err := p.DB.Where("pipeline_id = ?", pipelineId).Find(&stages).Error; err != nil {
 		return nil, err
 	}
 
-	return stages, nil
+	var seqStages []*types.PipelineStage
+	prevStageId := uint(0)
+	for {
+		hasNext := false
+		for i, s := range stages {
+			if s.PrevStageId == prevStageId {
+				seqStages = append(seqStages, &stages[i])
+				prevStageId = s.ID
+				hasNext = true
+				break
+			}
+		}
+		if !hasNext {
+			break
+		}
+	}
+	return seqStages, nil
 }
 
 func (p *ManagerPipeline) Delete(pipelineId uint) error {

@@ -52,7 +52,7 @@ func (a *ProjectApp) listApps(c *views.Context) *utils.Response {
 	if err := c.ShouldBindQuery(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	data, err := a.AppService.ListApp(ser.ProjectId)
+	data, err := a.AppService.ListApp(ser.Scope, ser.ScopeId)
 	if err != nil {
 		return &utils.Response{Code: code.GetError, Msg: err.Error()}
 	}

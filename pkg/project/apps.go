@@ -3,6 +3,7 @@ package project
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/utils"
@@ -45,7 +46,7 @@ func (a *AppService) WriteFile(fileName, content string) error {
 }
 
 func (a *AppService) CreateProjectApp(user *types.User, serializer serializers.ProjectCreateAppSerializer) *utils.Response {
-	app, err := a.models.ProjectAppManager.GetByName(serializer.ProjectId, serializer.Name)
+	app, err := a.models.ProjectAppManager.GetByName(serializer.Scope, serializer.ScopeId, serializer.Name)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
@@ -62,7 +63,8 @@ func (a *AppService) CreateProjectApp(user *types.User, serializer serializers.P
 		app.Description = serializer.Description
 	} else {
 		app = &types.ProjectApp{
-			ProjectId:   serializer.ProjectId,
+			Scope:       serializer.Scope,
+			ScopeId:     serializer.ScopeId,
 			Name:        serializer.Name,
 			Status:      types.AppStatusUninstall,
 			Type:        types.AppTypeOrdinaryApp,
@@ -130,21 +132,30 @@ func (a *AppService) InstallApp(user *types.User, serializer serializers.Project
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
-	project, err := a.models.ProjectManager.Get(projectApp.ProjectId)
-	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	var clusterId string
+	var namespace string
+	if projectApp.Scope == types.AppVersionScopeProjectApp {
+		project, err := a.models.ProjectManager.Get(projectApp.ScopeId)
+		if err != nil {
+			return &utils.Response{Code: code.DBError, Msg: err.Error()}
+		}
+		clusterId = project.ClusterId
+		namespace = project.Namespace
+	} else {
+		clusterId = fmt.Sprintf("%d", projectApp.ScopeId)
+		namespace = projectApp.Namespace
 	}
 	installParams := map[string]interface{}{
 		"name":       projectApp.Name,
-		"namespace":  project.Namespace,
+		"namespace":  namespace,
 		"chart_path": versionApp.ChartPath,
 		"values":     serializer.Values,
 	}
 	var resp *utils.Response
 	if serializer.Upgrade {
-		resp = a.Helm.UpdateObj(project.ClusterId, installParams)
+		resp = a.Helm.UpdateObj(clusterId, installParams)
 	} else {
-		resp = a.Helm.Create(project.ClusterId, installParams)
+		resp = a.Helm.Create(clusterId, installParams)
 	}
 	if !resp.IsSuccess() {
 		return resp
@@ -167,15 +178,24 @@ func (a *AppService) DestroyApp(user *types.User, serializer serializers.Project
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
-	project, err := a.models.ProjectManager.Get(projectApp.ProjectId)
-	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	var clusterId string
+	var namespace string
+	if projectApp.Scope == types.AppVersionScopeProjectApp {
+		project, err := a.models.ProjectManager.Get(projectApp.ScopeId)
+		if err != nil {
+			return &utils.Response{Code: code.DBError, Msg: err.Error()}
+		}
+		clusterId = project.ClusterId
+		namespace = project.Namespace
+	} else {
+		clusterId = fmt.Sprintf("%d", projectApp.ScopeId)
+		namespace = projectApp.Namespace
 	}
 	destroyParams := map[string]interface{}{
-		"namespace": project.Namespace,
+		"namespace": namespace,
 		"name":      projectApp.Name,
 	}
-	resp := a.Helm.Delete(project.ClusterId, destroyParams)
+	resp := a.Helm.Delete(clusterId, destroyParams)
 	if !resp.IsSuccess() {
 		return resp
 	}
@@ -193,49 +213,69 @@ type AppRuntimeStatus struct {
 	Workloads []*unstructured.Unstructured `json:"workloads"`
 }
 
-func (a *AppService) ListApp(projectId uint) ([]*types.ProjectApp, error) {
-	projectApps, err := a.models.ProjectAppManager.ListProjectApps(projectId)
-	if err != nil {
-		return nil, err
-	}
-	project, err := a.models.ProjectManager.Get(projectId)
-	if err != nil {
-		return nil, err
-	}
-	var appNames []string
-	for _, app := range projectApps {
-		appNames = append(appNames, app.Name)
-	}
-	statusParams := map[string]interface{}{
-		"namespace": project.Namespace,
-		"names":     appNames,
-	}
-	nameStatusMap := map[string]*AppRuntimeStatus{}
-	res := a.KubeResources.Helm.Status(project.ClusterId, statusParams)
-	if res.IsSuccess() {
-		var appStatuses []*AppRuntimeStatus
-		dataBytes, _ := json.Marshal(res.Data)
-		err = json.Unmarshal(dataBytes, &appStatuses)
+func (a *AppService) updateAppStatus(scope string, scopeId uint, projectApps []*types.ProjectApp) (map[string]*AppRuntimeStatus, error) {
+	var clusterId string
+	var namespaceApps = map[string][]string{}
+	if scope == types.AppVersionScopeProjectApp {
+		project, err := a.models.ProjectManager.Get(scopeId)
 		if err != nil {
-			klog.Error("unmarshal app status error: ", err.Error())
+			return nil, err
 		}
-		for _, status := range appStatuses {
-			nameStatusMap[status.Name] = status
+		clusterId = project.ClusterId
+		for _, app := range projectApps {
+			namespaceApps[project.Namespace] = append(namespaceApps[project.Namespace], app.Name)
 		}
 	} else {
-		klog.Errorf("get app status error: %+v", res)
-	}
-	var data []*types.ProjectApp
-	for idx, app := range projectApps {
-		if _, ok := nameStatusMap[app.Name]; ok {
-			projectApps[idx].Status = nameStatusMap[app.Name].Status
-		} else if res.IsSuccess() {
-			projectApps[idx].Status = types.AppStatusUninstall
+		clusterId = fmt.Sprintf("%d", scopeId)
+		for _, app := range projectApps {
+			namespaceApps[app.Namespace] = append(namespaceApps[app.Namespace], app.Name)
 		}
-		data = append(data, projectApps[idx])
 	}
 
-	return data, nil
+	nameStatusMap := map[string]*AppRuntimeStatus{}
+	for namespace, appNames := range namespaceApps {
+		statusParams := map[string]interface{}{
+			"namespace": namespace,
+			"names":     appNames,
+		}
+		res := a.KubeResources.Helm.Status(clusterId, statusParams)
+		if res.IsSuccess() {
+			var appStatuses []*AppRuntimeStatus
+			dataBytes, _ := json.Marshal(res.Data)
+			err := json.Unmarshal(dataBytes, &appStatuses)
+			if err != nil {
+				klog.Error("unmarshal app status error: ", err.Error())
+			}
+			for _, status := range appStatuses {
+				nameStatusMap[status.Name] = status
+			}
+		} else {
+			klog.Errorf("get app status error: %+v", res)
+			return nil, nil
+		}
+	}
+	return nameStatusMap, nil
+}
+
+func (a *AppService) ListApp(scope string, scopeId uint) ([]*types.ProjectApp, error) {
+	projectApps, err := a.models.ProjectAppManager.ListProjectApps(scope, scopeId)
+	if err != nil {
+		return nil, err
+	}
+	nameStatusMap, err := a.updateAppStatus(scope, scopeId, projectApps)
+	if err != nil {
+		return nil, err
+	}
+	if nameStatusMap != nil {
+		for idx, app := range projectApps {
+			if _, ok := nameStatusMap[app.Name]; ok {
+				projectApps[idx].Status = nameStatusMap[app.Name].Status
+			} else {
+				projectApps[idx].Status = types.AppStatusUninstall
+			}
+		}
+	}
+	return projectApps, nil
 }
 
 func (a *AppService) GetApp(appId uint) *utils.Response {
@@ -243,16 +283,30 @@ func (a *AppService) GetApp(appId uint) *utils.Response {
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
-	project, err := a.models.ProjectManager.Get(projectApp.ProjectId)
+	var clusterId string
+	var namespace string
+	if projectApp.Scope == types.AppVersionScopeProjectApp {
+		project, err := a.models.ProjectManager.Get(projectApp.ScopeId)
+		if err != nil {
+			return &utils.Response{Code: code.DBError, Msg: err.Error()}
+		}
+		clusterId = project.ClusterId
+		namespace = project.Namespace
+	} else {
+		clusterId = fmt.Sprintf("%d", projectApp.ScopeId)
+		namespace = projectApp.Namespace
+	}
+	cluster, err := a.models.ClusterManager.GetByName(clusterId)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+		klog.Errorf("get app %s cluster error: %s", appId, err.Error())
 	}
 	data := map[string]interface{}{
 		"id":              projectApp.ID,
 		"name":            projectApp.Name,
 		"status":          projectApp.Status,
-		"cluster":         project.ClusterId,
-		"namespace":       project.Namespace,
+		"cluster_id":      clusterId,
+		"cluster":         cluster,
+		"namespace":       namespace,
 		"app_version_id":  projectApp.AppVersionId,
 		"app_version":     projectApp.AppVersion.AppVersion,
 		"type":            projectApp.Type,
@@ -275,7 +329,7 @@ func (a *AppService) GetApp(appId uint) *utils.Response {
 		actionConfig := new(action.Configuration)
 		clientInstall := action.NewInstall(actionConfig)
 		clientInstall.ReleaseName = projectApp.Name
-		clientInstall.Namespace = project.Namespace
+		clientInstall.Namespace = namespace
 		clientInstall.ClientOnly = true
 		clientInstall.DryRun = true
 		values := map[string]interface{}{}
@@ -299,12 +353,12 @@ func (a *AppService) GetApp(appId uint) *utils.Response {
 		}
 	} else {
 		statusParams := map[string]interface{}{
-			"namespace":      project.Namespace,
+			"namespace":      namespace,
 			"name":           projectApp.Name,
 			"with_workloads": true,
 		}
 		nameStatusMap := map[string]*AppRuntimeStatus{}
-		res := a.KubeResources.Helm.Get(project.ClusterId, statusParams)
+		res := a.KubeResources.Helm.Get(clusterId, statusParams)
 		if res.IsSuccess() {
 			var appStatuses []*AppRuntimeStatus
 			dataBytes, _ := json.Marshal(res.Data)
@@ -346,42 +400,22 @@ func (a *AppService) ListAppStatus(serializer serializers.ProjectAppListSerializ
 	var projectApps []*types.ProjectApp
 	var err error
 	if serializer.Name != "" {
-		app, err := a.models.ProjectAppManager.GetProjectAppByName(serializer.ProjectId, serializer.Name)
+		app, err := a.models.ProjectAppManager.GetProjectAppByName(serializer.Scope, serializer.ScopeId, serializer.Name)
 		if err != nil {
 			return &utils.Response{Code: code.DBError, Msg: err.Error()}
 		}
 		projectApps = append(projectApps, app)
 	} else {
-		projectApps, err = a.models.ProjectAppManager.ListProjectApps(serializer.ProjectId)
+		projectApps, err = a.models.ProjectAppManager.ListProjectApps(serializer.Scope, serializer.ScopeId)
 		if err != nil {
 			return &utils.Response{Code: code.DBError, Msg: err.Error()}
 		}
 	}
-	project, err := a.models.ProjectManager.Get(serializer.ProjectId)
+	nameStatusMap, err := a.updateAppStatus(serializer.Scope, serializer.ScopeId, projectApps)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
-	var appNames []string
-	for _, app := range projectApps {
-		appNames = append(appNames, app.Name)
-	}
-	statusParams := map[string]interface{}{
-		"namespace": project.Namespace,
-		"names":     appNames,
-	}
-	nameStatusMap := map[string]*AppRuntimeStatus{}
-	res := a.KubeResources.Helm.Status(project.ClusterId, statusParams)
-	klog.Infof("res status: %+v", res)
-	if res.IsSuccess() {
-		var appStatuses []*AppRuntimeStatus
-		dataBytes, _ := json.Marshal(res.Data)
-		err = json.Unmarshal(dataBytes, &appStatuses)
-		if err != nil {
-			klog.Error("unmarshal app status error: ", err.Error())
-		}
-		for _, status := range appStatuses {
-			nameStatusMap[status.Name] = status
-		}
+	if nameStatusMap != nil {
 		for _, app := range projectApps {
 			status := ""
 			if _, ok := nameStatusMap[app.Name]; ok {
@@ -398,7 +432,7 @@ func (a *AppService) ListAppStatus(serializer serializers.ProjectAppListSerializ
 			}
 		}
 	}
-	return &utils.Response{Code: code.Success, Msg: res.Msg, Data: res.Data}
+	return &utils.Response{Code: code.Success, Data: nameStatusMap}
 }
 
 func (a *AppService) GetAppVersion(appVersionId uint) *utils.Response {
@@ -440,7 +474,7 @@ func (a *AppService) ImportStoreApp(ser serializers.ImportStoreAppSerializers, u
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: "获取商店应用版本失败: " + err.Error()}
 	}
-	app, err := a.models.ProjectAppManager.GetByName(ser.ProjectId, storeApp.Name)
+	app, err := a.models.ProjectAppManager.GetByName(ser.Scope, ser.ScopeId, storeApp.Name)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
@@ -455,9 +489,11 @@ func (a *AppService) ImportStoreApp(ser serializers.ImportStoreAppSerializers, u
 		app.UpdateUser = user.Name
 	} else {
 		app = &types.ProjectApp{
-			ProjectId:  ser.ProjectId,
+			Scope:      ser.Scope,
+			ScopeId:    ser.ScopeId,
 			Name:       storeApp.Name,
 			Status:     types.AppStatusUninstall,
+			Namespace:  ser.Namespace,
 			Type:       storeApp.Type,
 			CreateUser: user.Name,
 			UpdateUser: user.Name,
@@ -475,7 +511,7 @@ func (a *AppService) ImportStoreApp(ser serializers.ImportStoreAppSerializers, u
 }
 
 func (a *AppService) ImportProjectApp(originApp *types.ProjectApp, version *types.AppVersion, destProjectId uint, destAppName string, user *types.User) *utils.Response {
-	app, err := a.models.ProjectAppManager.GetByName(destProjectId, destAppName)
+	app, err := a.models.ProjectAppManager.GetByName(types.AppVersionScopeProjectApp, destProjectId, destAppName)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
@@ -490,7 +526,8 @@ func (a *AppService) ImportProjectApp(originApp *types.ProjectApp, version *type
 		app.UpdateUser = user.Name
 	} else {
 		app = &types.ProjectApp{
-			ProjectId:  destProjectId,
+			Scope:      types.AppVersionScopeProjectApp,
+			ScopeId:    destProjectId,
 			Name:       destAppName,
 			Status:     types.AppStatusUninstall,
 			Type:       originApp.Type,

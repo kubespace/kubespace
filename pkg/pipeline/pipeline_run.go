@@ -350,6 +350,7 @@ func (r *ServicePipelineRun) Execute(pipelineRun *types.PipelineRun, prevStageId
 	klog.Info(envs)
 	nextStage.Env = envs
 	nextStage.ExecTime = time.Now()
+	nextStage.Status = types.PipelineStatusDoing
 	err = r.models.ManagerPipelineRun.UpdateStageRun(nextStage)
 	if err != nil {
 		klog.Errorf("update stage id=%d exec time error: %v", nextStage.ID, err)

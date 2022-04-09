@@ -31,16 +31,16 @@ type Models struct {
 
 func NewModels(redisOp *redis.Options, mysqlOptions *mysql.Options) (*Models, error) {
 	client := redis.NewRedisClient(redisOp)
-	middleMessage := kube_resource.NewMiddleMessageWithClient(nil, client)
-	cm := manager.NewClusterManager(client)
-	role := manager.NewRoleManager(client)
-	tk := manager.NewTokenManager(client)
-	app := manager.NewAppManager(client)
 
 	db, err := mysql.NewMysqlDb(mysqlOptions)
 	if err != nil {
 		return nil, err
 	}
+
+	middleMessage := kube_resource.NewMiddleMessageWithClient(nil, client)
+	role := manager.NewRoleManager(client)
+	tk := manager.NewTokenManager(client)
+	app := manager.NewAppManager(client)
 
 	user := manager.NewUserManager(db)
 	pipelinePluginMgr := pipeline.NewPipelinePluginManager(db)
@@ -57,6 +57,8 @@ func NewModels(redisOp *redis.Options, mysqlOptions *mysql.Options) (*Models, er
 	projectAppMgr := project.NewAppManager(appVersionMgr, db)
 	appStoreMgr := project.NewAppStoreManager(appVersionMgr, db)
 	projectMgr := project.NewManagerProject(db, projectAppMgr)
+
+	cm := manager.NewClusterManager(db, projectAppMgr)
 
 	return &Models{
 		ClusterManager:           cm,

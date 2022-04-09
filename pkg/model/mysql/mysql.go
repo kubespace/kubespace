@@ -30,6 +30,7 @@ func NewMysqlDb(options *Options) (db *gorm.DB, err error) {
 func DbMigrate(db *gorm.DB) error {
 	var err error
 	migrateTypes := []interface{}{
+		&types.Cluster{},
 		&types.User{},
 		&types.PipelineWorkspace{},
 		&types.Pipeline{},

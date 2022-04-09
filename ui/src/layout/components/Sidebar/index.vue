@@ -101,7 +101,6 @@ export default {
           this.fetchProjects()
         }
       } else {
-        console.log("aaaa")
         this.$store.dispatch('watchCluster', '')
         this.$store.dispatch('watchNamespace', '')
       }
@@ -112,7 +111,7 @@ export default {
         var clusters = response.data ? response.data : []
         var cur_cluster = this.$route.params.name
         for (let cluster of clusters) {
-          let x = {'value': cluster.name, 'label': cluster.name}
+          let x = {'value': cluster.name, 'label': cluster.name1}
           if(cluster.status != 'Connect') x['disabled'] = true;
           this.oriTopSelectors.push(x)
           if (cluster.name == cur_cluster) {

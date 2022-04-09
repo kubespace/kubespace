@@ -8,7 +8,7 @@ if [ "${redisAddress}" = "" ]; then
     redis-server /etc/redis/redis.conf
 fi
 
-/ospserver \
+/kubespace \
     --port=${port:-443} \
     --redis-address=${redisAddress} \
     --redis-db=${redisDB:-0} \

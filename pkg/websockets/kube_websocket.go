@@ -75,7 +75,7 @@ func (k *KubeWebsocket) WsReceiveMsg() {
 
 func (k *KubeWebsocket) Clean() {
 	klog.V(1).Infof("start clean cluster %s websocket", k.cluster)
-	clusterObj, err := k.models.ClusterManager.Get(k.cluster)
+	clusterObj, err := k.models.ClusterManager.GetByName(k.cluster)
 	if err != nil {
 		klog.Errorf("get cluster %s object error: %s", k.cluster, err.Error())
 	} else {

@@ -47,9 +47,9 @@ func (a *AppManager) CreateProjectApp(chartFilePath string, app *types.ProjectAp
 	return app, nil
 }
 
-func (a *AppManager) GetByName(projectId uint, name string) (*types.ProjectApp, error) {
+func (a *AppManager) GetByName(scope string, projectId uint, name string) (*types.ProjectApp, error) {
 	var app types.ProjectApp
-	err := a.DB.First(&app, "project_id = ? and name = ?", projectId, name).Error
+	err := a.DB.First(&app, "scope = ? and scope_id = ? and name = ?", scope, projectId, name).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	} else if err != nil {
@@ -69,10 +69,10 @@ func (a *AppManager) GetAppVersion(scope string, scopeId uint, packageName, pack
 	return &version, nil
 }
 
-func (a *AppManager) ListProjectApps(projectId uint) ([]*types.ProjectApp, error) {
+func (a *AppManager) ListProjectApps(scope string, scopeId uint) ([]*types.ProjectApp, error) {
 	var apps []types.ProjectApp
 	var err error
-	if err = a.DB.Where("project_id = ?", projectId).Find(&apps).Error; err != nil {
+	if err = a.DB.Where("scope = ? and scope_id = ?", scope, scopeId).Find(&apps).Error; err != nil {
 		return nil, err
 	}
 	var rets []*types.ProjectApp
@@ -98,10 +98,10 @@ func (a *AppManager) GetProjectApp(appId uint) (*types.ProjectApp, error) {
 	return &app, nil
 }
 
-func (a *AppManager) GetProjectAppByName(projectId uint, name string) (*types.ProjectApp, error) {
+func (a *AppManager) GetProjectAppByName(scope string, scopeId uint, name string) (*types.ProjectApp, error) {
 	var app types.ProjectApp
 	var err error
-	if err = a.DB.First(&app, "project_id = ? and name = ?", projectId, name).Error; err != nil {
+	if err = a.DB.First(&app, "scope = ? and scope_id = ? and name = ?", scope, scopeId, name).Error; err != nil {
 		return nil, err
 	}
 	if app.AppVersion, err = a.AppVersionManager.GetAppVersion(app.AppVersionId); err != nil {

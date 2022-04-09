@@ -151,7 +151,7 @@ func (p *ManagerPipelineRun) GetStageRun(stageId uint) (*types.PipelineRunStage,
 	return &stageRun, nil
 }
 
-func (p *ManagerPipelineRun) StagesRun(pipelineRunId uint) ([]types.PipelineRunStage, error) {
+func (p *ManagerPipelineRun) StagesRun(pipelineRunId uint) ([]*types.PipelineRunStage, error) {
 	var stagesRun []types.PipelineRunStage
 	if err := p.DB.Where("pipeline_run_id = ?", pipelineRunId).Find(&stagesRun).Error; err != nil {
 		return nil, err
@@ -163,8 +163,24 @@ func (p *ManagerPipelineRun) StagesRun(pipelineRunId uint) ([]types.PipelineRunS
 		}
 		stagesRun[i].Jobs = stageRunJobs
 	}
+	var seqStages []*types.PipelineRunStage
+	prevStageId := uint(0)
+	for {
+		hasNext := false
+		for i, s := range stagesRun {
+			if s.PrevStageRunId == prevStageId {
+				seqStages = append(seqStages, &stagesRun[i])
+				prevStageId = s.ID
+				hasNext = true
+				break
+			}
+		}
+		if !hasNext {
+			break
+		}
+	}
 
-	return stagesRun, nil
+	return seqStages, nil
 }
 
 func (p *ManagerPipelineRun) UpdateStageRun(stageRun *types.PipelineRunStage) error {

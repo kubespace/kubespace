@@ -30,7 +30,7 @@ func (p *ServiceProject) Delete(projectId uint) *utils.Response {
 		resp.Msg = "获取工作空间失败: " + err.Error()
 		return resp
 	}
-	apps, err := p.appService.ListApp(projectId)
+	apps, err := p.appService.ListApp(types.AppVersionScopeProjectApp, projectId)
 	if err != nil {
 		return &utils.Response{Code: code.GetError, Msg: err.Error()}
 	}

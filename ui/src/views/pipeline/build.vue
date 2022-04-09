@@ -24,6 +24,10 @@
                   <template v-if="build.pipeline_run.status == 'doing'">
                     <i class="el-icon-refresh refresh-rotate"></i>
                   </template>
+                  <template v-if="build.pipeline_run.status == 'pause'">
+                    <!-- <i class="el-icon-video-pause"></i> -->
+                    <svg-icon icon-class="pause" />
+                  </template>
                   <span class="build-info__left__number" @click="clickBuildNumber(build)"> #{{ build.pipeline_run.build_number }}</span>
                   <!-- #{{ build.pipeline_run.build_number }} -->
                 </div>
@@ -43,8 +47,8 @@
             <el-row style="width: 100%;">
               <el-steps simple class="el-steps">
                 <el-step title="" icon="none" :status="getStageStatus(stage.status)" v-for="stage in build.stages_run" :key="stage.id">
-                  <div slot="title" class="el-steps-title" @click="clickBuildDetail(build, 'stage', stage)">
-                    <div style="margin-left: 1px;">{{ stage.name }}</div>
+                  <div slot="title" class="el-steps-title">
+                    <div style="margin-left: 1px;"  @click="clickBuildDetail(build, 'stage', stage)">{{ stage.name }}</div>
                     <div style="margin-top: 3px;">
                       <template v-if="stage.status == 'ok'">
                         <i class="el-icon-circle-check" style="font-size: 18px;"></i>
@@ -68,6 +72,19 @@
                         <i class="el-icon-remove-outline" style="font-size: 18px;"></i>
                         <div class="el-steps-stage-exectime">
                           --
+                        </div>
+                      </template>
+                      <template v-if="stage.status == 'pause'">
+                        <!-- <svg-icon icon-class="pause" style="font-size: 18px;"/>
+                        <div class="el-steps-stage-exectime">
+                          --
+                        </div> -->
+                        <div>
+                          <el-button size="mini" type="primary" style="padding: 2px 5px;" round
+                            @click="openManualStageDialog(stage)">
+                            <i class="el-icon-video-play" /> 
+                            执行
+                          </el-button>
                         </div>
                       </template>
                     </div>
@@ -157,10 +174,10 @@
         <div class="dialogContent" style="padding: 0px 40px;">
           <el-form :model="buildParams" ref="" label-position="left" label-width="105px">
             <el-form-item label="流水线" prop="" :required="true">
-              <el-input :disabled="true" style="width: 250px;" placeholder="" v-model="pipelineName" autocomplete="off" size="small"></el-input>
+              <el-input :disabled="true" style="width: 100%;" placeholder="" v-model="pipelineName" autocomplete="off" size="small"></el-input>
             </el-form-item>
             <el-form-item label="构建分支" prop="" :required="true">
-              <el-input style="width: 250px;" placeholder="请输入构建分支" v-model="buildParams.branch" autocomplete="off" size="small"></el-input>
+              <el-input style="width: 100%;" placeholder="请输入构建分支" v-model="buildParams.branch" autocomplete="off" size="small"></el-input>
             </el-form-item>
           </el-form>
         </div>
@@ -170,13 +187,33 @@
         </div>
       </div>
     </el-dialog>
+
+    <el-dialog :title="'执行阶段-' + manualStage.stage.name" :visible.sync="manualDialogVisible" :destroy-on-close="true" 
+      @close="manualStage = {stage: {}, params: {}};" :close-on-click-modal="false">
+      <div v-loading="dialogLoading">
+        <div class="dialogContent" style="padding: 0px 40px;">
+          <el-form :model="manualStage" ref="" label-position="left" label-width="105px">
+            <el-form-item label="阶段参数" prop="" :required="true">
+              <el-input :disabled="true" style="width: 100%;" placeholder="" v-model="pipelineName" autocomplete="off" size="small"></el-input>
+            </el-form-item>
+            <el-form-item label="发布版本" prop="" :required="true">
+              <el-input style="width: 100%;" placeholder="请输入发布版本" v-model="manualStage.params.version" autocomplete="off" size="small"></el-input>
+            </el-form-item>
+          </el-form>
+        </div>
+        <div slot="footer" class="dialogFooter" style="margin-top: 20px;">
+          <el-button @click="manualDialogVisible = false" style="margin-right: 20px;" >取 消</el-button>
+          <el-button type="primary" @click="manualExec">确 定</el-button>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import { Clusterbar } from '@/views/components'
 import { getPipeline } from '@/api/pipeline/pipeline'
-import { listBuilds, buildPipeline } from '@/api/pipeline/build'
+import { listBuilds, buildPipeline, manualExec } from '@/api/pipeline/build'
 import { Message } from 'element-ui'
 
 export default {
@@ -202,7 +239,12 @@ export default {
       refreshExecTimer: 0,
       refreshStages: {},
       loadMore: false,
-      dialogLoading: false
+      dialogLoading: false,
+      manualDialogVisible: false,
+      manualStage: {
+        stage: {},
+        params: {},
+      }
     }
   },
   created() {
@@ -373,6 +415,7 @@ export default {
       if(status == 'wait') return 'wait'
       if(status == 'doing') return 'process'
       if(status == 'cancel') return 'wait'
+      if(status == 'pause') return 'process'
     },
     getBuildStatusColor(status) {
       if(status == 'ok') return '#67c23a'
@@ -436,6 +479,29 @@ export default {
     },
     clickBuildNumber(build) {
       this.$router.push({name: 'pipelineBuildDetail', params: {buildId: build.pipeline_run.id}})
+    },
+    openManualStageDialog(stage) {
+      this.manualStage = {
+        stage: stage,
+        params: {}
+      }
+      this.manualDialogVisible = true
+    },
+    manualExec() {
+      let parmas = {stage_run_id: this.manualStage.stage.id}
+      if(!parmas.stage_run_id) {
+        Message.error("获取执行阶段id错误，请刷新重试")
+        return
+      }
+      this.dialogLoading = true
+      manualExec(parmas).then((response) => {
+        this.$message({message: '执行成功', type: 'success'});
+        this.dialogLoading = false
+        // this.fetchBuilds(0)
+        this.manualDialogVisible = false
+      }).catch( (err) => {
+        this.dialogLoading = false
+      })
     }
   },
 }

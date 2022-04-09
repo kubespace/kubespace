@@ -9,6 +9,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"github.com/kubespace/kubespace/pkg/views"
 	"github.com/kubespace/kubespace/pkg/views/serializers"
+	"k8s.io/klog"
 	"net/http"
 	"strconv"
 	"time"
@@ -72,13 +73,23 @@ func (p *Project) list(c *views.Context) *utils.Response {
 		return resp
 	}
 	var data []map[string]interface{}
+	clusters := make(map[string]*types.Cluster)
 
 	for _, project := range projects {
+		cluster, ok := clusters[project.ClusterId]
+		if !ok {
+			cluster, err = p.models.ClusterManager.GetByName(project.ClusterId)
+			if err != nil {
+				klog.Errorf("get project id=%s cluster error: %s", project.ID, err.Error())
+			}
+			clusters[project.ClusterId] = cluster
+		}
 		data = append(data, map[string]interface{}{
 			"id":          project.ID,
 			"name":        project.Name,
 			"description": project.Description,
 			"cluster_id":  project.ClusterId,
+			"cluster":     cluster,
 			"namespace":   project.Namespace,
 			"owner":       project.Owner,
 			"update_user": project.UpdateUser,

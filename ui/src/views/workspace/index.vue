@@ -22,6 +22,9 @@
         <el-table-column prop="description" label="描述" show-overflow-tooltip min-width="15">
         </el-table-column>
         <el-table-column prop="cluster_id" label="绑定集群" show-overflow-tooltip min-width="15">
+          <template slot-scope="scope">
+            {{ scope.row.cluster ? scope.row.cluster.name1 : scope.row.cluster_id }}
+          </template>
         </el-table-column>
         <el-table-column prop="namespace" label="命名空间" show-overflow-tooltip min-width="15">
         </el-table-column>
@@ -62,7 +65,7 @@
                 <el-option
                   v-for="item in clusters"
                   :key="item.name"
-                  :label="item.name"
+                  :label="item.name1"
                   :value="item.name"
                   :disabled="item.status != 'Connect'">
                 </el-option>
@@ -251,16 +254,6 @@ export default {
         listNamespace(cluster).then(response => {
           this.namespaces = response.data
           this.namespaces.sort((a, b) => {return a.name > b.name ? 1 : -1})
-          let nsCache = storage.get(this.nsKey)
-          if (nsCache) {
-            var nsNames = []
-            for(let n of this.namespaces) nsNames.push(n.name)
-            let nsInput = nsCache.filter((name) => {return nsNames.indexOf(name) > -1})
-            this.nsInput = nsInput
-            if (this.nsFunc) {
-              this.nsFunc(this.nsInput)
-            }
-          }
         }).catch((err) => {
           console.log(err)
         })

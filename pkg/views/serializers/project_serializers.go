@@ -9,7 +9,8 @@ type ProjectSerializer struct {
 }
 
 type ProjectCreateAppSerializer struct {
-	ProjectId          uint              `json:"project_id" form:"project_id"`
+	Scope              string            `json:"scope" form:"scope"`
+	ScopeId            uint              `json:"scope_id" form:"scope_id"`
 	Name               string            `json:"name" form:"name"`
 	Description        string            `json:"description" form:"description"`
 	VersionDescription string            `json:"version_description" form:"version_description"`
@@ -27,13 +28,16 @@ type ProjectInstallAppSerializer struct {
 }
 
 type ImportStoreAppSerializers struct {
-	ProjectId    uint `json:"project_id" form:"project_id"`
-	StoreAppId   uint `json:"store_app_id" form:"store_app_id"`
-	AppVersionId uint `json:"app_version_id" form:"app_version_id"`
+	Scope        string `json:"scope" form:"scope"`
+	ScopeId      uint   `json:"scope_id" form:"scope_id"`
+	Namespace    string `json:"namespace" form:"namespace"`
+	StoreAppId   uint   `json:"store_app_id" form:"store_app_id"`
+	AppVersionId uint   `json:"app_version_id" form:"app_version_id"`
 }
 
 type ProjectAppListSerializer struct {
-	ProjectId     uint   `json:"project_id" form:"project_id"`
+	Scope         string `json:"scope" form:"scope"`
+	ScopeId       uint   `json:"scope_id" form:"scope_id"`
 	Name          string `json:"name" form:"name"`
 	Status        string `json:"status" form:"status"`
 	WithWorkloads bool   `json:"with_workloads" form:"with_workloads"`

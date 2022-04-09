@@ -16,10 +16,10 @@
         <el-table-column prop="name" label="名称" show-overflow-tooltip>
           <template slot-scope="scope">
             <span v-if="scope.row.status === 'Connect'" class="name-class" v-on:click="nameClick(scope.row.name)">
-              {{ scope.row.name }}
+              {{ scope.row.name1 }}
             </span>
             <span v-else>
-              {{ scope.row.name }}
+              {{ scope.row.name1 }}
             </span>
           </template>
         </el-table-column>
@@ -28,6 +28,9 @@
           label="创建时间"
           show-overflow-tooltip
         >
+          <template slot-scope="scope">
+            {{ $dateFormat(scope.row.create_time) }}
+          </template>
         </el-table-column>
         <el-table-column
           prop="status"

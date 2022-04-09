@@ -23,7 +23,12 @@
         <el-table-column prop="create_time" label="最新构建" show-overflow-tooltip>
           <template slot-scope="scope">
             <span v-if="scope.row.last_build" :style="{'color': getBuildStatusColor(scope.row.last_build.status)}">
-              <i style="font-size: 16px;" :class="getBuildStatusIcon(scope.row.last_build.status)"></i>
+              <template v-if="scope.row.last_build.status && scope.row.last_build.status != 'pause'">
+                <i style="font-size: 16px;" :class="getBuildStatusIcon(scope.row.last_build.status)"></i>
+              </template>
+              <template v-else-if="scope.row.last_build.status">
+                <svg-icon icon-class="pause" style="font-size: 16px;"/>
+              </template>
               {{ scope.row.last_build ? '#' + scope.row.last_build.build_number : "无" }}
             </span>
           </template>
@@ -162,6 +167,7 @@ export default {
       if(status == 'error') return 'el-icon-error'
       if(status == 'doing') return 'el-icon-refresh'
       if(status == 'wait') return 'el-icon-remove'
+      if(status == 'pause') return 'el-icon-video-pause'
       return ''
     },
     handleDeletePipeline(id, name) {

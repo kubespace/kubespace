@@ -29,3 +29,11 @@ export function getJobLog(job_id, with_sse) {
     method: 'get',
   })
 }
+
+export function manualExec(data) {
+  return request({
+    url: `pipeline/build/manual_execute`,
+    method: 'post',
+    data,
+  })
+}

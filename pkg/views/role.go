@@ -33,7 +33,7 @@ func NewRole(models *model.Models) *Role {
 
 func (r *Role) permissions(c *Context) *utils.Response {
 	//userName := ""
-	//if user, ok := c.Get("user"); ok {
+	//if user, ok := c.GetByName("user"); ok {
 	//	userName = user.(*types.User).Name
 	//}
 	return &utils.Response{Code: code.Success, Data: types.AllPermissions}

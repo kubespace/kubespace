@@ -12,7 +12,7 @@
             <span :style="{color: statusColorMap[originApp.status]}">{{ statusNameMap[originApp.status] }}</span>
           </el-form-item>
           <el-form-item label="绑定集群">
-            <span>{{ originApp.cluster }}</span>
+            <span>{{ originApp.cluster ? originApp.cluster.name1 : '' }}</span>
           </el-form-item>
           <el-form-item label="应用版本">
             <span>{{ originApp.from == 'space' ? originApp.package_version : originApp.package_version + " / " + originApp.app_version }}</span>
@@ -214,7 +214,7 @@
                 show-overflow-tooltip>
                 <template slot-scope="scope">
                   <template v-if="scope.row.kind != 'CronJob' || scope.row.kind != 'Job'">
-                    <span>{{ scope.row.status.readyReplicas }}/{{ scope.row.status.replicas }}</span>
+                    <span>{{ scope.row.status.readyReplicas || 0 }}/{{ scope.row.status.replicas }}</span>
                   </template>
                   <template v-else>
                     -
@@ -384,11 +384,11 @@
       </el-tabs>
 
       <el-dialog title="终端" :visible.sync="terminalDialog" :close-on-click-modal="false" width="80%" top="55px">
-        <terminal v-if="terminalDialog" :cluster="originApp.cluster" :namespace="originApp.namespace" :pod="selectPodName" :container="selectContainer"></terminal>
+        <terminal v-if="terminalDialog" :cluster="originApp.cluster_id" :namespace="originApp.namespace" :pod="selectPodName" :container="selectContainer"></terminal>
       </el-dialog>
 
       <el-dialog title="日志" :visible.sync="logDialog" :close-on-click-modal="false" width="80%" top="55px">
-        <log v-if="logDialog" :cluster="originApp.cluster" :namespace="originApp.namespace" :pod="selectPodName" :container="selectContainer"></log>
+        <log v-if="logDialog" :cluster="originApp.cluster_id" :namespace="originApp.namespace" :pod="selectPodName" :container="selectContainer"></log>
       </el-dialog>
     </div>
   </div>

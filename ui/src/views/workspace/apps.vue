@@ -318,7 +318,7 @@ export default {
     },
     fetchApps() {
       this.loading = true
-      listApps({project_id: this.projectId}).then((resp) => {
+      listApps({scope_id: this.projectId, scope: "project_app"}).then((resp) => {
         let originApps = resp.data ? resp.data : []
         this.$set(this, 'originApps', originApps)
         this.loading = false
@@ -474,7 +474,7 @@ export default {
       this.$router.push({name: 'workspaceEditApp', params: {appVersionId: id}})
     },
     getAppStatus() {
-      listAppStatus({project_id: this.projectId}).then((resp) => {
+      listAppStatus({scope_id: this.projectId, scope: "project_app"}).then((resp) => {
         let mapStatus = {}
         for(let s of resp.data) {
           mapStatus[s.name] = s
@@ -525,13 +525,12 @@ export default {
       }
     },
     handelImportStoreApp() {
-      console.log(this.importStoreAppForm)
       var data = {
-        project_id: parseInt(this.projectId),
+        scope: "project_app",
+        scope_id: parseInt(this.projectId),
         store_app_id: this.importStoreAppForm.storeAppId,
         app_version_id: this.importStoreAppForm.storeAppVersion
       }
-      console.log(data)
       if(!data.store_app_id) {
         Message.error("请选择应用")
         return

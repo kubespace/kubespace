@@ -16,6 +16,7 @@ func NewUserManager(db *gorm.DB) *UserManager {
 		DB: db,
 	}
 }
+
 //
 //func (u *UserManager) parseToStore(user *types.User) (*types.UserStore, error) {
 //	roleBytes, err := json.Marshal(user.Roles)
@@ -117,7 +118,7 @@ func (u *UserManager) Permissions(user *types.User) ([]types.Permission, error) 
 	var perms []types.Permission
 
 	//for _, role := range user.Roles {
-	//	roleObj, err := u.role.Get(role)
+	//	roleObj, err := u.role.GetByName(role)
 	//	if err != nil {
 	//		return nil, err
 	//	}

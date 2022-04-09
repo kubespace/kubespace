@@ -1,7 +1,7 @@
 <template>
   <div>
     <clusterbar :titleName="titleName" :nsFunc="nsSearch" :nameFunc="nameSearch"
-    :createFunc="createFunc" createDisplay="安装应用"/>
+    :createFunc="openImportStoreAppDialog" createDisplay="导入集群组件"/>
     <div class="dashboard-container">
       <!-- <div class="dashboard-text"></div> -->
       <el-table
@@ -15,78 +15,55 @@
         :default-sort = "{prop: 'name'}"
         row-key="uid"
         >
-        <el-table-column
-          prop="name"
-          label="名称"
-          min-width="25"
-          show-overflow-tooltip>
+        <el-table-column prop="name" label="名称" show-overflow-tooltip min-width="15">
           <template slot-scope="scope">
-            <span class="name-class" v-on:click="nameClick(scope.row.namespace, scope.row.name)">
+            <span class="name-class" v-on:click="nameClick(scope.row.id)">
               {{ scope.row.name }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column
-          prop="namespace"
-          label="命名空间"
-          min-width="25"
-          show-overflow-tooltip>
-        </el-table-column>
-        <el-table-column
-          prop="chart_version"
-          label="Chart版本"
-          min-width="30"
-          show-overflow-tooltip>
-        </el-table-column>
-        <el-table-column
-          prop="app_version"
-          label="App版本"
-          min-width="23"
-          show-overflow-tooltip>
-        </el-table-column>
-        <el-table-column
-          prop="version"
-          label="修订"
-          min-width="15"
-          show-overflow-tooltip>
-        </el-table-column>
-        <el-table-column
-          prop="status"
-          label="状态"
-          min-width="20"
-          show-overflow-tooltip>
-        </el-table-column>
-        <el-table-column
-          prop="last_deployed"
-          label="上次部署"
-          min-width="25"
-          show-overflow-tooltip>
+        <el-table-column prop="package_version" label="版本" show-overflow-tooltip min-width="15">
           <template slot-scope="scope">
-              {{ dateFormat(scope.row.last_deployed) }}
+            {{ scope.row.app_version.from == 'space' ? scope.row.app_version.package_version : scope.row.app_version.package_version + ' / ' + scope.row.app_version.app_version }}
           </template>
         </el-table-column>
-        <el-table-column
-          label=""
-          show-overflow-tooltip
-          width="45">
+        <el-table-column prop="namespace" label="命名空间" show-overflow-tooltip min-width="15">
+        </el-table-column>
+        <el-table-column prop="update_user" label="操作人" show-overflow-tooltip min-width="15">
+        </el-table-column>
+        <el-table-column prop="update_time" label="更新时间" show-overflow-tooltip min-width="20">
           <template slot-scope="scope">
-            <el-dropdown size="medium" >
-              <el-link :underline="false"><svg-icon style="width: 1.3em; height: 1.3em;" icon-class="operate" /></el-link>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item @click.native.prevent="nameClick(scope.row.namespace, scope.row.name)">
-                  <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="detail" />
-                  <span style="margin-left: 5px;">详情</span>
-                </el-dropdown-item>
-                <el-dropdown-item v-if="$updatePerm()" @click.native.prevent="yamlDialog = true; getUpdateRelease(scope.row.name, scope.row.namespace)">
-                  <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="edit" />
-                  <span style="margin-left: 5px;">升级</span>
-                </el-dropdown-item>
-                <el-dropdown-item v-if="$updatePerm()" @click.native.prevent="deleteRelease(scope.row)">
-                  <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="delete" />
-                  <span style="margin-left: 5px;">删除</span>
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
+            {{ $dateFormat(scope.row.update_time) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="status" label="状态" show-overflow-tooltip min-width="15">
+          <template slot-scope="scope">
+            <div class="status-class" :style="{'border-color': statusColorMap[scope.row.status], 'background-color': statusColorMap[scope.row.status]}"></div>
+            <span :style="{'font-weight': 430}">{{ statusNameMap[scope.row.status] }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="170">
+          <template slot-scope="scope">
+            <div class="tableOperate">
+              <el-link :underline="false" class="operator-btn"
+                v-if="scope.row.status=='UnInstall'" @click="openInstallFormDialog(scope.row)">安装</el-link>
+              <el-link :underline="false" class="operator-btn"
+                v-if="scope.row.status!='UnInstall'" @click="openInstallFormDialog(scope.row, true)">升级</el-link>
+              
+              <el-dropdown style="font-size: 13px;">
+                <span class="el-dropdown-link operator-btn">
+                  更多操作
+                </span>
+                <el-dropdown-menu slot="dropdown">
+                  <el-dropdown-item>
+                    <el-link :underline="false" class="operator-btn" style="color: #F56C6C; font-weight: 400"
+                      v-if="scope.row.status!='UnInstall'" @click="handleDestroyApp(scope.row.id, scope.row.name)">销毁</el-link>
+                    <el-link :underline="false" style="color: #F56C6C; font-weight: 400" v-if="scope.row.status=='UnInstall'"
+                      @click="handleDeleteApp(scope.row.id, scope.row.name)">删除</el-link>
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </el-dropdown>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -106,15 +83,101 @@
         <el-button plain @click="updateNode()" size="small">确 定</el-button>
       </span>
     </el-dialog>
+
+    <el-dialog title="应用商店导入" :visible.sync="importStoreFormVisible"
+      @close="importStoreFormVisible=false;importStoreAppForm={}" :destroy-on-close="true" :close-on-click-modal="false">
+      <div v-loading="dialogLoading">
+        <div class="dialogContent" style="">
+          <el-form :model="importStoreAppForm" :rules="rules" ref="form" label-position="left" label-width="105px">
+            <div v-loading="fetchVersionLoading">
+              <el-form-item label="命名空间" prop="" :required="true">
+                <el-select v-model="importStoreAppForm.namespace" placeholder="请选择要安装的命名空间" size="small" style="width: 100%;">
+                  <el-option
+                    v-for="item in namespaces"
+                    :key="item.name"
+                    :label="item.name"
+                    :value="item.name">
+                  </el-option>
+                </el-select>
+              </el-form-item>
+              <el-form-item label="应用名称" prop="" :required="true">
+                <el-select v-model="importStoreAppForm.storeAppId" placeholder="请选择应用" size="small" style="width: 100%;"
+                  @change="storeAppChange" filterable>
+                  <el-option
+                    v-for="item in storeApps"
+                    :key="item.id"
+                    :label="item.name"
+                    :value="item.id">
+                  </el-option>
+                </el-select>
+              </el-form-item>
+              <el-form-item label="应用版本" prop="" :required="true">
+                <el-select v-model="importStoreAppForm.storeAppVersion" placeholder="请选择应用版本" size="small" style="width: 100%;">
+                  <el-option
+                    v-for="item in storeAppVersions || []"
+                    :key="item.id"
+                    :label="item.package_version + ' / ' + item.app_version"
+                    :value="item.id">
+                  </el-option>
+                </el-select>
+              </el-form-item>
+            </div>
+          </el-form>
+        </div>
+        <div slot="footer" class="dialogFooter" style="padding-top: 10px;">
+          <el-button @click="importStoreFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
+          <el-button type="primary" @click="handelImportStoreApp" >导 入</el-button>
+        </div>
+      </div>
+    </el-dialog>
+
+    <el-dialog :title="updateFormVisible ? '升级应用' : '安装应用'" :visible.sync="installFormVisible"
+      @close="closeFormDialog" :destroy-on-close="true" :close-on-click-modal="false" top="2vh" width="70%">
+      <div v-loading="dialogLoading">
+        <div class="dialogContent" style="margin-top: -10px;">
+          <el-form :model="form" :rules="rules" ref="form" label-position="left" label-width="105px">
+            <el-form-item label="应用名称" prop="" autofocus>
+              <span>{{ form.name }}</span>
+            </el-form-item>
+            <div v-loading="fetchVersionLoading">
+              <el-form-item label="安装版本" prop="" :required="true" style="margin-top: 0px;">
+                <el-select v-model="form.app_version_id" placeholder="请选择应用版本" size="small" style="width: 50%;"
+                  @change="changeInstallAppVersion">
+                  <el-option
+                    v-for="item in appVersions"
+                    :key="item.id"
+                    :label="item.package_version + ' / ' + item.app_version"
+                    :value="item.id">
+                  </el-option>
+                </el-select>
+              </el-form-item>
+              
+              <div>
+                <yaml v-model="form.values"></yaml>
+              </div>
+            </div>
+          </el-form>
+        </div>
+        <div slot="footer" class="dialogFooter" style="padding-top: 20px;">
+          <el-button @click="installFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
+          <el-button type="primary" @click="updateFormVisible ? handleInstallApp(true) : handleInstallApp()" >
+            {{ updateFormVisible ? '升 级' : '安 装' }}
+          </el-button>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { listReleases, deleteRelease, getRelease } from '@/api/app'
+// import { listReleases, deleteRelease, getRelease } from '@/api/app'
+import { listApps, listAppStatus, listAppVersions, installApp, destroyApp, deleteApp, importStoreApp } from "@/api/project/apps";
 import { Message } from 'element-ui'
+import { listStoreApps } from '@/api/project/appStore'
+import { listNamespace } from '@/api/namespace'
 import { Yaml } from '@/views/components'
-import { dateFormat } from '@/utils/utils'
+import yaml from 'js-yaml'
 
 export default {
   name: 'Application',
@@ -123,29 +186,70 @@ export default {
     Yaml
   },
   data() {
-      return {
-        yamlDialog: false,
-        yamlName: "",
-        yamlValue: "",
-        yamlLoading: true,
-        cellStyle: {border: 0},
-        titleName: ["Applications"],
-        maxHeight: window.innerHeight - 150,
-        loading: true,
-        originReleases: [],
-        search_ns: [],
-        search_name: '',
-        yamlChange: 1,
-        updateValues: {
-          name: "",
-          namespace: "",
-          config: "",
-          values: "",
-        }
-      }
+    return {
+      yamlDialog: false,
+      yamlName: "",
+      yamlValue: "",
+      yamlLoading: true,
+      dialogLoading: false,
+      cellStyle: {border: 0},
+      titleName: ["Components"],
+      maxHeight: window.innerHeight - 150,
+      loading: true,
+      originApps: [],
+      appVersions: [],
+      namespaces: [],
+      installFormVisible: false,
+      updateFormVisible: false,
+      search_ns: [],
+      search_name: '',
+      yamlChange: 1,
+      rules: {},
+      form: {
+        id: "",
+        name: "",
+        app_version_id: "",
+        values_dict: {},
+        values: '',
+        from: ''
+      },
+      updateValues: {
+        name: "",
+        namespace: "",
+        config: "",
+        values: "",
+      },
+      importStoreFormVisible: false,
+      importStoreAppForm: {
+        storeAppId: '',
+        storeAppVersion: '',
+        namespace: "default",
+      },
+      fetchVersionLoading: false,
+      storeApps: [],
+      statusNameMap: {
+        "UnInstall": "未安装",
+        "NotReady": "未就绪",
+        "RunningFault": "运行故障",
+        "Running": "运行中"
+      },
+      statusColorMap: {
+        "UnInstall": "",
+        "NotReady": "#E6A23C",
+        "RunningFault": "#F56C6C",
+        "Running": "#67C23A"
+      },
+      typeNameMap: {
+        "ordinary_app": "普通应用",
+        "middleware": "中间件",
+        "import_app": "导入应用",
+        "component": "集群组件"
+      },
+    }
   },
   created() {
-    this.fetchData()
+    this.fetchApps()
+    this.fetchNamespace()
   },
   mounted() {
     const that = this
@@ -162,55 +266,195 @@ export default {
   computed: {
     releases: function() {
       let dlist = []
-      for (let p of this.originReleases) {
+      for (let p of this.originApps) {
         if (this.search_ns.length > 0 && this.search_ns.indexOf(p.namespace) < 0) continue
         if (this.search_name && !p.name.includes(this.search_name)) continue
         
         dlist.push(p)
       }
       return dlist
-    }
+    },
+    clusterId() {
+      return parseInt(this.$store.state.cluster)
+    },
+    storeAppVersions() {
+      if(!this.importStoreAppForm.storeAppId) return []
+      if(this.storeApps.length == 0) return []
+      for(let a of this.storeApps) {
+        if(a.id == this.importStoreAppForm.storeAppId && a.versions) return a.versions
+      }
+      return []
+    },
   },
   methods: {
-    dateFormat,
-    fetchData: function() {
+    fetchApps() {
       this.loading = true
-      const cluster = this.$store.state.cluster
-      if (cluster) {
-        listReleases(cluster).then(response => {
-          this.originReleases = response.data
-          this.loading = false
-        }).catch(() => {
-          this.loading = false
+      listApps({scope_id: this.clusterId, scope: "component"}).then((resp) => {
+        let originApps = resp.data ? resp.data : []
+        this.$set(this, 'originApps', originApps)
+        this.loading = false
+        // this.getAppStatus()
+      }).catch((err) => {
+        this.loading = false
+      })
+    },
+    fetchNamespace: function() {
+      this.namespaces = []
+      if (this.$store.state.cluster) {
+        listNamespace(this.$store.state.cluster).then(response => {
+          this.namespaces = response.data
+          this.namespaces.sort((a, b) => {return a.name > b.name ? 1 : -1})
+        }).catch((err) => {
+          console.log(err)
         })
       } else {
-        this.loading = false
         Message.error("获取集群异常，请刷新重试")
       }
     },
-    getUpdateRelease: function(name, namespace) {
-      this.yamlLoading = true
-      const cluster = this.$store.state.cluster
-      this.updateValues = {config: "", values: "", name: name, namespace: namespace}
-      this.yamlValue = ""
-      if (cluster) {
-        var params = {
-          name: name,
-          namespace: namespace,
-          get_option: 'values'
+    changeInstallAppVersion(app_version_id) {
+      this.form.values_dict = {}
+      if(!this.appVersions || this.appVersions.length <= 0) return
+      for(let v of this.appVersions) {
+        if(v.id == app_version_id) {
+          let values_dict = yaml.load(v.values)
+          this.form.values = v.values
+          this.form.from = v.from
+          if(v.from == 'space') {
+            for(let wk in values_dict.workloads || {}) {
+              for(let ck in values_dict.workloads[wk].containers || {}) {
+                let imageTag = values_dict.workloads[wk].containers[ck].image
+                if(imageTag) {
+                  let s = imageTag.split(":")
+                  values_dict.workloads[wk].containers[ck].image = s[0]
+                  if(s.length > 1) {
+                    values_dict.workloads[wk].containers[ck].tag = s[1]
+                  }
+                }
+              }
+            }
+          }
+          this.form.values_dict = values_dict
+          return
         }
-        getRelease(cluster, params).then(response => {
-          this.yamlLoading = false
-          this.updateValues.config = response.data.config
-          this.updateValues.values = response.data.values
-          this.yamlValue = this.updateValues.config
-        }).catch(() => {
-          this.yamlLoading = false
-        })
-      } else {
-        this.yamlLoading = false
-        Message.error("获取集群异常，请刷新重试")
       }
+    },
+    openInstallFormDialog(app, isUpdate) {
+      if(isUpdate) this.updateFormVisible = true
+      this.appVersions = []
+      this.form = {
+        id: app.id,
+        name: app.name,
+        app_version_id: app.app_version_id,
+        values_dict: {},
+        values: '',
+        from: app.app_version.from,
+      }
+      this.installFormVisible = true;
+      this.fetchVersionLoading = true;
+      listAppVersions({scope: "project_app", scope_id: app.id}).then((resp) => {
+        this.appVersions = resp.data ? resp.data : []
+        this.changeInstallAppVersion(app.app_version_id)
+        this.fetchVersionLoading = false
+      }).catch((err) => {
+        this.fetchVersionLoading = false
+      })
+    },
+    changeInstallAppVersion(app_version_id) {
+      this.form.values_dict = {}
+      if(!this.appVersions || this.appVersions.length <= 0) return
+      for(let v of this.appVersions) {
+        if(v.id == app_version_id) {
+          let values_dict = yaml.load(v.values)
+          this.form.values = v.values
+          this.form.from = v.from
+          if(v.from == 'space') {
+            for(let wk in values_dict.workloads || {}) {
+              for(let ck in values_dict.workloads[wk].containers || {}) {
+                let imageTag = values_dict.workloads[wk].containers[ck].image
+                if(imageTag) {
+                  let s = imageTag.split(":")
+                  values_dict.workloads[wk].containers[ck].image = s[0]
+                  if(s.length > 1) {
+                    values_dict.workloads[wk].containers[ck].tag = s[1]
+                  }
+                }
+              }
+            }
+          }
+          this.form.values_dict = values_dict
+          return
+        }
+      }
+    },
+    closeFormDialog() {
+      this.updateFormVisible = false; 
+      this.installFormVisible = false;
+    },
+    handleInstallApp(upgrade) {
+      if(!this.form.id) {
+        Message.error("获取安装应用失败，请刷新重试");
+        return
+      }
+      if(!this.form.app_version_id) {
+        Message.error("请选择要安装的应用版本");
+        return
+      }
+      let values = this.form.values
+      let data = {
+        project_app_id: this.form.id, 
+        app_version_id: this.form.app_version_id, 
+        values: values,
+        upgrade: upgrade ? true : false
+      }
+      this.dialogLoading = true
+      installApp(data).then(() => {
+        this.dialogLoading = false
+        this.installFormVisible = false;
+        Message.success("安装应用成功")
+        this.fetchApps()
+      }).catch((err) => {
+        this.dialogLoading = false
+      });
+    },
+    handleDestroyApp(id, name) {
+      if(!id) {
+        Message.error("获取销毁集群组件id失败，请刷新重试");
+        return
+      }
+      this.$confirm(`请确认是否销毁「${name}」此集群组件?`, '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+      }).then(() => {
+        this.loading = true
+        destroyApp({project_app_id: id}).then(() => {
+          Message.success("销毁应用成功")
+          this.fetchApps()
+        }).catch((err) => {
+          console.log(err)
+          this.loading = false
+        });
+      }).catch(() => {       
+      });
+    },
+    handleDeleteApp(id, name) {
+      if(!id) {
+        Message.error("获取应用id参数异常，请刷新重试");
+        return
+      }
+      this.$confirm(`请确认是否删除「${name}」此集群组件以及所有版本?`, '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+          deleteApp(id).then(() => {
+            Message.success("删除应用成功")
+            this.fetchApps()
+          }).catch((err) => {
+            console.log(err)
+          });
+        }).catch(() => {       
+        });
     },
     nsSearch: function(vals) {
       this.search_ns = []
@@ -224,33 +468,58 @@ export default {
     nameClick: function(namespace, name) {
       this.$router.push({name: 'appDetail', params: {namespace: namespace, appName: name}})
     },
-    deleteRelease: function(release) {
-      const cluster = this.$store.state.cluster
-      if (!cluster) {
-        Message.error("获取集群参数异常，请刷新重试")
-        return
-      }
-      let params = {
-        name: release.name,
-        namespace: release.namespace,
-      }
-      this.$confirm('是否确认删除应用' + release.name + '?', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        this.loading = true
-        deleteRelease(cluster, params).then(() => {
-          Message.success("删除成功")
-          this.fetchData();
-        }).catch(() => {
-          // console.log(e)
-        })
+    listStoreApps: function() {
+      this.dialogLoading = true
+      listStoreApps({with_versions: true}).then(response => {
+        this.storeApps = []
+        for(let a of response.data || []) {
+          if(a.type == 'component') this.storeApps.push(a)
+        }
+        this.storeApps.sort((a, b) => {return a.name > b.name ? 1 : -1})
+        this.dialogLoading = false
+      }).catch(() => {
+        this.dialogLoading = false
       })
     },
-    createFunc() {
-      this.$router.push({name: 'appCreate'})
-    }
+    openImportStoreAppDialog() {
+      this.importStoreFormVisible = true
+      if(this.storeApps.length == 0) {
+        this.listStoreApps()
+      }
+    },
+    storeAppChange(val) {
+      if(this.storeAppVersions.length > 0) {
+        this.importStoreAppForm.storeAppVersion = this.storeAppVersions[0].id
+      } else {
+        this.importStoreAppForm.storeAppVersion = ''
+      }
+    },
+    handelImportStoreApp() {
+      var data = {
+        scope: "component",
+        scope_id: this.clusterId,
+        namespace: this.importStoreAppForm.namespace,
+        store_app_id: this.importStoreAppForm.storeAppId,
+        app_version_id: this.importStoreAppForm.storeAppVersion
+      }
+      if(!data.store_app_id) {
+        Message.error("请选择应用")
+        return
+      }
+      if(!data.app_version_id) {
+        Message.error("请选择应用")
+        return
+      }
+      this.dialogLoading = true
+      importStoreApp(data).then(response => {
+        this.dialogLoading = false
+        Message.success("导入应用成功")
+        this.importStoreFormVisible = false
+        this.fetchApps()
+      }).catch(() => {
+        this.dialogLoading = false
+      })
+    },
   }
 }
 </script>

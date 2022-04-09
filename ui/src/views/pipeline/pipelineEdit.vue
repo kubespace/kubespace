@@ -186,7 +186,7 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { PipelineStage, CodeToImage, ExecuteShell } from '@/views/pipeline/plugin'
+import { PipelineStage, CodeToImage, ExecuteShell, AppDeploy } from '@/views/pipeline/plugin'
 import { getPipeline, updatePipeline, createPipeline } from '@/api/pipeline/pipeline'
 import { getWorkspace } from '@/api/pipeline/workspace'
 import { Message } from 'element-ui'
@@ -197,7 +197,8 @@ export default {
     Clusterbar,
     PipelineStage,
     CodeToImage,
-    ExecuteShell
+    ExecuteShell,
+    AppDeploy
   },
   data() {
     return {
@@ -241,9 +242,9 @@ export default {
         name: 'Kubernetes资源部署',
         component: 'K8sDeploy'
       }, {
-        key: 'project_app_integration',
-        name: '空间应用部署',
-        component: 'AppIntegration'
+        key: 'upgrade_app',
+        name: '应用部署',
+        component: 'AppDeploy'
       }],
       dialogTitleMap: {
         'edit_stage': '编辑阶段',

@@ -26,10 +26,10 @@ const Routes = [
   },
 
   {
-    path: 'app',
+    path: 'component',
     name: 'app',
     component: () => import('@/views/cluster/app'),
-    meta: { title: '应用', icon: 'app', group: 'cluster', object: "app" },
+    meta: { title: '组件', icon: 'app', group: 'cluster', object: "app" },
   },
 
   {

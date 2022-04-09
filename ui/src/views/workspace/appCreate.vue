@@ -229,7 +229,8 @@ export default {
       }
       let chartYaml = yaml.dump(chartDict)
       let data = {
-        project_id: parseInt(this.projectId), 
+        scope: "project_app",
+        scope_id: parseInt(this.projectId), 
         name: this.form.name, 
         version: version,
         chart: chartYaml,
@@ -241,7 +242,7 @@ export default {
       this.loading = true
       createApp(data).then(() => {
         this.loading = false
-        Message.success("安装应用成功")
+        Message.success("创建应用成功")
         this.$router.push({name: 'workspaceApp'})
       }).catch((err) => {
         this.loading = false
@@ -290,7 +291,8 @@ export default {
           valuesDict.workloads[template.metadata.name] = {containers: containers}
           if(['Deployment', 'StatefulSet'].indexOf(template.kind) > -1) {
             valuesDict.workloads[template.metadata.name].replicas = tpl.spec.replicas
-            tpl.spec.replicas = `{{ index .Values "workloads" "${template.metadata.name}" "replicas" }}`
+            tpl.spec.replicas = `0{{ index .Values "workloads" "${template.metadata.name}" "replicas" }}`
+            // tpl.spec.replicas = "{{ abcdef  asdfe }}"
           }
           valuesDict.workloads[template.metadata.name].kind = template.kind
         }

@@ -10,6 +10,8 @@ import (
 	"github.com/kubespace/kubespace/pkg/views/serializers"
 	"k8s.io/klog"
 	"net/http"
+	"strconv"
+	"time"
 )
 
 type Cluster struct {
@@ -48,16 +50,19 @@ func (clu *Cluster) list(c *Context) *utils.Response {
 	var data []map[string]interface{}
 
 	for _, du := range clus {
-		if !clu.models.ClusterManager.HasMember(du, c.User) {
+		if !clu.models.ClusterManager.HasMember(&du, c.User) {
 			continue
 		}
 		status := types.ClusterPending
+		klog.Info(du.Name)
 		clusterConnect := clu.Watch.KubeMessage.ClusterConnected(du.Name)
 		if clusterConnect {
 			status = types.ClusterConnect
 		}
 		data = append(data, map[string]interface{}{
+			"id":          du.ID,
 			"name":        du.Name,
+			"name1":       du.Name1,
 			"token":       du.Token,
 			"status":      status,
 			"created_by":  du.CreatedBy,
@@ -85,20 +90,22 @@ func (clu *Cluster) create(c *Context) *utils.Response {
 		return resp
 	}
 	cluster := &types.Cluster{
-		Name:      ser.Name,
+		Name1:     ser.Name,
 		Token:     utils.CreateUUID(),
 		Status:    types.ClusterPending,
 		CreatedBy: c.User.Name,
 		Members:   ser.Members,
 	}
-	cluster.CreateTime = utils.StringNow()
-	cluster.UpdateTime = utils.StringNow()
+	cluster.CreateTime = time.Now()
+	cluster.UpdateTime = time.Now()
 	if err := clu.models.ClusterManager.Create(cluster); err != nil {
 		resp.Code = code.CreateError
 		resp.Msg = err.Error()
 		return resp
 	}
 	d := map[string]interface{}{
+		"id":          cluster.ID,
+		"name1":       cluster.Name1,
 		"name":        cluster.Name,
 		"token":       cluster.Token,
 		"status":      cluster.Status,
@@ -123,14 +130,14 @@ func (clu *Cluster) members(c *Context) *utils.Response {
 		resp.Msg = fmt.Sprintf("params cluster name:%s blank", ser.Name)
 		return resp
 	}
-	cluster, err := clu.models.ClusterManager.Get(ser.Name)
+	cluster, err := clu.models.ClusterManager.GetByName(ser.Name)
 	if err != nil {
 		resp.Code = code.GetError
 		resp.Msg = fmt.Sprintf("get cluster %s error: %s", ser.Name, err.Error())
 		return resp
 	}
 	cluster.Members = ser.Members
-	cluster.UpdateTime = utils.StringNow()
+	cluster.UpdateTime = time.Now()
 	if err := clu.models.ClusterManager.Update(cluster); err != nil {
 		resp.Code = code.UpdateError
 		resp.Msg = err.Error()
@@ -176,7 +183,11 @@ func (clu *Cluster) delete(c *Context) *utils.Response {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
 	for _, c := range ser {
-		err := clu.models.ClusterManager.Delete(c.Name)
+		id, err := strconv.ParseUint(c.Id, 10, 64)
+		if err != nil {
+			return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+		}
+		err = clu.models.ClusterManager.Delete(uint(id))
 		if err != nil {
 			klog.Errorf("delete cluster %s error: %s", c, err.Error())
 			return &utils.Response{Code: code.DeleteError, Msg: err.Error()}
