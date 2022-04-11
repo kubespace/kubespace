@@ -14,6 +14,11 @@ type WorkspaceSerializer struct {
 	CodeSecretId uint   `json:"code_secret_id" form:"code_secret_id"`
 }
 
+type WorkspaceReleaseSerializer struct {
+	WorkspaceId uint   `json:"workspace_id" form:"workspace_id"`
+	Version     string `json:"version" form:"version"`
+}
+
 type PipelineSerializer struct {
 	ID          uint                      `json:"id"`
 	WorkspaceId uint                      `json:"workspace_id"`
@@ -34,10 +39,11 @@ type PipelineTriggerExpression struct {
 }
 
 type PipelineStageSerializer struct {
-	ID          uint               `json:"id"`
-	Name        string             `json:"name"`
-	TriggerMode string             `json:"trigger_mode"`
-	Jobs        types.PipelineJobs `json:"jobs"`
+	ID           uint                   `json:"id"`
+	Name         string                 `json:"name"`
+	TriggerMode  string                 `json:"trigger_mode"`
+	CustomParams map[string]interface{} `json:"custom_params"`
+	Jobs         types.PipelineJobs     `json:"jobs"`
 }
 
 type PipelineListSerializer struct {
@@ -60,7 +66,9 @@ type PipelineCallbackSerializer struct {
 }
 
 type PipelineStageManualSerializer struct {
-	StageRunId uint `json:"stage_run_id"`
+	StageRunId   uint                              `json:"stage_run_id"`
+	CustomParams map[string]interface{}            `json:"custom_params"`
+	JobParams    map[string]map[string]interface{} `json:"job_params"`
 }
 
 type PipelineStageRetrySerializer struct {

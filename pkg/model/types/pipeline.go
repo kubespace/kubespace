@@ -55,6 +55,15 @@ type PipelineWorkspace struct {
 	UpdateTime   time.Time `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`
 }
 
+type PipelineWorkspaceRelease struct {
+	ID             uint      `gorm:"primaryKey" json:"id"`
+	WorkspaceId    uint      `gorm:"not null;uniqueIndex:idx_workspace_version" json:"workspace_id"`
+	ReleaseVersion string    `gorm:"size:500;not null;uniqueIndex:idx_workspace_version" json:"release_version"`
+	JobRunId       uint      `gorm:"not null;" json:"job_run_id"`
+	CreateTime     time.Time `gorm:"column:create_time;not null;autoCreateTime" json:"create_time"`
+	UpdateTime     time.Time `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`
+}
+
 type Pipeline struct {
 	ID          uint             `gorm:"primaryKey" json:"id"`
 	Name        string           `gorm:"size:50;not null;uniqueIndex:idx_workspace_name" json:"name"`
@@ -106,12 +115,14 @@ type PipelineTrigger struct {
 }
 
 type PipelineStage struct {
-	ID          uint         `gorm:"primaryKey" json:"id"`
-	Name        string       `gorm:"size:50;not null;uniqueIndex:idx_pipeline_stage_name" json:"name"`
-	PipelineId  uint         `gorm:"not null;uniqueIndex:idx_pipeline_stage_name" json:"pipeline_id"`
-	TriggerMode string       `gorm:"size:20;not null;" json:"trigger_mode"`
-	PrevStageId uint         `gorm:"not null" json:"prev_stage_id"`
-	Jobs        PipelineJobs `gorm:"type:json;not null" json:"jobs"`
+	ID         uint   `gorm:"primaryKey" json:"id"`
+	Name       string `gorm:"size:50;not null;uniqueIndex:idx_pipeline_stage_name" json:"name"`
+	PipelineId uint   `gorm:"not null;uniqueIndex:idx_pipeline_stage_name" json:"pipeline_id"`
+	// 在流水线中对阶段的自定义参数，执行时自动放到阶段的env中
+	CustomParams Map          `gorm:"type:json" json:"custom_params"`
+	TriggerMode  string       `gorm:"size:20;not null;" json:"trigger_mode"`
+	PrevStageId  uint         `gorm:"not null" json:"prev_stage_id"`
+	Jobs         PipelineJobs `gorm:"type:json;not null" json:"jobs"`
 }
 
 func (pj *PipelineJobs) Scan(value interface{}) error {
@@ -279,6 +290,7 @@ type PipelineRunStage struct {
 	PipelineRunId  uint            `gorm:"not null" json:"pipeline_run_id"`
 	Status         string          `gorm:"size:50;not null" json:"status"`
 	Env            Map             `gorm:"type:json" json:"env"`
+	CustomParams   Map             `gorm:"json" json:"custom_params"`
 	Jobs           PipelineRunJobs `gorm:"-" json:"jobs"`
 	ExecTime       time.Time       `gorm:"not null;autoCreateTime" json:"exec_time"`
 	CreateTime     time.Time       `gorm:"not null;autoCreateTime" json:"create_time"`
@@ -288,16 +300,18 @@ type PipelineRunStage struct {
 type PipelineRunJobs []*PipelineRunJob
 
 type PipelineRunJob struct {
-	ID            uint            `gorm:"primaryKey" json:"id"`
-	PipelineRunId uint            `gorm:"not null" json:"pipeline_run_id"`
-	StageRunId    uint            `gorm:"not null" json:"stage_run_id"`
-	Name          string          `gorm:"size:50;not null" json:"name"`
-	PluginKey     string          `gorm:"size:255;not null" json:"plugin_key"`
-	Status        string          `gorm:"size:50;not null" json:"status"`
-	Params        Map             `gorm:"type:json;not null" json:"params"`
-	Result        *utils.Response `gorm:"type:json;" json:"result"`
-	CreateTime    time.Time       `gorm:"not null;autoCreateTime" json:"create_time"`
-	UpdateTime    time.Time       `gorm:"not null;autoUpdateTime" json:"update_time"`
+	ID            uint   `gorm:"primaryKey" json:"id"`
+	PipelineRunId uint   `gorm:"not null" json:"pipeline_run_id"`
+	StageRunId    uint   `gorm:"not null" json:"stage_run_id"`
+	Name          string `gorm:"size:50;not null" json:"name"`
+	PluginKey     string `gorm:"size:255;not null" json:"plugin_key"`
+	Status        string `gorm:"size:50;not null" json:"status"`
+	// 每个Job执行完之后的环境变量
+	Env        Map             `gorm:"type:json" json:"env"`
+	Params     Map             `gorm:"type:json;not null" json:"params"`
+	Result     *utils.Response `gorm:"type:json;" json:"result"`
+	CreateTime time.Time       `gorm:"not null;autoCreateTime" json:"create_time"`
+	UpdateTime time.Time       `gorm:"not null;autoUpdateTime" json:"update_time"`
 }
 
 type PipelineRunJobLog struct {

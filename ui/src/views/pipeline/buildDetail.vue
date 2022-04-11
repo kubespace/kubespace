@@ -69,7 +69,7 @@
                   :data="mainStageEnvs"
                   class="table-fix"
                   tooltip-effect="dark"
-                  :max-height="maxHeight-150"
+                  :max-height="maxHeight-135"
                   style="width: 100%"
                   v-loading="loading"
                   :cell-style="cellStyle"
@@ -79,6 +79,9 @@
                   <el-table-column prop="name" label="流水线环境参数" show-overflow-tooltip>
                   </el-table-column>
                   <el-table-column prop="value" label="参数值">
+                    <template slot-scope="scope">
+                      {{ scope.row.value }}
+                    </template>
                   </el-table-column>
                 </el-table>
               </div>
@@ -223,9 +226,9 @@ export default {
         }
       }
       this.mainContent = {
-        type: 'job',
+        type: 'stage',
         mainStage: this.build.stages_run[0],
-        mainJob: this.build.mainStage.jobs[0],
+        mainJob: {},
         jobLog: ''
       }
       this.getJobLog()

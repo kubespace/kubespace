@@ -186,7 +186,7 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { PipelineStage, CodeToImage, ExecuteShell, AppDeploy } from '@/views/pipeline/plugin'
+import { PipelineStage, CodeToImage, ExecuteShell, AppDeploy, Release } from '@/views/pipeline/plugin'
 import { getPipeline, updatePipeline, createPipeline } from '@/api/pipeline/pipeline'
 import { getWorkspace } from '@/api/pipeline/workspace'
 import { Message } from 'element-ui'
@@ -198,7 +198,8 @@ export default {
     PipelineStage,
     CodeToImage,
     ExecuteShell,
-    AppDeploy
+    AppDeploy,
+    Release
   },
   data() {
     return {
@@ -312,7 +313,7 @@ export default {
             workspace_id: this.pipeline.workspace.id,
             name: this.pipeline.pipeline.name,
             triggers: this.pipeline.pipeline.triggers,
-            stages: []
+            stages: [],
           }
           for(let stage of this.pipeline.stages) {
             this.editPipeline.stages.push({
@@ -320,6 +321,7 @@ export default {
               name: stage.name,
               trigger_mode: stage.trigger_mode,
               jobs: stage.jobs,
+              custom_params: stage.custom_params,
             })
           }
         }
@@ -358,9 +360,22 @@ export default {
       this.$router.push({name: 'pipeline', params: {'workspaceId': this.workspaceId}})
     },
     dialogSave() {
+      var custom_params = {}
+      if(this.dialogType == 'edit_stage' || this.dialogType == 'add_stage') {
+        if(this.dialogData.custom_params) {
+          for(let p of this.dialogData.custom_params) {
+            if(!p.param) {
+              Message.error("阶段参数值不能为空")
+              return
+            }
+            custom_params[p.param] = p.value || ''
+          }
+        }
+      }
       if (this.dialogType == 'edit_stage') {
         this.dialogOriginData.stage.name = this.dialogData.name
         this.dialogOriginData.stage.trigger_mode = this.dialogData.trigger_mode
+        this.$set(this.dialogOriginData.stage, 'custom_params', custom_params)
       } else if(this.dialogType == 'edit_job') {
         let idx = this.dialogOriginData.idx
         this.dialogOriginData.stage.jobs[idx] = this.dialogData
@@ -368,6 +383,7 @@ export default {
         let newStage = {
           name: this.dialogData.name || '未命名',
           trigger_mode: this.dialogData.trigger_mode,
+          custom_params: custom_params,
           jobs: [{
             name: "未命名",
             plugin_key: "",
@@ -403,9 +419,17 @@ export default {
         stage,
         idx
       }
+      console.log(stage)
+      var custom_params = []
+      if(stage.custom_params) {
+        for(let k in stage.custom_params) {
+          custom_params.push({param: k, value: stage.custom_params[k]})
+        }
+      }
       this.dialogData = {
         name: stage.name,
         trigger_mode: stage.trigger_mode,
+        custom_params: custom_params
       }
     },
     openEditJobDialog(stage, idx) {
@@ -422,6 +446,7 @@ export default {
       this.dialogData = {
         name: "",
         trigger_mode: "auto",
+        custom_params: []
       }
     },
     openAddJobDialog(stage) {

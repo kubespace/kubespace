@@ -127,7 +127,7 @@
                   width="">
                 </el-table-column>
               </el-table>
-              <el-button style="margin-top: 8px; border-radius: 0px; padding: 5px 15px;" type="primary" size="mini">重新构建</el-button>
+              <!-- <el-button style="margin-top: 8px; border-radius: 0px; padding: 5px 15px;" type="primary" size="mini">重新构建</el-button> -->
             </template>
             <template v-if="build.clickDetail && build.clickDetail.type == 'stage'">
               <div style="font-size: 14px; padding: 4px 3px 8px">
@@ -153,9 +153,11 @@
                   </template>
                 </el-table-column>
               </el-table>
-              <el-button style="margin-top: 8px; border-radius: 0px; padding: 5px 15px;" type="primary" size="mini">重新构建</el-button>
-              <el-button style="margin-top: 8px; border-radius: 0px; padding: 5px 15px;" type="primary" size="mini">重新执行</el-button>
+              <!-- <el-button style="margin-top: 8px; border-radius: 0px; padding: 5px 15px;" type="primary" size="mini">重新构建</el-button> -->
+              
             </template>
+            <el-button style="margin-top: 8px; border-radius: 0px; padding: 5px 15px;" type="primary" 
+                size="mini" :disabled="!(build.pipeline_run.status == 'error')" @click="stageRetry(build)">失败重试</el-button>
           </div>
         </div>
       </div>
@@ -193,17 +195,38 @@
       <div v-loading="dialogLoading">
         <div class="dialogContent" style="padding: 0px 40px;">
           <el-form :model="manualStage" ref="" label-position="left" label-width="105px">
-            <el-form-item label="阶段参数" prop="" :required="true">
-              <el-input :disabled="true" style="width: 100%;" placeholder="" v-model="pipelineName" autocomplete="off" size="small"></el-input>
-            </el-form-item>
-            <el-form-item label="发布版本" prop="" :required="true">
-              <el-input style="width: 100%;" placeholder="请输入发布版本" v-model="manualStage.params.version" autocomplete="off" size="small"></el-input>
+            <el-form-item label="阶段参数" prop="">
+              <el-row style="margin-bottom: 5px; margin-top: 2px;">
+                <el-col :span="11" style="background-color: #F5F7FA; padding-left: 10px;">
+                  <div class="border-span-header">参数</div>
+                </el-col>
+                <el-col :span="13" style="background-color: #F5F7FA">
+                  <div class="border-span-header">参数值</div>
+                </el-col>
+              </el-row>
+              <el-row style="padding-bottom: 5px;" v-for="(d, i) in manualStage.custom_params" :key="i">
+                <el-col :span="11">
+                  <div class="border-span-header">
+                    <el-input v-model="d.param" disabled size="small" style="padding-right: 10px" placeholder="阶段参数"></el-input>
+                  </div>
+                </el-col>
+                <el-col :span="13">
+                  <div class="border-span-header">
+                    <el-input v-model="d.value" size="small" placeholder="请输入参数默认值"></el-input>
+                  </div>
+                </el-col>
+              </el-row>
             </el-form-item>
           </el-form>
+          <template v-for="(job, i) in manualStage.stage.jobs || []">
+            <div :key="i" v-if="manualJobComponent[job.plugin_key]">
+              <component v-if="manualStage.job_params[job.plugin_key]" v-bind:is="manualJobComponent[job.plugin_key]" :params="manualStage.job_params[job.plugin_key]"></component>
+            </div>
+          </template>
         </div>
         <div slot="footer" class="dialogFooter" style="margin-top: 20px;">
           <el-button @click="manualDialogVisible = false" style="margin-right: 20px;" >取 消</el-button>
-          <el-button type="primary" @click="manualExec">确 定</el-button>
+          <el-button type="primary" @click="manualExec">执 行</el-button>
         </div>
       </div>
     </el-dialog>
@@ -213,13 +236,15 @@
 <script>
 import { Clusterbar } from '@/views/components'
 import { getPipeline } from '@/api/pipeline/pipeline'
-import { listBuilds, buildPipeline, manualExec } from '@/api/pipeline/build'
+import { listBuilds, buildPipeline, manualExec, stageRetry } from '@/api/pipeline/build'
+import { manualCheck, Release } from '@/views/pipeline/plugin-manual'
 import { Message } from 'element-ui'
 
 export default {
   name: 'PipelineWorkspace',
   components: {
-    Clusterbar
+    Clusterbar,
+    Release
   },
   data() {
     return {
@@ -243,7 +268,11 @@ export default {
       manualDialogVisible: false,
       manualStage: {
         stage: {},
-        params: {},
+        job_params: {},
+        custom_params: []
+      },
+      manualJobComponent: {
+        release: Release
       }
     }
   },
@@ -481,26 +510,81 @@ export default {
       this.$router.push({name: 'pipelineBuildDetail', params: {buildId: build.pipeline_run.id}})
     },
     openManualStageDialog(stage) {
-      this.manualStage = {
-        stage: stage,
-        params: {}
+      let custom_params = []
+      if(stage.custom_params) {
+        for(let k in stage.custom_params) {
+          custom_params.push({param: k, value: stage.custom_params[k]})
+        }
       }
+      let job_params = {}
+      for(let j of stage.jobs) {
+        job_params[j.plugin_key] = j.params || {}
+      }
+      this.$set(this.manualStage, 'job_params', job_params)
+      this.$set(this.manualStage, 'custom_params', custom_params)
+      this.$set(this.manualStage, 'stage', stage)
+      console.log(this.manualStage)
       this.manualDialogVisible = true
     },
-    manualExec() {
-      let parmas = {stage_run_id: this.manualStage.stage.id}
+    async manualExec() {
+      let parmas = {
+        stage_run_id: this.manualStage.stage.id,
+        job_params: this.manualStage.job_params
+      }
+      let custom_params = {}
+      if(this.manualStage.custom_params) {
+        for(let p of this.manualStage.custom_params) {
+          custom_params[p.param] = p.value
+        }
+      }
+      parmas['custom_params'] = custom_params
       if(!parmas.stage_run_id) {
         Message.error("获取执行阶段id错误，请刷新重试")
         return
       }
       this.dialogLoading = true
+      let err = await manualCheck(this.pipeline, this.manualStage.stage, this.manualStage.job_params)
+      if (err) {
+        Message.error(err)
+        this.dialogLoading = false
+        return
+      }
       manualExec(parmas).then((response) => {
-        this.$message({message: '执行成功', type: 'success'});
+        this.$message({message: '下发任务成功', type: 'success'});
         this.dialogLoading = false
         // this.fetchBuilds(0)
         this.manualDialogVisible = false
       }).catch( (err) => {
         this.dialogLoading = false
+      })
+    },
+    stageRetry(build) {
+      if(!build) {
+        Message.error("获取构建信息失败，请刷新重试")
+        return
+      }
+      if(!build.stages_run) {
+        Message.error("获取构建阶段失败，请刷新重试")
+        return
+      }
+      let stageId = 0
+      for(let s of build.stages_run) {
+        if(s.status == 'error') {
+          stageId = s.id
+        }
+      }
+      if(!stageId) {
+        Message.error("获取构建阶段失败，请刷新重试")
+        return
+      }
+      this.loading = true
+      let parmas = {stage_run_id: stageId}
+      stageRetry(parmas).then((response) => {
+        this.$message({message: '重试成功', type: 'success'});
+        // this.fetchBuilds(0)
+        this.loading = false
+      }).catch( (err) => {
+        this.loading = false
       })
     }
   },

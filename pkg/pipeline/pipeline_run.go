@@ -23,6 +23,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -244,12 +245,13 @@ func (r *ServicePipelineRun) Build(buildSer *serializers.PipelineBuildSerializer
 	var stagesRun []*types.PipelineRunStage
 	for _, stage := range stages {
 		stageRun := types.PipelineRunStage{
-			Name:        stage.Name,
-			TriggerMode: stage.TriggerMode,
-			Status:      types.PipelineStatusWait,
-			Env:         map[string]interface{}{},
-			CreateTime:  time.Now(),
-			UpdateTime:  time.Now(),
+			Name:         stage.Name,
+			TriggerMode:  stage.TriggerMode,
+			Status:       types.PipelineStatusWait,
+			Env:          map[string]interface{}{},
+			CustomParams: stage.CustomParams,
+			CreateTime:   time.Now(),
+			UpdateTime:   time.Now(),
 		}
 		var stageRunJobs types.PipelineRunJobs
 		for _, stageJob := range stage.Jobs {
@@ -258,6 +260,7 @@ func (r *ServicePipelineRun) Build(buildSer *serializers.PipelineBuildSerializer
 				PluginKey: stageJob.PluginKey,
 				Status:    types.PipelineStatusWait,
 				Params:    stageJob.Params,
+				Env:       map[string]interface{}{},
 			}
 			stageRunJobs = append(stageRunJobs, stageRunJob)
 		}
@@ -393,6 +396,7 @@ func (r *ServicePipelineRun) getJobExecParam(envs map[string]interface{}, jobPar
 			return jobParams[pluginParam.FromName]
 		}
 	} else if pluginParam.From == types.PluginParamsFromCodeSecret {
+		res = nil
 		workspaceId, err := strconv.ParseUint(fmt.Sprintf("%v", envs["PIPELINE_WORKSPACE_ID"]), 10, 64)
 		if err != nil {
 			return &utils.Response{Code: code.RequestError, Msg: "获取流水线空间失败：" + err.Error()}
@@ -411,21 +415,40 @@ func (r *ServicePipelineRun) getJobExecParam(envs map[string]interface{}, jobPar
 			}
 		}
 	} else if pluginParam.From == types.PluginParamsFromImageRegistry {
-		if imageRegistry, ok := jobParams[pluginParam.FromName]; ok {
-			registryId, err := strconv.ParseUint(fmt.Sprintf("%v", imageRegistry), 10, 64)
-			if err == nil {
-				registry, _ := r.models.ImageRegistryManager.Get(uint(registryId))
-				if registry != nil {
-					return map[string]interface{}{
-						"registry": registry.Registry,
-						"user":     registry.User,
-						"password": registry.Password,
-					}
-				}
-			}
-
+		res = nil
+		var imageRegistry interface{}
+		var ok bool
+		if pluginParam.FromName == "" {
+			imageRegistry, ok = envs["CODE_BUILD_REGISTRY_ID"]
+		} else {
+			imageRegistry, ok = jobParams[pluginParam.FromName]
 		}
+		var regId string
+		if regId, ok = imageRegistry.(string); ok {
+			imageRegistry = strings.Split(regId, ",")[0]
+		}
+		if imageRegistry == nil {
+			klog.Errorf("not found image registry job params")
+			return nil
+		}
+		registryId, err := strconv.ParseUint(fmt.Sprintf("%v", imageRegistry), 10, 64)
+		if err != nil {
+			klog.Errorf("parse registry to int error: %s", err.Error())
+			return nil
+		}
+		registry, err := r.models.ImageRegistryManager.Get(uint(registryId))
+		if err != nil {
+			klog.Errorf("get image registry error: %s", err.Error())
+			return nil
+		}
+		return map[string]interface{}{
+			"registry": registry.Registry,
+			"user":     registry.User,
+			"password": registry.Password,
+		}
+
 	} else if pluginParam.From == types.PluginParamsFromPipelineResource {
+		res = nil
 		if resourceParam, ok := jobParams[pluginParam.FromName]; ok {
 			resourceId, err := strconv.ParseUint(fmt.Sprintf("%v", resourceParam), 10, 64)
 			if err == nil {
@@ -518,11 +541,15 @@ func (r *ServicePipelineRun) getJobRunResultEnvs(jobRun *types.PipelineRunJob) m
 		return nil
 	}
 	var envs = map[string]interface{}{}
-	resData := jobRun.Result.Data.(map[string]interface{})
-	for _, envPath := range plugin.ResultEnv.EnvPath {
-		if v, ok := resData[envPath.ResultName]; ok {
-			envs[envPath.EnvName] = v
+	resData, ok := jobRun.Result.Data.(map[string]interface{})
+	if ok {
+		for _, envPath := range plugin.ResultEnv.EnvPath {
+			if v, ok := resData[envPath.ResultName]; ok {
+				envs[envPath.EnvName] = v
+			}
 		}
+	} else {
+		klog.Errorf("get job run id=%d result data error", jobRun.ID)
 	}
 	return envs
 }
@@ -552,10 +579,12 @@ func (r *ServicePipelineRun) Callback(callbackSer serializers.PipelineCallbackSe
 		callbackJobRun.Status = types.PipelineStatusError
 	}
 	envs := r.getJobRunResultEnvs(callbackJobRun)
+	if envs != nil {
+		callbackJobRun.Env = envs
+	}
 	//pipelineRun, stageRun, err := r.models.ManagerPipelineRun.UpdatePipelineStageRun(stageRun.ID, "", types.PipelineRunJobs{callbackJobRun})
 	pipelineRun, stageRun, err := r.models.ManagerPipelineRun.UpdatePipelineStageRun(&pipeline.UpdateStageObj{
 		StageRunId:   stageRun.ID,
-		JobRunEnvs:   envs,
 		StageRunJobs: types.PipelineRunJobs{callbackJobRun},
 	})
 	if stageRun != nil && stageRun.Status == types.PipelineStatusOK {
@@ -568,6 +597,20 @@ func (r *ServicePipelineRun) ManualExecuteStage(manualSer *serializers.PipelineS
 	stageRun, err := r.models.ManagerPipelineRun.GetStageRun(manualSer.StageRunId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	if len(manualSer.CustomParams) > 0 {
+		stageRun.CustomParams = manualSer.CustomParams
+	}
+	for i, job := range stageRun.Jobs {
+		for pluginKey, params := range manualSer.JobParams {
+			if job.PluginKey == pluginKey && len(params) > 0 {
+				stageRun.Jobs[i].Params = params
+				break
+			}
+		}
+	}
+	if err = r.models.ManagerPipelineRun.UpdateStageJobRunParams(stageRun, stageRun.Jobs); err != nil {
+		return &utils.Response{Code: code.DBError, Msg: "更新阶段任务参数失败:" + err.Error()}
 	}
 	pipelineRun, err := r.models.ManagerPipelineRun.Get(stageRun.PipelineRunId)
 	if err != nil {
@@ -588,8 +631,8 @@ func (r *ServicePipelineRun) RetryStage(retrySer *serializers.PipelineStageRetry
 	}
 	//pipelineRun, stageRun, err := r.models.ManagerPipelineRun.UpdatePipelineStageRun(stageRun.ID, types.PipelineStatusDoing, nil)
 	pipelineRun, stageRun, err := r.models.ManagerPipelineRun.UpdatePipelineStageRun(&pipeline.UpdateStageObj{
-		StageRunId:     stageRun.ID,
-		StageRunStatus: types.PipelineStatusDoing,
+		StageRunId: stageRun.ID,
+		//StageRunStatus: types.PipelineStatusDoing,
 	})
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}

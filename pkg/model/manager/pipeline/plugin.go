@@ -108,6 +108,12 @@ var BuiltinPlugins = []types.PipelinePlugin{
 					Default:   "",
 				},
 				{
+					ParamName: "image_registry_id",
+					From:      types.PluginParamsFromJob,
+					FromName:  "image_build_registry",
+					Default:   "",
+				},
+				{
 					ParamName: "image_builds",
 					From:      types.PluginParamsFromJob,
 					FromName:  "image_builds",
@@ -120,6 +126,14 @@ var BuiltinPlugins = []types.PipelinePlugin{
 				{
 					ResultName: "images",
 					EnvName:    "CODE_BUILD_IMAGES",
+				},
+				{
+					ResultName: "image_registry",
+					EnvName:    "CODE_BUILD_REGISTRY",
+				},
+				{
+					ResultName: "image_registry_id",
+					EnvName:    "CODE_BUILD_REGISTRY_ID",
 				},
 			},
 		},
@@ -152,7 +166,7 @@ var BuiltinPlugins = []types.PipelinePlugin{
 		Params: types.PipelinePluginParams{
 			Params: []*types.PipelinePluginParamsSpec{
 				{
-					ParamName: "project_id",
+					ParamName: "project",
 					From:      types.PluginParamsFromJob,
 					FromName:  "project",
 					Default:   "",
@@ -185,6 +199,12 @@ var BuiltinPlugins = []types.PipelinePlugin{
 		Params: types.PipelinePluginParams{
 			Params: []*types.PipelinePluginParamsSpec{
 				{
+					ParamName: "workspace_id",
+					From:      types.PluginParamsFromEnv,
+					FromName:  "PIPELINE_WORKSPACE_ID",
+					Default:   "",
+				},
+				{
 					ParamName: "code_url",
 					From:      types.PluginParamsFromEnv,
 					FromName:  "PIPELINE_CODE_URL",
@@ -211,13 +231,7 @@ var BuiltinPlugins = []types.PipelinePlugin{
 				{
 					ParamName: "version",
 					From:      types.PluginParamsFromJob,
-					FromName:  "",
-					Default:   nil,
-				},
-				{
-					ParamName: "fourth_version",
-					From:      types.PluginParamsFromJob,
-					FromName:  "",
+					FromName:  "version",
 					Default:   nil,
 				},
 				{
@@ -225,6 +239,12 @@ var BuiltinPlugins = []types.PipelinePlugin{
 					From:      types.PluginParamsFromEnv,
 					FromName:  "CODE_BUILD_IMAGES",
 					Default:   "",
+				},
+				{
+					ParamName: "image_registry",
+					From:      types.PluginParamsFromImageRegistry,
+					FromName:  "",
+					Default:   nil,
 				},
 			},
 		},
@@ -244,13 +264,14 @@ var BuiltinPlugins = []types.PipelinePlugin{
 }
 
 func (p *ManagerPipelinePlugin) Init() {
-	var cnt int64
-	if err := p.DB.Model(&types.PipelinePlugin{}).Count(&cnt).Error; err != nil {
-		return
-	}
-	if cnt == 0 {
-		now := time.Now()
-		for _, plugin := range BuiltinPlugins {
+	now := time.Now()
+	for _, plugin := range BuiltinPlugins {
+		var cnt int64
+		if err := p.DB.Model(&types.PipelinePlugin{}).Where("`key` = ?", plugin.Key).Count(&cnt).Error; err != nil {
+			klog.Errorf("get plugin %s error: %s", plugin.Key, err.Error())
+			return
+		}
+		if cnt == 0 {
 			if plugin.Url != types.PipelinePluginBuiltinUrl {
 				plugin.Url = conf.AppConfig.PipelinePluginUrl + "/" + plugin.Key
 			}
@@ -261,4 +282,5 @@ func (p *ManagerPipelinePlugin) Init() {
 			}
 		}
 	}
+
 }

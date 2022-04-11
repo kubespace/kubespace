@@ -201,6 +201,20 @@ func (p *ManagerPipelineRun) UpdateStageRun(stageRun *types.PipelineRunStage) er
 	return err
 }
 
+func (p *ManagerPipelineRun) UpdateStageJobRunParams(stageRun *types.PipelineRunStage, jobRuns []*types.PipelineRunJob) error {
+	return p.DB.Transaction(func(tx *gorm.DB) error {
+		if err := p.DB.Select("custom_params").Save(stageRun).Error; err != nil {
+			return err
+		}
+		for i, _ := range jobRuns {
+			if err := p.DB.Select("params").Save(jobRuns[i]).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 // GetStageRunStatus 根据stage的所有任务的状态返回该stage的状态
 // 1. 如果有doing的job，stage状态为doing；
 // 2. 如果所有job的状态为error/ok/wait，则
@@ -231,21 +245,20 @@ func (p *ManagerPipelineRun) GetStageRunStatus(stageRun *types.PipelineRunStage)
 	return status
 }
 
-func (p *ManagerPipelineRun) GetStageRunEnv(envs map[string]interface{}, stageRun *types.PipelineRunStage) types.Map {
-	if envs == nil {
-		return nil
+func (p *ManagerPipelineRun) GetStageRunEnv(stageRun *types.PipelineRunStage) types.Map {
+	envs := make(map[string]interface{})
+	for _, jobRun := range stageRun.Jobs {
+		// 当前阶段所有Job合并env
+		envs = utils.MergeMap(envs, jobRun.Env)
 	}
-	if stageRun.Env == nil {
-		return envs
-	} else {
-		return utils.MergeMap(stageRun.Env, envs)
-	}
+	// 合并替换之前阶段的env
+	stageEnvs := utils.MergeReplaceMap(stageRun.Env, envs)
+	return stageEnvs
 }
 
 type UpdateStageObj struct {
 	StageRunId     uint
 	StageRunStatus string
-	JobRunEnvs     map[string]interface{}
 	StageRunJobs   types.PipelineRunJobs
 }
 
@@ -274,16 +287,10 @@ func (p *ManagerPipelineRun) UpdatePipelineStageRun(updateStageObj *UpdateStageO
 				}
 			}
 		}
-		if updateStageObj.JobRunEnvs != nil {
-			stageEnvs := p.GetStageRunEnv(updateStageObj.JobRunEnvs, &stageRun)
-			if stageEnvs != nil {
-				stageRun.Env = stageEnvs
-			}
-		}
 
 		if updateStageObj.StageRunStatus != "" {
 			stageRun.Status = updateStageObj.StageRunStatus
-		} else {
+		} else if updateStageObj.StageRunJobs != nil {
 			var runJobs []types.PipelineRunJob
 			if err = tx.Where("stage_run_id = ?", updateStageObj.StageRunId).Find(&runJobs).Error; err != nil {
 				return err
@@ -293,6 +300,10 @@ func (p *ManagerPipelineRun) UpdatePipelineStageRun(updateStageObj *UpdateStageO
 				stageRun.Jobs = append(stageRun.Jobs, &runJobs[i])
 			}
 			stageRun.Status = p.GetStageRunStatus(&stageRun)
+			stageEnvs := p.GetStageRunEnv(&stageRun)
+			if stageEnvs != nil {
+				stageRun.Env = stageEnvs
+			}
 		}
 		if err = tx.First(&pipelineRun, stageRun.PipelineRunId).Error; err != nil {
 			return err
@@ -355,14 +366,18 @@ func (p *ManagerPipelineRun) GetEnvBeforeStageRun(stageRun *types.PipelineRunSta
 		if err = p.DB.Last(&pipelineRun, "id = ?", stageRun.PipelineRunId).Error; err != nil {
 			return nil, err
 		}
-		return pipelineRun.Env, nil
+		envs = pipelineRun.Env
 	} else {
 		var prevStageRun types.PipelineRunStage
 		if err = p.DB.Last(&prevStageRun, "id = ? and pipeline_run_id = ?", stageRun.PrevStageRunId, stageRun.PipelineRunId).Error; err != nil {
 			return nil, err
 		}
-		return prevStageRun.Env, nil
+		envs = prevStageRun.Env
 	}
+	for k, v := range stageRun.CustomParams {
+		envs[k] = v
+	}
+	return envs, nil
 }
 
 func (p *ManagerPipelineRun) GetJobRunLog(jobRunId uint, withLog bool) (*types.PipelineRunJobLog, error) {

@@ -10,6 +10,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"github.com/kubespace/kubespace/pkg/views/serializers"
 	"k8s.io/klog"
+	"runtime"
 )
 
 type PluginExecutor interface {
@@ -23,7 +24,7 @@ type PluginLogger struct {
 }
 
 func (l *PluginLogger) Log(format string, a ...interface{}) {
-	_, err := l.Buffer.WriteString(fmt.Sprintf(format, a...))
+	_, err := l.Buffer.WriteString(fmt.Sprintf(format+"\n", a...))
 	if err != nil {
 		klog.Errorf("write job %s log to buffer error: %s", l.jobId, err.Error())
 	} else {
@@ -57,7 +58,7 @@ func NewPlugins(models *model.Models, kr *kube_resource.KubeResources, callback 
 		Models:        models,
 		KubeResources: kr,
 	}
-	p.Plugins[types.BuiltinPluginUpgradeApp] = UpgradeAppPlugin{}
+	p.Plugins[types.BuiltinPluginUpgradeApp] = UpgradeAppPlugin{Models: models, KubeResources: kr}
 	return p
 }
 
@@ -71,18 +72,31 @@ func (b *Plugins) Execute(pluginParams *PluginParams) *utils.Response {
 	}
 	pluginParams.Logger = &PluginLogger{
 		jobId:  pluginParams.JobId,
+		models: b.Models,
 		Buffer: new(bytes.Buffer),
 	}
-	go func() {
-		result, err := executor.Execute(pluginParams)
-		if err != nil {
-			klog.Errorf("execute job %s plugin %s error: %s", pluginParams.JobId, pluginParams.PluginKey, err.Error())
-			b.Callback(pluginParams.JobId, &utils.Response{Code: code.PluginError, Msg: err.Error()})
-			return
-		}
-		b.Callback(pluginParams.JobId, &utils.Response{Code: code.Success, Data: result})
-	}()
+	go b.doExecute(executor, pluginParams)
 	return &utils.Response{Code: code.Success}
+}
+
+func (b *Plugins) doExecute(executor PluginExecutor, pluginParams *PluginParams) {
+	defer func() {
+		if err := recover(); err != nil {
+			klog.Error("error: ", err)
+			var buf [4096]byte
+			n := runtime.Stack(buf[:], false)
+			klog.Errorf("==> %s\n", string(buf[:n]))
+			pluginParams.Logger.Log("==> %s\n", string(buf[:n]))
+			b.Callback(pluginParams.JobId, &utils.Response{Code: code.UnknownError, Msg: fmt.Sprintf("%v", err)})
+		}
+	}()
+	result, err := executor.Execute(pluginParams)
+	if err != nil {
+		klog.Errorf("execute job %s plugin %s error: %s", pluginParams.JobId, pluginParams.PluginKey, err.Error())
+		b.Callback(pluginParams.JobId, &utils.Response{Code: code.PluginError, Msg: err.Error()})
+		return
+	}
+	b.Callback(pluginParams.JobId, &utils.Response{Code: code.Success, Data: result})
 }
 
 func (b *Plugins) Callback(jobId uint, resp *utils.Response) {

@@ -37,3 +37,11 @@ export function manualExec(data) {
     data,
   })
 }
+
+export function stageRetry(data) {
+  return request({
+    url: `pipeline/build/retry`,
+    method: 'post',
+    data,
+  })
+}

@@ -59,6 +59,7 @@ func (p *ManagerPipeline) UpdatePipeline(pipeline *types.Pipeline, stages []*typ
 			}
 			prevStageId = stage.ID
 		}
+		// 删掉原阶段不存在的
 		for _, stage := range oriStages {
 			hasNew := false
 			for _, newStage := range stages {

@@ -47,9 +47,10 @@ func (p *ServicePipeline) Create(pipelineSer *serializers.PipelineSerializer, us
 			}
 		}
 		stage := &types.PipelineStage{
-			Name:        stageSer.Name,
-			TriggerMode: stageSer.TriggerMode,
-			Jobs:        stageSer.Jobs,
+			Name:         stageSer.Name,
+			TriggerMode:  stageSer.TriggerMode,
+			CustomParams: stageSer.CustomParams,
+			Jobs:         stageSer.Jobs,
 		}
 		stages = append(stages, stage)
 	}
@@ -94,10 +95,11 @@ func (p *ServicePipeline) Update(pipelineSer *serializers.PipelineSerializer, us
 			}
 		}
 		stage := &types.PipelineStage{
-			ID:          stageSer.ID,
-			Name:        stageSer.Name,
-			TriggerMode: stageSer.TriggerMode,
-			Jobs:        stageSer.Jobs,
+			ID:           stageSer.ID,
+			Name:         stageSer.Name,
+			TriggerMode:  stageSer.TriggerMode,
+			CustomParams: stageSer.CustomParams,
+			Jobs:         stageSer.Jobs,
 		}
 		stages = append(stages, stage)
 	}

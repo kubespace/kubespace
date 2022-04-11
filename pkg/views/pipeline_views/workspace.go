@@ -24,6 +24,8 @@ func NewPipelineWorkspace(models *model.Models) *PipelineWorkspace {
 	}
 	vs := []*views.View{
 		views.NewView(http.MethodGet, "", pipelineWs.list),
+		views.NewView(http.MethodGet, "/latest_release", pipelineWs.latestReleaseVersion),
+		views.NewView(http.MethodGet, "/exists_release", pipelineWs.existsReleaseVersion),
 		views.NewView(http.MethodGet, "/:id", pipelineWs.get),
 		views.NewView(http.MethodPost, "", pipelineWs.create),
 		views.NewView(http.MethodDelete, "/:id", pipelineWs.delete),
@@ -86,4 +88,28 @@ func (p *PipelineWorkspace) delete(c *views.Context) *utils.Response {
 		return resp
 	}
 	return resp
+}
+
+func (p *PipelineWorkspace) latestReleaseVersion(c *views.Context) *utils.Response {
+	var ser serializers.WorkspaceReleaseSerializer
+	if err := c.ShouldBind(&ser); err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	rel, err := p.models.PipelineReleaseManager.GetLatestRelease(ser.WorkspaceId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	return &utils.Response{Code: code.Success, Data: rel}
+}
+
+func (p *PipelineWorkspace) existsReleaseVersion(c *views.Context) *utils.Response {
+	var ser serializers.WorkspaceReleaseSerializer
+	if err := c.ShouldBind(&ser); err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	exists, err := p.models.PipelineReleaseManager.ExistsRelease(ser.WorkspaceId, ser.Version)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	return &utils.Response{Code: code.Success, Data: map[string]interface{}{"exists": exists}}
 }

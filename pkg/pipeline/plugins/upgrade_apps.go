@@ -60,11 +60,14 @@ func NewUpgradeApp(params *PluginParams, models *model.Models, kr *kube_resource
 	var upgradeParams upgradeAppParams
 	marshalParams, err := json.Marshal(params.Params)
 	if err != nil {
+		params.Logger.Log("插件参数：%v", params.Params)
 		return nil, fmt.Errorf("marshal params error: %s", err.Error())
 	}
+	params.Logger.Log("插件执行参数：%+v", string(marshalParams))
 	err = json.Unmarshal(marshalParams, &upgradeParams)
 	if err != nil {
-		return nil, fmt.Errorf("marshal upgrade app params error: %s", err.Error())
+		params.Logger.Log("插件参数: %s", string(marshalParams))
+		return nil, fmt.Errorf("unmarshal upgrade app params error: %s", err.Error())
 	}
 	return &upgradeApp{
 		models:        models,
@@ -76,12 +79,13 @@ func NewUpgradeApp(params *PluginParams, models *model.Models, kr *kube_resource
 }
 
 func (u *upgradeApp) execute() error {
+	//u.Log("插件执行参数：%+v", *u.params)
 	project, err := u.models.ProjectManager.Get(u.params.Project)
 	if err != nil {
 		u.Log("获取工作空间 id=%s error: %s", u.params.Project, err.Error())
 		return fmt.Errorf("get workspace %v error: %s", u.params.Project, err.Error())
 	}
-	u.Log("工作空间id=%s, name=%s", u.params.Project, project.Name)
+	u.Log("工作空间id=%d, name=%s", u.params.Project, project.Name)
 	u.result.Project = project.Name
 	u.project = project
 	if u.params.Images == "" {
@@ -92,21 +96,8 @@ func (u *upgradeApp) execute() error {
 		u.Log("要升级的应用列表参数为空")
 		return nil
 	}
-	var images []string
-	imageStrs := strings.Split(u.params.Images, ",")
-	for _, imageStr := range imageStrs {
-		var imgs []string
-		err = json.Unmarshal([]byte(imageStr), &imgs)
-		if err != nil {
-			u.Log("解析镜像列表（%s）失败: %s", imageStrs, err.Error())
-			return err
-		}
-		for _, img := range imgs {
-			images = append(images, img)
-		}
-	}
-	u.Log("升级的镜像列表：%v", images)
-	u.images = images
+	u.images = strings.Split(u.params.Images, ",")
+	u.Log("升级的镜像列表：%v", u.images)
 	for _, appId := range u.params.Apps {
 		if err = u.upgrade(appId, u.params.WithInstall); err != nil {
 			return err
@@ -122,9 +113,13 @@ func (u *upgradeApp) upgrade(appId uint, withInstall bool) error {
 		return err
 	}
 	u.Log("开始对应用「%s」进行镜像升级", app.Name)
-	upgradeValues, err := u.upgradeAppValues(app.AppVersion.Values)
+	replaced, upgradeValues, err := u.upgradeAppValues(app.AppVersion.Values)
 	if err != nil {
-		u.Log("")
+		u.Log("替换升级镜像失败: %s", err.Error())
+		return err
+	}
+	if !replaced {
+		return nil
 	}
 	if upgradeValues != "" {
 		app.AppVersion.Values = upgradeValues
@@ -163,37 +158,137 @@ func (u *upgradeApp) upgrade(appId uint, withInstall bool) error {
 	return nil
 }
 
-func (u *upgradeApp) upgradeAppValues(values string) (upgradeValues string, err error) {
+func (u *upgradeApp) upgradeAppValues(values string) (replaced bool, upgradeValues string, err error) {
 	var valuesDict = map[string]interface{}{}
-	if err = yaml.Unmarshal([]byte(values), valuesDict); err != nil {
+	if err = yaml.Unmarshal([]byte(values), &valuesDict); err != nil {
 		return
 	}
-	if err = u.replaceValuesImage(valuesDict); err != nil {
+	u.Log("升级前values:\n%s", values)
+	if replaced, err = u.replaceValuesImage(valuesDict); err != nil {
 		return
 	}
-	var valBytes []byte
-	if valBytes, err = yaml.Marshal(valuesDict); err != nil {
-		return
+	if replaced {
+		var valBytes []byte
+		if valBytes, err = yaml.Marshal(valuesDict); err != nil {
+			return
+		}
+		upgradeValues = string(valBytes)
+		u.Log("升级后values:\n%s", upgradeValues)
+	} else {
+		u.Log("未匹配到升级的镜像")
 	}
-	upgradeValues = string(valBytes)
 	return
 }
 
-func (u *upgradeApp) replaceValuesImage(values map[string]interface{}) error {
+func (u *upgradeApp) replaceValuesImage(values map[string]interface{}) (bool, error) {
 	klog.Infof("visiting: %v", values)
+	replaced := false
 	for valKey, val := range values {
 		switch v := val.(type) {
 		case map[string]interface{}:
-			err := u.replaceValuesImage(v)
+			flag, err := u.replaceValuesImage(v)
 			if err != nil {
-				return err
+				return false, err
+			}
+			if flag {
+				replaced = true
 			}
 		case string:
 			if valKey == "image" {
-				u.Log("应用原镜像「%s」，升级为「%s」", v, u.images[0])
-				values[valKey] = u.images[0]
+				if u.matchImageReplace(values) {
+					replaced = true
+				}
+			} else if valKey == "repository" {
+				if u.matchRepositoryReplace(values) {
+					replaced = true
+				}
 			}
 		}
 	}
-	return nil
+	return replaced, nil
+}
+
+func (u *upgradeApp) matchImageReplace(value map[string]interface{}) bool {
+	imageObj, ok := value["image"]
+	if !ok {
+		return false
+	}
+	tagObj, hasTag := value["tag"]
+	oriTag := ""
+	if hasTag {
+		oriTag, ok = tagObj.(string)
+	}
+	oriImage, ok := imageObj.(string)
+	if !ok {
+		return false
+	}
+	image := oriImage
+	if hasTag {
+		oriImage += ":" + oriTag
+	} else {
+		image = strings.Split(image, ":")[0]
+	}
+
+	if strings.Contains(strings.Split(image, "/")[0], ".") {
+		image = strings.Join(strings.Split(image, "/")[1:], "/")
+	}
+	for _, destImage := range u.images {
+		if strings.Contains(destImage, image) {
+			if hasTag {
+				destNoTag := strings.Split(destImage, ":")[0]
+				tag := "latest"
+				if len(strings.Split(destImage, ":")) == 2 {
+					tag = strings.Split(destImage, ":")[1]
+				}
+				value["image"] = destNoTag
+				value["tag"] = tag
+			} else {
+				value["image"] = destImage
+			}
+			u.Log("应用原镜像「%s」，替换升级为「%s」", oriImage, destImage)
+			return true
+		}
+	}
+	return false
+}
+
+func (u *upgradeApp) matchRepositoryReplace(value map[string]interface{}) bool {
+	repositoryObj, ok := value["repository"]
+	if !ok {
+		return false
+	}
+	repository, ok := repositoryObj.(string)
+	if !ok {
+		return false
+	}
+	if _, ok = value["registry"]; !ok {
+		return false
+	}
+	if _, ok = value["tag"]; !ok {
+		return false
+	}
+	for _, image := range u.images {
+		destImage := image
+		if strings.Contains(destImage, repository) {
+			u.Log("应用原镜像「%v/%v:%v」，替换升级为「%s」", value["registry"], value["repository"], value["tag"], destImage)
+
+			destTag := "latest"
+			if len(strings.Split(destImage, ":")) == 2 {
+				destTag = strings.Split(destImage, ":")[1]
+			}
+			value["tag"] = destTag
+			destImage = strings.Split(destImage, ":")[0]
+
+			destRegistry := "docker.io"
+			if strings.Contains(strings.Split(destImage, "/")[0], ".") {
+				destRegistry = strings.Split(destImage, "/")[0]
+				destImage = strings.Split(destImage, "/")[1]
+			}
+			value["registry"] = destRegistry
+			value["repository"] = destImage
+
+			return true
+		}
+	}
+	return false
 }

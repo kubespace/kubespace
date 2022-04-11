@@ -36,3 +36,26 @@ export function deleteWorkspace(id) {
     method: 'delete',
   })
 }
+
+export function getLatestRelease(params) {
+  return request({
+    url: `pipeline/workspace/latest_release`,
+    method: 'get',
+    params
+  })
+}
+
+export async function existsRelease(params) {
+  let data = {}
+  await request({
+    url: `pipeline/workspace/exists_release`,
+    method: 'get',
+    params
+  }).then(function(resp) {
+    data = resp
+  }).catch(function(e) {
+    console.log(e)
+    data = {Code: 'error', Msg: e}
+  })
+  return data
+}

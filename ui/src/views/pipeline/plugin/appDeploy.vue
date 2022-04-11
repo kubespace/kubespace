@@ -36,7 +36,7 @@ import { listProjects } from "@/api/project/project";
 import { listApps } from "@/api/project/apps";
 
 export default {
-  name: 'ExecuteShell',
+  name: 'AppDeploy',
   data() {
     return {
       loading: false,
