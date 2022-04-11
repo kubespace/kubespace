@@ -188,6 +188,7 @@ const (
 	PluginParamsFromCodeSecret       = "code_secret"
 	PluginParamsFromImageRegistry    = "image_registry"
 	PluginParamsFromPipelineResource = "pipeline_resource"
+	PluginParamsFromPipelineEnv      = "pipeline_env"
 )
 
 type PipelinePluginParamsSpec struct {

@@ -151,10 +151,28 @@ var BuiltinPlugins = []types.PipelinePlugin{
 					Default:   nil,
 				},
 				{
+					ParamName: "port",
+					From:      types.PluginParamsFromJob,
+					FromName:  "port",
+					Default:   "22",
+				},
+				{
 					ParamName: "script",
 					From:      types.PluginParamsFromJob,
 					FromName:  "script",
 					Default:   "",
+				},
+				{
+					ParamName: "shell",
+					From:      types.PluginParamsFromJob,
+					FromName:  "shell",
+					Default:   "bash",
+				},
+				{
+					ParamName: "env",
+					From:      types.PluginParamsFromPipelineEnv,
+					FromName:  "",
+					Default:   nil,
 				},
 			},
 		},
