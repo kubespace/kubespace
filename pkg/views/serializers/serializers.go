@@ -35,3 +35,17 @@ type DeleteRoleSerializers struct {
 type ApplyYamlSerializers struct {
 	YamlStr string `json:"yaml"`
 }
+
+type UserRoleSerializers struct {
+	UserId  uint   `json:"user_id" form:"user_id"`
+	Scope   string `json:"scope" form:"scope"`
+	ScopeId uint   `json:"scope_id" form:"scope_id"`
+	Role    string `json:"role" form:"from"`
+}
+
+type UserRoleUpdateSerializers struct {
+	UserIds []uint `json:"user_ids" form:"user_ids"`
+	Scope   string `json:"scope" form:"scope"`
+	ScopeId uint   `json:"scope_id" form:"scope_id"`
+	Role    string `json:"role" form:"from"`
+}

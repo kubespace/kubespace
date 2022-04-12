@@ -9,6 +9,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/views/serializers"
 	"k8s.io/klog"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -23,6 +24,7 @@ func NewUser(models *model.Models) *User {
 	}
 	views := []*View{
 		NewView(http.MethodGet, "", user.list),
+		NewView(http.MethodGet, "/:id/roles", user.list),
 		NewView(http.MethodPost, "", user.create),
 		//NewView(http.MethodPost, "/admin", user.create),
 		NewView(http.MethodPut, "/:username", user.update),
@@ -125,11 +127,11 @@ func (u *User) list(c *Context) *utils.Response {
 			return resp
 		}
 		data = append(data, map[string]interface{}{
-			"name":        du.Name,
-			"email":       du.Email,
-			"status":      du.Status,
-			"is_super":    du.IsSuper,
-			"last_login":  du.LastLogin,
+			"name":       du.Name,
+			"email":      du.Email,
+			"status":     du.Status,
+			"is_super":   du.IsSuper,
+			"last_login": du.LastLogin,
 			//"roles":       du.Roles,
 			"permissions": perms,
 		})
@@ -166,7 +168,7 @@ func (u *User) create(c *Context) *utils.Response {
 		IsSuper:  isSuper,
 		Status:   "normal",
 		//Roles:    ser.Roles,
-		LastLogin: time.Now(),
+		LastLogin:  time.Now(),
 		CreateTime: time.Now(),
 		UpdateTime: time.Now(),
 	}
@@ -200,4 +202,16 @@ func (u *User) delete(c *Context) *utils.Response {
 		}
 	}
 	return &utils.Response{Code: code.Success}
+}
+
+func (u *User) roles(c *Context) *utils.Response {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	roles, err := u.models.UserRoleManager.GetUserRoles(uint(id))
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	return &utils.Response{Code: code.Success, Data: roles}
 }

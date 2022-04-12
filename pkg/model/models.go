@@ -12,6 +12,7 @@ import (
 type Models struct {
 	*manager.ClusterManager
 	*manager.UserManager
+	*manager.UserRoleManager
 	*manager.TokenManager
 	*manager.RoleManager
 	*manager.AppManager
@@ -45,6 +46,7 @@ func NewModels(redisOp *redis.Options, mysqlOptions *mysql.Options) (*Models, er
 	app := manager.NewAppManager(client)
 
 	user := manager.NewUserManager(db)
+	userRole := manager.NewUserRoleManager(db, user)
 	pipelinePluginMgr := pipeline.NewPipelinePluginManager(db)
 	pipelineMgr := pipeline.NewPipelineManager(db)
 	pipelineWorkspaceMgr := pipeline.NewWorkspaceManager(db, pipelineMgr)
@@ -66,6 +68,7 @@ func NewModels(redisOp *redis.Options, mysqlOptions *mysql.Options) (*Models, er
 	return &Models{
 		ClusterManager:           cm,
 		UserManager:              user,
+		UserRoleManager:          userRole,
 		TokenManager:             tk,
 		RoleManager:              role,
 		AppManager:               app,

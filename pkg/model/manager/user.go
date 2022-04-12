@@ -1,8 +1,10 @@
 package manager
 
 import (
+	"errors"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"gorm.io/gorm"
+	"time"
 )
 
 type UserManager struct {
@@ -55,6 +57,14 @@ func NewUserManager(db *gorm.DB) *UserManager {
 func (u *UserManager) Get(name string) (*types.User, error) {
 	var user types.User
 	if err := u.DB.First(&user, "name=?", name).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (u *UserManager) GetById(id uint) (*types.User, error) {
+	var user types.User
+	if err := u.DB.First(&user, "id=?", id).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil
@@ -148,4 +158,81 @@ func (u *UserManager) Permissions(user *types.User) ([]types.Permission, error) 
 	//	}
 	//}
 	return perms, nil
+}
+
+type UserRoleManager struct {
+	DB          *gorm.DB
+	UserManager *UserManager
+}
+
+func NewUserRoleManager(db *gorm.DB, user *UserManager) *UserRoleManager {
+	return &UserRoleManager{DB: db, UserManager: user}
+}
+
+func (r *UserRoleManager) List(scope string, scopeId uint) ([]*types.UserRole, error) {
+	var roles []types.UserRole
+	if err := r.DB.Find(&roles, "scope=? and scope_id=?", scope, scopeId).Error; err != nil {
+		return nil, err
+	}
+	var resRoles []*types.UserRole
+	for i, role := range roles {
+		user, err := r.UserManager.GetById(role.UserId)
+		if err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, err
+			}
+		} else {
+			roles[i].UserName = user.Name
+		}
+		resRoles = append(resRoles, &roles[i])
+	}
+	return resRoles, nil
+}
+
+func (r *UserRoleManager) CreateOrUpdate(scope string, scopeId uint, userIds []uint, role string) error {
+	for _, userId := range userIds {
+		var userRole types.UserRole
+		if err := r.DB.First(&userRole, "user_id=? and scope=? and scope_id=?", userId, scope, scopeId).Error; err != nil {
+			userRole = types.UserRole{
+				UserId:     userId,
+				Scope:      scope,
+				ScopeId:    scopeId,
+				Role:       role,
+				CreateTime: time.Now(),
+				UpdateTime: time.Now(),
+			}
+			if err = r.DB.Create(&userRole).Error; err != nil {
+				return err
+			}
+		} else {
+			userRole.Role = role
+			userRole.UpdateTime = time.Now()
+			if err = r.DB.Save(&userRole).Error; err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (r *UserRoleManager) Delete(id uint) error {
+	var userRole types.UserRole
+	if err := r.DB.First(&userRole, "id=?", id).Error; err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+	} else {
+		if err = r.DB.Delete(&userRole).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *UserRoleManager) GetUserRoles(userId uint) ([]types.UserRole, error) {
+	var userRoles []types.UserRole
+	if err := r.DB.Find(&userRoles, "user_id=?", userId).Error; err != nil {
+		return nil, err
+	}
+	return userRoles, nil
 }

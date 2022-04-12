@@ -32,6 +32,7 @@ func DbMigrate(db *gorm.DB) error {
 	migrateTypes := []interface{}{
 		&types.Cluster{},
 		&types.User{},
+		&types.UserRole{},
 		&types.PipelineWorkspace{},
 		&types.Pipeline{},
 		&types.PipelineStage{},

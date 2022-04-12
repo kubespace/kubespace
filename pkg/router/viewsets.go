@@ -17,6 +17,7 @@ type ViewSets map[string][]*views.View
 func NewViewSets(kr *kube_resource.KubeResources, models *model.Models) *ViewSets {
 	cluster := views.NewCluster(models, kr)
 	user := views.NewUser(models)
+	userRole := views.NewUserRole(models)
 	settingsRole := views.NewRole(models)
 
 	pods := kube_views.NewPod(kr)
@@ -66,6 +67,7 @@ func NewViewSets(kr *kube_resource.KubeResources, models *model.Models) *ViewSet
 	viewsets := &ViewSets{
 		"cluster":        cluster.Views,
 		"user":           user.Views,
+		"user_role":      userRole.Views,
 		"settings_role":  settingsRole.Views,
 		"pods":           pods.Views,
 		"event":          event.Views,
