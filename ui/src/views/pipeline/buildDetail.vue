@@ -326,7 +326,7 @@ export default {
           getJobLog(this.mainContent.mainJob.id).then((response) => {
             this.$set(this.mainContent, 'jobLog', response.data)
             this.$nextTick(() => {
-              if (that.scrollToBottom) {
+              if (this.scrollToBottom) {
                 let logDiv = document.getElementById('jobLogDiv')
                 logDiv.scrollTop = logDiv.scrollHeight // 滚动高度
               }

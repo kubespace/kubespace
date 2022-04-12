@@ -4,7 +4,7 @@
       <el-form-item label="目标资源" prop="" :required="true">
         <!-- <el-input style="width: 250px;" v-model="params.resource" autocomplete="off" size="small"
           placeholder=""></el-input> -->
-        <el-select v-model="params.code_build_image" placeholder="请选择要执行的目标资源" size="small" style="width: 320px">
+        <el-select v-model="params.resource" placeholder="请选择要执行的目标资源" size="small" style="width: 320px">
           <el-option
             v-for="res in resources"
             :key="res.id"

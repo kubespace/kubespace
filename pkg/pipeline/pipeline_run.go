@@ -387,7 +387,9 @@ func (r *ServicePipelineRun) getJobExecParam(envs map[string]interface{}, jobPar
 		return nil
 	}
 	res := pluginParam.Default
-	if pluginParam.From == types.PluginParamsFromEnv {
+	if pluginParam.From == types.PluginParamsFromPipelineEnv {
+		return envs
+	} else if pluginParam.From == types.PluginParamsFromEnv {
 		if _, ok := envs[pluginParam.FromName]; ok {
 			return envs[pluginParam.FromName]
 		}
