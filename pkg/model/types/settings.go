@@ -27,9 +27,9 @@ type SettingsSecret struct {
 
 type SettingsImageRegistry struct {
 	ID         uint      `gorm:"primaryKey" json:"id"`
-	Registry   string    `gorm:"size:255;not null;uniqueIndex:ScopeTypeKey" json:"registry"`
-	User       string    `gorm:"size:255;not null;uniqueIndex:ScopeTypeKey" json:"user"`
-	Password   string    `gorm:"size:255;not null;uniqueIndex:ScopeTypeKey" json:"password"`
+	Registry   string    `gorm:"size:255;not null;uniqueIndex" json:"registry"`
+	User       string    `gorm:"size:255;not null;" json:"user"`
+	Password   string    `gorm:"size:255;not null;" json:"password"`
 	CreateUser string    `gorm:"size:255;not null" json:"create_user"`
 	UpdateUser string    `gorm:"size:255;not null" json:"update_user"`
 	CreateTime time.Time `gorm:"not null;autoCreateTime" json:"create_time"`

@@ -22,10 +22,10 @@ const Routes = [
     meta: { title: '用户管理', icon: 'member', 'group': 'settings', object: 'user' }
   },
   {
-    path: 'settings_role',
-    name: 'settings_role',
-    component: () => import('@/views/settings/role'),
-    meta: { title: '角色管理', icon: 'settings_role', 'group': 'settings', object: 'role' }
+    path: 'platform_role',
+    name: 'platform_role',
+    component: () => import('@/views/settings/platform_role'),
+    meta: { title: '平台权限', icon: 'platform_perm', 'group': 'settings', object: 'role' }
   },
 ]
 

@@ -25,7 +25,7 @@ const Routes = [
   {
     path: 'permission',
     name: 'pipelinePermission',
-    component: () => import('@/views/pipeline/pipeline'),
+    component: () => import('@/views/pipeline/pipelineRole'),
     meta: { title: '权限配置', icon: 'permission', 'group': 'pipeline', object: 'pipeline' }
   },
   {

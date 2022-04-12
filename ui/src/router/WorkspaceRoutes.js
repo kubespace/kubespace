@@ -92,7 +92,7 @@ const Routes = [
   {
     path: 'permission',
     name: 'workspacePermission',
-    component: () => import('@/views/workspace/overview'),
+    component: () => import('@/views/workspace/workspaceRole'),
     meta: { title: '成员管理', icon: 'permission', 'group': 'workspace', object: 'pipeline' }
   },
 ]

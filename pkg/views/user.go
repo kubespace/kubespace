@@ -53,6 +53,7 @@ func (u *User) tokenUser(c *Context) *utils.Response {
 	}
 	return &utils.Response{Code: code.Success,
 		Data: map[string]interface{}{
+			"id":          c.User.ID,
 			"name":        c.User.Name,
 			"permissions": perms,
 			"is_super":    user.IsSuper,
@@ -127,6 +128,7 @@ func (u *User) list(c *Context) *utils.Response {
 			return resp
 		}
 		data = append(data, map[string]interface{}{
+			"id":         du.ID,
 			"name":       du.Name,
 			"email":      du.Email,
 			"status":     du.Status,

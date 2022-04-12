@@ -370,6 +370,12 @@ const Routes = [
     component: () => import('@/views/cluster/crd'),
     meta: { title: 'CRD', icon: 'crd', group: 'cluster', object: 'crd' },
   },
+  {
+    path: 'permission',
+    name: 'clusterPermission',
+    component: () => import('@/views/cluster/clusterRole'),
+    meta: { title: '成员管理', icon: 'cluster_perm', 'group': 'cluster', object: 'permission' }
+  },
 ]
 
 const clusterRoutes = [
