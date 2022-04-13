@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kubespace.fullname" . }}-pipeline-plugin
+  namespace: kubespace
+  labels:
+    {{- include "kubespace.labels" . | nindent 4 }}
+spec:
+  {{- if not ..Values.pipeline_plugin.autoscaling.enabled }}
+  replicas: {{ ..Values.pipeline_plugin.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      kubespace-app: kubespace-pipeline-plugin
+      {{- include "kubespace.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with ..Values.pipeline_plugin.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "kubespace.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with ..Values.pipeline_plugin.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "kubespace.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml ..Values.pipeline_plugin.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml ..Values.pipeline_plugin.securityContext | nindent 12 }}
+          image: "{{ ..Values.pipeline_plugin.image.repository }}:{{ ..Values.pipeline_plugin.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ ..Values.pipeline_plugin.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          {{ - if .Values.extraEnvs }}
+          env:
+{{ toYaml .Values.extraEnvs | indent 12 }}
+          {{ - end }}
+          {{ - if .Values.extraVolumeMounts }}
+          volumeMounts:
+{{ toYaml .Values.extraVolumeMounts | indent 12 }}
+          {{ - end }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+            {{- toYaml ..Values.pipeline_plugin.resources | nindent 12 }}
+      {{ - if .Values.extraVolumes }}
+      volumes:
+{{ toYaml .Values.extraVolumes | indent 8 }}
+      {{ - end }}
+      {{- with ..Values.pipeline_plugin.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with ..Values.pipeline_plugin.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with ..Values.pipeline_plugin.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "kubespace.fullname" . }}-pipeline-plugin
+  namespace: kubespace
+  labels:
+    {{- include "kubespace.labels" . | nindent 4 }}
+spec:
+  type: {{ ..Values.pipeline_plugin.service.type }}
+  ports:
+    - port: {{ ..Values.pipeline_plugin.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    kubespace-app: kubespace-pipeline-plugin
+    {{- include "kubespace.selectorLabels" . | nindent 4 }}

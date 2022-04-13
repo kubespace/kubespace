@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 	"k8s.io/klog"
 	"strconv"
+	"time"
 )
 
 type ClusterManager struct {
@@ -17,55 +18,28 @@ type ClusterManager struct {
 }
 
 func NewClusterManager(db *gorm.DB, appMgr *project.AppManager) *ClusterManager {
-	return &ClusterManager{
-		//CommonManager: NewCommonManager(redisClient, nil, "osp:cluster", true),
+	c := &ClusterManager{
 		DB:         db,
 		appManager: appMgr,
 	}
+	var cnt int64
+	err := db.Model(&types.Cluster{}).Where("").Count(&cnt).Error
+	if cnt == 0 {
+		localCluster := &types.Cluster{
+			Name1:      "local",
+			Token:      "local",
+			CreatedBy:  "admin",
+			CreateTime: time.Now(),
+			UpdateTime: time.Now(),
+		}
+		if err = c.Create(localCluster); err != nil {
+			klog.Errorf("init create local cluster error: %s", err.Error())
+		}
+	}
+	return c
 }
 
-//func (clu *ClusterManager) parseToStore(cluster *types.Cluster) (*types.ClusterStore, error) {
-//	members, err := json.Marshal(cluster.Members)
-//	if err != nil {
-//		klog.Error("parse member error", err)
-//		return nil, err
-//	}
-//	clusterStore := &types.ClusterStore{
-//		Name:      cluster.Name,
-//		Status:    cluster.Status,
-//		Token:     cluster.Token,
-//		Members:   string(members),
-//		Common:    cluster.Common,
-//		CreatedBy: cluster.CreatedBy,
-//	}
-//	return clusterStore, nil
-//}
-//
-//func (clu *ClusterManager) parseToCluster(clusterStore *types.ClusterStore) (*types.Cluster, error) {
-//	var members []string
-//	if clusterStore.Members != "" {
-//		err := json.Unmarshal([]byte(clusterStore.Members), &members)
-//		if err != nil {
-//			klog.Error("parse member error: ", err)
-//			return nil, err
-//		}
-//	}
-//	cluster := &types.Cluster{
-//		Name:      clusterStore.Name,
-//		Status:    clusterStore.Status,
-//		Token:     clusterStore.Token,
-//		Members:   members,
-//		Common:    clusterStore.Common,
-//		CreatedBy: clusterStore.CreatedBy,
-//	}
-//	return cluster, nil
-//}
-
 func (clu *ClusterManager) Create(cluster *types.Cluster) error {
-	//clusterStore, err := clu.parseToStore(cluster)
-	//if err != nil {
-	//	return err
-	//}
 	if err := clu.DB.Create(cluster).Error; err != nil {
 		return err
 	}
@@ -74,10 +48,6 @@ func (clu *ClusterManager) Create(cluster *types.Cluster) error {
 }
 
 func (clu *ClusterManager) Update(cluster *types.Cluster) error {
-	//clusterStore, err := clu.parseToStore(cluster)
-	//if err != nil {
-	//	return err
-	//}
 	if err := clu.DB.Save(cluster).Error; err != nil {
 		return err
 	}
@@ -108,19 +78,6 @@ func (clu *ClusterManager) GetByName(name string) (*types.Cluster, error) {
 }
 
 func (clu *ClusterManager) List(filters map[string]interface{}) ([]types.Cluster, error) {
-	//dList, err := clu.CommonManager.List(filters)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//jsonBody, err := json.Marshal(dList)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//var clus []*types.ClusterStore
-	//
-	//if err := json.Unmarshal(jsonBody, &clus); err != nil {
-	//	return nil, err
-	//}
 
 	var clusters []types.Cluster
 	if err := clu.DB.Find(&clusters, filters).Error; err != nil {
@@ -130,14 +87,6 @@ func (clu *ClusterManager) List(filters map[string]interface{}) ([]types.Cluster
 		clusters[i].Name = fmt.Sprintf("%d", c.ID)
 		klog.Info(c.Name)
 	}
-
-	//for _, c := range clusters {
-	//	//cluster, err := clu.parseToCluster(c)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	clusters = append(clusters, cluster)
-	//}
 	return clusters, nil
 }
 

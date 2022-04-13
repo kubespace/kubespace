@@ -195,7 +195,6 @@ func (u *User) delete(c *Context) *utils.Response {
 		klog.Errorf("bind params error: %s", err.Error())
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	klog.Info(ser)
 	for _, du := range ser {
 		err := u.models.UserManager.Delete(du.Name)
 		if err != nil {
