@@ -4,7 +4,7 @@ apiVersion: {{ include "common.capabilities.statefulset.apiVersion" . }}
 kind: StatefulSet
 metadata:
   name: {{ printf "%s-node" (include "common.names.fullname" .) }}
-  namespace: {{ .Release.Namespace | quote }}
+  namespace: {{ .Values.global.namespace }}
   labels: {{- include "common.labels.standard" . | nindent 4 }}
     app.kubernetes.io/component: node
     {{- if .Values.commonLabels }}

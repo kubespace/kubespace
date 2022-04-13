@@ -3,7 +3,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: {{ include "kubespace.fullname" . }}-agent
-  namespace: kubespace
+  namespace: {{ .Values.global.namespace }}
   labels:
     kubespace-app: kubespace-agent
     {{- include "kubespace.labels" . | nindent 4 }}
@@ -34,7 +34,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "kubespace.fullname" . }}-agent
-  namespace: kubespace
+  namespace: {{ .Values.global.namespace }}
   labels:
     {{- include "kubespace.labels" . | nindent 4 }}
 spec:
