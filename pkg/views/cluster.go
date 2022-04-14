@@ -5,6 +5,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
+	"github.com/kubespace/kubespace/pkg/sse"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"github.com/kubespace/kubespace/pkg/views/serializers"
@@ -194,4 +195,39 @@ func (clu *Cluster) delete(c *Context) *utils.Response {
 		}
 	}
 	return &utils.Response{Code: code.Success}
+}
+
+func (clu *Cluster) resourceSSE(c *Context) *utils.Response {
+	var ser serializers.ProjectAppListSerializer
+	if err := c.ShouldBindQuery(&ser); err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+
+	streamClient := sse.StreamClient{
+		ClientId: utils.CreateUUID(),
+		Catalog:  sse.CatalogDatabase,
+		WatchSelector: map[string]string{
+			sse.EventTypePipelineRun: c.Param("pipelineRunId"),
+		},
+		ClientChan: make(chan sse.Event),
+	}
+	sse.Stream.AddClient(streamClient)
+	defer sse.Stream.RemoveClient(streamClient)
+	w := c.Writer
+	clientGone := w.CloseNotify()
+	c.SSEvent("message", "")
+	w.Flush()
+	//c.Stream()
+
+	for {
+		klog.Infof("select for channel")
+		select {
+		case <-clientGone:
+			klog.Info("client gone")
+			return nil
+		case event := <-streamClient.ClientChan:
+			c.SSEvent("message", event)
+			c.Writer.Flush()
+		}
+	}
 }

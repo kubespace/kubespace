@@ -65,6 +65,17 @@ spec:
             {{- toYaml .Values.agent.securityContext | nindent 12 }}
           image: "{{ .Values.agent.image.repository }}:{{ .Values.agent.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.agent.image.pullPolicy }}
+          command: ["/agent"]
+          {{- if .Values.extraArgs }}
+          args:
+{{ toYaml .Values.extraArgs | indent 12 }}
+          {{- end }}
+          env:
+            - name: SERVER_URL
+              value: "{{ include "kubespace.fullname" . }}:{{ .Values.kubespace.service.port }}"
+          {{- if .Values.extraEnvs }}
+{{ toYaml .Values.extraEnvs | indent 12 }}
+          {{- end }}
           resources:
             {{- toYaml .Values.agent.resources | nindent 12 }}
       {{- with .Values.agent.nodeSelector }}

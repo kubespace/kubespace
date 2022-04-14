@@ -34,16 +34,18 @@ type stream struct {
 
 	ClusterWatch map[string]*kube_resource.MiddleMessage
 
-	redisOptions *redis.Options
+	redisOptions  *redis.Options
+	kubeResources *kube_resource.KubeResources
 }
 
-func NewStream(redisOp *redis.Options) *stream {
+func NewStream(redisOp *redis.Options, kr *kube_resource.KubeResources) *stream {
 	s := &stream{
-		NewClient:    make(chan StreamClient),
-		CloseClient:  make(chan StreamClient),
-		Clients:      make(map[string]StreamClient),
-		EventsChan:   make(chan Event),
-		redisOptions: redisOp,
+		NewClient:     make(chan StreamClient),
+		CloseClient:   make(chan StreamClient),
+		Clients:       make(map[string]StreamClient),
+		EventsChan:    make(chan Event),
+		redisOptions:  redisOp,
+		kubeResources: kr,
 	}
 	go s.Listen()
 	go s.dbWatch()
@@ -154,7 +156,7 @@ func (s *stream) dbWatch() {
 }
 
 func (s *stream) clusterTypeWatch(cluster string) {
-	var watchTypes map[string]struct{}
+	watchTypes := make(map[string]struct{})
 	for _, client := range s.Clients {
 		if client.Catalog != CatalogCluster {
 			continue
@@ -169,6 +171,7 @@ func (s *stream) clusterTypeWatch(cluster string) {
 	for t, _ := range watchTypes {
 		types = append(types, t)
 	}
+	s.kubeResources.Watch
 	klog.Infof("cluster %s watch types %v", cluster, types)
 }
 

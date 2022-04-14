@@ -35,16 +35,32 @@ spec:
             {{- toYaml ..Values.pipeline_plugin.securityContext | nindent 12 }}
           image: "{{ ..Values.pipeline_plugin.image.repository }}:{{ ..Values.pipeline_plugin.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ ..Values.pipeline_plugin.image.pullPolicy }}
+          {{- if .Values.extraArgs }}
+          args:
+{{ toYaml .Values.extraArgs | indent 12 }}
+          {{- end }}
           ports:
             - name: http
               containerPort: 80
               protocol: TCP
-          {{ - if .Values.extraEnvs }}
           env:
-{{ toYaml .Values.extraEnvs | indent 12 }}
+            - name: MYSQL_HOST
+              value: { { include "kubespace.fullname" . } }-mysql
+            - name: MYSQL_PASSWORD
+              value: { { .Values.mysql.auth.rootPassword } }
+            - name: MYSQL_DBNAME
+              value: { { .Values.mysql.auth.database } }
+            - name: CALLBACK_ENDPOINT
+              value: "http://{{ include "kubespace.fullname" . }}:{{ .Values.kubespace.service.port }}"
+          {{ - if .Values.extraEnvs }}
+  {{ toYaml .Values.extraEnvs | indent 12 }}
           {{ - end }}
-          {{ - if .Values.extraVolumeMounts }}
           volumeMounts:
+            - name: docker-bin
+              mountPath: /usr/bin/docker
+            - name: docker-sock
+              mountPath: /var/run/docker.sock
+          {{ - if .Values.extraVolumeMounts }}
 {{ toYaml .Values.extraVolumeMounts | indent 12 }}
           {{ - end }}
           livenessProbe:
@@ -57,8 +73,14 @@ spec:
               port: http
           resources:
             {{- toYaml ..Values.pipeline_plugin.resources | nindent 12 }}
-      {{ - if .Values.extraVolumes }}
       volumes:
+        - name: docker-bin
+          hostPath:
+            path: /usr/bin/docker
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock
+      {{ - if .Values.extraVolumes }}
 {{ toYaml .Values.extraVolumes | indent 8 }}
       {{ - end }}
       {{- with ..Values.pipeline_plugin.nodeSelector }}

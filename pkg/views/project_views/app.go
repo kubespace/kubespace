@@ -7,8 +7,10 @@ import (
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"github.com/kubespace/kubespace/pkg/views"
 	"github.com/kubespace/kubespace/pkg/views/serializers"
+	"k8s.io/klog"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type ProjectApp struct {
@@ -27,6 +29,7 @@ func NewProjectApp(models *model.Models, appService *project.AppService) *Projec
 		views.NewView(http.MethodGet, "/versions", app.listAppVersions),
 		views.NewView(http.MethodGet, "/version/:id", app.getAppVersion),
 		views.NewView(http.MethodGet, "/status", app.listAppStatus),
+		views.NewView(http.MethodGet, "/status_sse", app.statusSSE),
 		views.NewView(http.MethodGet, "/:id", app.getApp),
 		views.NewView(http.MethodPost, "", app.create),
 		views.NewView(http.MethodPost, "/install", app.install),
@@ -133,4 +136,35 @@ func (a *ProjectApp) duplicateApp(c *views.Context) *utils.Response {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
 	return a.AppService.DuplicateApp(&ser, c.User)
+}
+
+func (a *ProjectApp) statusSSE(c *views.Context) *utils.Response {
+	var ser serializers.ProjectAppListSerializer
+	if err := c.ShouldBindQuery(&ser); err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Set("Connection", "keep-alive")
+	c.Writer.Header().Set("Transfer-Encoding", "chunked")
+
+	w := c.Writer
+	clientGone := w.CloseNotify()
+	c.SSEvent("message", "")
+	w.Flush()
+	//c.Stream()
+	tick := time.NewTicker(5 * time.Second)
+	for {
+		klog.Infof("select for log channel")
+		select {
+		case <-clientGone:
+			klog.Info("log client gone")
+			return nil
+		case <-tick.C:
+			//c.SSEvent("message", event)
+			res := a.AppService.ListAppStatus(ser)
+			c.SSEvent("message", res)
+		}
+	}
 }

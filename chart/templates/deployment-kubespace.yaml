@@ -29,8 +29,24 @@ spec:
         - name: kubespace
           image: "{{ .Values.kubespace.image.repository }}:{{ .Values.kubespace.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.kubespace.image.pullPolicy }}
-          {{- if .Values.extraEnvs }}
+          {{- if .Values.extraArgs }}
+          args:
+{{ toYaml .Values.extraArgs | indent 12 }}
+          {{- end }}
           env:
+            - name: REDIS_ADDRESS
+              value: "{{ include "kubespace.fullname" . }}-redis:6379"
+            - name: REDIS_PASSWORD
+              value: {{ .Values.redis.auth.password }}
+            - name: MYSQL_HOST
+              value: {{ include "kubespace.fullname" . }}-mysql
+            - name: MYSQL_PASSWORD
+              value: {{ .Values.mysql.auth.rootPassword }}
+            - name: MYSQL_DBNAME
+              value: {{ .Values.mysql.auth.database }}
+            - name: PIPELINE_PLUGIN_URL
+              value: "http://{{ include "kubespace.fullname" . }}-pipeline-plugin:{{ .Values.pipeline_agent.service.port }}"
+          {{- if .Values.extraEnvs }}
 {{ toYaml .Values.extraEnvs | indent 12 }}
           {{- end }}
           {{- if .Values.extraVolumeMounts }}

@@ -27,6 +27,7 @@ func NewUser(models *model.Models) *User {
 		NewView(http.MethodGet, "/:id/roles", user.list),
 		NewView(http.MethodPost, "", user.create),
 		//NewView(http.MethodPost, "/admin", user.create),
+		NewView(http.MethodPut, "/", user.updateSelf),
 		NewView(http.MethodPut, "/:username", user.update),
 
 		NewView(http.MethodGet, "/token", user.tokenUser),
@@ -95,6 +96,53 @@ func (u *User) update(c *Context) *utils.Response {
 		if ok := utils.VerifyEmailFormat(user.Email); !ok {
 			resp.Code = code.ParamsError
 			resp.Msg = fmt.Sprintf("email:%s format error for user:%s", user.Email, userName)
+			return resp
+		}
+		userObj.Email = user.Email
+	}
+
+	if err := u.models.UserManager.Update(userObj); err != nil {
+		resp.Code = code.UpdateError
+		resp.Msg = err.Error()
+		return resp
+	}
+	return resp
+}
+
+func (u *User) updateSelf(c *Context) *utils.Response {
+	var user serializers.UserSerializers
+
+	resp := &utils.Response{Code: code.Success}
+
+	if err := c.ShouldBindJSON(&user); err != nil {
+		resp.Code = code.ParamsError
+		resp.Msg = err.Error()
+		return resp
+	}
+
+	userObj, err := u.models.UserManager.GetById(c.User.ID)
+	if err != nil {
+		resp.Code = code.GetError
+		resp.Msg = err.Error()
+		return resp
+	}
+
+	if user.Status != "" {
+		userObj.Status = user.Status
+	}
+
+	if user.Password != "" {
+		userObj.Password = utils.Encrypt(user.Password)
+	}
+
+	//if user.Roles != nil {
+	//	userObj.Roles = user.Roles
+	//}
+
+	if user.Email != "" {
+		if ok := utils.VerifyEmailFormat(user.Email); !ok {
+			resp.Code = code.ParamsError
+			resp.Msg = fmt.Sprintf("email:%s format error for user:%s", user.Email, userObj.Name)
 			return resp
 		}
 		userObj.Email = user.Email

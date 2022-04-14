@@ -20,6 +20,10 @@ kubespace:
     type: NodePort
     port: 80
     # nodePort:
+  extraArgs:
+  extraEnvs:
+    - name: INSECURE_PORT
+      value: 80
 
   ingress:
     enabled: false
@@ -64,6 +68,10 @@ pipeline_plugin:
   service:
     type: ClusterIP
     port: 80
+  extraArgs:
+  extraEnvs:
+    - name: DATA_DIR
+      value: /data
   resources: {}
     # We usually recommend not to specify default resources and to leave this as a conscious
     # choice for the user. This also increases chances charts run on environments with little
@@ -81,13 +89,16 @@ pipeline_plugin:
   affinity: {}
 
 agent:
-  replicaCount: 1
   image:
     repository: kubespace/kubespace-agent
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
     tag: ""
   imagePullSecrets: []
+  extraArgs:
+  extraEnvs:
+    - name: TOKEN
+      value: "local"
 
   resources: {}
     # We usually recommend not to specify default resources and to leave this as a conscious
@@ -104,3 +115,51 @@ agent:
   nodeSelector: {}
   tolerations: []
   affinity: {}
+
+mysql:
+  ## @param architecture MySQL architecture (`standalone` or `replication`)
+  ##
+  architecture: standalone
+  image:
+    registry: docker.io
+    repository: bitnami/mysql
+    tag: 8.0.28-debian-10-r63
+  auth:
+    ## @param auth.rootPassword Password for the `root` user. Ignored if existing secret is provided
+    ## ref: https://github.com/bitnami/bitnami-docker-mysql#setting-the-root-password-on-first-run
+    ##
+    rootPassword: "kubespace@2022"
+    ## @param auth.database Name for a custom database to create
+    ## ref: https://github.com/bitnami/bitnami-docker-mysql/blob/master/README.md#creating-a-database-on-first-run
+    ##
+    database: kubespace
+
+redis:
+  ## @param architecture Redis&trade; architecture. Allowed values: `standalone` or `replication`
+  ##
+  architecture: standalone
+  image:
+    registry: docker.io
+    repository: bitnami/redis
+    tag: 6.2.6-debian-10-r179
+  auth:
+    ## @param auth.enabled Enable password authentication
+    ##
+    enabled: true
+    ## @param auth.sentinel Enable password authentication on sentinels too
+    ##
+    sentinel: true
+    ## @param auth.password Redis&trade; password
+    ## Defaults to a random 10-character alphanumeric string if not set
+    ##
+    password: "kubespace@2022"
+
+  master:
+    persistence:
+      enabled: true
+      path: /data
+      storageClass: "local-path"
+      accessModes:
+        - ReadWriteOnce
+      size: 8Gi
+
