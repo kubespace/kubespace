@@ -76,6 +76,9 @@ func (p *Project) list(c *views.Context) *utils.Response {
 	clusters := make(map[string]*types.Cluster)
 
 	for _, project := range projects {
+		if !p.models.UserRoleManager.HasScopeRole(c.User, types.RoleScopeProject, project.ID, types.RoleTypeViewer) {
+			continue
+		}
 		cluster, ok := clusters[project.ClusterId]
 		if !ok {
 			cluster, err = p.models.ClusterManager.GetByName(project.ClusterId)

@@ -14,21 +14,21 @@
     </span>
     <div class="right">
       <slot name="right-btn"></slot>
-      <template v-if="$deletePerm()">
+      <template v-if="$editorRole()">
         <el-button v-if="typeof delFunc !== 'undefined'" size="small" plain @click="delFunc()"
           type="danger" icon="el-icon-delete" >
           删除
         </el-button>
       </template>
 
-      <template v-if="$updatePerm()">
+      <template v-if="$editorRole()">
         <el-button v-if="typeof editFunc !== 'undefined'" size="small" plain @click="editFunc()"
           type="success" icon='el-icon-edit'>
           编辑
         </el-button>
       </template>
 
-      <template v-if="$createPerm()">
+      <template v-if="$editorRole()">
         <el-button v-if="typeof createFunc !== 'undefined'" size="small" type="primary" @click="createFunc()"
           icon="el-icon-plus">
           {{ createDisplay }}
@@ -122,7 +122,7 @@ export default {
     }
   },
   created() {
-    if (typeof this.nsFunc !== 'undefined') {
+    if (typeof this.nsFunc !== 'undefined' && this.$viewerRole()) {
       this.fetchNamespace()
     }
   },

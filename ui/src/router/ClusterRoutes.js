@@ -393,7 +393,7 @@ const clusterRoutes = [
     meta: { group: 'cluster' },
   },
   {
-    path: 'cluster/:name',
+    path: 'cluster/:clusterId',
     component: Layout,
     hidden: true,
     children: Routes,

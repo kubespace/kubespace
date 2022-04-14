@@ -37,14 +37,14 @@ func NewUser(models *model.Models) *User {
 }
 
 func (u *User) tokenUser(c *Context) *utils.Response {
-	user, err := u.models.UserManager.Get(c.User.Name)
+	user, err := u.models.UserManager.GetById(c.User.ID)
 	if err != nil {
 		return &utils.Response{
 			Code: code.ParamsError,
 			Msg:  err.Error(),
 		}
 	}
-	perms, err := u.models.UserManager.Permissions(user)
+	perms, err := u.models.UserRoleManager.GetUserRoles(user.ID)
 	if err != nil {
 		return &utils.Response{
 			Code: code.ParamsError,
