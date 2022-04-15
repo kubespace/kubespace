@@ -2,6 +2,7 @@ package pipeline_views
 
 import (
 	"github.com/kubespace/kubespace/pkg/model"
+	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/pipeline"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
@@ -53,7 +54,14 @@ func (p *PipelineWorkspace) list(c *views.Context) *utils.Response {
 		resp.Msg = err.Error()
 		return resp
 	}
-	resp.Data = workspaces
+	var data []types.PipelineWorkspace
+	for i, w := range workspaces {
+		if !p.models.UserRoleManager.HasScopeRole(c.User, types.RoleScopePipeline, w.ID, types.RoleTypeViewer) {
+			continue
+		}
+		data = append(data, workspaces[i])
+	}
+	resp.Data = data
 	return resp
 }
 

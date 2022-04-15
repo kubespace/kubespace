@@ -69,8 +69,8 @@
           <el-table-column label="操作" width="150">
             <template slot-scope="scope">
               <div class="tableOperate">
-                <el-link :underline="false" style="margin-right: 13px; color:#409EFF" :href="'/app/charts/'+scope.row.chart_path">下载</el-link>
-                <el-link :underline="false" style="color: #F56C6C" @click="handleDeleteVersion(scope.row.id, scope.row.package_version)">删除</el-link>
+                <el-link :underline="false" type="primary" style="margin-right: 13px; color:#409EFF" :href="'/app/charts/'+scope.row.chart_path">下载</el-link>
+                <el-link :disabled="!$editorRole()" :underline="false" type="danger" @click="handleDeleteVersion(scope.row.id, scope.row.package_version)">删除</el-link>
               </div>
             </template>
           </el-table-column>

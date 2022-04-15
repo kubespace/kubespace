@@ -230,10 +230,8 @@ export default {
           this.loading = false
         })
         listEvents(cluster).then(response => {
-          this.loading = false
           this.originEvents = response.data ? response.data : []
         }).catch(() => {
-          this.loading = false
         })
       } else {
         this.loading = false

@@ -51,7 +51,7 @@ func (clu *Cluster) list(c *Context) *utils.Response {
 	var data []map[string]interface{}
 
 	for _, du := range clus {
-		if !clu.models.ClusterManager.HasMember(&du, c.User) {
+		if !clu.models.UserRoleManager.HasScopeRole(c.User, types.RoleScopeCluster, du.ID, types.RoleTypeViewer) {
 			continue
 		}
 		status := types.ClusterPending

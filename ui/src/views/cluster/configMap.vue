@@ -65,8 +65,8 @@
         <el-table-column label="操作" show-overflow-tooltip width="110px">
           <template slot-scope="scope">
             <div class="tableOperate">
-              <el-link :underline="false" class="operator-btn" @click="openUpdateFormDialog(scope.row.namespace, scope.row.name)">编辑</el-link>
-              <el-link :underline="false" style="color: #F56C6C" @click="handleDeleteConfigMap([{namespace: scope.row.namespace, name: scope.row.name}])">删除</el-link>
+              <el-link :disabled="!$editorRole()" :underline="false" type="primary" style="margin-right: 15px;" @click="openUpdateFormDialog(scope.row.namespace, scope.row.name)">编辑</el-link>
+              <el-link :disabled="!$editorRole()" :underline="false" type="danger" @click="handleDeleteConfigMap([{namespace: scope.row.namespace, name: scope.row.name}])">删除</el-link>
             </div>
           </template>
         </el-table-column>

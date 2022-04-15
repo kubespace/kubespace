@@ -93,7 +93,7 @@
                   />
                   <span style="margin-left: 5px;">详情</span>
                 </el-dropdown-item>
-                <el-dropdown-item v-if="$updatePerm()"
+                <el-dropdown-item v-if="$editorRole()"
                   @click.native.prevent="
                     getConfigMapYaml(scope.row.namespace, scope.row.name)
                   "
@@ -104,7 +104,7 @@
                   />
                   <span style="margin-left: 5px;">修改</span>
                 </el-dropdown-item>
-                <el-dropdown-item v-if="$deletePerm()"
+                <el-dropdown-item v-if="$editorRole()"
                   @click.native.prevent="
                     deleteConfigMaps([
                       { namespace: scope.row.namespace, name: scope.row.name },

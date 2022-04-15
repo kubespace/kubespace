@@ -45,20 +45,20 @@
         <el-table-column label="操作" width="170">
           <template slot-scope="scope">
             <div class="tableOperate">
-              <el-link :underline="false" class="operator-btn"
+              <el-link :disabled="!$editorRole()" :underline="false" type="primary" style="margin-right: 15px;" 
                 v-if="scope.row.status=='UnInstall'" @click="openInstallFormDialog(scope.row)">安装</el-link>
-              <el-link :underline="false" class="operator-btn"
+              <el-link :disabled="!$editorRole()" :underline="false" type="primary" style="margin-right: 15px;" 
                 v-if="scope.row.status!='UnInstall'" @click="openInstallFormDialog(scope.row, true)">升级</el-link>
               
               <el-dropdown style="font-size: 13px;">
-                <span class="el-dropdown-link operator-btn">
+                <span class="el-dropdown-link operator-btn" :style="{color: !$editorRole() ? '#a0cfff' : ''}">
                   更多操作
                 </span>
                 <el-dropdown-menu slot="dropdown">
                   <el-dropdown-item>
-                    <el-link :underline="false" class="operator-btn" style="color: #F56C6C; font-weight: 400"
+                    <el-link :disabled="!$editorRole()" :underline="false" type="danger" style="font-weight: 400"
                       v-if="scope.row.status!='UnInstall'" @click="handleDestroyApp(scope.row.id, scope.row.name)">销毁</el-link>
-                    <el-link :underline="false" style="color: #F56C6C; font-weight: 400" v-if="scope.row.status=='UnInstall'"
+                    <el-link :disabled="!$editorRole()" :underline="false" type="danger" style="font-weight: 400" v-if="scope.row.status=='UnInstall'"
                       @click="handleDeleteApp(scope.row.id, scope.row.name)">删除</el-link>
                   </el-dropdown-item>
                 </el-dropdown-menu>

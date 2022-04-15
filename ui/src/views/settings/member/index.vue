@@ -58,14 +58,14 @@
                 <svg-icon style="width: 1.3em; height: 1.3em" icon-class="operate"/>
               </el-link>
               <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item v-if="$updatePerm()" 
+                <el-dropdown-item v-if="$editorRole()" 
                   @click.native.prevent="createUserFormVisible=true; updateUserVisible=true;
                                          form={name: scope.row.name, password: '', email: scope.row.email, roles: scope.row.roles}">
                   <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em;"
                     icon-class="edit"/>
                   <span style="margin-left: 5px">修改</span>
                 </el-dropdown-item>
-                <el-dropdown-item v-if="$deletePerm()" @click.native.prevent="deleteUsers([{ name: scope.row.name }])">
+                <el-dropdown-item v-if="$editorRole()" @click.native.prevent="deleteUsers([{ name: scope.row.name }])">
                   <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em;"
                     icon-class="delete"/>
                   <span style="margin-left: 5px">删除</span>

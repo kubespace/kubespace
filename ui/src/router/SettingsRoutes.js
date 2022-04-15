@@ -4,6 +4,12 @@ import store from '@/store'
 
 const Routes = [
   {
+    path: 'userinfo',
+    name: 'userInfo',
+    component: () => import('@/views/settings/secret'),
+    meta: { title: '个人中心', icon: 'settings_secret', 'group': 'settings', object: 'cluster' }
+  },
+  {
     path: 'secret',
     name: 'settinsSecret',
     component: () => import('@/views/settings/secret'),

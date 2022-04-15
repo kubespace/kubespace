@@ -14,23 +14,23 @@
     </span>
     <div class="right">
       <slot name="right-btn"></slot>
-      <template v-if="$editorRole()">
+      <template>
         <el-button v-if="typeof delFunc !== 'undefined'" size="small" plain @click="delFunc()"
-          type="danger" icon="el-icon-delete" >
+          type="danger" :disabled="!$editorRole()" icon="el-icon-delete" >
           删除
         </el-button>
       </template>
 
-      <template v-if="$editorRole()">
+      <template>
         <el-button v-if="typeof editFunc !== 'undefined'" size="small" plain @click="editFunc()"
-          type="success" icon='el-icon-edit'>
+          type="success" :disabled="!$editorRole()" icon='el-icon-edit'>
           编辑
         </el-button>
       </template>
 
-      <template v-if="$editorRole()">
+      <template>
         <el-button v-if="typeof createFunc !== 'undefined'" size="small" type="primary" @click="createFunc()"
-          icon="el-icon-plus">
+          icon="el-icon-plus" :disabled="!$editorRole()">
           {{ createDisplay }}
         </el-button>
       </template>

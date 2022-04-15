@@ -52,7 +52,7 @@ func NewRouter(redisOptions *redis.Options, mysqlOptions *mysql.Options) (*Route
 		return nil, err
 	}
 	kubeResources := kube_resource.NewKubeResources(kubeMessage)
-	sse.Stream = sse.NewStream(redisOptions)
+	sse.Stream = sse.NewStream(redisOptions, kubeResources)
 
 	// 统一认证的api接口
 	apiGroup := engine.Group("/api/v1")

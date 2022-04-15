@@ -88,7 +88,7 @@ type WatchResource struct {
 	*KubeResource
 }
 
-func (w *WatchResource) OpenWatch(cluster string, params ) *utils.Response {
+func (w *WatchResource) OpenWatch(cluster string) *utils.Response {
 	return w.Get(cluster, map[string]interface{}{"action": "open"})
 }
 

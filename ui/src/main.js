@@ -28,6 +28,7 @@ Vue.prototype.$dateFormat = dateFormat
 
 Vue.prototype.$viewerRole = viewerRole
 Vue.prototype.$editorRole = editorRole
+Vue.prototype.$adminRole = adminRole
 
 Vue.use(VueClipboard)
 

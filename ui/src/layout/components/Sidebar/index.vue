@@ -51,7 +51,7 @@ export default {
   created() {
     if (this.hasTopSelector && this.topSelectorType == 'cluster') {
       this.$store.dispatch('watchNamespace', '')
-      this.$store.dispatch('watchCluster', this.$route.params.name)
+      this.$store.dispatch('watchCluster', this.$route.params.clusterId)
     }
     this.fetchTopSelectors()
   },
@@ -109,7 +109,7 @@ export default {
       this.topSelectorLoading = true;
       listCluster().then(response => {
         var clusters = response.data ? response.data : []
-        var cur_cluster = this.$route.params.name
+        var cur_cluster = this.$route.params.clusterId
         for (let cluster of clusters) {
           let x = {'value': cluster.name, 'label': cluster.name1}
           if(cluster.status != 'Connect') x['disabled'] = true;

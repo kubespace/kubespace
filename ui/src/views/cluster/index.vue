@@ -54,15 +54,15 @@
         <el-table-column label="操作" width="150">
           <template slot-scope="scope">
             <div class="tableOperate">
-              <el-link :underline="false" style="margin-right: 15px; color:#409EFF" 
-                @click.native.prevent="clusterConnectToken=scope.row.token; clusterConnectDialog = true" 
+              <el-link :disabled="!$editorRole()" :underline="false" type="primary" style="margin-right: 15px;" 
+                @click="clusterConnectToken=scope.row.token; clusterConnectDialog = true" 
                 v-if="scope.row.status === 'Pending'">
                 导入集群
               </el-link>
-              <el-link :underline="false" style="margin-right: 15px; color:#409EFF" 
+              <el-link :underline="false" type='primary' style="margin-right: 15px;" 
                 @click="nameClick(scope.row.name)"
                 v-if="scope.row.status === 'Connect'">集群详情</el-link>
-              <el-link :underline="false" style="color: #F56C6C" @click="deleteClusters([{name: scope.row.name}])">删除</el-link>
+              <el-link :disabled="!$adminRole()"  :underline="false" type="danger" @click="deleteClusters([{name: scope.row.name}])">删除</el-link>
             </div>
             <!-- <el-button
               @click.native.prevent="deleteRow(scope.$index, tableData)"
@@ -235,7 +235,7 @@ export default {
       });
     },
     nameClick: function(name) {
-      this.$router.push({name: 'cluster', params: {name: name}})
+      this.$router.push({name: 'cluster', params: {clusterId: name}})
       // parent.location.href = '/ui/cluster/' + name
     },
     nameSearch: function(val) {

@@ -33,7 +33,7 @@ export default {
   },
   methods: {
     globalClick() {
-      this.$router.push({name: 'settinsSecret'})
+      this.$router.push({name: 'userInfo'})
     },
     pipelineClick() {
       this.$router.push({name: 'pipelineWorkspace'})

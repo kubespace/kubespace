@@ -11,7 +11,7 @@
     </template>
     <template v-else-if="item.meta && item.meta.group && item.meta.group == pathGroup">
       <template v-if="item.children && item.children.length > 0">
-        <template v-if="hasPerm(item)">
+        <template>
           <el-submenu ref="subMenu" :index="item.name" popper-append-to-body>
             <template slot="title">
               <item v-if="item.meta" :icon="item.meta && item.meta.icon" :title="item.meta.title" />
@@ -24,7 +24,7 @@
           </el-submenu>
         </template>
       </template>
-      <template v-else-if="hasPerm(item)">
+      <template v-else-if="display()">
         <span v-on:click="routeTo(item)">
           <el-menu-item :index="item.name">
             <item :icon="item.meta && item.meta.icon" :title="item.meta.title" />
@@ -36,9 +36,9 @@
 </template>
 
 <script>
-import { mapGetters } from 'vuex'
 import Item from './Item'
 import { hasPermission } from "@/api/settings_role";
+import { platformScopeRole } from "@/api/settings/user_role";
 
 export default {
   name: 'SidebarItem',
@@ -69,6 +69,7 @@ export default {
       this.$router.push({name: item.name, params: route.params})
     },
     hasPerm(item) {
+      
       if(item.children && item.children.length > 0) {
         for(var childItem of item.children) {
           var meta = childItem.meta
@@ -83,6 +84,12 @@ export default {
         if(meta.perm) return true
         return hasPermission(meta.group, meta.object, 'get')
       }
+    },
+    display() {
+      if(this.item.meta.group == 'settings') {
+        return platformScopeRole("viewer", this.item.name)
+      }
+      return true
     }
   }
 }

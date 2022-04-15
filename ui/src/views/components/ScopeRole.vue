@@ -1,6 +1,12 @@
 <template>
   <div>
-    <clusterbar :titleName="titleName" :nameFunc="nameSearch" :createFunc="createUserRoleFormDialog" createDisplay="添加成员"/>
+    <clusterbar :titleName="titleName" :nameFunc="nameSearch">
+      <div slot="right-btn" style="display: inline-block">
+        <el-button size="small" type="primary" @click="createUserRoleFormDialog" icon="el-icon-plus" :disabled="!$adminRole()">
+          添加成员
+        </el-button>
+      </div>
+    </clusterbar>
     <div class="dashboard-container" ref="tableCot">
       <el-table
         ref="multipleTable"
@@ -27,8 +33,8 @@
         <el-table-column label="操作" width="120">
           <template slot-scope="scope">
             <div class="tableOperate">
-              <el-link :underline="false" style="margin-right: 15px; color:#409EFF" @click="updateUserRoleFormDialog(scope.row)">编辑</el-link>
-              <el-link :underline="false" style="color: #F56C6C" @click="handleDeleteUserRole(scope.row.id, scope.row.username)">删除</el-link>
+              <el-link :disabled="!$adminRole()" :underline="false" type="primary" style="margin-right: 15px;" @click="updateUserRoleFormDialog(scope.row)">编辑</el-link>
+              <el-link :disabled="!$adminRole()" :underline="false" type="danger" @click="handleDeleteUserRole(scope.row.id, scope.row.username)">删除</el-link>
             </div>
           </template>
         </el-table-column>

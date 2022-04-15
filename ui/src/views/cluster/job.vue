@@ -92,11 +92,11 @@
                   <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="detail" />
                   <span style="margin-left: 5px;">详情</span>
                 </el-dropdown-item>
-                <el-dropdown-item v-if="$updatePerm()" @click.native.prevent="getJobYaml(scope.row.namespace, scope.row.name)">
+                <el-dropdown-item v-if="$editorRole()" @click.native.prevent="getJobYaml(scope.row.namespace, scope.row.name)">
                   <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="edit" />
                   <span style="margin-left: 5px;">修改</span>
                 </el-dropdown-item>
-                <el-dropdown-item v-if="$deletePerm()" @click.native.prevent="deleteJobs([{namespace: scope.row.namespace, name: scope.row.name}])">
+                <el-dropdown-item v-if="$editorRole()" @click.native.prevent="deleteJobs([{namespace: scope.row.namespace, name: scope.row.name}])">
                   <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="delete" />
                   <span style="margin-left: 5px;">删除</span>
                 </el-dropdown-item>

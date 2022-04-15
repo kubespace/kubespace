@@ -7,7 +7,15 @@
       <sidebar class="sidebar-container" />
     </template>
     <div class="main-container" :style='hasSideBar ? "" : "width: 100%; margin-left:0px"'>
-      <app-main />
+      <template v-if="$viewerRole()">
+        <app-main />
+      </template>
+      <template v-else>
+        <div style="min-height: calc(100vh - 50px); width: 100%; position: relative;
+           overflow: hidden; padding-top: 110px; text-align: center;">
+          您没有权限访问该页面，请联系管理员进行授权！
+        </div>
+      </template>
       <!-- main container -->
     </div>
 

@@ -34,8 +34,8 @@
         <el-table-column label="操作" width="120">
           <template slot-scope="scope">
             <div class="tableOperate">
-              <el-link :underline="false" style="margin-right: 15px; color:#409EFF" @click="updateSecretFormDialog(scope.row)">编辑</el-link>
-              <el-link :underline="false" style="color: #F56C6C" @click="handleDeleteSecret(scope.row.id, scope.row.name)">删除</el-link>
+              <el-link :disabled="!$editorRole()" :underline="false" type="primary" style="margin-right: 15px;"  @click="updateSecretFormDialog(scope.row)">编辑</el-link>
+              <el-link :disabled="!$editorRole()" :underline="false" type="danger" @click="handleDeleteSecret(scope.row.id, scope.row.name)">删除</el-link>
             </div>
           </template>
         </el-table-column>

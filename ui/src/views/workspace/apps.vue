@@ -2,10 +2,10 @@
   <div>
     <clusterbar :titleName="titleName" :nameFunc="nameSearch" createDisplay="创建应用">
       <div slot="right-btn" style="display: inline-block">
-        <el-button size="small" type="primary" @click="openCreateApp" icon="el-icon-plus">
+        <el-button size="small" type="primary" @click="openCreateApp" icon="el-icon-plus" :disabled="!$editorRole()">
           创建应用
         </el-button>
-        <el-button @click="openImportStoreAppDialog" type="primary" size="small">
+        <el-button @click="openImportStoreAppDialog" type="primary" size="small" v-if="$editorRole()">
           导入应用
         </el-button>
       </div>
@@ -54,30 +54,30 @@
         <el-table-column label="操作" width="170">
           <template slot-scope="scope">
             <div class="tableOperate">
-              <el-link :underline="false" class="operator-btn"
+              <el-link :disabled="!$editorRole()" :underline="false" type="primary" style="margin-right: 10px"
                 v-if="scope.row.status=='UnInstall'" @click="openInstallFormDialog(scope.row)">安装</el-link>
-              <el-link :underline="false" class="operator-btn"
+              <el-link :disabled="!$editorRole()" :underline="false" type="primary" style="margin-right: 10px"
                 v-if="scope.row.status!='UnInstall'" @click="openInstallFormDialog(scope.row, true)">升级</el-link>
-              <el-link :underline="false" class="operator-btn" v-if="scope.row.app_version.from=='space'"
-                @click="openEditApp(scope.row.app_version_id)">编辑</el-link>
+              <el-link :disabled="!$editorRole()" :underline="false" type="primary" style="margin-right: 10px"
+                v-if="scope.row.app_version.from=='space'" @click="openEditApp(scope.row.app_version_id)">编辑</el-link>
               
               <el-dropdown style="font-size: 13px;">
-                <span class="el-dropdown-link operator-btn">
+                <span class="el-dropdown-link operator-btn" :style="{color: !$editorRole() ? '#a0cfff' : ''}">
                   更多操作
                 </span>
-                <el-dropdown-menu slot="dropdown">
+                <el-dropdown-menu slot="dropdown" :disabled="!$editorRole()">
                   <el-dropdown-item>
-                    <el-link :underline="false" class="operator-btn" style="color:#0c81f5; font-weight: 400"
+                    <el-link :disabled="!$editorRole()" :underline="false" class="operator-btn" type="primary" style="font-weight: 400"
                       @click="openCloneAppDiloag(scope.row, 'project_app')">克隆</el-link>
                   </el-dropdown-item>
                   <el-dropdown-item>
-                    <el-link :underline="false" class="operator-btn" style="color:#0c81f5; font-weight: 400"
+                    <el-link :disabled="!$editorRole()" :underline="false" class="operator-btn" type="primary" style="font-weight: 400"
                       @click="openCloneAppDiloag(scope.row, 'store_app')">发布</el-link>
                   </el-dropdown-item>
                   <el-dropdown-item>
-                    <el-link :underline="false" class="operator-btn" style="color: #F56C6C; font-weight: 400"
+                    <el-link :disabled="!$editorRole()" :underline="false" class="operator-btn" type="danger" style="font-weight: 400"
                       v-if="scope.row.status!='UnInstall'" @click="handleDestroyApp(scope.row.id, scope.row.name)">销毁</el-link>
-                    <el-link :underline="false" style="color: #F56C6C; font-weight: 400" v-if="scope.row.status=='UnInstall'"
+                    <el-link :disabled="!$editorRole()" :underline="false" type="danger" style="font-weight: 400" v-if="scope.row.status=='UnInstall'"
                       @click="handleDeleteApp(scope.row.id, scope.row.name)">删除</el-link>
                   </el-dropdown-item>
                 </el-dropdown-menu>

@@ -85,7 +85,6 @@ func (clu *ClusterManager) List(filters map[string]interface{}) ([]types.Cluster
 	}
 	for i, c := range clusters {
 		clusters[i].Name = fmt.Sprintf("%d", c.ID)
-		klog.Info(c.Name)
 	}
 	return clusters, nil
 }

@@ -58,9 +58,9 @@
         <el-table-column label="操作" width="140">
           <template slot-scope="scope">
             <div class="tableOperate">
-              <el-link :underline="false" style="margin-right: 15px; color:#409EFF" @click="nameClick(scope.row.id)">构建</el-link>
-              <el-link :underline="false" style="margin-right: 15px; color:#409EFF" @click="editPipelineOperate(scope.row.pipeline.id)">编辑</el-link>
-              <el-link :underline="false" style="color: #F56C6C" @click="handleDeletePipeline(scope.row.pipeline.id, scope.row.pipeline.name)">删除</el-link>
+              <el-link :underline="false" type="primary" style="margin-right: 15px;" @click="nameClick(scope.row.id)">构建</el-link>
+              <el-link :disabled="!$editorRole()" :underline="false" type="primary" style="margin-right: 15px;" @click="editPipelineOperate(scope.row.pipeline.id)">编辑</el-link>
+              <el-link :disabled="!$editorRole()" :underline="false" type="danger" @click="handleDeletePipeline(scope.row.pipeline.id, scope.row.pipeline.name)">删除</el-link>
             </div>
           </template>
         </el-table-column>

@@ -41,8 +41,8 @@
         <el-table-column label="操作" width="120">
           <template slot-scope="scope">
             <div class="tableOperate" v-if="scope.row.workspace_id == workspaceId">
-              <el-link :underline="false" style="margin-right: 15px; color:#409EFF" @click="updateFormDialog(scope.row)">编辑</el-link>
-              <el-link :underline="false" style="color: #F56C6C" @click="handleDeleteResource(scope.row.id, scope.row.name)">删除</el-link>
+              <el-link :disabled="!$editorRole()" :underline="false" type="primary" style="margin-right: 15px;" @click="updateFormDialog(scope.row)">编辑</el-link>
+              <el-link :disabled="!$editorRole()" :underline="false" type="danger" @click="handleDeleteResource(scope.row.id, scope.row.name)">删除</el-link>
             </div>
           </template>
         </el-table-column>

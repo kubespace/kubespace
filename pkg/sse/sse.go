@@ -171,7 +171,7 @@ func (s *stream) clusterTypeWatch(cluster string) {
 	for t, _ := range watchTypes {
 		types = append(types, t)
 	}
-	s.kubeResources.Watch
+	//s.kubeResources.Watch
 	klog.Infof("cluster %s watch types %v", cluster, types)
 }
 

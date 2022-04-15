@@ -83,7 +83,6 @@ export function hasScopePermission(scope, scopeId, role) {
     editor: ['editor', 'admin'],
     admin: ['admin']
   }[role]
-  console.log(userInfo.permissions)
   for (var perm of userInfo.permissions) {
     if(perm.scope == scope && perm.scope_id == scopeId && roleSets.indexOf(perm.role) >= 0){
       return true
@@ -95,78 +94,81 @@ export function hasScopePermission(scope, scopeId, role) {
   return false
 }
 
-export function projectScopeRole(role) {
-  let meta = router.app._route.meta
-  if(!meta) {
-    return false
+export function projectScopeRole(role, projectId) {
+  if(!projectId) {
+    projectId = router.app._route.params.workspaceId
   }
-  if(meta.group != 'workspace') return false
-  let projectId = router.app._route.params.workspaceId
-  if(!projectId) return platformScopeRole(role)
+  if(!projectId) {
+    if (role == 'viewer' && router.app._route.name == 'workspaceIndex') return true
+    return platformScopeRole(role)
+  }
   if(isNaN(projectId)) return false
   return hasScopePermission('project', parseInt(projectId), role)
 }
 
-export function pipelineScopeRole(role) {
-  let meta = router.app._route.meta
-  if(!meta) {
-    return false
+export function pipelineScopeRole(role, workspaceId) {
+  if(!workspaceId){
+    workspaceId = router.app._route.params.workspaceId
   }
-  if(meta.group != 'pipeline') return false
-  let workspaceId = router.app._route.params.workspaceId
-  if(!workspaceId) return platformScopeRole(role)
+  if(!workspaceId) {
+    if (role == 'viewer' && router.app._route.name == 'pipelineWorkspace') return true
+    return platformScopeRole(role)
+  }
   if(isNaN(workspaceId)) return false
   return hasScopePermission('pipeline', parseInt(workspaceId), role)
 }
 
-export function clusterScopeRole(role) {
-  let meta = router.app._route.meta
-  if(!meta) {
-    return false
+export function clusterScopeRole(role, clusterId) {
+  if(!clusterId){
+    clusterId = router.app._route.params.clusterId
   }
-  if(meta.group != 'cluster') return false
-  let clusterId = router.app._route.params.clusterId
-  if(!clusterId) return platformScopeRole(role)
+  if(!clusterId) {
+    if (role == 'viewer' && router.app._route.name == 'clusterIndex') return true
+    return platformScopeRole(role)
+  }
   if(isNaN(clusterId)) return false
   return hasScopePermission('cluster', parseInt(clusterId), role)
 }
 
-export function platformScopeRole(role) {
+export function platformScopeRole(role, group) {
+  let platformViewerNoPerm = ['appstoreVersions', 'appstoreIndex', 'userInfo']
+  if(!group) group = router.app._route.name
+  if(role == 'viewer' && platformViewerNoPerm.indexOf(group) >= 0) return true
   return hasScopePermission('platform', 0, role)
 }
 
-export function viewerRole() {
+export function viewerRole(scopeId) {
   let meta = router.app._route.meta
   if(!meta) {
-    return false
+    return platformScopeRole("viewer")
   }
-  if(meta.group == 'workspace') return projectScopeRole("viewer")
-  if(meta.group == 'pipeline') return pipelineScopeRole("viewer")
-  if(meta.group == 'cluster') return clusterScopeRole("viewer")
+  if(meta.group == 'workspace') return projectScopeRole("viewer", scopeId)
+  if(meta.group == 'pipeline') return pipelineScopeRole("viewer", scopeId)
+  if(meta.group == 'cluster') return clusterScopeRole("viewer", scopeId)
   if(meta.group == 'settings') return platformScopeRole("viewer")
-  return false
+  return platformScopeRole("viewer")
 }
 
-export function editorRole() {
+export function editorRole(scopeId) {
   let meta = router.app._route.meta
   if(!meta) {
-    return false
+    return falplatformScopeRole("editor")
   }
-  if(meta.group == 'workspace') return projectScopeRole("editor")
-  if(meta.group == 'pipeline') return pipelineScopeRole("editor")
-  if(meta.group == 'cluster') return clusterScopeRole("editor")
+  if(meta.group == 'workspace') return projectScopeRole("editor", scopeId)
+  if(meta.group == 'pipeline') return pipelineScopeRole("editor", scopeId)
+  if(meta.group == 'cluster') return clusterScopeRole("editor", scopeId)
   if(meta.group == 'settings') return platformScopeRole("editor")
-  return false
+  return platformScopeRole("editor")
 }
 
-export function adminRole() {
+export function adminRole(scopeId) {
   let meta = router.app._route.meta
   if(!meta) {
-    return false
+    return platformScopeRole("admin")
   }
-  if(meta.group == 'workspace') return projectScopeRole("admin")
-  if(meta.group == 'pipeline') return pipelineScopeRole("admin")
-  if(meta.group == 'cluster') return clusterScopeRole("admin")
+  if(meta.group == 'workspace') return projectScopeRole("admin", scopeId)
+  if(meta.group == 'pipeline') return pipelineScopeRole("admin", scopeId)
+  if(meta.group == 'cluster') return clusterScopeRole("admin", scopeId)
   if(meta.group == 'settings') return platformScopeRole("admin")
-  return false
+  return platformScopeRole("admin")
 }
