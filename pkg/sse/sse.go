@@ -106,6 +106,17 @@ func (s *stream) Listen() {
 			}
 			if _, ok := s.Clients[client.ClientId]; ok {
 				delete(s.Clients, client.ClientId)
+				hasSameCluster := false
+				for _, c := range s.Clients {
+					if c.Cluster == client.Cluster {
+						hasSameCluster = true
+						break
+					}
+				}
+				if !hasSameCluster {
+					s.ClusterWatch[client.Cluster].Close()
+					delete(s.ClusterWatch, client.Cluster)
+				}
 				if client.Catalog == CatalogCluster {
 					s.clusterTypeWatch(client.Cluster)
 				}
@@ -170,6 +181,11 @@ func (s *stream) clusterTypeWatch(cluster string) {
 	var types []string
 	for t, _ := range watchTypes {
 		types = append(types, t)
+	}
+	resp := s.kubeResources.Watch.OpenWatch(cluster, types)
+	if !resp.IsSuccess() {
+		klog.Errorf("open watch error: %s", resp.Msg)
+		return
 	}
 	//s.kubeResources.Watch
 	klog.Infof("cluster %s watch types %v", cluster, types)

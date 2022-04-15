@@ -10,6 +10,14 @@ type ListSerializers struct {
 	Names         []string          `json:"names"`
 }
 
+type ClusterSSESerializers struct {
+	Cluster   string            `json:"cluster" form:"cluster"`
+	Type      string            `json:"type" form:"type"`
+	Namespace string            `json:"namespace" form:"namespace"`
+	Uid       string            `json:"uid" form:"uid"`
+	Selector  map[string]string `json:"selector" form:"selector"`
+}
+
 type GetSerializers struct {
 	Cluster   string `json:"cluster" form:"cluster"`
 	Name      string `json:"name" form:"name"`

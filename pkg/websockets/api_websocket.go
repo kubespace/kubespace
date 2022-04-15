@@ -83,7 +83,7 @@ func (a *ApiWebsocket) WsReceiveMsg() {
 				startWatch = true
 				go func() {
 					stopWatch = false
-					resp := a.Watch.OpenWatch(cluster)
+					resp := a.Watch.OpenWatch(cluster, nil)
 					if !resp.IsSuccess() {
 						startWatch = false
 						klog.Errorf("open watch error: %s", resp.Msg)

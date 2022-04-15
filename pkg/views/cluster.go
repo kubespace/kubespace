@@ -198,18 +198,22 @@ func (clu *Cluster) delete(c *Context) *utils.Response {
 }
 
 func (clu *Cluster) resourceSSE(c *Context) *utils.Response {
-	var ser serializers.ProjectAppListSerializer
+	var ser serializers.ClusterSSESerializers
 	if err := c.ShouldBindQuery(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
+	watchSelector := map[string]string{
+		sse.EventLabelType: ser.Type,
+	}
+	if ser.Namespace != "" {
+		watchSelector["namespace"] = ser.Namespace
+	}
 
 	streamClient := sse.StreamClient{
-		ClientId: utils.CreateUUID(),
-		Catalog:  sse.CatalogDatabase,
-		WatchSelector: map[string]string{
-			sse.EventTypePipelineRun: c.Param("pipelineRunId"),
-		},
-		ClientChan: make(chan sse.Event),
+		ClientId:      utils.CreateUUID(),
+		Catalog:       sse.CatalogDatabase,
+		WatchSelector: watchSelector,
+		ClientChan:    make(chan sse.Event),
 	}
 	sse.Stream.AddClient(streamClient)
 	defer sse.Stream.RemoveClient(streamClient)
