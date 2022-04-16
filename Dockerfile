@@ -1,4 +1,4 @@
-ARG BASEIMAGE=openspacee/ospserver-base:latest
+ARG BASEIMAGE=kubespace/distroless-static:latest
 FROM $BASEIMAGE
 
 COPY kubespace /
@@ -6,4 +6,4 @@ COPY entrypoint.sh /
 COPY apps /apps
 COPY ui/dist/favicon.ico /favicon.ico
 
-CMD ["bash", "-c", "sh /entrypoint.sh"]
+CMD ["/kubespace"]
