@@ -132,7 +132,7 @@ export default {
         description: "",
         cluster_id: "",
         namespace: "",
-        owner: "",
+        owner: this.$store.getters.username,
       },
       rules: {
         name: [{ required: true, message: '请输入空间名称', trigger: 'blur' },],
@@ -184,6 +184,10 @@ export default {
         Message.error("请选择要绑定的集群命名空间");
         return
       }
+      if(!this.form.owner) {
+        Message.error("空间负责人不能为空");
+        return
+      }
       let project = {
         name: this.form.name, 
         description: this.form.description, 
@@ -209,7 +213,15 @@ export default {
         description: this.form.description, 
         owner: this.form.owner
       }
-      updateSecret(this.form.id, project).then(() => {
+      if(!this.form.name) {
+        Message.error("空间名称不能为空");
+        return
+      }
+      if(!this.form.owner) {
+        Message.error("空间负责人不能为空");
+        return
+      }
+      updateProject(this.form.id, project).then(() => {
         this.createFormVisible = false;
         Message.success("更新项目空间成功")
         this.fetchWorkspaces()
@@ -227,7 +239,7 @@ export default {
           cancelButtonText: '取消',
           type: 'warning'
         }).then(() => {
-          deleteSecret(id).then(() => {
+          deleteProject(id).then(() => {
             Message.success("删除项目空间成功")
             this.fetchWorkspaces()
           }).catch((err) => {
@@ -262,6 +274,13 @@ export default {
       }
     },
     openCreateFormDialog() {
+      this.form = {
+        name: "",
+        description: "",
+        cluster_id: "",
+        namespace: "",
+        owner: this.$store.getters.username,
+      }
       this.createFormVisible = true;
       this.fetchClusters()
     },
@@ -274,18 +293,11 @@ export default {
         namespace: project.namespace,
         owner: project.owner,
       }
+      this.fetchClusters()
       this.updateFormVisible = true;
       this.createFormVisible = true;
-      // this.fetchClusters()
     },
     closeFormDialog() {
-      this.form = {
-        name: "",
-        description: "",
-        cluster_id: "",
-        namespace: "",
-        owner: "",
-      }
       this.updateFormVisible = false; 
       this.createFormVisible = false;
     }

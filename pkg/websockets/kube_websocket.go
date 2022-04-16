@@ -1,6 +1,7 @@
 package websockets
 
 import (
+	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/model"
@@ -18,8 +19,11 @@ type KubeWebsocket struct {
 	models        *model.Models
 }
 
-func NewKubeWebsocket(cluster string, ws *websocket.Conn, redisOp *redis.Options, models *model.Models) *KubeWebsocket {
+func NewKubeWebsocket(cluster string, ws *websocket.Conn, redisOp *redis.Options, models *model.Models) (*KubeWebsocket, error) {
 	middleMsg := kube_resource.NewMiddleMessage(redisOp)
+	if middleMsg.HasWatchReceive(cluster) {
+		return nil, fmt.Errorf("cluster %s has another agent connected", cluster)
+	}
 	return &KubeWebsocket{
 		cluster:       cluster,
 		redisOptions:  redisOp,
@@ -27,7 +31,7 @@ func NewKubeWebsocket(cluster string, ws *websocket.Conn, redisOp *redis.Options
 		wsConn:        ws,
 		stopped:       false,
 		models:        models,
-	}
+	}, nil
 }
 
 func (k *KubeWebsocket) Consume() {

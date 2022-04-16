@@ -8,7 +8,8 @@
           style="margin: 3px 0px 10px 0px; border: 1px solid #EBEEF5; box-shadow: none; padding: 5px 20px;">
           <el-form-item label="构建号">
             <span :style="{color: statusColorMap[build.pipeline_run.status], 'font-size': '16px'}">
-              <i :class="statusIconMap[build.pipeline_run.status]"></i>
+              <i v-if="build.pipeline_run.status != 'pause'" :class="statusIconMap[build.pipeline_run.status]"></i>
+              <svg-icon v-else icon-class="pause" />
               #{{ build.pipeline_run.build_number }}
             </span>
           </el-form-item>

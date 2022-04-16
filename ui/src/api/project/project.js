@@ -7,6 +7,14 @@ export function listProjects() {
   })
 }
 
+export function getProject(id, params) {
+  return request({
+    url: `project/workspace/${id}`,
+    method: 'get',
+    params
+  })
+}
+
 export function createProject(data) {
   return request({
     url: '/project/workspace',
@@ -17,7 +25,7 @@ export function createProject(data) {
 
 export function updateProject(id, data) {
   return request({
-    url: `/pipeline/workspace/${id}`,
+    url: `/project/workspace/${id}`,
     method: 'put',
     data,
   })
@@ -25,7 +33,7 @@ export function updateProject(id, data) {
 
 export function deleteProject(id) {
   return request({
-    url: `/pipeline/workspace/${id}`,
+    url: `/project/workspace/${id}`,
     method: 'delete',
   })
 }

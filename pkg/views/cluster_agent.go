@@ -3,6 +3,7 @@ package views
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/kubespace/kubespace/pkg/conf"
 	"github.com/kubespace/kubespace/pkg/model"
 	"k8s.io/klog"
 	"net/http"
@@ -22,7 +23,7 @@ func (a *ClusterAgent) AgentYaml(c *gin.Context) {
 	token := c.Param("token")
 	serverUrl := a.resolveHost(c.Request)
 	klog.Info("server url: ", serverUrl)
-	agentYaml := fmt.Sprintf(clusterAgentYaml, token, serverUrl)
+	agentYaml := fmt.Sprintf(conf.AppConfig.AgentVersion, clusterAgentYaml, token, serverUrl)
 	c.String(200, agentYaml)
 }
 
@@ -45,27 +46,27 @@ var clusterAgentYaml = `
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: osp
+  name: kubespace
 
 ---
 
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: osp-admin
-  namespace: osp
+  name: kubespace
+  namespace: kubespace
 
 ---
 
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: osp-clusterrole-bind
-  namespace: osp
+  name: kubespace-admin
+  namespace: kubespace
 subjects:
 - kind: ServiceAccount
-  name: osp-admin
-  namespace: osp
+  name: kubespace
+  namespace: kubespace
 roleRef:
   kind: ClusterRole
   name: cluster-admin
@@ -76,27 +77,27 @@ roleRef:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ospagent
-  namespace: osp
+  name: kubespace-agent
+  namespace: kubespace
   labels:
-    app: ospagent
+    kubespace-app: agent
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: ospagent
+      kubespace-app: agent
   template:
     metadata:
       labels:
-        app: ospagent
+        kubespace-app: agent
     spec:
       containers:
-      - name: ospagent
-        image: openspacee/ospagent:latest
+      - name: agent
+        image: kubespace/agent:%s
         command:
-        - "/ospagent"
+        - "/agent"
         args:
         - --token=%s
         - --server-url=%s
-      serviceAccountName: osp-admin
+      serviceAccountName: kubespace
 `

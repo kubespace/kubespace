@@ -28,11 +28,14 @@ func (w *WorkspaceManager) Create(workspace *types.PipelineWorkspace, defaultPip
 			if err := tx.Create(pipeline).Error; err != nil {
 				return err
 			}
+			prevStageId := uint(0)
 			for _, stage := range pipeline.Stages {
 				stage.PipelineId = pipeline.ID
+				stage.PrevStageId = prevStageId
 				if err := tx.Create(stage).Error; err != nil {
 					return err
 				}
+				prevStageId = stage.ID
 			}
 		}
 		return nil
@@ -69,6 +72,9 @@ func (w *WorkspaceManager) Delete(workspace *types.PipelineWorkspace) error {
 		if err := w.PipelineManager.Delete(pipeline.ID); err != nil {
 			return err
 		}
+	}
+	if err := w.DB.Delete(&types.UserRole{}, "scope = ? and scope_id = ?", types.RoleScopePipeline, workspace.ID).Error; err != nil {
+		return err
 	}
 	if err := w.DB.Delete(workspace).Error; err != nil {
 		return err

@@ -5,7 +5,7 @@
         <el-menu-item index="pipeline" class="submenu-class" v-on:click="pipelineClick">流水线</el-menu-item>
         <el-menu-item index="cluster" class="submenu-class" v-on:click="clusterClick">集群管理</el-menu-item>
         <el-menu-item index="appstore" class="submenu-class" v-on:click="appStoreClick">应用商店</el-menu-item>
-        <el-menu-item index="settings" class="submenu-class" v-on:click="globalClick">平台配置</el-menu-item>
+        <el-menu-item v-if="$hasScopePermission('platform', 0, 'viewer')" index="settings" class="submenu-class" v-on:click="globalClick">平台配置</el-menu-item>
     </el-menu>
   </div>
 </template>
@@ -33,7 +33,7 @@ export default {
   },
   methods: {
     globalClick() {
-      this.$router.push({name: 'userInfo'})
+      this.$router.push({name: 'settinsSecret'})
     },
     pipelineClick() {
       this.$router.push({name: 'pipelineWorkspace'})

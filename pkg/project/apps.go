@@ -62,12 +62,15 @@ func (a *AppService) CreateProjectApp(user *types.User, serializer serializers.P
 		app.UpdateTime = time.Now()
 		app.Description = serializer.Description
 	} else {
+		if serializer.Type != types.AppTypeOrdinaryApp && serializer.Type != types.AppTypeMiddleware {
+			return &utils.Response{Code: code.ParamsError, Msg: "应用类型参数错误"}
+		}
 		app = &types.ProjectApp{
 			Scope:       serializer.Scope,
 			ScopeId:     serializer.ScopeId,
 			Name:        serializer.Name,
 			Status:      types.AppStatusUninstall,
-			Type:        types.AppTypeOrdinaryApp,
+			Type:        serializer.Type,
 			Description: serializer.Description,
 			CreateUser:  user.Name,
 			UpdateUser:  user.Name,
@@ -370,7 +373,7 @@ func (a *AppService) GetApp(appId uint) *utils.Response {
 				nameStatusMap[status.Name] = status
 			}
 		} else {
-			klog.Error("get app status error: ", err.Error())
+			klog.Error("get app status error: ", res.Msg)
 		}
 		data["release"] = res.Data
 	}

@@ -48,10 +48,37 @@ func (p *ServiceProject) Delete(projectId uint) *utils.Response {
 	return resp
 }
 
-func (p *ServiceProject) Get(projectId uint) *utils.Response {
+func (p *ServiceProject) Get(projectId uint, withDetail bool) *utils.Response {
 	project, err := p.models.ProjectManager.Get(projectId)
 	if err != nil {
 		return &utils.Response{Code: code.GetError, Msg: "获取工作空间失败: " + err.Error()}
 	}
-	return &utils.Response{Code: code.Success, Data: project}
+	data := map[string]interface{}{
+		"id":          project.ID,
+		"name":        project.Name,
+		"description": project.Description,
+		"cluster_id":  project.ClusterId,
+		"namespace":   project.Namespace,
+		"owner":       project.Owner,
+		"create_time": project.CreateTime,
+		"update_time": project.UpdateTime,
+	}
+	cluster, err := p.models.ClusterManager.GetByName(project.ClusterId)
+	if err != nil {
+		return &utils.Response{Code: code.GetError, Msg: "获取集群信息失败: %s" + err.Error()}
+	}
+	data["cluster"] = cluster
+	if withDetail {
+		resp := p.KubeResources.Cluster.Get(project.ClusterId, map[string]interface{}{
+			"workspace": project.ID,
+			"namespace": project.Namespace,
+		})
+		if resp.IsSuccess() {
+			data["resource"] = resp.Data
+		} else {
+			return resp
+		}
+	}
+
+	return &utils.Response{Code: code.Success, Data: data}
 }

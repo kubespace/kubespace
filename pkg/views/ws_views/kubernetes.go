@@ -29,10 +29,12 @@ func (k *KubeWs) Connect(c *gin.Context) {
 	cluster, err := k.models.ClusterManager.GetByToken(token)
 	if err != nil {
 		klog.Errorf("get cluster error")
+		c.Data(404, "", []byte("not found cluster with token "+token))
 		return
 	}
 	if cluster == nil {
 		klog.Errorf("can not get cluster")
+		c.Data(404, "", []byte("not found cluster with token "+token))
 		return
 	}
 
@@ -40,10 +42,16 @@ func (k *KubeWs) Connect(c *gin.Context) {
 	ws, err := upGrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		klog.Errorf("upgrader agent conn error: %s", err)
+		c.Data(500, "", []byte("upgrader agent conn error: "+err.Error()))
 		return
 	}
 
-	kubeWebsocket := kubewebsocket.NewKubeWebsocket(cluster.Name, ws, k.redisOptions, k.models)
+	kubeWebsocket, err := kubewebsocket.NewKubeWebsocket(cluster.Name, ws, k.redisOptions, k.models)
+	if err != nil {
+		klog.Errorf("create websocket error: %s", err)
+		c.Data(500, "", []byte(err.Error()))
+		return
+	}
 	kubeWebsocket.Consume()
 	cluster.Status = types.ClusterConnect
 	k.models.ClusterManager.Update(cluster)

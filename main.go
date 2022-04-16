@@ -23,6 +23,7 @@ var (
 	mysqlPassword     = flag.String("mysql-password", LookupEnvOrString("MYSQL_PASSWORD", ""), "mysql password used.")
 	mysqlDbName       = flag.String("mysql-dbname", LookupEnvOrString("MYSQL_DBNAME", "kubespace"), "mysql db used.")
 	pipelinePluginUrl = flag.String("pipeline-plugin-url", LookupEnvOrString("PIPELINE_PLUGIN_URL", "http://127.0.0.1:8081/api/v1/plugin"), "pipeline plugin url.")
+	agentVersion      = flag.String("agent-version", LookupEnvOrString("AGENT_VERSION", "latest"), "kubespace agent version.")
 )
 
 func LookupEnvOrString(key string, defaultVal string) string {
@@ -77,7 +78,7 @@ func main() {
 	})
 	var err error
 	conf2.AppConfig.PipelinePluginUrl = *pipelinePluginUrl
-	klog.Info(conf2.AppConfig.PipelinePluginUrl)
+	conf2.AppConfig.AgentVersion = *agentVersion
 	server, err := buildServer()
 	if err != nil {
 		panic(err)

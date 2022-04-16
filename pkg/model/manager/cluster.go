@@ -70,7 +70,7 @@ func (clu *ClusterManager) GetByName(name string) (*types.Cluster, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := clu.DB.First(cluster, "id = ?", id).Error; err != nil {
+	if err = clu.DB.First(cluster, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
 	cluster.Name = fmt.Sprintf("%d", cluster.ID)
@@ -121,6 +121,9 @@ func (clu *ClusterManager) Delete(id uint) error {
 		if err := clu.appManager.DeleteProjectApp(app.ID); err != nil {
 			return err
 		}
+	}
+	if err := clu.DB.Delete(&types.UserRole{}, "scope = ? and scope_id = ?", types.RoleScopeCluster, id).Error; err != nil {
+		return err
 	}
 	if err := clu.DB.Delete(types.Cluster{}, "id = ?", id).Error; err != nil {
 		return err

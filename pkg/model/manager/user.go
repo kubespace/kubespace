@@ -61,7 +61,14 @@ func (u *UserManager) Create(user *types.User) error {
 }
 
 func (u *UserManager) Delete(name string) error {
-	if err := u.DB.Delete(types.User{}, "name = ?", name).Error; err != nil {
+	user, err := u.Get(name)
+	if err != nil {
+		return err
+	}
+	if err = u.DB.Delete(types.UserRole{}, "user_id = ?", user.ID).Error; err != nil {
+		return err
+	}
+	if err = u.DB.Delete(types.User{}, "name = ?", name).Error; err != nil {
 		return err
 	}
 	return nil

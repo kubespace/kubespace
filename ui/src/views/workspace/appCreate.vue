@@ -13,6 +13,12 @@
           <el-form-item label="应用名称" style="width: 500px" prop="name">
             <el-input v-model="form.name" :disabled="appVersionId?true:false" @input="appFormNameChange" placeholder="请输入应用名称" size="small"></el-input>
           </el-form-item>
+          <el-form-item label="应用类型" style="width: 500px" required>
+            <el-radio-group v-model="form.type"  size="small">
+              <el-radio-button label="ordinary_app">普通应用</el-radio-button>
+              <el-radio-button label="middleware">中间件</el-radio-button>
+            </el-radio-group>
+          </el-form-item>
           <el-form-item label="应用描述" style="width: 500px" prop="description">
             <el-input v-model="form.description" type="textarea" placeholder="请输入应用描述" size="small"></el-input>
           </el-form-item>
@@ -133,6 +139,7 @@ export default {
       form: {
         id: "",
         name: "",
+        type: "ordinary_app",
         version: '0.0.1',
         fourthVersion: Math.ceil(Math.random() * 100000),
         description: '',
@@ -169,6 +176,7 @@ export default {
       getAppVersion(this.appVersionId).then((resp) => {
         this.form.id = resp.data.id
         this.form.name = resp.data.name
+        this.form.type = resp.data.type
         this.form.description = resp.data.description
         this.chart.version = resp.data.package_version
         this.form.version = this.chart.version.split('-')[0]
@@ -195,6 +203,7 @@ export default {
           }
           this.form.templates.push(data)
         }
+        console.log(this.form)
         this.loading = false
       }).catch((err) => {
         this.loading = false

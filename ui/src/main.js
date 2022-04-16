@@ -16,7 +16,7 @@ import '@/icons' // icon
 import VueClipboard from 'vue-clipboard2';
 
 import { createPerm, updatePerm, deletePerm, hasPermission, podOpPerm } from "@/api/settings/user_role";
-import { viewerRole, editorRole, adminRole } from "@/api/settings/user_role";
+import { viewerRole, editorRole, adminRole, hasScopePermission } from "@/api/settings/user_role";
 import { dateFormat } from '@/utils/utils'
 
 Vue.prototype.$createPerm = createPerm
@@ -29,6 +29,7 @@ Vue.prototype.$dateFormat = dateFormat
 Vue.prototype.$viewerRole = viewerRole
 Vue.prototype.$editorRole = editorRole
 Vue.prototype.$adminRole = adminRole
+Vue.prototype.$hasScopePermission = hasScopePermission
 
 Vue.use(VueClipboard)
 

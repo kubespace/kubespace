@@ -12,10 +12,6 @@
         style="width: 100%"
       >
         <el-table-column 
-          type="selection" 
-          width="45"> 
-        </el-table-column>
-        <el-table-column 
           prop="name" 
           label="用户名" 
           show-overflow-tooltip>
@@ -26,16 +22,6 @@
           show-overflow-tooltip>
           <template slot-scope="scope">
             {{ scope.row.email ? scope.row.email : "—" }}
-          </template>
-        </el-table-column>
-        <el-table-column 
-          prop="roles" 
-          label="角色" 
-          show-overflow-tooltip>
-          <template slot-scope="scope">
-            <span v-for="val in scope.row.roles" :key="val" class="back-class">
-                {{ val }} 
-            </span>
           </template>
         </el-table-column>
         <el-table-column 
@@ -50,28 +36,17 @@
           prop="last_login"
           label="上次登录时间"
           show-overflow-tooltip>
-        </el-table-column>
-        <el-table-column label="" width="80">
           <template slot-scope="scope">
-            <el-dropdown size="medium" v-if="scope.row.name != 'admin'">
-              <el-link :underline="false">
-                <svg-icon style="width: 1.3em; height: 1.3em" icon-class="operate"/>
-              </el-link>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item v-if="$editorRole()" 
-                  @click.native.prevent="createUserFormVisible=true; updateUserVisible=true;
-                                         form={name: scope.row.name, password: '', email: scope.row.email, roles: scope.row.roles}">
-                  <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em;"
-                    icon-class="edit"/>
-                  <span style="margin-left: 5px">修改</span>
-                </el-dropdown-item>
-                <el-dropdown-item v-if="$editorRole()" @click.native.prevent="deleteUsers([{ name: scope.row.name }])">
-                  <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em;"
-                    icon-class="delete"/>
-                  <span style="margin-left: 5px">删除</span>
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
+            {{ $dateFormat(scope.row.last_login) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" show-overflow-tooltip width="110px">
+          <template slot-scope="scope">
+            <div class="tableOperate">
+              <el-link :disabled="!$editorRole()" :underline="false" type="primary" style="margin-right: 15px;" @click="createUserFormVisible=true; updateUserVisible=true;
+                                         form={name: scope.row.name, password: '', email: scope.row.email, roles: scope.row.roles}">编辑</el-link>
+              <el-link :disabled="!$editorRole()" :underline="false" type="danger" @click="deleteUsers([{ name: scope.row.name }])">删除</el-link>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -82,24 +57,14 @@
       <div style="padding: 10px 20px;">
         <el-form :model="form" label-position="left" label-width="80px">
           <el-form-item label="用户名">
-            <el-input :disabled="updateUserVisible" v-model="form.name" autocomplete="off" placeholder="请输入用户名"></el-input>
+            <el-input :disabled="updateUserVisible" v-model="form.name" placeholder="请输入用户名"></el-input>
           </el-form-item>
           <el-form-item label="密码">
-            <el-input v-model="form.password" autocomplete="off" placeholder="请输入密码" show-password>
+            <el-input type="password" autocomplete="new-password" v-model="form.password" placeholder="请输入密码" show-password>
             </el-input>
           </el-form-item>
           <el-form-item label="邮箱">
             <el-input v-model="form.email" autocomplete="off" placeholder="请输入邮箱"></el-input>
-          </el-form-item>
-          <el-form-item label="角色">
-            <el-select v-model="form.roles" multiple style="width: 100%;">
-              <el-option
-                v-for="item in roles"
-                :key="item.name"
-                :label="item.name"
-                :value="item.name">
-              </el-option>
-            </el-select>
           </el-form-item>
         </el-form>
       </div>

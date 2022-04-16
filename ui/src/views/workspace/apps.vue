@@ -172,7 +172,7 @@
               </div>
             </el-form>
           </div>
-          <div slot="footer" class="dialogFooter" style="padding-top: 0px;">
+          <div slot="footer" class="dialogFooter" style="padding-top: 20px;">
             <el-button @click="importStoreFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
             <el-button type="primary" @click="handelImportStoreApp" >导 入</el-button>
           </div>
@@ -202,7 +202,7 @@
               </el-form-item>
             </el-form>
           </div>
-          <div slot="footer" class="dialogFooter" style="padding-top: 0px;">
+          <div slot="footer" class="dialogFooter" style="padding-top: 10px;">
             <el-button @click="cloneFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
             <el-button type="primary" @click="handleDuplicateApp" >{{ cloneForm.scope == 'project_app' ? '克 隆' : '发 布' }}</el-button>
           </div>

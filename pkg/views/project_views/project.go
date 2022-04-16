@@ -28,7 +28,9 @@ func NewProject(models *model.Models, projectService *projectservice.ServiceProj
 	}
 	vs := []*views.View{
 		views.NewView(http.MethodGet, "", pipelineWs.list),
+		views.NewView(http.MethodGet, "/:id", pipelineWs.get),
 		views.NewView(http.MethodPost, "", pipelineWs.create),
+		views.NewView(http.MethodPut, "/:id", pipelineWs.update),
 		views.NewView(http.MethodDelete, "/:id", pipelineWs.delete),
 	}
 	pipelineWs.Views = vs
@@ -58,6 +60,37 @@ func (p *Project) create(c *views.Context) *utils.Response {
 	if err != nil {
 		resp.Code = code.DBError
 		resp.Msg = fmt.Sprintf("创建项目空间失败:%s", err.Error())
+		return resp
+	}
+	resp.Data = project
+	return resp
+}
+
+func (p *Project) update(c *views.Context) *utils.Response {
+	projectId, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	var ser serializers.ProjectSerializer
+	resp := &utils.Response{Code: code.Success}
+	if err = c.ShouldBind(&ser); err != nil {
+		resp.Code = code.ParamsError
+		resp.Msg = err.Error()
+		return resp
+	}
+	project, err := p.models.ProjectManager.Get(uint(projectId))
+	if err != nil {
+		return &utils.Response{Code: code.GetError, Msg: err.Error()}
+	}
+	project.Name = ser.Name
+	project.Description = ser.Description
+	project.Owner = ser.Owner
+	project.UpdateTime = time.Now()
+	project.UpdateUser = c.User.Name
+	project, err = p.models.ProjectManager.Update(project)
+	if err != nil {
+		resp.Code = code.DBError
+		resp.Msg = fmt.Sprintf("更新项目空间失败:%s", err.Error())
 		return resp
 	}
 	resp.Data = project
@@ -117,5 +150,5 @@ func (p *Project) get(c *views.Context) *utils.Response {
 	if err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	return p.projectService.Get(uint(projectId))
+	return p.projectService.Get(uint(projectId), true)
 }

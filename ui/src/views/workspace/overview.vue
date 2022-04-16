@@ -1,44 +1,119 @@
 <template>
-  <div>
-    <div class="dashboard-container" ref="tableCot">
+  <div v-loading="loading">
+    <div class="dashboard-container detail-dashboard project-overview-baseinfo" ref="tableCot">
+      <div style="padding: 5px 0px 0px;">
+        <div style="margin-bottom: 10px;">基本信息</div>
+        <el-form label-position="left" inline class="pod-item" label-width="80px" 
+          style="margin: 3px 0px 10px 0px; border: 1px solid #EBEEF5; box-shadow: none; padding: 5px 20px;">
+          <el-form-item label="空间名称">
+            <span>{{ project.name }}</span>
+          </el-form-item>
+          <el-form-item label="绑定集群">
+            <span>{{ project.cluster ? project.cluster.name1 : '' }}</span>
+          </el-form-item>
+          <el-form-item label="创建时间">
+            <span>{{ $dateFormat(project.create_time) }}</span>
+          </el-form-item>
+          <el-form-item label="负责人">
+            <span>{{ project.owner }}</span>
+          </el-form-item>
+          <el-form-item label="命名空间">
+            <span>{{ project.namespace }}</span>
+          </el-form-item>
+        </el-form>
+      </div>
+      <div style="padding: 15px 0px 0px;">
+        <div style="margin-bottom: 10px;">空间资源</div>
+        <div class="pod-item" style="margin: 3px 0px 10px 0px; border: 1px solid #EBEEF5; box-shadow: none; padding: 5px 20px; font-size: 14px;">
+          <div class="border-class">
+            <el-row :gutter="5">
+              <el-col :span="3">
+                <el-card shadow="never" style="height: 140px">
+                  <div style="text-align: center; height: 20px;">应用</div>
+                  <div style="text-align: center; padding-top: 39px; font-size: 20px;">{{ originApps.length }}</div>
+                </el-card>
+              </el-col>
+              <el-col :span="3">
+                <el-card shadow="never" style="height: 64px; color: #409EFF; margin-top: 3px;">
+                  <div style="text-align: center; font-size: 13px">未安装</div>
+                  <div style="text-align: center; padding-top: 4px;">{{ uninstallCnt }}</div>
+                </el-card>
+                <el-card shadow="never" style="height: 64px; margin-top: 6px; color: #E6A23C;">
+                  <div style="text-align: center; font-size: 13px;">未就绪</div>
+                  <div style="text-align: center; padding-top: 4px;">{{ notReadyCnt }}</div>
+                </el-card>
+              </el-col>
+              <el-col :span="3">
+                <el-card shadow="never" style="height: 64px; color: #67C23A; margin-top: 3px;">
+                  <div style="text-align: center; font-size: 13px">运行中</div>
+                  <div style="text-align: center; padding-top: 4px;">{{ runningCnt }}</div>
+                </el-card>
+                <el-card shadow="never" style="height: 64px; margin-top: 6px; color: #F56C6C">
+                  <div style="text-align: center; font-size: 13px;">运行故障</div>
+                  <div style="text-align: center; padding-top: 4px;">{{ runningFaultCnt }}</div>
+                </el-card>
+              </el-col>
+              <el-col :span="3">
+                <el-card shadow="never" style="height: 140px">
+                  <div style="text-align: center; height: 20px; font-size: 13px;">ConfigMap</div>
+                  <div style="text-align: center; padding-top: 39px; font-size: 20px;">{{ resource.config_map_num }}</div>
+                </el-card>
+              </el-col>
+              <el-col :span="3">
+                <el-card shadow="never" style="height: 140px">
+                  <div style="text-align: center; height: 20px; font-size: 13px;">Secret</div>
+                  <div style="text-align: center; padding-top: 39px; font-size: 20px;">{{ resource.secret_num }}</div>
+                </el-card>
+              </el-col>
+              <el-col :span="3">
+                <el-card shadow="never" style="height: 140px">
+                  <div style="text-align: center; height: 20px; font-size: 13px;">Service</div>
+                  <div style="text-align: center; padding-top: 39px; font-size: 20px;">{{ resource.service_num }}</div>
+                </el-card>
+              </el-col>
+              <el-col :span="3">
+                <el-card shadow="never" style="height: 140px">
+                  <div style="text-align: center; height: 20px; font-size: 13px;">Ingress</div>
+                  <div style="text-align: center; padding-top: 39px; font-size: 20px;">{{ resource.ingress_num }}</div>
+                </el-card>
+              </el-col>
+              <el-col :span="3">
+                <el-card shadow="never" style="height: 140px">
+                  <div style="text-align: center; height: 20px; font-size: 13px;">PVC</div>
+                  <div style="text-align: center; padding-top: 39px; font-size: 20px;">{{ resource.pvc_num }}</div>
+                </el-card>
+              </el-col>
+            </el-row>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
-import { Clusterbar } from '@/views/components'
-import { listWorkspaces } from '@/api/pipeline/workspace'
-import { getUser } from "@/api/user";
+import { getProject } from '@/api/project/project'
+import { listApps } from '@/api/project/apps'
 import { Message } from 'element-ui'
 
 export default {
   name: 'ProjectOverview',
   components: {
-    Clusterbar
   },
   data() {
     return {
       titleName: ["项目空间"],
       search_name: '',
-      users: [],
       cellStyle: {border: 0},
       maxHeight: window.innerHeight - 150,
       loading: true,
-      workspaces: [],
-      createClusterFormVisible: false,
-      inviteForm: false,
-      clusterConnectDialog: false,
-      clusterConnectToken: '',
-      form: {
-        name: '',
-        members: [],
-      },
-      locationAddr: window.location.origin,
+      project: {},
+      originApps: []
     }
   },
   created() {
-    this.fetchData();
-    this.fetchUsers();
+    this.fetchProject()
+    this.fetchApps()
   },
   mounted() {
     const that = this
@@ -51,162 +126,71 @@ export default {
     }
   },
   computed: {
+    projectId() {
+      return this.$route.params.workspaceId
+    },
+    runningCnt() {
+      return this.appStatusCnt('Running')
+    },
+    uninstallCnt() {
+      return this.appStatusCnt('UnInstall')
+    },
+    notReadyCnt() {
+      return this.appStatusCnt('NotReady')
+    },
+    runningFaultCnt() {
+      return this.appStatusCnt('RunningFault')
+    },
+    resource() {
+      if(this.project.resource) return this.project.resource
+      return {}
+    }
   },
   methods: {
-    fetchData() {
+    fetchProject() {
       this.loading = true
-      listWorkspaces()
-        .then((response) => {
-          this.loading = false
-          this.workspaces = response.data || [];
-        })
-        .catch(() => {
-          this.loading = false
-        })
-    },
-    fetchUsers() {
-      getUser({}).then((response) => {
-        this.users = response.data;
-      });
-    },
-    nameClick: function(id) {
-      parent.location.href = '/ui/pipespace/' + id
-    },
-    nameSearch: function(val) {
-      this.search_name = val
-    },
-    createClusterDialog() {
-      this.createClusterFormVisible = true;
-    },
-    handleCreateCluster() {
-      if (!this.form.name) {
-        Message.error('集群名称不能为空！')
-        return
-      }
-      createCluster(this.form)
-        .then((response) => {
-          Message.success("集群添加成功")
-          this.createClusterFormVisible = false
-          this.loading = false
-          this.fetchData()
-          this.clusterConnectToken = response.data.token
-          this.clusterConnectDialog = true;
-        })
-        .catch(() => {
-          // this.createClusterFormVisible = false
-          this.loading = false
-        })
-    },
-    handleClusterMembers() {
-      if (!this.form.name) {
-        Message.error('集群名称不能为空！')
-        return
-      }
-      clusterMembers(this.form)
-        .then((response) => {
-          Message.success("邀请用户成功")
-          this.createClusterFormVisible = false
-          this.inviteForm = false
-          this.loading = false
-          this.fetchData()
-        })
-        .catch(() => {
-          // this.createClusterFormVisible = false
-          this.loading = false
-        })
-    },
-    deleteClusters(delClusters) {
-      if(delClusters.length <= 0) {
-        Message.error('请选择要删除的集群')
-        return
-      }
-      deleteCluster(delClusters).then((response) => {
-          this.fetchData()
-      }).catch((e) => {
-        console.log(e)
+      getProject(this.projectId,).then((resp) => {
+        this.project = resp.data ? resp.data : {}
+        // this.loading = false
+      }).catch((err) => {
+        console.log(err)
+        // this.loading = false
       })
     },
-    onCopy(e) {
-      Message.success("复制成功")
+    fetchApps() {
+      this.loading = true
+      listApps({scope_id: this.projectId, scope: "project_app"}).then((resp) => {
+        let originApps = resp.data ? resp.data : []
+        this.originApps = originApps
+        this.loading = false
+      }).catch((err) => {
+        this.loading = false
+      })
     },
-    onError(e) {
-
+    appStatusCnt(status) {
+      let c = 0
+      for(let a of this.originApps) {
+        if(a.status == status) c++
+      }
+      return c
     }
   },
 }
 </script>
 
 <style lang="scss" scoped>
-.member-bar {
-  transition: width 0.28s;
-  height: 55px;
-  overflow: hidden;
-  box-shadow: inset 0 0 4px rgba(0, 21, 41, 0.1);
-  margin: 20px 20px 0px;
-
-  .app-breadcrumb.el-breadcrumb {
-    display: inline-block;
-    font-size: 20px;
-    line-height: 55px;
-    margin-left: 8px;
-
-    .no-redirect {
-      // color: #97a8be;
-      cursor: text;
-      margin-left: 15px;
-      font-size: 23px;
-      font-family: Avenir, Helvetica Neue, Arial, Helvetica, sans-serif;
-    }
-  }
-
-  .icon-create {
-    display: inline-block;
-    line-height: 55px;
-    margin-left: 20px;
-    width: 1.8em;
-    height: 1.8em;
-    vertical-align: 0.8em;
-    color: #bfbfbf;
-  }
-
-  .right {
-    float: right;
-    height: 100%;
-    line-height: 55px;
-    margin-right: 25px;
-
-    .el-input {
-      width: 195px;
-      margin-left: 15px;
-    }
-
-    .el-select {
-      .el-select__tags {
-        white-space: nowrap;
-        overflow: hidden;
-      }
-    }
-  }
+.project-overview-baseinfo {
+  padding: 20px 0px;
 }
-.dashboard {
-  &-container {
-    margin: 10px 30px;
-    height: calc(100%);
-  }
-  &-text {
-    font-size: 30px;
-    line-height: 46px;
-  }
-}
+</style>
 
-.table-fix {
-  height: calc(100% - 100px);
-}
-
-.name-class {
-  cursor: pointer;
-}
-.name-class:hover {
-  color: #409EFF;
+<style lang="scss">
+.project-overview-baseinfo{
+  .el-form-item__label{
+    line-height: 28px;
+  }
+  .el-form-item__content {
+    line-height: 28px;
+  }
 }
 </style>

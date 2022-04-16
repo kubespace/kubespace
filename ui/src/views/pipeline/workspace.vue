@@ -52,18 +52,18 @@
               <span v-if="updateFormVisible">{{ workspaceTypeMap[form.type] }}</span>
               <el-radio-group v-else v-model="form.type">
                 <el-radio label="code">代码空间</el-radio>
-                <el-radio label="custom">自定义空间</el-radio>
+                <!-- <el-radio label="custom">自定义空间</el-radio> -->
               </el-radio-group>
             </el-form-item>
             <el-form-item label="代码类型" prop="codeType" v-if="form.type == 'code'" @change="codeTypeChange">
               <!-- <span v-if="updateFormVisible">{{ codeTypeMap[form.codeType] }}</span> -->
-              <el-radio-group v-model="form.codeType" @change="codeTypeChange">
+              <el-radio-group v-model="form.codeType" @change="codeTypeChange" :disabled="updateFormVisible">
                 <el-radio label="https">HTTPS</el-radio>
                 <el-radio label="git">GIT</el-radio>
               </el-radio-group>
             </el-form-item>
             <el-form-item label="代码地址" prop="codeUrl" v-if="form.type == 'code'">
-              <el-input v-model="form.codeUrl" autocomplete="off" 
+              <el-input v-model="form.codeUrl" autocomplete="off" :disabled="updateFormVisible"
                 :placeholder="form.codeType == 'https' ? '请输入代码地址，如: https://github.com/kubespace/kubespace.git' : '请输入代码地址，如: git@github.com:kubespace/kubespace.git'" 
                 size="small"></el-input>
             </el-form-item>

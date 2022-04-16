@@ -48,7 +48,7 @@
               <el-steps simple class="el-steps">
                 <el-step title="" icon="none" :status="getStageStatus(stage.status)" v-for="stage in build.stages_run" :key="stage.id">
                   <div slot="title" class="el-steps-title">
-                    <div style="margin-left: 1px;"  @click="clickBuildDetail(build, 'stage', stage)">{{ stage.name }}</div>
+                    <div style="margin-left: 1px;"  @click="clickBuildDetail(build, 'stage', stage)">{{ stage.name }}{{ releaseVersion(stage) }}</div>
                     <div style="margin-top: 3px;">
                       <template v-if="stage.status == 'ok'">
                         <i class="el-icon-circle-check" style="font-size: 18px;"></i>
@@ -413,6 +413,13 @@ export default {
         console.log(event.type);
         this.pipelineSSE.close();
       });
+    },
+    releaseVersion(stage) {
+      for(let s of stage.jobs) {
+        if(s.plugin_key == 'release') {
+          return ' - ' + s.params.version
+        }
+      }
     },
     nameClick: function(id) {
       this.$router.push({name: "pipelineBuilds", params: { pipelineId: id },});

@@ -22,6 +22,14 @@ func (p *ManagerProject) Create(project *types.Project) (*types.Project, error) 
 	return project, nil
 }
 
+func (p *ManagerProject) Update(project *types.Project) (*types.Project, error) {
+	result := p.DB.Save(project)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return project, nil
+}
+
 func (p *ManagerProject) Get(projectId uint) (*types.Project, error) {
 	var ws types.Project
 	if err := p.DB.First(&ws, projectId).Error; err != nil {
@@ -42,13 +50,16 @@ func (p *ManagerProject) List() ([]types.Project, error) {
 func (p *ManagerProject) Delete(project *types.Project) error {
 	var apps []types.ProjectApp
 	var err error
-	if err = p.DB.Where("project_id = ?", project.ID).Find(&apps).Error; err != nil {
+	if err = p.DB.Where("scope = ? and scope_id = ?", types.AppVersionScopeProjectApp, project.ID).Find(&apps).Error; err != nil {
 		return err
 	}
 	for _, app := range apps {
 		if err = p.ProjectAppManager.DeleteProjectApp(app.ID); err != nil {
 			return err
 		}
+	}
+	if err = p.DB.Delete(&types.UserRole{}, "scope = ? and scope_id = ?", types.RoleScopeProject, project.ID).Error; err != nil {
+		return err
 	}
 	result := p.DB.Delete(project)
 	if result.Error != nil {
