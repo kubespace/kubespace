@@ -23,7 +23,7 @@ func (a *ClusterAgent) AgentYaml(c *gin.Context) {
 	token := c.Param("token")
 	serverUrl := a.resolveHost(c.Request)
 	klog.Info("server url: ", serverUrl)
-	agentYaml := fmt.Sprintf(conf.AppConfig.AgentVersion, clusterAgentYaml, token, serverUrl)
+	agentYaml := fmt.Sprintf(clusterAgentYaml, conf.AppConfig.AgentVersion, token, serverUrl)
 	c.String(200, agentYaml)
 }
 
