@@ -416,7 +416,7 @@ export default {
     },
     releaseVersion(stage) {
       for(let s of stage.jobs) {
-        if(s.plugin_key == 'release') {
+        if(s.plugin_key == 'release' && s.params.version) {
           return ' - ' + s.params.version
         }
       }

@@ -9,7 +9,6 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/jessevdk/go-assets v0.0.0-20160921144138-4f4301a06e15
-	github.com/jessevdk/go-assets-builder v0.0.0-20130903091706-b8483521738f // indirect
 	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
 	gorm.io/driver/mysql v1.2.1
 	gorm.io/gorm v1.22.4

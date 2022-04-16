@@ -106,19 +106,20 @@ func (s *stream) Listen() {
 			}
 			if _, ok := s.Clients[client.ClientId]; ok {
 				delete(s.Clients, client.ClientId)
-				hasSameCluster := false
-				for _, c := range s.Clients {
-					if c.Cluster == client.Cluster {
-						hasSameCluster = true
-						break
-					}
-				}
-				if !hasSameCluster {
-					s.ClusterWatch[client.Cluster].Close()
-					delete(s.ClusterWatch, client.Cluster)
-				}
 				if client.Catalog == CatalogCluster {
+					hasSameCluster := false
+					for _, c := range s.Clients {
+						if c.Cluster == client.Cluster {
+							hasSameCluster = true
+							break
+						}
+					}
+					if !hasSameCluster {
+						s.ClusterWatch[client.Cluster].Close()
+						delete(s.ClusterWatch, client.Cluster)
+					}
 					s.clusterTypeWatch(client.Cluster)
+
 				}
 			}
 			klog.Infof("delete sse client %s", client.ClientId)

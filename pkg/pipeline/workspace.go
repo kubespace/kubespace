@@ -23,9 +23,9 @@ func NewWorkspaceService(models *model.Models) *WorkspaceService {
 func (w *WorkspaceService) getCodeName(codeType string, codeUrl string) string {
 	var re *regexp.Regexp
 	if codeType == types.WorkspaceCodeTypeHttps {
-		re, _ = regexp.Compile("http[s]+://[\\w\\.:]+/([\\w/]+)[.git]*")
+		re, _ = regexp.Compile("http[s]+://[\\w\\.:]+/([\\w/\\-_]+)[.git]*")
 	} else if codeType == types.WorkspaceCodeTypeGit {
-		re, _ = regexp.Compile("git@[\\w\\.]+:[\\d]*/?([\\w/]+)[\\.git]*")
+		re, _ = regexp.Compile("git@[\\w\\.]+:[\\d]*/?([\\w/\\-_]+)[\\.git]*")
 	} else {
 		return ""
 	}

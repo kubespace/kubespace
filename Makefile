@@ -5,10 +5,10 @@ TAG?=dev
 
 
 build-binary: clean
-	$(ENVVAR) GOOS=$(GOOS) go build -o ospserver
+	$(ENVVAR) GOOS=$(GOOS) go build -o kubespace
 
 clean:
-	rm -f ospserver
+	rm -f kubespace
 
 docker-builder:
 	docker images | grep ospserver-builder || docker build -t ospserver-builder ./builder
