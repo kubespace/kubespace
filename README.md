@@ -10,7 +10,7 @@ KubeSpace平台当前包括如下功能：
 4. 应用商店：内置丰富的中间件（mysql、redis等），以及支持导入发布自定义应用；
 5. 平台配置：密钥、镜像仓库管理，以及不同模块的权限管理。
 
-### 安装
+### 安装·
 
 通过[helm](https://helm.sh/docs/intro/install/)安装kubespace，执行如下命令：
 ```
@@ -92,7 +92,7 @@ KubeSpace平台内置了丰富的中间件，可以快速导入到工作空间�
 如果您在使用过程中，有任何问题、建议或功能需求，可以随时在[issues](https://github.com/kubespace/kubespace/issues)中提交请求，我们会及时跟进。
 
 ### License
-Copyright 2020 OpenSpace.
+Copyright 2020 KubeSpace.
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
 
