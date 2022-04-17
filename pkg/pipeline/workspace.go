@@ -69,7 +69,7 @@ func (w *WorkspaceService) defaultCodePipelines() ([]*types.Pipeline, error) {
 				TriggerMode: types.StageTriggerModeAuto,
 				Jobs: types.PipelineJobs{
 					&types.PipelineJob{
-						Name:      "代码构建镜像",
+						Name:      "构建代码镜像",
 						PluginKey: types.BuiltinPluginBuildCodeToImage,
 						Params:    map[string]interface{}{},
 					},
@@ -97,7 +97,7 @@ func (w *WorkspaceService) defaultCodePipelines() ([]*types.Pipeline, error) {
 				TriggerMode: types.StageTriggerModeAuto,
 				Jobs: types.PipelineJobs{
 					&types.PipelineJob{
-						Name:      "代码构建镜像",
+						Name:      "构建代码镜像",
 						PluginKey: types.BuiltinPluginBuildCodeToImage,
 						Params:    map[string]interface{}{},
 					},
