@@ -296,7 +296,10 @@ func (p *ManagerPipelinePlugin) Init() {
 				return
 			}
 		}
-		url := conf.AppConfig.PipelinePluginUrl + "/" + plugin.Key
+		url := plugin.Url
+		if url != types.PipelinePluginBuiltinUrl {
+			url = conf.AppConfig.PipelinePluginUrl + "/" + plugin.Key
+		}
 		if dbPlugin.ID == 0 || dbPlugin.Version != plugin.Version || dbPlugin.Url != url {
 			plugin.Url = url
 			plugin.UpdateTime = now
