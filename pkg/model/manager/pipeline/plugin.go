@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"errors"
 	"github.com/kubespace/kubespace/pkg/conf"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"gorm.io/gorm"
@@ -36,9 +37,10 @@ func (p *ManagerPipelinePlugin) GetByKey(pluginKey string) (*types.PipelinePlugi
 
 var BuiltinPlugins = []types.PipelinePlugin{
 	{
-		Name: "构建代码镜像",
-		Key:  types.BuiltinPluginBuildCodeToImage,
-		Url:  conf.AppConfig.PipelinePluginUrl + "/" + types.BuiltinPluginBuildCodeToImage,
+		Name:    "构建代码镜像",
+		Key:     types.BuiltinPluginBuildCodeToImage,
+		Version: "1.0",
+		Url:     conf.AppConfig.PipelinePluginUrl + "/" + types.BuiltinPluginBuildCodeToImage,
 		Params: types.PipelinePluginParams{
 			Params: []*types.PipelinePluginParamsSpec{
 				{
@@ -81,7 +83,7 @@ var BuiltinPlugins = []types.PipelinePlugin{
 					ParamName: "code_build_image",
 					From:      types.PluginParamsFromPipelineResource,
 					FromName:  "code_build_image",
-					Default:   "",
+					Default:   nil,
 				},
 				{
 					ParamName: "code_build_file",
@@ -105,13 +107,13 @@ var BuiltinPlugins = []types.PipelinePlugin{
 					ParamName: "image_build_registry",
 					From:      types.PluginParamsFromImageRegistry,
 					FromName:  "image_build_registry",
-					Default:   "",
+					Default:   nil,
 				},
 				{
 					ParamName: "image_registry_id",
 					From:      types.PluginParamsFromJob,
 					FromName:  "image_build_registry",
-					Default:   "",
+					Default:   0,
 				},
 				{
 					ParamName: "image_builds",
@@ -139,9 +141,10 @@ var BuiltinPlugins = []types.PipelinePlugin{
 		},
 	},
 	{
-		Name: "执行shell脚本",
-		Key:  types.BuiltinPluginExecuteShell,
-		Url:  conf.AppConfig.PipelinePluginUrl + "/" + types.BuiltinPluginExecuteShell,
+		Name:    "执行shell脚本",
+		Key:     types.BuiltinPluginExecuteShell,
+		Version: "1.0",
+		Url:     conf.AppConfig.PipelinePluginUrl + "/" + types.BuiltinPluginExecuteShell,
 		Params: types.PipelinePluginParams{
 			Params: []*types.PipelinePluginParamsSpec{
 				{
@@ -178,9 +181,10 @@ var BuiltinPlugins = []types.PipelinePlugin{
 		},
 	},
 	{
-		Name: "升级空间应用",
-		Key:  types.BuiltinPluginUpgradeApp,
-		Url:  types.PipelinePluginBuiltinUrl,
+		Name:    "升级空间应用",
+		Key:     types.BuiltinPluginUpgradeApp,
+		Version: "1.0",
+		Url:     types.PipelinePluginBuiltinUrl,
 		Params: types.PipelinePluginParams{
 			Params: []*types.PipelinePluginParamsSpec{
 				{
@@ -199,21 +203,22 @@ var BuiltinPlugins = []types.PipelinePlugin{
 					ParamName: "apps",
 					From:      types.PluginParamsFromJob,
 					FromName:  "apps",
-					Default:   "",
+					Default:   nil,
 				},
 				{
 					ParamName: "with_install",
 					From:      types.PluginParamsFromJob,
 					FromName:  "with_install",
-					Default:   "",
+					Default:   true,
 				},
 			},
 		},
 	},
 	{
-		Name: "版本发布",
-		Key:  types.BuiltinPluginRelease,
-		Url:  conf.AppConfig.PipelinePluginUrl + "/" + types.BuiltinPluginRelease,
+		Name:    "版本发布",
+		Key:     types.BuiltinPluginRelease,
+		Version: "1.0",
+		Url:     conf.AppConfig.PipelinePluginUrl + "/" + types.BuiltinPluginRelease,
 		Params: types.PipelinePluginParams{
 			Params: []*types.PipelinePluginParamsSpec{
 				{
@@ -284,19 +289,26 @@ var BuiltinPlugins = []types.PipelinePlugin{
 func (p *ManagerPipelinePlugin) Init() {
 	now := time.Now()
 	for _, plugin := range BuiltinPlugins {
-		var cnt int64
-		if err := p.DB.Model(&types.PipelinePlugin{}).Where("`key` = ?", plugin.Key).Count(&cnt).Error; err != nil {
-			klog.Errorf("get plugin %s error: %s", plugin.Key, err.Error())
-			return
-		}
-		if cnt == 0 {
-			if plugin.Url != types.PipelinePluginBuiltinUrl {
-				plugin.Url = conf.AppConfig.PipelinePluginUrl + "/" + plugin.Key
+		var dbPlugin types.PipelinePlugin
+		if err := p.DB.First(&dbPlugin, "`key` = ?", plugin.Key).Error; err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				klog.Errorf("get plugin %s error: %s", plugin.Key, err.Error())
+				return
 			}
-			plugin.CreateTime = now
+		}
+		url := conf.AppConfig.PipelinePluginUrl + "/" + plugin.Key
+		if dbPlugin.ID == 0 || dbPlugin.Version != plugin.Version || dbPlugin.Url != url {
+			plugin.Url = url
 			plugin.UpdateTime = now
-			if err := p.DB.Create(&plugin).Error; err != nil {
-				klog.Info("create pipeline plugin %s=%s error: %s", plugin.Key, plugin.Name, err.Error())
+			if dbPlugin.ID == 0 {
+				plugin.CreateTime = now
+				if err := p.DB.Create(&plugin).Error; err != nil {
+					klog.Infof("create pipeline plugin %s=%s error: %s", plugin.Key, plugin.Name, err.Error())
+				}
+			} else {
+				if err := p.DB.Model(&dbPlugin).Updates(plugin).Error; err != nil {
+					klog.Infof("update pipeline plugin %s=%s error: %s", plugin.Key, plugin.Name, err.Error())
+				}
 			}
 		}
 	}

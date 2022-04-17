@@ -241,6 +241,7 @@ export default {
         scope: "project_app",
         scope_id: parseInt(this.projectId), 
         name: this.form.name, 
+        type: this.form.type,
         version: version,
         chart: chartYaml,
         templates: this.chart.templates,

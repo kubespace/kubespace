@@ -14,7 +14,7 @@ kubespace:
     repository: kubespace/kubespace
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: ""
+    tag: "1650123641"
   imagePullSecrets: []
   service:
     type: NodePort
@@ -24,6 +24,8 @@ kubespace:
   extraEnvs:
     - name: INSECURE_PORT
       value: 80
+    - name: AGENT_VERSION
+      value: "1.0.1"
 
   ingress:
     enabled: false
@@ -63,7 +65,7 @@ pipeline_plugin:
     repository: kubespace/pipeline-plugin
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: ""
+    tag: "1.0.0"
   imagePullSecrets: []
   service:
     type: ClusterIP
@@ -90,10 +92,10 @@ pipeline_plugin:
 
 agent:
   image:
-    repository: kubespace/kubespace-agent
+    repository: kubespace/agent
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: ""
+    tag: "1.0.1"
   imagePullSecrets: []
   extraArgs:
   extraEnvs:

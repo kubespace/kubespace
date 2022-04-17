@@ -173,6 +173,7 @@ type PipelinePlugin struct {
 	Key        string                  `gorm:"size:50;not null;uniqueIndex:idx_plugin_key"`
 	Url        string                  `gorm:"size:255;not null"`
 	Params     PipelinePluginParams    `gorm:"type:json;not null"`
+	Version    string                  `gorm:"version"`
 	ResultEnv  PipelinePluginResultEnv `gorm:"type:json;"`
 	CreateTime time.Time               `gorm:"not null;autoCreateTime"`
 	UpdateTime time.Time               `gorm:"not null;autoUpdateTime"`
