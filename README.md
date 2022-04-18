@@ -15,8 +15,7 @@ KubeSpace平台当前包括如下功能：
 通过[helm](https://helm.sh/docs/intro/install/)安装kubespace，执行如下命令：
 ```
 helm repo add kubespace https://kubespace.cn/charts
-kubectl create namespace kubespace
-helm install kubespace -n kubespace kubespace/kubespace
+helm install kubespace -n kubespace kubespace/kubespace --create-namespace
 ```
 
 安装之后，查看所有Pod是否运行正常：
