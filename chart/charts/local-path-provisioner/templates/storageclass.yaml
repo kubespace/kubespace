@@ -15,4 +15,4 @@ volumeBindingMode: WaitForFirstConsumer
 reclaimPolicy: {{ .Values.storageClass.reclaimPolicy }}
 allowVolumeExpansion: true
 {{- end }}
-{{ -end -}}
+{{- end -}}

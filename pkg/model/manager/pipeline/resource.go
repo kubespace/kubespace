@@ -9,12 +9,30 @@ import (
 )
 
 var InitGlobalResources = []*types.PipelineResource{
-	&types.PipelineResource{
-		Name:        "golang1.16",
+	{
+		Name:        "kubespace/golang:1.16",
 		Type:        "image",
 		Value:       "kubespace/golang:1.16",
 		Global:      true,
 		Description: "内置golang编译镜像",
+		CreateUser:  "admin",
+		UpdateUser:  "admin",
+	},
+	{
+		Name:        "kubespace/node:17.9.0",
+		Type:        "image",
+		Value:       "kubespace/node:17.9.0",
+		Global:      true,
+		Description: "内置node编译镜像",
+		CreateUser:  "admin",
+		UpdateUser:  "admin",
+	},
+	{
+		Name:        "kubespace/python:3.8",
+		Type:        "image",
+		Value:       "kubespace/python:3.8",
+		Global:      true,
+		Description: "内置python编译镜像",
 		CreateUser:  "admin",
 		UpdateUser:  "admin",
 	},

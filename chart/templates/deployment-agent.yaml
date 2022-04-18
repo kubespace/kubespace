@@ -3,11 +3,11 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: {{ include "kubespace.fullname" . }}-agent
-  namespace: {{ .Values.global.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     kubespace-app: kubespace-agent
     {{- include "kubespace.labels" . | nindent 4 }}
-  {{- with .Values.serviceAccount.annotations }}
+  {{- with .Values.agent.serviceAccount.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -15,7 +15,11 @@ metadata:
 ---
 
 kind: ClusterRoleBinding
+{{- if semverCompare "<1.22.0-0" .Capabilities.KubeVersion.GitVersion }}
 apiVersion: rbac.authorization.k8s.io/v1beta1
+{{- else }}
+apiVersion: rbac.authorization.k8s.io/v1
+{{- end }}
 metadata:
   name: {{ include "kubespace.fullname" . }}-agent
   namespace: kubespace
@@ -34,7 +38,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "kubespace.fullname" . }}-agent
-  namespace: {{ .Values.global.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "kubespace.labels" . | nindent 4 }}
 spec:
@@ -50,6 +54,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
+        kubespace-app: kubespace-agent
         {{- include "kubespace.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.agent.imagePullSecrets }}
@@ -57,8 +62,6 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "kubespace.fullname" . }}-agent
-      securityContext:
-        {{- toYaml .Values.agent.podSecurityContext | nindent 8 }}
       containers:
         - name: kubespace-agent
           securityContext:
@@ -73,8 +76,8 @@ spec:
           env:
             - name: SERVER_URL
               value: "{{ include "kubespace.fullname" . }}:{{ .Values.kubespace.service.port }}"
-          {{- if .Values.extraEnvs }}
-{{ toYaml .Values.extraEnvs | indent 12 }}
+          {{- if .Values.agent.extraEnvs }}
+{{ toYaml .Values.agent.extraEnvs | indent 12 }}
           {{- end }}
           resources:
             {{- toYaml .Values.agent.resources | nindent 12 }}

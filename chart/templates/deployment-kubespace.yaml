@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "kubespace.fullname" . }}
-  namespace: {{ .Values.global.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "kubespace.labels" . | nindent 4 }}
 spec:
@@ -35,7 +35,7 @@ spec:
           {{- end }}
           env:
             - name: REDIS_ADDRESS
-              value: "{{ include "kubespace.fullname" . }}-redis:6379"
+              value: "{{ include "kubespace.fullname" . }}-redis-master:6379"
             - name: REDIS_PASSWORD
               value: {{ .Values.redis.auth.password }}
             - name: MYSQL_HOST
@@ -45,7 +45,7 @@ spec:
             - name: MYSQL_DBNAME
               value: {{ .Values.mysql.auth.database }}
             - name: PIPELINE_PLUGIN_URL
-              value: "http://{{ include "kubespace.fullname" . }}-pipeline-plugin:{{ .Values.pipeline_agent.service.port }}"
+              value: "http://{{ include "kubespace.fullname" . }}-pipeline-plugin:{{ .Values.pipeline_plugin.service.port }}"
           {{- if .Values.extraEnvs }}
 {{ toYaml .Values.extraEnvs | indent 12 }}
           {{- end }}
@@ -60,20 +60,20 @@ spec:
             - name: https
               containerPort: 443
               protocol: TCP
-          livenessProbe:
-            httpGet:
-              path: /
-              port: http
-          readinessProbe:
-            httpGet:
-              path: /
-              port: http
+#          livenessProbe:
+#            httpGet:
+#              path: /
+#              port: http
+#          readinessProbe:
+#            httpGet:
+#              path: /
+#              port: http
           resources:
             {{- toYaml .Values.kubespace.resources | nindent 12 }}
-      {{ - if .Values.extraVolumes }}
+      {{- if .Values.extraVolumes }}
       volumes:
-{{ toYaml .Values.extraVolumes | indent 8 } }
-      {{ - end }}
+{{ toYaml .Values.extraVolumes | indent 8 }}
+      {{- end }}
       {{- with .Values.kubespace.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -93,7 +93,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{ include "kubespace.fullname" . }}
-  namespace: {{ .Values.global.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "kubespace.labels" . | nindent 4 }}
 spec:
@@ -103,8 +103,8 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
-{{ if (and (eq .Values.service.type "NodePort") (not (empty .Values.service.nodePort))) }}
-      nodePort: {{ .Values.service.nodePort }}
+{{ if (and (eq .Values.kubespace.service.type "NodePort") (not (empty .Values.kubespace.service.nodePort))) }}
+      nodePort: {{ .Values.kubespace.service.nodePort }}
 {{ end }}
   selector:
     kubespace-app: kubespace
@@ -130,7 +130,7 @@ apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   name: {{ $fullName }}
-  namespace: {{ .Values.global.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "kubespace.labels" . | nindent 4 }}
   {{- with .Values.kubespace.ingress.annotations }}
