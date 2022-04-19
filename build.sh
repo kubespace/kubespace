@@ -1,5 +1,5 @@
-npm install
-cd ui && npm run build && cp dist/index.html dist/static/index.html
+cd ui && npm install
+npm run build && cp dist/index.html dist/static/index.html
 cd ..
 export GOPROXY=https://proxy.golang.com.cn,direct
 go get github.com/jessevdk/go-assets-builder

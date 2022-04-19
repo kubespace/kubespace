@@ -234,7 +234,7 @@ export default {
       let resource = {
         value: this.form.value,
         description: this.form.description,
-        global: thif.form.global
+        global: this.form.global
       }
       if(this.form.secret_id) resource['secret_id'] = this.form.secret_id
       this.dialogLoading = true
