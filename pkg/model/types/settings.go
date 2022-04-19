@@ -17,7 +17,7 @@ type SettingsSecret struct {
 	Type        string    `gorm:"size:50;not null" json:"type"`
 	User        string    `gorm:"size:255;" json:"user"`
 	Password    string    `gorm:"size:255;" json:"password"`
-	PrivateKey  string    `gorm:"size:2000;" json:"private_key"`
+	PrivateKey  string    `gorm:"size:5000;" json:"private_key"`
 	AccessToken string    `gorm:"size:2000;" json:"access_token"`
 	CreateUser  string    `gorm:"size:255;not null" json:"create_user"`
 	UpdateUser  string    `gorm:"size:255;not null" json:"update_user"`

@@ -233,7 +233,7 @@ func (u *upgradeApp) matchImageReplace(value map[string]interface{}) bool {
 		image = strings.Join(strings.Split(image, "/")[1:], "/")
 	}
 	for _, destImage := range u.images {
-		if strings.Contains(destImage, image) {
+		if strings.Contains(destImage, image+":") {
 			if hasTag {
 				destNoTag := strings.Split(destImage, ":")[0]
 				tag := "latest"
@@ -261,30 +261,38 @@ func (u *upgradeApp) matchRepositoryReplace(value map[string]interface{}) bool {
 	if !ok {
 		return false
 	}
-	if _, ok = value["registry"]; !ok {
-		return false
-	}
 	if _, ok = value["tag"]; !ok {
 		return false
 	}
+	oriImage := repository
+	if _, ok = value["registry"]; !ok {
+		if strings.Contains(strings.Split(repository, "/")[0], ".") {
+			oriImage = strings.Join(strings.Split(repository, "/")[1:], "/")
+		}
+	}
 	for _, image := range u.images {
 		destImage := image
-		if strings.Contains(destImage, repository) {
+		destTag := "latest"
+		if len(strings.Split(destImage, ":")) == 2 {
+			destTag = strings.Split(destImage, ":")[1]
+		} else {
+			destImage = destImage + ":latest"
+		}
+		if strings.Contains(destImage, oriImage+":") {
 			u.Log("应用原镜像「%v/%v:%v」，替换升级为「%s」", value["registry"], value["repository"], value["tag"], destImage)
 
-			destTag := "latest"
-			if len(strings.Split(destImage, ":")) == 2 {
-				destTag = strings.Split(destImage, ":")[1]
-			}
 			value["tag"] = destTag
 			destImage = strings.Split(destImage, ":")[0]
 
-			destRegistry := "docker.io"
-			if strings.Contains(strings.Split(destImage, "/")[0], ".") {
-				destRegistry = strings.Split(destImage, "/")[0]
-				destImage = strings.Split(destImage, "/")[1]
+			if _, ok = value["registry"]; ok {
+				destRegistry := "docker.io"
+				destImageSplit := strings.Split(destImage, "/")
+				if strings.Contains(destImageSplit[0], ".") {
+					destRegistry = destImageSplit[0]
+					destImage = strings.Join(destImageSplit[1:], "/")
+				}
+				value["registry"] = destRegistry
 			}
-			value["registry"] = destRegistry
 			value["repository"] = destImage
 
 			return true
