@@ -156,11 +156,11 @@ func (p *PipelineRun) logStream(c *views.Context) *utils.Response {
 	c.Writer.Header().Set("Connection", "keep-alive")
 	c.Writer.Header().Set("Transfer-Encoding", "chunked")
 
+	c.SSEvent("message", "\n")
 	w := c.Writer
+	w.Flush()
 	clientGone := w.CloseNotify()
-	if lastJobLog == nil {
-		c.SSEvent("message", "\n")
-	} else {
+	if lastJobLog != nil {
 		c.SSEvent("message", lastJobLog.Logs)
 	}
 	w.Flush()
