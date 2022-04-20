@@ -344,7 +344,7 @@ export default {
       this.jobLogSSE = new EventSource(url);
       this.jobLogSSE.addEventListener('message', event => {
         // console.log(event.data);
-        if(event.data && event.data != "\n") {
+        if(event.data && event.data != "\n" && event.data != "{}") {
           this.$set(this.mainContent, 'jobLog', event.data)
           let that = this
           this.$nextTick(() => {

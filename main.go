@@ -15,7 +15,7 @@ var (
 	port              = flag.Int("port", LookupEnvOrInt("SECURE_PORT", 443), "Server port to listen.")
 	redisAddress      = flag.String("redis-address", LookupEnvOrString("REDIS_ADDRESS", "localhost:6379"), "redis address used.")
 	redisDB           = flag.Int("redis-db", LookupEnvOrInt("REDIS_DB", 0), "redis db used.")
-	redisPassword     = flag.String("redis-password", LookupEnvOrString("REDIS_PASSWORD", ""), "redis password used.")
+	redisPassword     = flag.String("redis-password", LookupEnvOrString("REDIS_PASSWORD", "123abc,.;"), "redis password used.")
 	certFile          = flag.String("cert-file", LookupEnvOrString("CERT_FILE", ""), "cert file path for tls used.")
 	keyFile           = flag.String("cert-key-file", LookupEnvOrString("CERT_KEY_FILE", ""), "cert key file path for tls used.")
 	mysqlHost         = flag.String("mysql-host", LookupEnvOrString("MYSQL_HOST", "localhost:3306"), "mysql address used.")

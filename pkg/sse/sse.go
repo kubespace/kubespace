@@ -5,6 +5,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/redis"
 	"k8s.io/klog"
+	"time"
 )
 
 var Stream *stream
@@ -164,6 +165,7 @@ func (s *stream) dbWatch() {
 		if err != nil {
 			klog.Errorf("receive global watch error: %s", err.Error())
 		}
+		time.Sleep(10 * time.Second)
 	}
 }
 

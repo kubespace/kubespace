@@ -408,6 +408,7 @@ export default {
         if (event.readyState == EventSource.CLOSED) {
           console.log('event was closed');
         };
+        console.log(event)
       });
       this.pipelineSSE.addEventListener('close', event => {
         console.log(event.type);

@@ -67,7 +67,7 @@ func (p *Pipeline) sse(c *views.Context) *utils.Response {
 	}
 	sse.Stream.AddClient(streamClient)
 	defer sse.Stream.RemoveClient(streamClient)
-	c.SSEvent("message", "\n")
+	c.SSEvent("message", "{}")
 	c.Writer.Flush()
 
 	tick := time.NewTicker(30 * time.Second)
@@ -82,7 +82,7 @@ func (p *Pipeline) sse(c *views.Context) *utils.Response {
 			c.SSEvent("message", event)
 			c.Writer.Flush()
 		case <-tick.C:
-			c.SSEvent("message", "\n")
+			c.SSEvent("message", "{}")
 			c.Writer.Flush()
 		}
 	}

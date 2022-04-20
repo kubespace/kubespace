@@ -85,7 +85,7 @@ func (p *PipelineRun) sse(c *views.Context) *utils.Response {
 	}
 	sse.Stream.AddClient(streamClient)
 	defer sse.Stream.RemoveClient(streamClient)
-	c.SSEvent("message", "\n")
+	c.SSEvent("message", "{}")
 	c.Writer.Flush()
 
 	tick := time.NewTicker(30 * time.Second)
@@ -100,7 +100,7 @@ func (p *PipelineRun) sse(c *views.Context) *utils.Response {
 			c.SSEvent("message", event)
 			c.Writer.Flush()
 		case <-tick.C:
-			c.SSEvent("message", "\n")
+			c.SSEvent("message", "{}")
 			c.Writer.Flush()
 		}
 	}
@@ -161,7 +161,7 @@ func (p *PipelineRun) logStream(c *views.Context) *utils.Response {
 	c.Writer.Header().Set("Connection", "keep-alive")
 	c.Writer.Header().Set("Transfer-Encoding", "chunked")
 
-	c.SSEvent("message", "\n")
+	c.SSEvent("message", "{}")
 	w := c.Writer
 	w.Flush()
 	clientGone := w.CloseNotify()
@@ -192,7 +192,7 @@ func (p *PipelineRun) logStream(c *views.Context) *utils.Response {
 				}
 			} else {
 				klog.Errorf("get job id=%s log error: %s", jobRunId, err.Error())
-				c.SSEvent("message", "\n")
+				c.SSEvent("message", "{}")
 				w.Flush()
 			}
 		}
