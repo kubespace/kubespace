@@ -11,6 +11,7 @@ import (
 	"k8s.io/klog"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type Pipeline struct {
@@ -69,6 +70,8 @@ func (p *Pipeline) sse(c *views.Context) *utils.Response {
 	c.SSEvent("message", "\n")
 	c.Writer.Flush()
 
+	tick := time.NewTicker(30 * time.Second)
+
 	for {
 		klog.Infof("select for channel")
 		select {
@@ -77,6 +80,9 @@ func (p *Pipeline) sse(c *views.Context) *utils.Response {
 			return nil
 		case event := <-streamClient.ClientChan:
 			c.SSEvent("message", event)
+			c.Writer.Flush()
+		case <-tick.C:
+			c.SSEvent("message", "\n")
 			c.Writer.Flush()
 		}
 	}

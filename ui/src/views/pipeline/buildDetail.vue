@@ -239,7 +239,7 @@ export default {
       this.buildSSE = new EventSource(url);
       this.buildSSE.addEventListener('message', event => {
           // console.log(event.data);
-          if(event.data) {
+          if(event.data && event.data != "\n") {
             let data = JSON.parse(event.data)
             // console.log(data)
             if(data.object) {
@@ -344,7 +344,7 @@ export default {
       this.jobLogSSE = new EventSource(url);
       this.jobLogSSE.addEventListener('message', event => {
         // console.log(event.data);
-        if(event.data) {
+        if(event.data && event.data != "\n") {
           this.$set(this.mainContent, 'jobLog', event.data)
           let that = this
           this.$nextTick(() => {

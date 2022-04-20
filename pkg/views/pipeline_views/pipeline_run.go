@@ -85,8 +85,10 @@ func (p *PipelineRun) sse(c *views.Context) *utils.Response {
 	}
 	sse.Stream.AddClient(streamClient)
 	defer sse.Stream.RemoveClient(streamClient)
-	c.SSEvent("message", "{}")
+	c.SSEvent("message", "\n")
 	c.Writer.Flush()
+
+	tick := time.NewTicker(30 * time.Second)
 
 	for {
 		klog.Infof("select for channel")
@@ -96,6 +98,9 @@ func (p *PipelineRun) sse(c *views.Context) *utils.Response {
 			return nil
 		case event := <-streamClient.ClientChan:
 			c.SSEvent("message", event)
+			c.Writer.Flush()
+		case <-tick.C:
+			c.SSEvent("message", "\n")
 			c.Writer.Flush()
 		}
 	}
@@ -187,6 +192,8 @@ func (p *PipelineRun) logStream(c *views.Context) *utils.Response {
 				}
 			} else {
 				klog.Errorf("get job id=%s log error: %s", jobRunId, err.Error())
+				c.SSEvent("message", "\n")
+				w.Flush()
 			}
 		}
 	}
