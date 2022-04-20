@@ -11,10 +11,10 @@ global:
 kubespace:
   replicaCount: 1
   image:
-    repository: kubespace/kubespace
+    repository: registry.cn-hangzhou.aliyuncs.com/kubespace/kubespace
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: "1650166868"
+    tag: "1650377618"
   imagePullSecrets: []
   service:
     type: NodePort
@@ -62,10 +62,10 @@ kubespace:
 pipeline_plugin:
   replicaCount: 1
   image:
-    repository: kubespace/pipeline-plugin
+    repository: registry.cn-hangzhou.aliyuncs.com/kubespace/pipeline-plugin
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: "1650125692"
+    tag: "1650378162"
   imagePullSecrets: []
   service:
     type: ClusterIP

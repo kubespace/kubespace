@@ -66,16 +66,13 @@ func (p *Pipeline) sse(c *views.Context) *utils.Response {
 	}
 	sse.Stream.AddClient(streamClient)
 	defer sse.Stream.RemoveClient(streamClient)
-	w := c.Writer
-	clientGone := w.CloseNotify()
-	c.SSEvent("message", "")
-	w.Flush()
-	//c.Stream()
+	c.SSEvent("message", "{}")
+	c.Writer.Flush()
 
 	for {
 		klog.Infof("select for channel")
 		select {
-		case <-clientGone:
+		case <-c.Writer.CloseNotify():
 			klog.Info("client gone")
 			return nil
 		case event := <-streamClient.ClientChan:

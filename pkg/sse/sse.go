@@ -72,20 +72,20 @@ func (s *stream) Listen() {
 		case client := <-s.NewClient:
 			if client.ClientId == "" {
 				klog.Errorf("receive new sse clients, but no client id")
-				return
+				break
 			}
 			if client.WatchSelector == nil {
 				klog.Errorf("receive new sse clients, but no watch selector")
-				return
+				break
 			}
 			if client.Catalog == CatalogCluster {
 				if client.Cluster == "" {
 					klog.Errorf("receive new sse clients, but no cluster")
-					return
+					break
 				}
 				if _, ok := client.WatchSelector[EventLabelType]; !ok {
 					klog.Errorf("receive new sse clients, but no watch type")
-					return
+					break
 				}
 				if _, ok := s.ClusterWatch[client.Cluster]; !ok {
 					s.ClusterWatch[client.Cluster] = kube_resource.NewMiddleMessage(s.redisOptions)
@@ -102,7 +102,7 @@ func (s *stream) Listen() {
 		case client := <-s.CloseClient:
 			if client.ClientId == "" {
 				klog.Errorf("receive new sse clients, but no client id")
-				return
+				break
 			}
 			if _, ok := s.Clients[client.ClientId]; ok {
 				delete(s.Clients, client.ClientId)
