@@ -159,7 +159,7 @@ func (p *PipelineRun) logStream(c *views.Context) *utils.Response {
 	w := c.Writer
 	clientGone := w.CloseNotify()
 	if lastJobLog == nil {
-		c.SSEvent("message", "{}")
+		c.SSEvent("message", "\n")
 	} else {
 		c.SSEvent("message", lastJobLog.Logs)
 	}

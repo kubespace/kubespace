@@ -388,7 +388,7 @@ export default {
       this.pipelineSSE = new EventSource(url);
       this.pipelineSSE.addEventListener('message', event => {
         // console.log(event.data);
-        if(event.data) {
+        if(event.data && event.data != "\n") {
           let data = JSON.parse(event.data)
           // console.log(data)
           if(data.object) {

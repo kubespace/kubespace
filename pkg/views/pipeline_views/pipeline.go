@@ -66,7 +66,7 @@ func (p *Pipeline) sse(c *views.Context) *utils.Response {
 	}
 	sse.Stream.AddClient(streamClient)
 	defer sse.Stream.RemoveClient(streamClient)
-	c.SSEvent("message", "{}")
+	c.SSEvent("message", "\n")
 	c.Writer.Flush()
 
 	for {
