@@ -422,10 +422,10 @@ export default {
         includeCredentials: false,
         format: 'plain'
       });
-      this.pipelineSSE.on("message", (data) => {
-        console.log(data)
-        if(data && data != "\n") {
-          let data = JSON.parse(data)
+      this.pipelineSSE.on("message", (res) => {
+        console.log(res)
+        if(res && res != "\n") {
+          let data = JSON.parse(res)
           // console.log(data)
           if(data.object) {
             let obj = data.object

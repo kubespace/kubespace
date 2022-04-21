@@ -303,15 +303,15 @@ export default {
     },
     getJobLog() {
       if(this.mainContent.type == 'job') {
+        let withSSE = false
+        if(this.runningStatus.indexOf(this.mainContent.mainJob.status) >= 0 && this.mainContent.mainStage.status != 'pause') {
+          withSSE = true
+        }
         if(this.mainContent.mainJob.id != this.jobLogId) {
           this.mainContent.jobLog = ''
           this.jobLogId = this.mainContent.mainJob.id
           if(this.jobLogSSE) {
             this.jobLogSSE.close()
-          }
-          let withSSE = false
-          if(this.runningStatus.indexOf(this.mainContent.mainJob.status) >= 0) {
-            withSSE = true
           }
           
           if(withSSE) {
@@ -322,7 +322,7 @@ export default {
             }).catch(() => {
             })
           }
-        } else if(this.runningStatus.indexOf(this.mainContent.mainJob.status) == -1 && this.jobLogSSE) {
+        } else if(!withSSE && this.jobLogSSE) {
           this.jobLogSSE.close()
           getJobLog(this.mainContent.mainJob.id).then((response) => {
             this.$set(this.mainContent, 'jobLog', response.data)
