@@ -283,7 +283,7 @@ export default {
     this.fetchPipelineSSE();
   },
   beforeDestroy() {
-    this.pipelineSSE.close()
+    this.pipelineSSE.disconnect()
     if(this.refreshExecTimer) {
       clearTimeout(this.refreshExecTimer)
     }
@@ -423,6 +423,7 @@ export default {
         format: 'plain'
       });
       this.pipelineSSE.on("message", (data) => {
+        console.log(data)
         if(data && data != "\n") {
           let data = JSON.parse(data)
           // console.log(data)
