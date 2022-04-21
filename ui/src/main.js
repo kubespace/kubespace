@@ -1,4 +1,5 @@
 import Vue from 'vue'
+import VueSSE from 'vue-sse'
 
 import 'normalize.css/normalize.css' // A modern alternative to CSS resets
 
@@ -34,6 +35,10 @@ Vue.prototype.$hasScopePermission = hasScopePermission
 Vue.use(VueClipboard)
 
 Vue.use(ElementUI)
+
+Vue.use(VueSSE, {
+  polyfill: true
+})
 
 Vue.config.productionTip = false
 

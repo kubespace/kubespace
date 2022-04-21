@@ -282,7 +282,7 @@ export default {
     this.fetchBuilds();
     this.fetchPipelineSSE();
   },
-  destroyed() {
+  beforeDestroy() {
     this.pipelineSSE.close()
     if(this.refreshExecTimer) {
       clearTimeout(this.refreshExecTimer)
@@ -383,13 +383,48 @@ export default {
         that.refreshExecTime()
       }, 1000);
     },
+    // fetchPipelineSSE() {
+    //   let url = `/api/v1/pipeline/pipeline/${this.pipelineId}/sse`
+    //   this.pipelineSSE = new EventSource(url);
+    //   this.pipelineSSE.addEventListener('message', event => {
+    //     // console.log(event.data);
+    //     if(event.data && event.data != "\n") {
+    //       let data = JSON.parse(event.data)
+    //       // console.log(data)
+    //       if(data.object) {
+    //         let obj = data.object
+    //         for(let i in this.builds){
+    //           let build = this.builds[i]
+    //           if(build.pipeline_run.id == obj.pipeline_run.id) {
+    //             this.$set(this.builds, i, obj)
+    //             this.processExecTime()
+    //             break
+    //           }
+    //         }
+    //       }
+    //     }
+    //   });
+    //   this.pipelineSSE.addEventListener('error', event => {
+    //     if (event.readyState == EventSource.CLOSED) {
+    //       console.log('event was closed');
+    //     };
+    //     console.log(event)
+    //   });
+    //   this.pipelineSSE.addEventListener('close', event => {
+    //     console.log(event.type);
+    //     this.pipelineSSE.close();
+    //   });
+    // },
     fetchPipelineSSE() {
       let url = `/api/v1/pipeline/pipeline/${this.pipelineId}/sse`
-      this.pipelineSSE = new EventSource(url);
-      this.pipelineSSE.addEventListener('message', event => {
-        // console.log(event.data);
-        if(event.data && event.data != "\n") {
-          let data = JSON.parse(event.data)
+      this.pipelineSSE = this.$sse.create({
+        url: url,
+        includeCredentials: false,
+        format: 'plain'
+      });
+      this.pipelineSSE.on("message", (data) => {
+        if(data && data != "\n") {
+          let data = JSON.parse(data)
           // console.log(data)
           if(data.object) {
             let obj = data.object
@@ -403,17 +438,15 @@ export default {
             }
           }
         }
-      });
-      this.pipelineSSE.addEventListener('error', event => {
-        if (event.readyState == EventSource.CLOSED) {
-          console.log('event was closed');
-        };
-        console.log(event)
-      });
-      this.pipelineSSE.addEventListener('close', event => {
-        console.log(event.type);
-        this.pipelineSSE.close();
-      });
+      })
+      this.pipelineSSE.connect().then(() => {
+        console.log('[info] connected', 'system')
+      }).catch(() => {
+        console.log('[error] failed to connect', 'system')
+      })
+      this.pipelineSSE.on('error', () => { // eslint-disable-line
+        console.log('[error] disconnected, automatically re-attempting connection', 'system')
+      })
     },
     releaseVersion(stage) {
       for(let s of stage.jobs) {
