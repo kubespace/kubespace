@@ -67,7 +67,8 @@ pipeline_plugin:
     - name: PORT
       value: "80"
   resources: {}
-
+  securityContext:
+    privileged: true
   nodeSelector: {}
   tolerations: []
   affinity: {}

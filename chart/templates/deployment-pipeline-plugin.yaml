@@ -28,7 +28,6 @@ spec:
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
-            privileged: true
             {{- toYaml .Values.pipeline_plugin.securityContext | nindent 12 }}
           image: "{{ .Values.pipeline_plugin.image.repository }}:{{ .Values.pipeline_plugin.image.tag }}"
           imagePullPolicy: {{ .Values.pipeline_plugin.image.pullPolicy }}
