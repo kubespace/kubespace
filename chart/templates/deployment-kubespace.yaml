@@ -46,12 +46,12 @@ spec:
               value: {{ .Values.mysql.auth.database }}
             - name: PIPELINE_PLUGIN_URL
               value: "http://{{ include "kubespace.fullname" . }}-pipeline-plugin:{{ .Values.pipeline_plugin.service.port }}/api/v1/plugin"
-          {{- if .Values.extraEnvs }}
-{{ toYaml .Values.extraEnvs | indent 12 }}
+          {{- if .Values.kubespace.extraEnvs }}
+{{ toYaml .Values.kubespace.extraEnvs | indent 12 }}
           {{- end }}
-          {{- if .Values.extraVolumeMounts }}
+          {{- if .Values.kubespace.extraVolumeMounts }}
           volumeMounts:
-{{ toYaml .Values.extraVolumeMounts | indent 12 }}
+{{ toYaml .Values.kubespace.extraVolumeMounts | indent 12 }}
           {{- end }}
           ports:
             - name: http
