@@ -1,0 +1,181 @@
+# Default values for kubespace.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+nameOverride: ""
+fullnameOverride: ""
+
+global:
+  localpathEnable: true
+
+kubespace:
+  replicaCount: 1
+  image:
+    repository: registry.cn-hangzhou.aliyuncs.com/kubespace/kubespace
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "1.0.0"
+  imagePullSecrets: []
+  service:
+    type: NodePort
+    port: 80
+    # nodePort:
+  extraArgs: []
+  extraEnvs:
+    - name: INSECURE_PORT
+      value: 80
+    - name: AGENT_VERSION
+      value: "1.0.0"
+
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+      # kubernetes.io/ingress.class: nginx
+      # kubernetes.io/tls-acme: "true"
+    hosts:
+      - host: kubespace.cn
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+    #  - secretName: chart-example-tls
+    #    hosts:
+    #      - chart-example.local
+
+  resources: {}
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+pipeline_plugin:
+  replicaCount: 1
+  image:
+    repository: registry.cn-hangzhou.aliyuncs.com/kubespace/pipeline-plugin
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "1.0.0"
+  imagePullSecrets: []
+  service:
+    type: ClusterIP
+    port: 80
+  extraArgs: []
+  extraEnvs:
+    - name: DATA_DIR
+      value: /data
+    - name: PORT
+      value: "80"
+  resources: {}
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+agent:
+  image:
+    repository: registry.cn-hangzhou.aliyuncs.com/kubespace/agent
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "1.0.0"
+  imagePullSecrets: []
+  extraArgs: []
+  extraEnvs:
+    - name: TOKEN
+      value: "local"
+
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  serviceAccount: {}
+
+mysql:
+  ## @param architecture MySQL architecture (`standalone` or `replication`)
+  ##
+  architecture: standalone
+  image:
+    registry: registry.cn-hangzhou.aliyuncs.com
+    repository: kubespace/mysql
+    tag: 8.0.28
+  auth:
+    rootPassword: "kubespace@2022"
+    ## @param auth.database Name for a custom database to create
+    ## ref: https://github.com/bitnami/bitnami-docker-mysql/blob/master/README.md#creating-a-database-on-first-run
+    ##
+    database: kubespace
+  primary:
+    persistence:
+      enabled: true
+      storageClass: "local-path"
+      accessModes:
+        - ReadWriteOnce
+      size: 8Gi
+  secondary:
+    persistence:
+      enabled: true
+      storageClass: "local-path"
+      accessModes:
+        - ReadWriteOnce
+      size: 8Gi
+
+redis:
+  ## @param architecture Redis&trade; architecture. Allowed values: `standalone` or `replication`
+  ##
+  architecture: standalone
+  image:
+    registry: registry.cn-hangzhou.aliyuncs.com
+    repository: kubespace/redis
+    tag: 6.2.6
+  auth:
+    ## @param auth.enabled Enable password authentication
+    ##
+    enabled: true
+    ## @param auth.sentinel Enable password authentication on sentinels too
+    ##
+    sentinel: true
+    ## @param auth.password Redis&trade; password
+    ## Defaults to a random 10-character alphanumeric string if not set
+    ##
+    password: "kubespace@2022"
+
+  master:
+    persistence:
+      enabled: true
+      path: /data
+      storageClass: "local-path"
+      accessModes:
+        - ReadWriteOnce
+      size: 8Gi
+
+local-path-provisioner:
+  image:
+    repository: registry.cn-hangzhou.aliyuncs.com/kubespace/local-path-provisioner
+    tag: master-head
+    pullPolicy: IfNotPresent
+
+  helperImage:
+    repository: registry.cn-hangzhou.aliyuncs.com/kubespace/busybox
+    tag: v1.34.1
+    
+  storageClass:
+    create: true
+
+    ## Set a provisioner name. If unset, a name will be generated.
+    # provisionerName: rancher.io/local-path
+
+    ## Set StorageClass as the default StorageClass
+    ## Ignored if storageClass.create is false
+    defaultClass: true
+
+    ## Set a StorageClass name
+    ## Ignored if storageClass.create is false
+    name: local-path
+
+    ## ReclaimPolicy field of the class, which can be either Delete or Retain
+    reclaimPolicy: Delete
+    
+  nodePathMap:
+    - node: DEFAULT_PATH_FOR_NON_LISTED_NODES
+      paths:
+        - /data/local-path-provisioner

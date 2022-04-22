@@ -1,0 +1,176 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kubespace.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kubespace.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.kubespace.replicaCount }}
+  selector:
+    matchLabels:
+      kubespace-app: kubespace
+      {{- include "kubespace.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.kubespace.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        kubespace-app: kubespace
+        {{- include "kubespace.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.kubespace.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: kubespace
+          image: "{{ .Values.kubespace.image.repository }}:{{ .Values.kubespace.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.kubespace.image.pullPolicy }}
+          {{- if .Values.extraArgs }}
+          args:
+{{ toYaml .Values.extraArgs | indent 12 }}
+          {{- end }}
+          env:
+            - name: REDIS_ADDRESS
+              value: "{{ include "kubespace.fullname" . }}-redis-master:6379"
+            - name: REDIS_PASSWORD
+              value: {{ .Values.redis.auth.password }}
+            - name: MYSQL_HOST
+              value: {{ include "kubespace.fullname" . }}-mysql
+            - name: MYSQL_PASSWORD
+              value: {{ .Values.mysql.auth.rootPassword }}
+            - name: MYSQL_DBNAME
+              value: {{ .Values.mysql.auth.database }}
+            - name: PIPELINE_PLUGIN_URL
+              value: "http://{{ include "kubespace.fullname" . }}-pipeline-plugin:{{ .Values.pipeline_plugin.service.port }}"
+          {{- if .Values.extraEnvs }}
+{{ toYaml .Values.extraEnvs | indent 12 }}
+          {{- end }}
+          {{- if .Values.extraVolumeMounts }}
+          volumeMounts:
+{{ toYaml .Values.extraVolumeMounts | indent 12 }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+            - name: https
+              containerPort: 443
+              protocol: TCP
+#          livenessProbe:
+#            httpGet:
+#              path: /
+#              port: http
+#          readinessProbe:
+#            httpGet:
+#              path: /
+#              port: http
+          resources:
+            {{- toYaml .Values.kubespace.resources | nindent 12 }}
+      {{- if .Values.extraVolumes }}
+      volumes:
+{{ toYaml .Values.extraVolumes | indent 8 }}
+      {{- end }}
+      {{- with .Values.kubespace.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.kubespace.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.kubespace.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "kubespace.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kubespace.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.kubespace.service.type }}
+  ports:
+    - port: {{ .Values.kubespace.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+{{ if (and (eq .Values.kubespace.service.type "NodePort") (not (empty .Values.kubespace.service.nodePort))) }}
+      nodePort: {{ .Values.kubespace.service.nodePort }}
+{{ end }}
+  selector:
+    kubespace-app: kubespace
+    {{- include "kubespace.selectorLabels" . | nindent 4 }}
+    
+---
+
+{{- if .Values.kubespace.ingress.enabled -}}
+{{- $fullName := include "kubespace.fullname" . -}}
+{{- $svcPort := .Values.kubespace.service.port -}}
+{{- if and .Values.kubespace.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
+  {{- if not (hasKey .Values.kubespace.ingress.annotations "kubernetes.io/ingress.class") }}
+  {{- $_ := set .Values.kubespace.ingress.annotations "kubernetes.io/ingress.class" .Values.kubespace.ingress.className}}
+  {{- end }}
+{{- end }}
+{{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion -}}
+apiVersion: networking.k8s.io/v1
+  {{- else if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
+apiVersion: networking.k8s.io/v1beta1
+  {{- else -}}
+apiVersion: extensions/v1beta1
+  {{- end }}
+kind: Ingress
+metadata:
+  name: {{ $fullName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kubespace.labels" . | nindent 4 }}
+  {{- with .Values.kubespace.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if and .Values.kubespace.ingress.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
+  ingressClassName: {{ .Values.kubespace.ingress.className }}
+  {{- end }}
+  {{- if .Values.kubespace.ingress.tls }}
+  tls:
+    {{- range .Values.kubespace.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.kubespace.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            {{- if and .pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.GitVersion) }}
+            pathType: {{ .pathType }}
+            {{- end }}
+            backend:
+              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
+              service:
+                name: {{ $fullName }}
+                port:
+                  number: {{ $svcPort }}
+              {{- else }}
+              serviceName: {{ $fullName }}
+              servicePort: {{ $svcPort }}
+              {{- end }}
+          {{- end }}
+    {{- end }}
+{{- end }}
