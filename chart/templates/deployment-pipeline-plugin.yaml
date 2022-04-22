@@ -40,6 +40,8 @@ spec:
               containerPort: 80
               protocol: TCP
           env:
+            - name: TZ
+              value: Asia/Shanghai
             - name: MYSQL_HOST
               value: "{{ include "kubespace.fullname" . }}-mysql"
             - name: MYSQL_PASSWORD

@@ -112,6 +112,9 @@ mysql:
       accessModes:
         - ReadWriteOnce
       size: 8Gi
+    extraEnvVars:
+      - name: TZ
+        value: "Asia/Shanghai"
   secondary:
     persistence:
       enabled: true
@@ -119,6 +122,9 @@ mysql:
       accessModes:
         - ReadWriteOnce
       size: 8Gi
+    extraEnvVars:
+      - name: TZ
+        value: "Asia/Shanghai"
 
 redis:
   ## @param architecture Redis&trade; architecture. Allowed values: `standalone` or `replication`
@@ -148,6 +154,21 @@ redis:
       accessModes:
         - ReadWriteOnce
       size: 8Gi
+    extraEnvVars:
+      - name: TZ
+        value: "Asia/Shanghai"
+
+  replica:
+    persistence:
+      enabled: true
+      path: /data
+      storageClass: "local-path"
+      accessModes:
+        - ReadWriteOnce
+      size: 8Gi
+    extraEnvVars:
+      - name: TZ
+        value: "Asia/Shanghai"
 
 local-path-provisioner:
   image:

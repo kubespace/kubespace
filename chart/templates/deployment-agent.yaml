@@ -74,6 +74,8 @@ spec:
 {{ toYaml .Values.extraArgs | indent 12 }}
           {{- end }}
           env:
+            - name: TZ
+              value: Asia/Shanghai
             - name: SERVER_URL
               value: "{{ include "kubespace.fullname" . }}:{{ .Values.kubespace.service.port }}"
           {{- if .Values.agent.extraEnvs }}

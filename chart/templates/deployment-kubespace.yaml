@@ -34,6 +34,8 @@ spec:
 {{ toYaml .Values.extraArgs | indent 12 }}
           {{- end }}
           env:
+            - name: TZ
+              value: Asia/Shanghai
             - name: REDIS_ADDRESS
               value: "{{ include "kubespace.fullname" . }}-redis-master:6379"
             - name: REDIS_PASSWORD

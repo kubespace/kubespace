@@ -67,6 +67,8 @@ spec:
           env:
             - name: POD_NAMESPACE
               value: {{ .Release.Namespace }}
+            - name: TZ
+              value: Asia/Shanghai
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
