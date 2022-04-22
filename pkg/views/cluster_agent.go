@@ -115,8 +115,8 @@ spec:
         args:
         - --token=%s
         - --server-url=%s
-		env:
-		- name: TZ
-		  value: Asia/Shanghai
-      serviceAccountName: kubespace
+        env:
+        - name: TZ
+          value: Asia/Shanghai
+        serviceAccountName: kubespace
 `
