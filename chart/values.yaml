@@ -24,6 +24,8 @@ kubespace:
   extraEnvs:
     - name: INSECURE_PORT
       value: "80"
+    - name: AGENT_REPOSITORY
+      value: "registry.cn-hangzhou.aliyuncs.com/kubespace/agent"
     - name: AGENT_VERSION
       value: "1.0.0"
 
