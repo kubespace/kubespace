@@ -7,6 +7,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/redis"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"k8s.io/klog"
+	"time"
 )
 
 type LogWebsocket struct {
@@ -64,7 +65,7 @@ func (l *LogWebsocket) Consume() {
 func (l *LogWebsocket) MiddleLogHandle() {
 	klog.V(1).Infof("start receive log session %s", l.sessionId)
 	for !l.stopped {
-		l.middleMessage.ReceiveLog(l.sessionId, func(data string) {
+		err := l.middleMessage.ReceiveLog(l.sessionId, func(data string) {
 			d, err := base64.StdEncoding.DecodeString(data)
 			if err != nil {
 				klog.Errorf("decode log data error: %s", err.Error())
@@ -72,6 +73,12 @@ func (l *LogWebsocket) MiddleLogHandle() {
 				l.wsConn.WriteMessage(websocket.TextMessage, d)
 			}
 		})
+		if err != nil {
+			klog.Errorf("receive cluster %s log middle message error: %s", l.cluster, err.Error())
+		}
+		if !l.stopped {
+			time.Sleep(5 * time.Second)
+		}
 	}
 	klog.V(1).Infof("end receive log session %s data", l.sessionId)
 }
@@ -81,7 +88,7 @@ func (l *LogWebsocket) WsReceiveMsg() {
 	for {
 		_, _, err := l.wsConn.ReadMessage()
 		if err != nil {
-			klog.Error("read err:", err)
+			klog.Error("cluster %s log websocket close: %s", l.cluster, err)
 			break
 		}
 	}
@@ -90,8 +97,8 @@ func (l *LogWebsocket) WsReceiveMsg() {
 func (l *LogWebsocket) Clean() {
 	klog.V(1).Infof("start clean log cluster %s websocket", l.cluster)
 	l.stopped = true
-	l.Pod.CloseLog(l.cluster, map[string]interface{}{"session_id": l.sessionId})
 	l.middleMessage.Close()
+	l.Pod.CloseLog(l.cluster, map[string]interface{}{"session_id": l.sessionId})
 	l.wsConn.Close()
 	klog.V(1).Info("end clean log cluster websocket")
 }

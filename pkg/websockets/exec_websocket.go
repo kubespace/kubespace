@@ -7,6 +7,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/redis"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"k8s.io/klog"
+	"time"
 )
 
 type ExecWebsocket struct {
@@ -72,14 +73,23 @@ func (e *ExecWebsocket) Consume() {
 func (e *ExecWebsocket) MiddleTermHandle() {
 	klog.V(1).Infof("start receive term session %s", e.sessionId)
 	for !e.stopped {
-		e.middleMessage.ReceiveTerm(e.sessionId, func(data string) {
+		err := e.middleMessage.ReceiveTerm(e.sessionId, func(data string) {
 			d, err := base64.StdEncoding.DecodeString(data)
 			if err != nil {
-				klog.Errorf("decode term data error: %s", err.Error())
+				klog.Errorf("write cluster %s decode term data error: %s", e.cluster, err.Error())
 			} else {
-				e.wsConn.WriteMessage(websocket.TextMessage, d)
+				err = e.wsConn.WriteMessage(websocket.TextMessage, d)
+				if err != nil {
+					klog.Errorf("write cluster %s terminal websocket error: %s", e.cluster, err.Error())
+				}
 			}
 		})
+		if err != nil {
+			klog.Errorf("receive cluster %s terminal message error: %s", e.cluster, err.Error())
+		}
+		if !e.stopped {
+			time.Sleep(5 * time.Second)
+		}
 	}
 	klog.V(1).Infof("end receive term session %s data", e.sessionId)
 }

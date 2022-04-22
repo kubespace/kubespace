@@ -84,30 +84,4 @@ func main() {
 		panic(err)
 	}
 	server.Run()
-	//rem := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
-	//	Name: "origin",
-	//	URLs: []string{"https://github.com/lzeen/testapp"},
-	//})
-	//
-	//log.Print("Fetching tags...")
-	//
-	//// We can then use every Remote functions to retrieve wanted information
-	//refs, err := rem.ListContext(context.Background(), &git.ListOptions{})
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//
-	//// Filters the references list and only keeps tags
-	//var tags []string
-	//for _, ref := range refs {
-	//	if ref.Name().IsTag() {
-	//		tags = append(tags, ref.Name().Short())
-	//	}
-	//}
-	//
-	//if len(tags) == 0 {
-	//	log.Println("No tags!")
-	//	return
-	//}
-	//log.Println(tags)
 }

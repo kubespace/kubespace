@@ -12,7 +12,7 @@ var InitGlobalResources = []*types.PipelineResource{
 	{
 		Name:        "kubespace/golang:1.16",
 		Type:        "image",
-		Value:       "kubespace/golang:1.16",
+		Value:       "registry.cn-hangzhou.aliyuncs.com/kubespace/golang:1.17",
 		Global:      true,
 		Description: "内置golang编译镜像",
 		CreateUser:  "admin",
@@ -21,7 +21,7 @@ var InitGlobalResources = []*types.PipelineResource{
 	{
 		Name:        "kubespace/node:17.9.0",
 		Type:        "image",
-		Value:       "kubespace/node:17.9.0",
+		Value:       "registry.cn-hangzhou.aliyuncs.com/kubespace/node:17.9.0",
 		Global:      true,
 		Description: "内置node编译镜像",
 		CreateUser:  "admin",
@@ -30,7 +30,7 @@ var InitGlobalResources = []*types.PipelineResource{
 	{
 		Name:        "kubespace/python:3.8",
 		Type:        "image",
-		Value:       "kubespace/python:3.8",
+		Value:       "registry.cn-hangzhou.aliyuncs.com/kubespace/python:3.8",
 		Global:      true,
 		Description: "内置python编译镜像",
 		CreateUser:  "admin",
@@ -106,13 +106,14 @@ func (r *ResourceManager) Delete(resource *types.PipelineResource) error {
 }
 
 func (r *ResourceManager) Init() {
-	var cnt int64
-	if err := r.DB.Model(&types.PipelineResource{}).Count(&cnt).Error; err != nil {
-		return
-	}
-	if cnt == 0 {
-		now := time.Now()
-		for _, res := range InitGlobalResources {
+	now := time.Now()
+	for _, res := range InitGlobalResources {
+		var cnt int64
+		if err := r.DB.Model(&types.PipelineResource{}).Where("global=true and name=?", res.Name).Count(&cnt).Error; err != nil {
+			klog.Errorf("get global pipeline resource error: %s", err.Error())
+			continue
+		}
+		if cnt == 0 {
 			res.CreateTime = now
 			res.UpdateTime = now
 			if _, err := r.Create(res); err != nil {

@@ -8,6 +8,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/redis"
 	"k8s.io/klog"
+	"time"
 )
 
 type KubeWebsocket struct {
@@ -43,12 +44,21 @@ func (k *KubeWebsocket) Consume() {
 func (k *KubeWebsocket) MiddleRequestHandle() {
 	for !k.stopped {
 		klog.V(1).Info("start receive request from cluster ", k.cluster)
-		k.middleMessage.ReceiveRequest(k.cluster, func(mr *kube_resource.MiddleRequest) {
+		err := k.middleMessage.ReceiveRequest(k.cluster, func(mr *kube_resource.MiddleRequest) {
 			serReq, _ := mr.Serializer()
-			k.wsConn.WriteMessage(websocket.TextMessage, serReq)
+			err := k.wsConn.WriteMessage(websocket.TextMessage, serReq)
+			if err != nil {
+				klog.Errorf("agent cluster=%s websocket write message error: %s", k.cluster, err.Error())
+			}
 		})
+		if err != nil {
+			klog.Errorf("receive cluster %s middle message error: %s", k.cluster, err.Error())
+		}
+		if !k.stopped {
+			time.Sleep(5 * time.Second)
+		}
 	}
-	klog.V(1).Info("middle request handle end")
+	klog.V(1).Info("cluster %s middle request handle end", k.cluster)
 }
 
 func (k *KubeWebsocket) WsReceiveMsg() {
@@ -89,5 +99,5 @@ func (k *KubeWebsocket) Clean() {
 	k.middleMessage.Close()
 	k.stopped = true
 	k.wsConn.Close()
-	klog.V(1).Info("end clean cluster websocket")
+	klog.V(1).Infof("end clean cluster %s websocket", k.cluster)
 }

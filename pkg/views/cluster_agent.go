@@ -74,6 +74,22 @@ roleRef:
 
 ---
 
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: kubespace-admin
+  namespace: kubespace
+subjects:
+- kind: ServiceAccount
+  name: kubespace
+  namespace: kubespace
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:

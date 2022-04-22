@@ -244,7 +244,7 @@ export default {
             // console.log(data)
             if(data.object) {
               let obj = data.object
-              console.log(obj)
+              // console.log(obj)
               if(obj.pipeline_run) {
                 this.$set(this.build, 'pipeline_run', obj.pipeline_run)
               }

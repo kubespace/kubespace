@@ -423,7 +423,7 @@ export default {
         format: 'plain'
       });
       this.pipelineSSE.on("message", (res) => {
-        console.log(res)
+        // console.log(res)
         if(res && res != "\n") {
           let data = JSON.parse(res)
           // console.log(data)
