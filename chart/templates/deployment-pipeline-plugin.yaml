@@ -51,12 +51,8 @@ spec:
           {{- if .Values.pipeline_plugin.extraEnvs }}
 {{ toYaml .Values.pipeline_plugin.extraEnvs | indent 12 }}
           {{- end }}
-          volumeMounts:
-            - name: docker-bin
-              mountPath: /usr/bin/docker
-            - name: docker-sock
-              mountPath: /var/run/docker.sock
           {{- if .Values.extraVolumeMounts }}
+          volumeMounts:
 {{ toYaml .Values.extraVolumeMounts | indent 12 }}
           {{- end }}
 #          livenessProbe:
@@ -69,14 +65,8 @@ spec:
 #              port: http
           resources:
             {{- toYaml .Values.pipeline_plugin.resources | nindent 12 }}
-      volumes:
-        - name: docker-bin
-          hostPath:
-            path: /usr/bin/docker
-        - name: docker-sock
-          hostPath:
-            path: /var/run/docker.sock
       {{- if .Values.extraVolumes }}
+      volumes:
 {{ toYaml .Values.extraVolumes | indent 8 }}
       {{- end }}
       {{- with .Values.pipeline_plugin.nodeSelector }}
