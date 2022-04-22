@@ -23,7 +23,7 @@ kubespace:
   extraArgs: []
   extraEnvs:
     - name: INSECURE_PORT
-      value: 80
+      value: "80"
     - name: AGENT_VERSION
       value: "1.0.0"
 
