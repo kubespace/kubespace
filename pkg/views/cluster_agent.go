@@ -118,5 +118,5 @@ spec:
         env:
         - name: TZ
           value: Asia/Shanghai
-        serviceAccountName: kubespace
+      serviceAccountName: kubespace
 `
