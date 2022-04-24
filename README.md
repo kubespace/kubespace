@@ -30,6 +30,15 @@ export NODE_IP=$(kubectl get nodes -o jsonpath="{.items[0].status.addresses[0].a
 echo http://$NODE_IP:$NODE_PORT
 ```
 
+### 升级
+
+通过[helm](https://helm.sh/docs/intro/install/)升级kubespace，执行如下命令：
+```
+helm repo update
+helm upgrade -n kubespace kubespace kubespace/kubespace
+```
+
+
 ### 使用说明
 
 #### 1. 首次登录
