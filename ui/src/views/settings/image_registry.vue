@@ -36,22 +36,24 @@
 
       <el-dialog :title="updateFormVisible ? '修改仓库' : '添加仓库'" :visible.sync="createFormVisible"
       @close="closeFormDialog" :destroy-on-close="true">
-        <div class="dialogContent" style="">
-          <el-form :model="form" :rules="rules" ref="form" label-position="left" label-width="105px">
-            <el-form-item label="仓库地址" prop="registry" autofocus>
-              <el-input v-model="form.registry" autocomplete="off" placeholder="请输入镜像仓库地址，如: docker.io" size="small"></el-input>
-            </el-form-item>
-            <el-form-item label="用户" prop="user">
-              <el-input v-model="form.user" autocomplete="off" placeholder="请输入认证用户" size="small"></el-input>
-            </el-form-item>
-            <el-form-item label="密码" prop="password" :required="true">
-              <el-input v-model="form.password" type="password" autocomplete="off" placeholder="请输入认证密码" size="small"></el-input>
-            </el-form-item>
-          </el-form>
-        </div>
-        <div slot="footer" class="dialogFooter">
-          <el-button @click="createFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
-          <el-button type="primary" @click="updateFormVisible ? handleUpdateImageRegistry() : handleCreateImageRegistry()" >确 定</el-button>
+        <div v-loading="dialogLoading">
+          <div class="dialogContent" style="">
+            <el-form :model="form" :rules="rules" ref="form" label-position="left" label-width="105px">
+              <el-form-item label="仓库地址" prop="registry" autofocus>
+                <el-input v-model="form.registry" autocomplete="off" placeholder="请输入镜像仓库地址，如: docker.io" size="small"></el-input>
+              </el-form-item>
+              <el-form-item label="用户" prop="user">
+                <el-input v-model="form.user" autocomplete="off" placeholder="请输入认证用户" size="small"></el-input>
+              </el-form-item>
+              <el-form-item label="密码" prop="password" :required="true">
+                <el-input v-model="form.password" type="password" autocomplete="off" placeholder="请输入认证密码" size="small"></el-input>
+              </el-form-item>
+            </el-form>
+          </div>
+          <div slot="footer" class="dialogFooter" style="margin-top: 20px;">
+            <el-button @click="createFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
+            <el-button type="primary" @click="updateFormVisible ? handleUpdateImageRegistry() : handleCreateImageRegistry()" >确 定</el-button>
+          </div>
         </div>
       </el-dialog>
     </div>
@@ -82,6 +84,7 @@ export default {
       cellStyle: { border: 0 },
       titleName: ["镜像仓库"],
       loading: true,
+      dialogLoading: false,
       createFormVisible: false,
       updateFormVisible: false,
       form: {
@@ -133,11 +136,14 @@ export default {
         user: this.form.user, 
         password: this.form.password,
       }
+      this.dialogLoading = true
       createImageRegistry(image_registry).then(() => {
+        this.dialogLoading = false
         this.createFormVisible = false;
         Message.success("创建镜像仓库成功")
         this.fetchImageRegistry()
       }).catch((err) => {
+        this.dialogLoading = false
         console.log(err)
       });
     },
@@ -150,11 +156,14 @@ export default {
         user: this.form.user, 
         password: this.form.password, 
       }
+      this.dialogLoading = true
       updateImageRegistry(this.form.id, image_registry).then(() => {
+        this.dialogLoading = false
         this.createFormVisible = false;
         Message.success("更新镜像仓库成功")
         this.fetchImageRegistry()
       }).catch((err) => {
+        this.dialogLoading = false
         console.log(err)
       });
     },

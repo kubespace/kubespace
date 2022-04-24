@@ -42,49 +42,51 @@
 
       <el-dialog :title="updateFormVisible ? '修改用户授权' : '用户授权'" :visible.sync="createFormVisible"
       @close="closeUserRoleDialog" :destroy-on-close="true">
-        <div class="dialogContent" style="">
-          <el-form :model="form" :rules="rules" ref="form" label-position="left" label-width="105px">
-            <el-form-item label="用户" required>
-              <el-select v-model="form.userIds" placeholder="请选择授权用户" size="small" style="width: 100%;" multiple
-                :disabled="updateFormVisible">
-                <el-option
-                  v-for="item in users"
-                  :key="item.id"
-                  :label="item.name"
-                  :value="item.id">
-                </el-option>
-              </el-select>
-            </el-form-item>
-            <el-form-item label="权限" required>
-              <el-select v-model="form.role" placeholder="请选择平台权限" size="small" style="width: 100%;">
-                <el-option
-                  v-for="item in userRoles"
-                  :key="item.type"
-                  :label="item.name"
-                  :value="item.type">
-                </el-option>
-              </el-select>
-            </el-form-item>
-          </el-form>
-          <div style="background-color: #f4f4f5; margin-top: 10px;
-    color: #909399; border: 1px solid #e9e9eb;border-radius: 4px;padding: 0 10px;font-size: 12px; line-height: 16px;" >
-            <div style="margin: 10px 0px;">
-              <span style="font-weight: 550">{{ roleInfo.viewer }}：</span>
-              <span>{{ roleInfo.viewerDesc }}</span>
-            </div>
-            <div style="margin-bottom: 10px;">
-              <span style="font-weight: 550">{{ roleInfo.editor }}：</span>
-              <span>{{ roleInfo.editorDesc }}</span>
-            </div>
-            <div style="margin-bottom: 10px;">
-              <span style="font-weight: 550">{{ roleInfo.admin }}：</span>
-              <span>{{ roleInfo.adminDesc }}</span>
+        <div v-loading="dialogLoading">
+          <div class="dialogContent" style="">
+            <el-form :model="form" :rules="rules" ref="form" label-position="left" label-width="105px">
+              <el-form-item label="用户" required>
+                <el-select v-model="form.userIds" placeholder="请选择授权用户" size="small" style="width: 100%;" multiple
+                  :disabled="updateFormVisible">
+                  <el-option
+                    v-for="item in users"
+                    :key="item.id"
+                    :label="item.name"
+                    :value="item.id">
+                  </el-option>
+                </el-select>
+              </el-form-item>
+              <el-form-item label="权限" required>
+                <el-select v-model="form.role" placeholder="请选择平台权限" size="small" style="width: 100%;">
+                  <el-option
+                    v-for="item in userRoles"
+                    :key="item.type"
+                    :label="item.name"
+                    :value="item.type">
+                  </el-option>
+                </el-select>
+              </el-form-item>
+            </el-form>
+            <div style="background-color: #f4f4f5; margin-top: 10px;
+      color: #909399; border: 1px solid #e9e9eb;border-radius: 4px;padding: 0 10px;font-size: 12px; line-height: 16px;" >
+              <div style="margin: 10px 0px;">
+                <span style="font-weight: 550">{{ roleInfo.viewer }}：</span>
+                <span>{{ roleInfo.viewerDesc }}</span>
+              </div>
+              <div style="margin-bottom: 10px;">
+                <span style="font-weight: 550">{{ roleInfo.editor }}：</span>
+                <span>{{ roleInfo.editorDesc }}</span>
+              </div>
+              <div style="margin-bottom: 10px;">
+                <span style="font-weight: 550">{{ roleInfo.admin }}：</span>
+                <span>{{ roleInfo.adminDesc }}</span>
+              </div>
             </div>
           </div>
-        </div>
-        <div slot="footer" class="dialogFooter">
-          <el-button @click="createFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
-          <el-button type="primary" @click="updateFormVisible ? handleUpdateUserRole() : handleCreateUserRole()" >确 定</el-button>
+          <div slot="footer" class="dialogFooter" style="margin-top: 20px;">
+            <el-button @click="createFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
+            <el-button type="primary" @click="updateFormVisible ? handleUpdateUserRole() : handleCreateUserRole()" >确 定</el-button>
+          </div>
         </div>
       </el-dialog>
     </div>
@@ -155,6 +157,7 @@ export default {
       cellStyle: { border: 0 },
       titleName: [roleInfo.title],
       loading: true,
+      dialogLoading: false,
       createFormVisible: false,
       updateFormVisible: false,
       form: {
@@ -233,11 +236,14 @@ export default {
         scope: this.scope,
         scope_id: this.scopeId,
       }
+      this.dialogLoading = true
       updateUserRole(userRole).then(() => {
+        this.dialogLoading = false
         this.createFormVisible = false;
         Message.success("添加用户权限成功")
         this.fetchPlatformUserRoles()
       }).catch((err) => {
+        this.dialogLoading = false
         console.log(err)
       });
     },
@@ -256,11 +262,14 @@ export default {
         scope: this.scope,
         scope_id: this.scopeId,
       }
+      this.dialogLoading = true
       updateUserRole(userRole).then(() => {
+        this.dialogLoading = false
         this.createFormVisible = false;
         Message.success("用户权限修改成功")
         this.fetchPlatformUserRoles()
       }).catch((err) => {
+        this.dialogLoading = false
         console.log(err)
       });
     },
@@ -274,10 +283,13 @@ export default {
           cancelButtonText: '取消',
           type: 'warning'
         }).then(() => {
+          this.loading = true
           deleteUserRole(id).then(() => {
+            this.loading = false
             Message.success("删除权限成功")
             this.fetchPlatformUserRoles()
           }).catch((err) => {
+            this.loading = false
             console.log(err)
           });
         }).catch(() => {       

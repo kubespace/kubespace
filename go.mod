@@ -13,6 +13,7 @@ require (
 	gorm.io/driver/mysql v1.2.1
 	gorm.io/gorm v1.22.4
 	helm.sh/helm/v3 v3.7.2
+	k8s.io/api v0.22.4
 	k8s.io/apimachinery v0.22.4
 	k8s.io/klog v1.0.0
 	sigs.k8s.io/yaml v1.3.0

@@ -43,38 +43,40 @@
 
       <el-dialog :title="updateSecretVisible ? '修改密钥' : '创建密钥'" :visible.sync="createSecretFormVisible"
       @close="closeSecretDialog" :destroy-on-close="true">
-        <div class="dialogContent" style="">
-          <el-form :model="form" :rules="rules" ref="form" label-position="left" label-width="105px">
-            <el-form-item label="名称" prop="name">
-              <el-input :disabled="updateSecretVisible" v-model="form.name" autocomplete="off" placeholder="请输入密钥名称" size="small"></el-input>
-            </el-form-item>
-            <el-form-item label="描述" prop="description">
-              <el-input v-model="form.description" type="textarea" autocomplete="off" placeholder="请输入密钥描述" size="small"></el-input>
-            </el-form-item>
-            <el-form-item label="密钥类型" prop="secret_type">
-              <el-radio-group v-model="form.secret_type">
-                <el-radio label="password">用户密码</el-radio>
-                <el-radio label="key">私钥</el-radio>
-                <el-radio label="token">AccessToken</el-radio>
-              </el-radio-group>
-            </el-form-item>
-            <el-form-item label="用户" prop="user" v-if="form.secret_type == 'password'">
-              <el-input v-model="form.user" autocomplete="off" clearable placeholder="请输入用户" size="small"></el-input>
-            </el-form-item>
-            <el-form-item label="密码" prop="password" v-if="form.secret_type == 'password'">
-              <el-input v-model="form.password" autocomplete="new-password" clearable placeholder="请输入密码" size="small" show-password></el-input>
-            </el-form-item>
-            <el-form-item label="私钥" prop="private_key" v-if="form.secret_type == 'key'">
-              <el-input v-model="form.private_key" class="dialogTextarea" type="textarea" autocomplete="off" placeholder="请输入私钥" size="small"></el-input>
-            </el-form-item>
-            <el-form-item label="AccessToken" prop="access_token" v-if="form.secret_type == 'token'">
-              <el-input v-model="form.access_token" class="dialogTextarea" type="textarea" autocomplete="off" placeholder="请输入私钥" size="small"></el-input>
-            </el-form-item>
-          </el-form>
-        </div>
-        <div slot="footer" class="dialogFooter">
-          <el-button @click="createSecretFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
-          <el-button type="primary" @click="updateSecretVisible ? handleUpdateSecret() : handleCreateSecret()" >确 定</el-button>
+        <div v-loading="dialogLoading">
+          <div class="dialogContent" style="">
+            <el-form :model="form" :rules="rules" ref="form" label-position="left" label-width="105px">
+              <el-form-item label="名称" prop="name">
+                <el-input :disabled="updateSecretVisible" v-model="form.name" autocomplete="off" placeholder="请输入密钥名称" size="small"></el-input>
+              </el-form-item>
+              <el-form-item label="描述" prop="description">
+                <el-input v-model="form.description" type="textarea" autocomplete="off" placeholder="请输入密钥描述" size="small"></el-input>
+              </el-form-item>
+              <el-form-item label="密钥类型" prop="secret_type">
+                <el-radio-group v-model="form.secret_type">
+                  <el-radio label="password">用户密码</el-radio>
+                  <el-radio label="key">私钥</el-radio>
+                  <el-radio label="token">AccessToken</el-radio>
+                </el-radio-group>
+              </el-form-item>
+              <el-form-item label="用户" prop="user" v-if="form.secret_type == 'password'">
+                <el-input v-model="form.user" autocomplete="off" clearable placeholder="请输入用户" size="small"></el-input>
+              </el-form-item>
+              <el-form-item label="密码" prop="password" v-if="form.secret_type == 'password'">
+                <el-input v-model="form.password" autocomplete="new-password" clearable placeholder="请输入密码" size="small" show-password></el-input>
+              </el-form-item>
+              <el-form-item label="私钥" prop="private_key" v-if="form.secret_type == 'key'">
+                <el-input v-model="form.private_key" class="dialogTextarea" type="textarea" autocomplete="off" placeholder="请输入私钥" size="small"></el-input>
+              </el-form-item>
+              <el-form-item label="AccessToken" prop="access_token" v-if="form.secret_type == 'token'">
+                <el-input v-model="form.access_token" class="dialogTextarea" type="textarea" autocomplete="off" placeholder="请输入私钥" size="small"></el-input>
+              </el-form-item>
+            </el-form>
+          </div>
+          <div slot="footer" class="dialogFooter" style="margin-top: 20px;">
+            <el-button @click="createSecretFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
+            <el-button type="primary" @click="updateSecretVisible ? handleUpdateSecret() : handleCreateSecret()" >确 定</el-button>
+          </div>
         </div>
       </el-dialog>
     </div>
@@ -105,6 +107,7 @@ export default {
       cellStyle: { border: 0 },
       titleName: ["密钥管理"],
       loading: true,
+      dialogLoading: false,
       createSecretFormVisible: false,
       updateSecretVisible: false,
       form: {
@@ -194,11 +197,14 @@ export default {
         }
         secret['access_token'] = this.form.access_token
       }
+      this.dialogLoading = true
       createSecret(secret).then(() => {
+        this.dialogLoading = false
         this.createSecretFormVisible = false;
         Message.success("创建密钥成功")
         this.fetchSecrets()
       }).catch((err) => {
+        this.dialogLoading = false
         console.log(err)
       });
     },
@@ -236,11 +242,14 @@ export default {
         }
         secret['access_token'] = this.form.access_token
       }
+      this.dialogLoading = true
       updateSecret(this.form.id, secret).then(() => {
+        this.dialogLoading = false
         this.createSecretFormVisible = false;
         Message.success("更新密钥成功")
         this.fetchSecrets()
       }).catch((err) => {
+        this.dialogLoading = false
         console.log(err)
       });
     },
@@ -254,11 +263,14 @@ export default {
           cancelButtonText: '取消',
           type: 'warning'
         }).then(() => {
+          this.loading = true
           deleteSecret(id).then(() => {
+            this.loading = false
             Message.success("删除密钥成功")
             this.fetchSecrets()
           }).catch((err) => {
             console.log(err)
+            this.loading = false
           });
         }).catch(() => {       
         });

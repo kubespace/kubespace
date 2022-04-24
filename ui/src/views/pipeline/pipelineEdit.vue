@@ -186,7 +186,7 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { PipelineStage, CodeToImage, ExecuteShell, AppDeploy, Release } from '@/views/pipeline/plugin'
+import { PipelineStage, CodeToImage, ExecuteShell, AppDeploy, Release, DeployK8s } from '@/views/pipeline/plugin'
 import { getPipeline, updatePipeline, createPipeline } from '@/api/pipeline/pipeline'
 import { getWorkspace } from '@/api/pipeline/workspace'
 import { Message } from 'element-ui'
@@ -199,7 +199,8 @@ export default {
     CodeToImage,
     ExecuteShell,
     AppDeploy,
-    Release
+    Release,
+    DeployK8s
   },
   data() {
     return {
@@ -239,9 +240,9 @@ export default {
         name: '发布',
         component: 'Release'
       }, {
-        key: 'k8s_deploy',
+        key: 'deploy_k8s',
         name: 'Kubernetes资源部署',
-        component: 'K8sDeploy'
+        component: 'DeployK8s'
       }, {
         key: 'upgrade_app',
         name: '应用部署',

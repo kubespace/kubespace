@@ -160,9 +160,10 @@ const (
 
 	// BuiltinPluginUpgradeApp 根据构建出来的代码镜像，升级项目应用
 	BuiltinPluginUpgradeApp = "upgrade_app"
-
 	// BuiltinPluginRelease 发布版本，给代码及镜像打发布tag号
 	BuiltinPluginRelease = "release"
+	// BuiltinPluginDeployK8s 替换镜像，并部署k8s资源
+	BuiltinPluginDeployK8s = "deploy_k8s"
 )
 
 const PipelinePluginBuiltinUrl = "builtin"

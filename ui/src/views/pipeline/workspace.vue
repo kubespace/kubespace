@@ -46,48 +46,50 @@
 
       <el-dialog :title="updateFormVisible ? '修改流水线空间' : '创建流水线空间'" :visible.sync="createFormVisible"
         @close="closeFormDialog" :destroy-on-close="true">
-        <div class="dialogContent">
-          <el-form :model="form" :rules="rules" ref="form" label-position="left" label-width="105px">
-            <el-form-item label="空间类型" prop="type">
-              <span v-if="updateFormVisible">{{ workspaceTypeMap[form.type] }}</span>
-              <el-radio-group v-else v-model="form.type">
-                <el-radio label="code">代码空间</el-radio>
-                <!-- <el-radio label="custom">自定义空间</el-radio> -->
-              </el-radio-group>
-            </el-form-item>
-            <el-form-item label="代码类型" prop="codeType" v-if="form.type == 'code'" @change="codeTypeChange">
-              <!-- <span v-if="updateFormVisible">{{ codeTypeMap[form.codeType] }}</span> -->
-              <el-radio-group v-model="form.codeType" @change="codeTypeChange" :disabled="updateFormVisible">
-                <el-radio label="https">HTTPS</el-radio>
-                <el-radio label="git">GIT</el-radio>
-              </el-radio-group>
-            </el-form-item>
-            <el-form-item label="代码地址" prop="codeUrl" v-if="form.type == 'code'">
-              <el-input v-model="form.codeUrl" autocomplete="off" :disabled="updateFormVisible"
-                :placeholder="form.codeType == 'https' ? '请输入代码地址，如: https://github.com/kubespace/kubespace.git' : '请输入代码地址，如: git@github.com:kubespace/kubespace.git'" 
-                size="small"></el-input>
-            </el-form-item>
-            <el-form-item label="访问密钥" prop="codeSecretId" v-if="form.type=='code'">
-              <el-select v-model="form.codeSecretId" placeholder="请选择代码访问密钥" size="small" style="width: 100%">
-                <el-option
-                  v-for="secret in form.codeType == 'https' ? codePasswordSecrets : codeKeySecrets"
-                  :key="secret.id"
-                  :label="secret.name"
-                  :value="secret.id">
-                </el-option>
-              </el-select>
-            </el-form-item>
-            <el-form-item v-if="form.type == 'custom'" label="名称" prop="name">
-              <el-input v-model="form.name" autocomplete="off" placeholder="请输入空间名称" size="small"></el-input>
-            </el-form-item>
-            <el-form-item v-if="form.type == 'custom'" label="描述" prop="description">
-              <el-input v-model="form.name" type="textarea" autocomplete="off" placeholder="请输入空间描述" size="small"></el-input>
-            </el-form-item>
-          </el-form>
-        </div>
-        <div slot="footer" class="dialogFooter">
-          <el-button @click="createFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
-          <el-button type="primary" @click="updateFormVisible ? handleUpdateWorkspace() : handleCreateWorkspace()" >确 定</el-button>
+        <div v-loading="dialogLoading">
+          <div class="dialogContent">
+            <el-form :model="form" :rules="rules" ref="form" label-position="left" label-width="105px">
+              <el-form-item label="空间类型" prop="type">
+                <span v-if="updateFormVisible">{{ workspaceTypeMap[form.type] }}</span>
+                <el-radio-group v-else v-model="form.type">
+                  <el-radio label="code">代码空间</el-radio>
+                  <!-- <el-radio label="custom">自定义空间</el-radio> -->
+                </el-radio-group>
+              </el-form-item>
+              <el-form-item label="代码类型" prop="codeType" v-if="form.type == 'code'" @change="codeTypeChange">
+                <!-- <span v-if="updateFormVisible">{{ codeTypeMap[form.codeType] }}</span> -->
+                <el-radio-group v-model="form.codeType" @change="codeTypeChange" :disabled="updateFormVisible">
+                  <el-radio label="https">HTTPS</el-radio>
+                  <el-radio label="git">GIT</el-radio>
+                </el-radio-group>
+              </el-form-item>
+              <el-form-item label="代码地址" prop="codeUrl" v-if="form.type == 'code'">
+                <el-input v-model="form.codeUrl" autocomplete="off" :disabled="updateFormVisible"
+                  :placeholder="form.codeType == 'https' ? '请输入代码地址，如: https://github.com/kubespace/kubespace.git' : '请输入代码地址，如: git@github.com:kubespace/kubespace.git'" 
+                  size="small"></el-input>
+              </el-form-item>
+              <el-form-item label="访问密钥" prop="codeSecretId" v-if="form.type=='code'">
+                <el-select v-model="form.codeSecretId" placeholder="请选择代码访问密钥" size="small" style="width: 100%">
+                  <el-option
+                    v-for="secret in form.codeType == 'https' ? codePasswordSecrets : codeKeySecrets"
+                    :key="secret.id"
+                    :label="secret.name"
+                    :value="secret.id">
+                  </el-option>
+                </el-select>
+              </el-form-item>
+              <el-form-item v-if="form.type == 'custom'" label="名称" prop="name">
+                <el-input v-model="form.name" autocomplete="off" placeholder="请输入空间名称" size="small"></el-input>
+              </el-form-item>
+              <el-form-item v-if="form.type == 'custom'" label="描述" prop="description">
+                <el-input v-model="form.name" type="textarea" autocomplete="off" placeholder="请输入空间描述" size="small"></el-input>
+              </el-form-item>
+            </el-form>
+          </div>
+          <div slot="footer" class="dialogFooter" style="margin-top: 20px;">
+            <el-button @click="createFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
+            <el-button type="primary" @click="updateFormVisible ? handleUpdateWorkspace() : handleCreateWorkspace()" >确 定</el-button>
+          </div>
         </div>
       </el-dialog>
     </div>
@@ -113,6 +115,7 @@ export default {
       cellStyle: {border: 0},
       maxHeight: window.innerHeight - 150,
       loading: true,
+      dialogLoading: false,
       workspaces: [],
       secrets: [],
       createFormVisible: false,
@@ -217,11 +220,14 @@ export default {
         workspace['name'] = this.form.name
         workspace['description'] = this.form.description
       }
+      this.dialogLoading = true
       createWorkspace(workspace).then(() => {
+        this.dialogLoading = false
         this.createFormVisible = false;
         Message.success("创建流水线空间成功")
         this.fetchWorkspaces()
       }).catch((err) => {
+        this.dialogLoading = false
         console.log(err)
       });
     },
@@ -238,10 +244,13 @@ export default {
           cancelButtonText: '取消',
           type: 'warning'
         }).then(() => {
+          this.loading = true
           deleteWorkspace(id).then(() => {
+            this.loading = false
             Message.success("删除流水线空间成功")
             this.fetchWorkspaces()
           }).catch((err) => {
+            this.loading = false
             console.log(err)
           });
         }).catch(() => {       
