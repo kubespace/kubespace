@@ -59,6 +59,7 @@ func NewPlugins(models *model.Models, kr *kube_resource.KubeResources, callback 
 		KubeResources: kr,
 	}
 	p.Plugins[types.BuiltinPluginUpgradeApp] = UpgradeAppPlugin{Models: models, KubeResources: kr}
+	p.Plugins[types.BuiltinPluginDeployK8s] = DeployK8sPlugin{Models: models, KubeResources: kr}
 	return p
 }
 

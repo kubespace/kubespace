@@ -2,10 +2,10 @@ package plugins
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/model"
-	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -13,8 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/applyconfigurations/batch/v1beta1"
-	"k8s.io/klog"
 	"sigs.k8s.io/yaml"
 	"strings"
 )
@@ -86,7 +84,7 @@ func (u *deployK8s) execute() error {
 	}
 	if u.params.Images == "" {
 		u.Log("要升级的镜像列表参数为空")
-		return nil
+		//return nil
 	}
 	u.images = strings.Split(u.params.Images, ",")
 	u.Log("升级的镜像列表：%v", u.images)
@@ -104,14 +102,30 @@ func (u *deployK8s) execute() error {
 	}
 	yamlList := strings.Split(u.params.Yaml, "---\n")
 	destYamlStr := ""
+	replaced := false
 	for _, yamlStr := range yamlList {
-
+		destYaml, imageReplaced, err := u.replaceResourceImage(yamlStr)
+		if err != nil {
+			return err
+		}
+		if imageReplaced {
+			replaced = true
+		}
+		destYamlStr += destYaml + "\n---\n"
 	}
-	yamlDict := make(map[string]interface{})
-	err = yaml.Unmarshal([]byte(u.params.Yaml), &yamlDict)
-	if err != nil {
-		u.Log("解析Yaml失败：%s", err.Error())
-		return err
+	if !replaced {
+		u.Log("未匹配到可替换的镜像")
+	}
+	u.Log(destYamlStr)
+	u.Log("开始部署资源到集群「%s」", cluster.Name1)
+	resp := u.kubeResources.Cluster.Apply(cluster.Name, map[string]string{
+		"yaml": destYamlStr,
+	})
+	if !resp.IsSuccess() {
+		u.Log("部署资源到集群失败：%s", resp.Msg)
+		return errors.New(resp.Msg)
+	} else {
+		u.Log("部署资源到集群成功")
 	}
 	return nil
 }
@@ -124,6 +138,7 @@ func (u *deployK8s) replaceResourceImage(yamlStr string) (string, bool, error) {
 		return "", false, err
 	}
 	obj := unstructured.Unstructured{Object: yamlDict}
+	obj.SetNamespace(u.params.Namespace)
 	replaced := false
 	if utils.Contains(WorkloadKinds, obj.GetKind()) {
 		switch obj.GetKind() {
@@ -137,7 +152,7 @@ func (u *deployK8s) replaceResourceImage(yamlStr string) (string, bool, error) {
 			if replaced, err = u.replaceContainerImage(pod.Spec.Containers); err != nil {
 				return "", false, err
 			}
-			if obj.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(pod); err != nil {
+			if obj.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(&pod); err != nil {
 				u.Log("转换Pod资源失败：%s", err.Error())
 				return "", false, err
 			}
@@ -151,7 +166,7 @@ func (u *deployK8s) replaceResourceImage(yamlStr string) (string, bool, error) {
 			if replaced, err = u.replaceContainerImage(deployment.Spec.Template.Spec.Containers); err != nil {
 				return "", false, err
 			}
-			if obj.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(deployment); err != nil {
+			if obj.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(&deployment); err != nil {
 				u.Log("转换Deployment资源失败：%s", err.Error())
 				return "", false, err
 			}
@@ -165,7 +180,7 @@ func (u *deployK8s) replaceResourceImage(yamlStr string) (string, bool, error) {
 			if replaced, err = u.replaceContainerImage(sts.Spec.Template.Spec.Containers); err != nil {
 				return "", false, err
 			}
-			if obj.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(sts); err != nil {
+			if obj.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(&sts); err != nil {
 				u.Log("转换StatefulSet资源失败：%s", err.Error())
 				return "", false, err
 			}
@@ -179,7 +194,7 @@ func (u *deployK8s) replaceResourceImage(yamlStr string) (string, bool, error) {
 			if replaced, err = u.replaceContainerImage(ds.Spec.Template.Spec.Containers); err != nil {
 				return "", false, err
 			}
-			if obj.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(ds); err != nil {
+			if obj.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(&ds); err != nil {
 				u.Log("转换DaemonSet资源失败：%s", err.Error())
 				return "", false, err
 			}
@@ -193,7 +208,7 @@ func (u *deployK8s) replaceResourceImage(yamlStr string) (string, bool, error) {
 			if replaced, err = u.replaceContainerImage(job.Spec.Template.Spec.Containers); err != nil {
 				return "", false, err
 			}
-			if obj.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(job); err != nil {
+			if obj.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(&job); err != nil {
 				u.Log("转换Job资源失败：%s", err.Error())
 				return "", false, err
 			}
@@ -207,13 +222,13 @@ func (u *deployK8s) replaceResourceImage(yamlStr string) (string, bool, error) {
 			if replaced, err = u.replaceContainerImage(cronjob.Spec.JobTemplate.Spec.Template.Spec.Containers); err != nil {
 				return "", false, err
 			}
-			if obj.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(cronjob); err != nil {
+			if obj.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(&cronjob); err != nil {
 				u.Log("转换CronJob资源失败：%s", err.Error())
 				return "", false, err
 			}
 		}
 	}
-	objBytes, err := yaml.Marshal(obj)
+	objBytes, err := yaml.Marshal(obj.Object)
 	if err != nil {
 		u.Log("marshal resource error: %s", err.Error())
 		return "", false, err
