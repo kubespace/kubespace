@@ -103,7 +103,7 @@
           <el-form-item label="集群名称">
             <el-input v-model="form.name" :disabled="inviteForm" autocomplete="off" placeholder="请输入集群名称"></el-input>
           </el-form-item>
-          <el-form-item label="邀请">
+          <!-- <el-form-item label="邀请">
             <el-select v-model="form.members" style="width: 100%" multiple filterable placeholder="请选择要邀请的用户">
               <el-option
                 v-for="item in users"
@@ -112,7 +112,7 @@
                 :value="item.name">
               </el-option>
             </el-select>
-          </el-form-item>
+          </el-form-item> -->
         </el-form>
         <div slot="footer" class="dialog-footer">
           <el-button @click="createClusterFormVisible = false; form={'name': '', 'members': []}; inviteForm=false;">取 消</el-button>
@@ -135,7 +135,7 @@
         </el-button> -->
       </div>
       <div style="font-size: 13px; margin-top: 8px; color: #e6a23c;">
-        *注意：请将上述访问地址{{this.locationAddr}}换为Kubernetes集群可以访问的地址。
+        *注意：请将上述访问地址「{{this.locationAddr}}」换为Kubernetes集群可以访问的地址。
       </div>
       <div slot="footer" class="dialogFooter" style="text-align: right">
         <el-button type="primary" @click="clusterConnectDialog = false">确 定</el-button>

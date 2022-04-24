@@ -403,10 +403,13 @@ export default {
           cancelButtonText: '取消',
           type: 'warning'
         }).then(() => {
+          this.loading = true
           deleteApp(id).then(() => {
+            this.loading = false
             Message.success("删除应用成功")
             this.fetchApps()
           }).catch((err) => {
+            this.loading = false
             console.log(err)
           });
         }).catch(() => {       

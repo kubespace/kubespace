@@ -51,45 +51,47 @@
 
       <el-dialog :title="updateFormVisible ? '修改空间' : '创建空间'" :visible.sync="createFormVisible"
       @close="closeFormDialog" :destroy-on-close="true">
-        <div class="dialogContent" style="">
-          <el-form :model="form" :rules="rules" ref="form" label-position="left" label-width="105px">
-            <el-form-item label="名称" prop="name" autofocus>
-              <el-input v-model="form.name" autocomplete="off" placeholder="请输入空间名称" size="small"></el-input>
-            </el-form-item>
-            <el-form-item label="描述" prop="description">
-              <el-input v-model="form.description" type="textarea" autocomplete="off" placeholder="请输入空间描述" size="small"></el-input>
-            </el-form-item>
-            <el-form-item label="集群" prop="" :required="true">
-              <el-select v-model="form.cluster_id" placeholder="请选择要绑定的集群" size="small" style="width: 100%;"
-                @change="fetchNamespace" :disabled="updateFormVisible">
-                <el-option
-                  v-for="item in clusters"
-                  :key="item.name"
-                  :label="item.name1"
-                  :value="item.name"
-                  :disabled="item.status != 'Connect'">
-                </el-option>
-              </el-select>
-            </el-form-item>
-            <el-form-item label="命名空间" prop="" :required="true">
-              <el-select v-model="form.namespace" placeholder="请选择要绑定的命名空间" size="small" style="width: 100%;"
-                :disabled="updateFormVisible">
-                <el-option
-                  v-for="item in namespaces"
-                  :key="item.name"
-                  :label="item.name"
-                  :value="item.name">
-                </el-option>
-              </el-select>
-            </el-form-item>
-            <el-form-item label="负责人" prop="" :required="true">
-              <el-input v-model="form.owner" autocomplete="off" placeholder="请输入该项目空间负责人" size="small"></el-input>
-            </el-form-item>
-          </el-form>
-        </div>
-        <div slot="footer" class="dialogFooter">
-          <el-button @click="createFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
-          <el-button type="primary" @click="updateFormVisible ? handleUpdateWorkspace() : handleCreateWorkspace()" >确 定</el-button>
+        <div v-loading="dialogLoading">
+          <div class="dialogContent" style="">
+            <el-form :model="form" :rules="rules" ref="form" label-position="left" label-width="105px">
+              <el-form-item label="名称" prop="name" autofocus>
+                <el-input v-model="form.name" autocomplete="off" placeholder="请输入空间名称" size="small"></el-input>
+              </el-form-item>
+              <el-form-item label="描述" prop="description">
+                <el-input v-model="form.description" type="textarea" autocomplete="off" placeholder="请输入空间描述" size="small"></el-input>
+              </el-form-item>
+              <el-form-item label="集群" prop="" :required="true">
+                <el-select v-model="form.cluster_id" placeholder="请选择要绑定的集群" size="small" style="width: 100%;"
+                  @change="fetchNamespace" :disabled="updateFormVisible">
+                  <el-option
+                    v-for="item in clusters"
+                    :key="item.name"
+                    :label="item.name1"
+                    :value="item.name"
+                    :disabled="item.status != 'Connect'">
+                  </el-option>
+                </el-select>
+              </el-form-item>
+              <el-form-item label="命名空间" prop="" :required="true">
+                <el-select v-model="form.namespace" placeholder="请选择要绑定的命名空间" size="small" style="width: 100%;"
+                  :disabled="updateFormVisible">
+                  <el-option
+                    v-for="item in namespaces"
+                    :key="item.name"
+                    :label="item.name"
+                    :value="item.name">
+                  </el-option>
+                </el-select>
+              </el-form-item>
+              <el-form-item label="负责人" prop="" :required="true">
+                <el-input v-model="form.owner" autocomplete="off" placeholder="请输入该项目空间负责人" size="small"></el-input>
+              </el-form-item>
+            </el-form>
+          </div>
+          <div slot="footer" class="dialogFooter" style="margin-top: 20px;">
+            <el-button @click="createFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
+            <el-button type="primary" @click="updateFormVisible ? handleUpdateWorkspace() : handleCreateWorkspace()" >确 定</el-button>
+          </div>
         </div>
       </el-dialog>
     </div>
@@ -122,6 +124,7 @@ export default {
       cellStyle: { border: 0 },
       titleName: ["工作空间"],
       loading: true,
+      dialogLoading: false,
       createFormVisible: false,
       updateFormVisible: false,
       clusters: [],
@@ -195,11 +198,14 @@ export default {
         namespace: this.form.namespace,
         owner: this.form.owner
       }
+      this.dialogLoading = true
       createProject(project).then(() => {
+        this.dialogLoading = false
         this.createFormVisible = false;
         Message.success("创建项目空间成功")
         this.fetchWorkspaces()
       }).catch((err) => {
+        this.dialogLoading = false
         console.log(err)
       });
     },
@@ -221,11 +227,14 @@ export default {
         Message.error("空间负责人不能为空");
         return
       }
+      this.dialogLoading = true
       updateProject(this.form.id, project).then(() => {
+        this.dialogLoading = false
         this.createFormVisible = false;
         Message.success("更新项目空间成功")
         this.fetchWorkspaces()
       }).catch((err) => {
+        this.dialogLoading = false
         console.log(err)
       });
     },
@@ -239,10 +248,13 @@ export default {
           cancelButtonText: '取消',
           type: 'warning'
         }).then(() => {
+          this.loading = true
           deleteProject(id).then(() => {
+            this.loading = false
             Message.success("删除项目空间成功")
             this.fetchWorkspaces()
           }).catch((err) => {
+            this.loading = false
             console.log(err)
           });
         }).catch(() => {       
