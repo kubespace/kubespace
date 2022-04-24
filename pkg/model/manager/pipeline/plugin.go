@@ -284,6 +284,40 @@ var BuiltinPlugins = []types.PipelinePlugin{
 			},
 		},
 	},
+	{
+		Name:    "部署K8s资源",
+		Key:     types.BuiltinPluginDeployK8s,
+		Version: "1.0",
+		Url:     types.PipelinePluginBuiltinUrl,
+		Params: types.PipelinePluginParams{
+			Params: []*types.PipelinePluginParamsSpec{
+				{
+					ParamName: "cluster",
+					From:      types.PluginParamsFromJob,
+					FromName:  "cluster",
+					Default:   "",
+				},
+				{
+					ParamName: "images",
+					From:      types.PluginParamsFromEnv,
+					FromName:  "CODE_BUILD_IMAGES",
+					Default:   "",
+				},
+				{
+					ParamName: "namespace",
+					From:      types.PluginParamsFromJob,
+					FromName:  "namespace",
+					Default:   "default",
+				},
+				{
+					ParamName: "yaml",
+					From:      types.PluginParamsFromJob,
+					FromName:  "yaml",
+					Default:   "",
+				},
+			},
+		},
+	},
 }
 
 func (p *ManagerPipelinePlugin) Init() {
