@@ -46,6 +46,13 @@ func (w *WorkspaceManager) Create(workspace *types.PipelineWorkspace, defaultPip
 	return workspace, nil
 }
 
+func (w *WorkspaceManager) Update(workspace *types.PipelineWorkspace) (*types.PipelineWorkspace, error) {
+	if err := w.DB.Save(workspace).Error; err != nil {
+		return nil, err
+	}
+	return workspace, nil
+}
+
 func (w *WorkspaceManager) Get(workspaceId uint) (*types.PipelineWorkspace, error) {
 	var ws types.PipelineWorkspace
 	if err := w.DB.First(&ws, workspaceId).Error; err != nil {

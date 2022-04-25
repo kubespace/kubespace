@@ -232,7 +232,34 @@ export default {
       });
     },
     handelUpdateWorkspace() {
-
+      if(!this.form.id) {
+        Message.error("获取流水线空间id参数错误，请刷新重试");
+        return
+      }
+      let workspace = {}
+      if(this.form.type == 'code') {
+        if(!this.form.codeUrl) {
+          Message.error("代码地址不能为空");
+          return
+        }
+        workspace['code_secret_id'] = this.form.codeSecretId
+      } else {
+        if(!this.form.name) {
+          Message.error("流水线空间名称不能为空");
+          return
+        }
+        workspace['description'] = this.form.description
+      }
+      this.dialogLoading = true
+      updateWorkspace(this.form.id, workspace).then(() => {
+        this.dialogLoading = false
+        this.closeFormDialog()
+        Message.success("更新流水线空间成功")
+        this.fetchWorkspaces()
+      }).catch((err) => {
+        this.dialogLoading = false
+        console.log(err)
+      });
     },
     handleDeleteWorkspace(id, name) {
       if(!id) {
@@ -269,6 +296,7 @@ export default {
     },
     openUpdateFormDialog(object) {
       this.form = {
+        id: object.id,
         name: object.name,
         type: object.type,
         codeType: object.code_type,

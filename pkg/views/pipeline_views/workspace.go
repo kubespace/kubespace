@@ -10,6 +10,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/views/serializers"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type PipelineWorkspace struct {
@@ -29,6 +30,7 @@ func NewPipelineWorkspace(models *model.Models) *PipelineWorkspace {
 		views.NewView(http.MethodGet, "/exists_release", pipelineWs.existsReleaseVersion),
 		views.NewView(http.MethodGet, "/:id", pipelineWs.get),
 		views.NewView(http.MethodPost, "", pipelineWs.create),
+		views.NewView(http.MethodPut, "/:id", pipelineWs.update),
 		views.NewView(http.MethodDelete, "/:id", pipelineWs.delete),
 	}
 	pipelineWs.Views = vs
@@ -44,6 +46,33 @@ func (p *PipelineWorkspace) create(c *views.Context) *utils.Response {
 		return resp
 	}
 	return p.workspaceService.Create(&ser, c.User)
+}
+
+func (p *PipelineWorkspace) update(c *views.Context) *utils.Response {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	workspace, err := p.models.PipelineWorkspaceManager.Get(uint(id))
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: "获取流水线空间失败: " + err.Error()}
+	}
+	var ser serializers.WorkspaceUpdateSerializer
+	if err = c.ShouldBind(&ser); err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	if ser.CodeSecretId != 0 {
+		workspace.CodeSecretId = ser.CodeSecretId
+	}
+	if ser.Description != "" {
+		workspace.Description = ser.Description
+	}
+	workspace.UpdateUser = c.User.Name
+	workspace.UpdateTime = time.Now()
+	if _, err = p.models.PipelineWorkspaceManager.Update(workspace); err != nil {
+		return &utils.Response{Code: code.DBError, Msg: "更新流水线空间失败: " + err.Error()}
+	}
+	return &utils.Response{Code: code.Success}
 }
 
 func (p *PipelineWorkspace) list(c *views.Context) *utils.Response {

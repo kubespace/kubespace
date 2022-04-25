@@ -21,9 +21,11 @@ import (
 	"golang.org/x/crypto/ssh"
 	"k8s.io/klog"
 	"os"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -188,11 +190,21 @@ func (r *ServicePipelineRun) MatchTriggerBranch(triggers types.PipelineTriggers,
 		if trigger.Branch == "" && trigger.Operator != types.PipelineTriggerOperatorExclude {
 			return true
 		}
-		if trigger.Operator == types.PipelineTriggerOperatorEqual && trigger.Branch != branch {
-			return false
+		if trigger.Operator == types.PipelineTriggerOperatorEqual && trigger.Branch == branch {
+			return true
 		}
 		if trigger.Operator == types.PipelineTriggerOperatorExclude && trigger.Branch == branch {
 			return false
+		}
+		if trigger.Operator == types.PipelineTriggerOperatorInclude {
+			matched, err := regexp.MatchString(trigger.Branch, branch)
+			if err != nil {
+				klog.Errorf("regex %s match branch %s error: %s", trigger.Branch, branch, err.Error())
+				continue
+			}
+			if matched {
+				return true
+			}
 		}
 	}
 	return true
@@ -205,24 +217,54 @@ func (r *ServicePipelineRun) InitialEnvs(pipeline *types.Pipeline, workspace *ty
 	envs["PIPELINE_PIPELINE_ID"] = pipeline.ID
 	envs["PIPELINE_PIPELINE_NAME"] = pipeline.Name
 	if workspace.Type == types.WorkspaceTypeCode {
-		envs["PIPELINE_CODE_URL"] = workspace.CodeUrl
-		branch, ok := params["branch"]
-		if ok {
-			envs["PIPELINE_CODE_BRANCH"] = branch
-		} else {
-			return nil, fmt.Errorf("未获取到代码分支参数")
-		}
-		if !r.MatchTriggerBranch(pipeline.Triggers, branch.(string)) {
-			return nil, fmt.Errorf("代码分支未匹配到该流水线")
-		}
-		_, err := r.getCodeBranchCommitId(workspace.CodeUrl, branch.(string), workspace.CodeSecretId)
-		if err != nil {
+		if err := r.InitialCodeEnvs(pipeline, workspace, params, envs); err != nil {
 			return nil, err
 		}
-		//envs["PIPELINE_CODE_COMMIT_ID"] = commitId
 	}
 
 	return envs, nil
+}
+
+func (r *ServicePipelineRun) InitialCodeEnvs(pipeline *types.Pipeline, workspace *types.PipelineWorkspace, params, envs map[string]interface{}) error {
+	envs["PIPELINE_CODE_URL"] = workspace.CodeUrl
+	branch, ok := params["branch"]
+	if ok {
+		envs["PIPELINE_CODE_BRANCH"] = branch
+	} else {
+		return fmt.Errorf("未获取到代码分支参数")
+	}
+	if !r.MatchTriggerBranch(pipeline.Triggers, branch.(string)) {
+		return fmt.Errorf("代码分支未匹配到该流水线")
+	}
+	var err error
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		_, branchErr := r.getCodeBranchCommitId(workspace.CodeUrl, branch.(string), workspace.CodeSecretId)
+		if err != nil {
+			err = branchErr
+		}
+	}()
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		b := branch.(string)
+		commit, commitErr := r.getCodeBranchCommit(workspace.CodeUrl, b, workspace.CodeSecretId)
+		if commitErr != nil {
+			klog.Errorf("get code %s commit error: %v", workspace.CodeUrl, err)
+			if err != nil {
+				err = commitErr
+			}
+			return
+		}
+		envs["PIPELINE_CODE_COMMIT_ID"] = commit.CommitId
+		envs["PIPELINE_CODE_COMMIT_AUTHOR"] = commit.Author
+		envs["PIPELINE_CODE_COMMIT_MESSAGE"] = commit.Message
+		envs["PIPELINE_CODE_COMMIT_TIME"] = commit.CommitTime
+	}()
+	wg.Wait()
+	return err
 }
 
 func (r *ServicePipelineRun) Build(buildSer *serializers.PipelineBuildSerializer, user *types.User) *utils.Response {
@@ -279,31 +321,31 @@ func (r *ServicePipelineRun) Build(buildSer *serializers.PipelineBuildSerializer
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
-	go r.ManualExecutePipeline(pipelineRun, workspace)
+	go r.Execute(pipelineRun, 0, types.StageTriggerModeAuto)
 	return &utils.Response{Code: code.Success, Data: pipelineRun}
 }
 
-func (r *ServicePipelineRun) ManualExecutePipeline(pipelineRun *types.PipelineRun, workspace *types.PipelineWorkspace) {
-	defer r.recoverExecute(pipelineRun)
-	if workspace.Type == types.WorkspaceTypeCode {
-		branch := pipelineRun.Env["PIPELINE_CODE_BRANCH"].(string)
-		commit, err := r.getCodeBranchCommit(workspace.CodeUrl, branch, workspace.CodeSecretId)
-		if err != nil {
-			klog.Errorf("get code %s commit error: %v", workspace.CodeUrl, err)
-			return
-		}
-		pipelineRun.Env["PIPELINE_CODE_COMMIT_ID"] = commit.CommitId
-		pipelineRun.Env["PIPELINE_CODE_COMMIT_AUTHOR"] = commit.Author
-		pipelineRun.Env["PIPELINE_CODE_COMMIT_MESSAGE"] = commit.Message
-		pipelineRun.Env["PIPELINE_CODE_COMMIT_TIME"] = commit.CommitTime
-		err = r.models.ManagerPipelineRun.UpdatePipelineRun(pipelineRun)
-		if err != nil {
-			klog.Errorf("update pipeline run %d envs error: %v", pipelineRun.ID, err)
-			return
-		}
-	}
-	r.Execute(pipelineRun, 0, types.StageTriggerModeAuto)
-}
+//func (r *ServicePipelineRun) ManualExecutePipeline(pipelineRun *types.PipelineRun, workspace *types.PipelineWorkspace) {
+//	defer r.recoverExecute(pipelineRun)
+//	if workspace.Type == types.WorkspaceTypeCode {
+//		branch := pipelineRun.Env["PIPELINE_CODE_BRANCH"].(string)
+//		commit, err := r.getCodeBranchCommit(workspace.CodeUrl, branch, workspace.CodeSecretId)
+//		if err != nil {
+//			klog.Errorf("get code %s commit error: %v", workspace.CodeUrl, err)
+//			return
+//		}
+//		pipelineRun.Env["PIPELINE_CODE_COMMIT_ID"] = commit.CommitId
+//		pipelineRun.Env["PIPELINE_CODE_COMMIT_AUTHOR"] = commit.Author
+//		pipelineRun.Env["PIPELINE_CODE_COMMIT_MESSAGE"] = commit.Message
+//		pipelineRun.Env["PIPELINE_CODE_COMMIT_TIME"] = commit.CommitTime
+//		err = r.models.ManagerPipelineRun.UpdatePipelineRun(pipelineRun)
+//		if err != nil {
+//			klog.Errorf("update pipeline run %d envs error: %v", pipelineRun.ID, err)
+//			return
+//		}
+//	}
+//	r.Execute(pipelineRun, 0, types.StageTriggerModeAuto)
+//}
 
 func (r *ServicePipelineRun) recoverExecute(pipelineRun *types.PipelineRun) {
 	if err := recover(); err != nil {

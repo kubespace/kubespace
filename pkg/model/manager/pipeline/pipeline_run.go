@@ -70,6 +70,7 @@ func (p *ManagerPipelineRun) CreatePipelineRun(pipelineRun *types.PipelineRun, s
 		buildNum := lastPipelineRun.BuildNumber + 1
 		pipelineRun.BuildNumber = buildNum
 		pipelineRun.Env["PIPELINE_BUILD_NUMBER"] = buildNum
+		pipelineRun.Env["PIPELINE_TRIGGER_USER"] = pipelineRun.Operator
 		if err := tx.Create(pipelineRun).Error; err != nil {
 			return err
 		}

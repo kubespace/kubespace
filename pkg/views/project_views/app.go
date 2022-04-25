@@ -151,20 +151,21 @@ func (a *ProjectApp) statusSSE(c *views.Context) *utils.Response {
 
 	w := c.Writer
 	clientGone := w.CloseNotify()
-	c.SSEvent("message", "")
+	c.SSEvent("message", "{}")
 	w.Flush()
 	//c.Stream()
 	tick := time.NewTicker(5 * time.Second)
 	for {
-		klog.Infof("select for log channel")
+		klog.Infof("select for app status channel")
 		select {
 		case <-clientGone:
-			klog.Info("log client gone")
+			klog.Info("app status client gone")
 			return nil
 		case <-tick.C:
-			//c.SSEvent("message", event)
+			tick.Stop()
 			res := a.AppService.ListAppStatus(ser)
 			c.SSEvent("message", res)
+			tick.Reset(5 * time.Second)
 		}
 	}
 }
