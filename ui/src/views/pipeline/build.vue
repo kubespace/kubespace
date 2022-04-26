@@ -345,10 +345,10 @@ export default {
           if(build.pipeline_run.status == 'doing') {
             if(s.status == 'doing') {
               if(!this.refreshStages[s.id]) {
-                // var endTime = new Date();
-                // var execTime = new Date(s.exec_time);
-                // this.$set(this.refreshStages, s.id, Math.floor((endTime.getTime()-execTime.getTime()) / 1000))
-                this.$set(this.refreshStages, s.id, 1)
+                var endTime = new Date();
+                var execTime = new Date(s.exec_time);
+                this.$set(this.refreshStages, s.id, Math.floor((endTime.getTime()-execTime.getTime()) / 1000))
+                // this.$set(this.refreshStages, s.id, 1)
                 // this.refreshStages[s.id] = 
               }
               hasDoing = true
