@@ -210,6 +210,10 @@ func (r *ServicePipelineRun) MatchTriggerBranch(triggers types.PipelineTriggers,
 	return true
 }
 
+type BuildForPipelineParams struct {
+	BuildIds []uint `json:"build_ids"`
+}
+
 func (r *ServicePipelineRun) InitialEnvs(pipeline *types.Pipeline, workspace *types.PipelineWorkspace, params map[string]interface{}) (map[string]interface{}, error) {
 	envs := map[string]interface{}{}
 	envs["PIPELINE_WORKSPACE_ID"] = workspace.ID
@@ -248,7 +252,7 @@ func (r *ServicePipelineRun) InitialCodeEnvs(pipeline *types.Pipeline, workspace
 			err = branchErr
 		}
 	}()
-	wg.Add(2)
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		b := branch.(string)
