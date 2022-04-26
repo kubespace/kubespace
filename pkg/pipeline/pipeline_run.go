@@ -220,6 +220,8 @@ func (r *ServicePipelineRun) InitialEnvs(pipeline *types.Pipeline, workspace *ty
 		if err := r.InitialCodeEnvs(pipeline, workspace, params, envs); err != nil {
 			return nil, err
 		}
+	} else if workspace.Type == types.WorkspaceTypePipeline {
+
 	}
 
 	return envs, nil
@@ -276,13 +278,16 @@ func (r *ServicePipelineRun) Build(buildSer *serializers.PipelineBuildSerializer
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
-	envs, err := r.InitialEnvs(pipeline, workspace, buildSer.Params)
-	if err != nil {
-		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
-	}
 	stages, err := r.models.ManagerPipeline.Stages(buildSer.PipelineId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	if len(stages) == 0 {
+		return &utils.Response{Code: code.DataNotExists, Msg: "当前流水线未配置阶段"}
+	}
+	envs, err := r.InitialEnvs(pipeline, workspace, buildSer.Params)
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
 	var stagesRun []*types.PipelineRunStage
 	for _, stage := range stages {

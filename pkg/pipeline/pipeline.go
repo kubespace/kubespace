@@ -21,6 +21,10 @@ func NewPipelineService(models *model.Models) *ServicePipeline {
 }
 
 func (p *ServicePipeline) Create(pipelineSer *serializers.PipelineSerializer, user *types.User) *utils.Response {
+	workspace, err := p.models.PipelineWorkspaceManager.Get(pipelineSer.WorkspaceId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
 	pipeline := &types.Pipeline{
 		Name:        pipelineSer.Name,
 		WorkspaceId: pipelineSer.WorkspaceId,
@@ -30,11 +34,31 @@ func (p *ServicePipeline) Create(pipelineSer *serializers.PipelineSerializer, us
 		CreateTime:  time.Now(),
 		UpdateTime:  time.Now(),
 	}
+	if len(pipelineSer.Triggers) == 0 {
+		return &utils.Response{Code: code.ParamsError, Msg: "流水线触发源不能为空"}
+	}
 	for _, trigger := range pipelineSer.Triggers {
-		if trigger.Type != types.PipelineTriggerTypeCode {
+		if workspace.Type == types.WorkspaceTypeCode && trigger.Type != types.PipelineTriggerTypeCode {
 			return &utils.Response{
 				Code: code.ParamsError,
-				Msg:  fmt.Sprintf("pipeline trigger type %s is unknown", trigger.Type),
+				Msg:  fmt.Sprintf("pipeline trigger type %s is wrong", trigger.Type),
+			}
+		}
+		if workspace.Type == types.WorkspaceTypePipeline {
+			if trigger.Type != types.PipelineTriggerTypePipeline {
+				return &utils.Response{
+					Code: code.ParamsError,
+					Msg:  fmt.Sprintf("pipeline trigger type %s is wrong", trigger.Type),
+				}
+			}
+			if trigger.Workspace == 0 {
+				return &utils.Response{Code: code.ParamsError, Msg: "流水线触发空间不能为空"}
+			}
+			if trigger.Pipeline == 0 {
+				return &utils.Response{Code: code.ParamsError, Msg: "触发空间流水线不能为空"}
+			}
+			if trigger.Stage == 0 {
+				return &utils.Response{Code: code.ParamsError, Msg: "触发流水线阶段不能为空"}
 			}
 		}
 	}
@@ -54,7 +78,7 @@ func (p *ServicePipeline) Create(pipelineSer *serializers.PipelineSerializer, us
 		}
 		stages = append(stages, stage)
 	}
-	pipeline, err := p.models.ManagerPipeline.CreatePipeline(pipeline, stages)
+	pipeline, err = p.models.ManagerPipeline.CreatePipeline(pipeline, stages)
 	if err != nil {
 		return &utils.Response{
 			Code: code.DBError,

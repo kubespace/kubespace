@@ -34,7 +34,8 @@ const (
 )
 
 const (
-	PipelineTriggerTypeCode = "code"
+	PipelineTriggerTypeCode     = "code"
+	PipelineTriggerTypePipeline = "pipeline"
 
 	PipelineTriggerOperatorEqual   = "equal"
 	PipelineTriggerOperatorExclude = "exclude"

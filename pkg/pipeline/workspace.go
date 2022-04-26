@@ -23,9 +23,9 @@ func NewWorkspaceService(models *model.Models) *WorkspaceService {
 func (w *WorkspaceService) getCodeName(codeType string, codeUrl string) string {
 	var re *regexp.Regexp
 	if codeType == types.WorkspaceCodeTypeHttps {
-		re, _ = regexp.Compile("http[s]+://[\\w\\.:]+/([\\w/\\-_]+)[.git]*")
+		re, _ = regexp.Compile("http[s]?://[\\w\\.:]+/([\\w/\\-_]+)[.git]*")
 	} else if codeType == types.WorkspaceCodeTypeGit {
-		re, _ = regexp.Compile("git@[\\w\\.]+:[\\d]*/?([\\w/\\-_]+)[\\.git]*")
+		re, _ = regexp.Compile("git@[\\w\\.:]+/?([\\w/\\-_]+)[\\.git]*")
 	} else {
 		return ""
 	}
@@ -39,9 +39,9 @@ func (w *WorkspaceService) getCodeName(codeType string, codeUrl string) string {
 func (w *WorkspaceService) checkCodeUrl(codeType string, codeUrl string) bool {
 	var re *regexp.Regexp
 	if codeType == types.WorkspaceCodeTypeHttps {
-		re, _ = regexp.Compile("http[s]+://[\\w.:]+/[\\w/]+[.git]+")
+		re, _ = regexp.Compile("http[s]?://[\\w\\.:]+/([\\w/\\-_]+)[.git]*")
 	} else if codeType == types.WorkspaceCodeTypeGit {
-		re, _ = regexp.Compile("git@[\\w.:]+/[\\w/]+[.git]+")
+		re, _ = regexp.Compile("git@[\\w\\.:]+/?([\\w/\\-_]+)[\\.git]*")
 	} else {
 		return false
 	}
@@ -121,8 +121,14 @@ func (w *WorkspaceService) defaultCodePipelines() ([]*types.Pipeline, error) {
 
 func (w *WorkspaceService) Create(workspaceSer *serializers.WorkspaceSerializer, user *types.User) *utils.Response {
 	var err error
-	if !w.checkCodeUrl(workspaceSer.CodeType, workspaceSer.CodeUrl) {
-		return &utils.Response{Code: code.ParamsError, Msg: "代码地址格式不正确"}
+	if workspaceSer.Type == types.WorkspaceTypeCode {
+		if !w.checkCodeUrl(workspaceSer.CodeType, workspaceSer.CodeUrl) {
+			return &utils.Response{Code: code.ParamsError, Msg: "代码地址格式不正确"}
+		}
+		workspaceSer.Name = w.getCodeName(workspaceSer.CodeType, workspaceSer.CodeUrl)
+	}
+	if workspaceSer.Name == "" {
+		return &utils.Response{Code: code.ParamsError, Msg: "解析代码地址失败，未获取到代码库名称"}
 	}
 	workspace := &types.PipelineWorkspace{
 		Name:         workspaceSer.Name,
@@ -135,12 +141,6 @@ func (w *WorkspaceService) Create(workspaceSer *serializers.WorkspaceSerializer,
 		UpdateUser:   user.Name,
 		CreateTime:   time.Now(),
 		UpdateTime:   time.Now(),
-	}
-	if workspace.Type == types.WorkspaceTypeCode {
-		workspace.Name = w.getCodeName(workspace.CodeType, workspace.CodeUrl)
-		if workspace.Name == "" {
-			return &utils.Response{Code: code.ParamsError, Msg: "解析代码地址失败，未获取到代码库名称"}
-		}
 	}
 	resp := &utils.Response{Code: code.Success}
 	var defaultPipeline []*types.Pipeline
