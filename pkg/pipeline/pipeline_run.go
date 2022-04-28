@@ -210,22 +210,84 @@ func (r *ServicePipelineRun) MatchTriggerBranch(triggers types.PipelineTriggers,
 	return true
 }
 
+type BuildForPipelineParamsBuilds struct {
+	PipelineId uint `json:"pipeline_id"`
+	BuildId    uint `json:"build_id"`
+	IsBuild    bool `json:"is_build"`
+}
+
 type BuildForPipelineParams struct {
-	BuildIds []uint `json:"build_ids"`
+	BuildIds []*BuildForPipelineParamsBuilds `json:"build_ids"`
 }
 
 func (r *ServicePipelineRun) InitialEnvs(pipeline *types.Pipeline, workspace *types.PipelineWorkspace, params map[string]interface{}) (map[string]interface{}, error) {
 	envs := map[string]interface{}{}
-	envs["PIPELINE_WORKSPACE_ID"] = workspace.ID
-	envs["PIPELINE_WORKSPACE_NAME"] = workspace.Name
-	envs["PIPELINE_PIPELINE_ID"] = pipeline.ID
-	envs["PIPELINE_PIPELINE_NAME"] = pipeline.Name
+	envs[types.PipelineEnvWorkspaceId] = workspace.ID
+	envs[types.PipelineEnvWorkspaceName] = workspace.Name
+	envs[types.PipelineEnvPipelineId] = pipeline.ID
+	envs[types.PipelineEnvPipelineName] = pipeline.Name
 	if workspace.Type == types.WorkspaceTypeCode {
 		if err := r.InitialCodeEnvs(pipeline, workspace, params, envs); err != nil {
 			return nil, err
 		}
-	} else if workspace.Type == types.WorkspaceTypePipeline {
-
+	} else if workspace.Type == types.WorkspaceTypeCustom {
+		paramsBytes, err := json.Marshal(params)
+		if err != nil {
+			return nil, err
+		}
+		var buildPipelineParams BuildForPipelineParams
+		if err = json.Unmarshal(paramsBytes, &buildPipelineParams); err != nil {
+			return nil, err
+		}
+		delPipelineEnvs := []string{
+			types.PipelineEnvWorkspaceId,
+			types.PipelineEnvWorkspaceName,
+			types.PipelineEnvPipelineId,
+			types.PipelineEnvPipelineName,
+			types.PipelineEnvPipelineBuildNumber,
+			types.PipelineEnvPipelineTriggerUser,
+		}
+		var pipelineBuildId []string
+		for _, buildInfo := range buildPipelineParams.BuildIds {
+			if buildInfo.IsBuild {
+				continue
+			}
+			find := false
+			for _, trigger := range pipeline.Triggers {
+				if buildInfo.PipelineId == trigger.Pipeline {
+					find = true
+					build, err := r.models.ManagerPipelineRun.Get(buildInfo.BuildId)
+					if err != nil {
+						return nil, fmt.Errorf("获取流水线构建源失败：%s", err.Error())
+					}
+					pipelineSrc, err := r.models.ManagerPipeline.Get(buildInfo.PipelineId)
+					if err != nil {
+						return nil, fmt.Errorf("获取流水线源失败：%s", err.Error())
+					}
+					if build.Status != types.PipelineStatusOK {
+						return nil, fmt.Errorf("构建源流水线%s执行状态未完成", pipelineSrc.Name)
+					}
+					stageRuns, err := r.models.ManagerPipelineRun.StagesRun(buildInfo.BuildId)
+					if err != nil {
+						return nil, fmt.Errorf("获取流水线构建源阶段失败：%s", err.Error())
+					}
+					if len(stageRuns) > 0 {
+						lastStage := stageRuns[len(stageRuns)-1]
+						for k, _ := range lastStage.Env {
+							if utils.Contains(delPipelineEnvs, k) {
+								delete(lastStage.Env, k)
+							}
+						}
+						envs = utils.MergeMap(envs, lastStage.Env)
+					}
+					pipelineBuildId = append(pipelineBuildId, fmt.Sprintf("%d", buildInfo.BuildId))
+				}
+			}
+			if !find {
+				return nil, fmt.Errorf("构建参数错误，流水线id=%d不在触发源", buildInfo.PipelineId)
+			}
+		}
+		envs[types.PipelineEnvPipelineBuildId] = strings.Join(pipelineBuildId, ",")
 	}
 
 	return envs, nil

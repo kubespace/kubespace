@@ -44,7 +44,7 @@ func (p *ServicePipeline) Create(pipelineSer *serializers.PipelineSerializer, us
 				Msg:  fmt.Sprintf("pipeline trigger type %s is wrong", trigger.Type),
 			}
 		}
-		if workspace.Type == types.WorkspaceTypePipeline {
+		if workspace.Type == types.WorkspaceTypeCustom {
 			if trigger.Type != types.PipelineTriggerTypePipeline {
 				return &utils.Response{
 					Code: code.ParamsError,

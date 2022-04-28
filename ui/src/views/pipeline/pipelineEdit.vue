@@ -19,17 +19,26 @@
         <div>阶段任务</div>
         <div class="stage-job-outer">
           <div class="stage-job-line">
-            <div class="pipeline-source-outer" style="display:inline-block" v-if="workspace.type == 'code'"
-              @click="openEditSource()">
-              <span class="pipeline-source-outer__span">
-                代码库源
-              </span>
-              <div style="font-size: 12px; padding: 10px 0px 0px; font-weight: 450">
-                {{ workspace ? workspace.code_url : '' }}
+            <div class="pipeline-source-outer" style="display:inline-block" @click="openEditSource()">
+              <div v-if="workspace.type == 'code'">
+                <span class="pipeline-source-outer__span">
+                  代码库源
+                </span>
+                <div style="font-size: 12px; padding: 10px 0px 0px; font-weight: 450">
+                  {{ workspace ? workspace.code_url : '' }}
+                </div>
+                <div v-for="(t, i) in editPipeline.triggers" :key="i"
+                  style="font-size: 12px; padding: 5px 10px 0px; font-weight: 400" >
+                  <svg-icon icon-class="branch" /> {{ operatorMap[t.operator] }} {{ t.branch }}
+                </div>
               </div>
-              <div v-for="(t, i) in editPipeline.triggers" :key="i"
-                style="font-size: 12px; padding: 5px 10px 0px; font-weight: 400" >
-                 <svg-icon icon-class="branch" /> {{ operatorMap[t.operator] }} {{ t.branch }}
+              <div v-if="workspace.type == 'custom'">
+                <span class="pipeline-source-outer__span">
+                  流水线源
+                </span>
+                <div style="font-size: 12px; padding: 10px 0px 0px; font-weight: 450; width: 200px">
+                  kubespace/ksp
+                </div>
               </div>
             </div>
           </div>
@@ -334,11 +343,11 @@ export default {
     savePipeline() {
       // console.log(this.pipeline)
       // console.log(this.editPipeline)
-      this.loading = true
       if(!this.editPipeline.name) {
         Message.error("请输入流水线名称")
         return
       }
+      this.loading = true
       if(this.pipelineId) {
         updatePipeline(this.editPipeline).then((response) => {
           Message.success("编辑流水线成功")

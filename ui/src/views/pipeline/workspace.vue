@@ -53,7 +53,7 @@
                 <span v-if="updateFormVisible">{{ workspaceTypeMap[form.type] }}</span>
                 <el-radio-group v-else v-model="form.type">
                   <el-radio label="code">代码空间</el-radio>
-                  <!-- <el-radio label="custom">自定义空间</el-radio> -->
+                  <el-radio label="custom">自定义空间</el-radio>
                 </el-radio-group>
               </el-form-item>
               <el-form-item label="代码类型" prop="codeType" v-if="form.type == 'code'" @change="codeTypeChange">
@@ -82,7 +82,7 @@
                 <el-input v-model="form.name" autocomplete="off" placeholder="请输入空间名称" size="small"></el-input>
               </el-form-item>
               <el-form-item v-if="form.type == 'custom'" label="描述" prop="description">
-                <el-input v-model="form.name" type="textarea" autocomplete="off" placeholder="请输入空间描述" size="small"></el-input>
+                <el-input v-model="form.description" type="textarea" autocomplete="off" placeholder="请输入空间描述" size="small"></el-input>
               </el-form-item>
             </el-form>
           </div>

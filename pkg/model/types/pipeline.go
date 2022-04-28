@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	WorkspaceTypeCode     = "code"
-	WorkspaceTypePipeline = "pipeline"
+	WorkspaceTypeCode   = "code"
+	WorkspaceTypeCustom = "custom"
 )
 
 const (
@@ -31,6 +31,14 @@ const (
 	PipelineStatusOK     = "ok"
 	PipelineStatusError  = "error"
 	PipelineStatusPause  = "pause"
+
+	PipelineEnvWorkspaceId         = "PIPELINE_WORKSPACE_ID"
+	PipelineEnvWorkspaceName       = "PIPELINE_WORKSPACE_NAME"
+	PipelineEnvPipelineId          = "PIPELINE_PIPELINE_ID"
+	PipelineEnvPipelineName        = "PIPELINE_PIPELINE_NAME"
+	PipelineEnvPipelineBuildNumber = "PIPELINE_BUILD_NUMBER"
+	PipelineEnvPipelineTriggerUser = "PIPELINE_TRIGGER_USER"
+	PipelineEnvPipelineBuildId     = "PIPELINE_BUILD_ID"
 )
 
 const (
