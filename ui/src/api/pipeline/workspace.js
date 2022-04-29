@@ -1,9 +1,10 @@
 import request from '@/utils/request'
 
-export function listWorkspaces() {
+export function listWorkspaces(params) {
   return request({
     url: `pipeline/workspace`,
     method: 'get',
+    params
   })
 }
 

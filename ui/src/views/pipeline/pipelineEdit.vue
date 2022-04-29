@@ -32,13 +32,25 @@
                   <svg-icon icon-class="branch" /> {{ operatorMap[t.operator] }} {{ t.branch }}
                 </div>
               </div>
-              <div v-if="workspace.type == 'custom'">
+              <div v-else>
                 <span class="pipeline-source-outer__span">
                   流水线源
                 </span>
-                <div style="font-size: 12px; padding: 10px 0px 0px; font-weight: 450; width: 200px">
-                  kubespace/ksp
-                </div>
+                <template v-if="editPipeline.triggers && editPipeline.triggers.length > 0">
+                  <div v-for="(t, i) in editPipeline.triggers" :key="i">
+                    <div style="font-size: 12px; padding: 10px 0px 0px; font-weight: 450; width: 200px">
+                      {{ getTriggerWorkspaceName(t.workspace) }}
+                    </div>
+                    <div style="font-size: 12px; padding: 5px 20px 0px; font-weight: 400" >
+                      — {{ getTriggerPipelineName(t.workspace, t.pipeline) }}
+                    </div>
+                  </div>
+                </template>
+                <template v-else>
+                  <div style="font-size: 12px; padding: 10px 0px 0px; font-weight: 450; width: 200px">
+                      点击添加代码流水线源
+                    </div>
+                </template>
               </div>
             </div>
           </div>
@@ -132,7 +144,7 @@
           </el-form>
         </template>
         <template v-if="dialogType == 'source'">
-          <el-form :model="dialogData" label-position="left" label-width="105px">
+          <el-form :model="dialogData" label-position="left" label-width="105px" v-if="workspace.type == 'code'">
             <el-form-item label="代码库源" prop="" :required="true">
               <el-input :disabled="true" style="width: 450px;" v-model="workspace.code_url" size="small"></el-input>
             </el-form-item>
@@ -150,7 +162,7 @@
                 </el-col>
                 <!-- <el-col :span="5"><div style="width: 100px;"></div></el-col> -->
               </el-row>
-              <el-row style="padding-bottom: 5px;" v-for="(d, i) in editPipeline.triggers" :key="i">
+              <el-row style="padding-bottom: 5px;" v-for="(d, i) in dialogData.triggers" :key="i">
                 <el-col :span="7">
                   <div class="border-span-header" style="margin-right: 10px;">
                     <el-select v-model="d.operator" placeholder="匹配方式" size="small" style="width: 100%;">
@@ -167,14 +179,59 @@
                 </el-col>
                 <el-col :span="2" style="padding-left: 10px">
                   <el-button circle size="mini" style="padding: 5px;" 
-                    @click="editPipeline.triggers.splice(i, 1)" icon="el-icon-close"></el-button>
+                    @click="dialogData.triggers.splice(i, 1)" icon="el-icon-close"></el-button>
                 </el-col>
               </el-row>
               <el-row>
                 <el-col :span="17">
                 <el-button style="width: 100%; border-radius: 0px; padding: 9px 15px;
                   border-color: rgb(102, 177, 255); color: rgb(102, 177, 255)" plain size="mini" 
-                  @click="editPipeline.triggers.push({type: 'code', branch_type: 'branch', operator: 'equal', branch: ''})" icon="el-icon-plus">添加匹配</el-button>
+                  @click="dialogData.triggers.push({type: 'code', branch_type: 'branch', operator: 'equal', branch: ''})" icon="el-icon-plus">添加匹配</el-button>
+                </el-col>
+              </el-row>
+            </el-form-item>
+          </el-form>
+
+          <el-form :model="dialogData" label-position="left" label-width="105px" v-if="workspace.type == 'custom'">
+            <el-form-item label="代码流水线" prop="" :required="true">
+              <el-row style="margin-bottom: 5px; margin-top: 8px;">
+                <el-col :span="7" style="background-color: #F5F7FA; padding-left: 10px;">
+                  <div class="border-span-header">
+                    <span  class="border-span-content">*</span>流水线空间
+                  </div>
+                </el-col>
+                <el-col :span="10" style="background-color: #F5F7FA">
+                  <div class="border-span-header">
+                    流水线
+                  </div>
+                </el-col>
+                <!-- <el-col :span="5"><div style="width: 100px;"></div></el-col> -->
+              </el-row>
+              <el-row style="padding-bottom: 5px;" v-for="(d, i) in dialogData.triggers" :key="i">
+                <el-col :span="7">
+                  <div class="border-span-header" style="margin-right: 10px;">
+                    <el-select v-model="d.workspace" placeholder="流水线空间" size="small" style="width: 100%;">
+                      <el-option v-for="w in workspaces" :key="w.id" :label="w.name" :value="w.id"></el-option>
+                    </el-select>
+                  </div>
+                </el-col>
+                <el-col :span="10">
+                  <div class="border-span-header">
+                    <el-select v-model="d.pipeline" placeholder="代码流水线" size="small" style="width: 100%;">
+                      <el-option v-for="p in workspacesDict[d.workspace] ? workspacesDict[d.workspace].pipelines : []" :key="p.id" :label="p.name" :value="p.id"></el-option>
+                    </el-select>
+                  </div>
+                </el-col>
+                <el-col :span="2" style="padding-left: 10px">
+                  <el-button circle size="mini" style="padding: 5px;" 
+                    @click="dialogData.triggers.splice(i, 1)" icon="el-icon-close"></el-button>
+                </el-col>
+              </el-row>
+              <el-row>
+                <el-col :span="17">
+                <el-button style="width: 100%; border-radius: 0px; padding: 9px 15px;
+                  border-color: rgb(102, 177, 255); color: rgb(102, 177, 255)" plain size="mini" 
+                  @click="dialogData.triggers.push({type: 'pipeline'})" icon="el-icon-plus">添加流水线源</el-button>
                 </el-col>
               </el-row>
             </el-form-item>
@@ -197,6 +254,7 @@
 import { Clusterbar } from '@/views/components'
 import { PipelineStage, CodeToImage, ExecuteShell, AppDeploy, Release, DeployK8s } from '@/views/pipeline/plugin'
 import { getPipeline, updatePipeline, createPipeline } from '@/api/pipeline/pipeline'
+import { listWorkspaces } from '@/api/pipeline/workspace'
 import { getWorkspace } from '@/api/pipeline/workspace'
 import { Message } from 'element-ui'
 
@@ -224,7 +282,7 @@ export default {
         workspace_id: parseInt(this.$route.params.workspaceId),
         id: 0,
         name: "",
-        triggers: [{"type": "code", "branch_type": "branch", "operator": "equal", "branch": ""}],
+        triggers: [],
         stages: []
       },
       operatorMap: {
@@ -263,7 +321,9 @@ export default {
         'add_stage': '添加阶段',
         'add_job': '添加任务',
         "source": '流水线源'
-      }
+      },
+      workspaces: [],
+      workspacesDict: null,
     }
   },
   created() {
@@ -271,7 +331,6 @@ export default {
     if(this.pipelineId) this.fetchPipeline();
     else {
       this.titleName = ["流水线", "创建"]
-      this.loading = false
     }
   },
   mounted() {
@@ -307,6 +366,11 @@ export default {
       this.loading = true
       getWorkspace(this.workspaceId).then((response) => {
         this.workspace = response.data || {};
+        if(this.workspace.type == 'custom') {
+          this.fetchWorkspaces()
+        } else if(this.pipelineId) {
+          this.editPipeline.triggers = [{"type": "code", "branch_type": "branch", "operator": "equal", "branch": ""}]
+        }
         this.loading = false
       }).catch(() => {
         this.loading = false
@@ -403,6 +467,8 @@ export default {
         this.editPipeline.stages.splice(this.dialogOriginData, 0, newStage)
       } else if(this.dialogType == 'add_job') {
         this.dialogOriginData.jobs.push(this.dialogData)
+      } else if(this.dialogType == 'source') {
+        this.editPipeline.triggers = this.dialogData.triggers
       }
       this.dialogVisible = false
     },
@@ -476,10 +542,44 @@ export default {
     openEditSource() {
       this.dialogType = 'source'
       this.dialogData = {
+        triggers: JSON.parse(JSON.stringify(this.editPipeline.triggers))
       }
-      console.log(this.editPipeline)
       this.dialogVisible = true
     },
+    fetchWorkspaces() {
+      listWorkspaces({"with_pipeline": true, "type": "code"})
+        .then((response) => {
+          this.workspacesDict = {}
+          this.workspaces = response.data || [];
+          for(let w of this.workspaces) {
+            this.workspacesDict[w.id] = w
+          }
+        }).catch(() => {})
+    },
+    getTriggerWorkspaceName(workspaceId) {
+      if(this.workspacesDict) {
+        if(this.workspacesDict[workspaceId]) {
+          return this.workspacesDict[workspaceId].name
+        } 
+        return '未知'
+      }else {
+        return ''
+      }
+    },
+    getTriggerPipelineName(workspaceId, pipelineId) {
+      if(this.workspacesDict) {
+        if(this.workspacesDict[workspaceId]) {
+          for(let p of this.workspacesDict[workspaceId].pipelines) {
+            if(p.id == pipelineId) {
+              return p.name
+            }
+          }
+        } 
+        return '未知'
+      }else {
+        return ''
+      }
+    }
   }
 }
 </script>

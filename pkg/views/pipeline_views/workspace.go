@@ -76,6 +76,10 @@ func (p *PipelineWorkspace) update(c *views.Context) *utils.Response {
 }
 
 func (p *PipelineWorkspace) list(c *views.Context) *utils.Response {
+	var ser serializers.WorkspaceListSerializer
+	if err := c.ShouldBind(&ser); err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
 	resp := &utils.Response{Code: code.Success}
 	workspaces, err := p.models.PipelineWorkspaceManager.List()
 	if err != nil {
@@ -87,6 +91,15 @@ func (p *PipelineWorkspace) list(c *views.Context) *utils.Response {
 	for i, w := range workspaces {
 		if !p.models.UserRoleManager.HasScopeRole(c.User, types.RoleScopePipeline, w.ID, types.RoleTypeViewer) {
 			continue
+		}
+		if ser.Type != "" && w.Type != ser.Type {
+			continue
+		}
+		if ser.WithPipeline {
+			workspaces[i].Pipelines, err = p.models.ManagerPipeline.List(w.ID)
+			if err != nil {
+				return &utils.Response{Code: code.DBError, Msg: err.Error()}
+			}
 		}
 		data = append(data, workspaces[i])
 	}

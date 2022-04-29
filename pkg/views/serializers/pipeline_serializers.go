@@ -19,6 +19,11 @@ type WorkspaceUpdateSerializer struct {
 	CodeSecretId uint   `json:"code_secret_id" form:"code_secret_id"`
 }
 
+type WorkspaceListSerializer struct {
+	WithPipeline bool   `json:"with_pipeline" form:"with_pipeline"`
+	Type         string `json:"type" form:"type"`
+}
+
 type WorkspaceReleaseSerializer struct {
 	WorkspaceId uint   `json:"workspace_id" form:"workspace_id"`
 	Version     string `json:"version" form:"version"`
