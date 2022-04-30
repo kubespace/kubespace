@@ -39,10 +39,10 @@
                 <template v-if="editPipeline.triggers && editPipeline.triggers.length > 0">
                   <div v-for="(t, i) in editPipeline.triggers" :key="i">
                     <div style="font-size: 12px; padding: 10px 0px 0px; font-weight: 450; width: 200px">
-                      {{ getTriggerWorkspaceName(t.workspace) }}
+                      {{ t.workspace_name ? t.workspace_name : getTriggerWorkspaceName(t.workspace) }}
                     </div>
                     <div style="font-size: 12px; padding: 5px 20px 0px; font-weight: 400" >
-                      — {{ getTriggerPipelineName(t.workspace, t.pipeline) }}
+                      — {{ t.pipeline_name ? t.pipeline_name : getTriggerPipelineName(t.workspace, t.pipeline) }}
                     </div>
                   </div>
                 </template>
@@ -195,12 +195,12 @@
           <el-form :model="dialogData" label-position="left" label-width="105px" v-if="workspace.type == 'custom'">
             <el-form-item label="代码流水线" prop="" :required="true">
               <el-row style="margin-bottom: 5px; margin-top: 8px;">
-                <el-col :span="7" style="background-color: #F5F7FA; padding-left: 10px;">
+                <el-col :span="12" style="background-color: #F5F7FA; padding-left: 10px;">
                   <div class="border-span-header">
                     <span  class="border-span-content">*</span>流水线空间
                   </div>
                 </el-col>
-                <el-col :span="10" style="background-color: #F5F7FA">
+                <el-col :span="7" style="background-color: #F5F7FA">
                   <div class="border-span-header">
                     流水线
                   </div>
@@ -208,14 +208,14 @@
                 <!-- <el-col :span="5"><div style="width: 100px;"></div></el-col> -->
               </el-row>
               <el-row style="padding-bottom: 5px;" v-for="(d, i) in dialogData.triggers" :key="i">
-                <el-col :span="7">
+                <el-col :span="12">
                   <div class="border-span-header" style="margin-right: 10px;">
                     <el-select v-model="d.workspace" placeholder="流水线空间" size="small" style="width: 100%;">
                       <el-option v-for="w in workspaces" :key="w.id" :label="w.name" :value="w.id"></el-option>
                     </el-select>
                   </div>
                 </el-col>
-                <el-col :span="10">
+                <el-col :span="7">
                   <div class="border-span-header">
                     <el-select v-model="d.pipeline" placeholder="代码流水线" size="small" style="width: 100%;">
                       <el-option v-for="p in workspacesDict[d.workspace] ? workspacesDict[d.workspace].pipelines : []" :key="p.id" :label="p.name" :value="p.id"></el-option>
@@ -228,7 +228,7 @@
                 </el-col>
               </el-row>
               <el-row>
-                <el-col :span="17">
+                <el-col :span="19">
                 <el-button style="width: 100%; border-radius: 0px; padding: 9px 15px;
                   border-color: rgb(102, 177, 255); color: rgb(102, 177, 255)" plain size="mini" 
                   @click="dialogData.triggers.push({type: 'pipeline'})" icon="el-icon-plus">添加流水线源</el-button>
@@ -270,6 +270,19 @@ export default {
     DeployK8s
   },
   data() {
+    let jobPlugins = [{
+      key: 'execute_shell',
+      name: '执行shell脚本',
+      component: 'ExecuteShell'
+    }, {
+      key: 'deploy_k8s',
+      name: 'Kubernetes资源部署',
+      component: 'DeployK8s'
+    }, {
+      key: 'upgrade_app',
+      name: '应用部署',
+      component: 'AppDeploy'
+    }]
     return {
       titleName: ["流水线"],
       users: [],
@@ -294,27 +307,7 @@ export default {
       dialogOriginData: {},
       dialogData: {},
       dialogType: "",
-      jobPlugins: [{
-        key: 'build_code_to_image',
-        name: '构建代码镜像',
-        component: 'CodeToImage'
-      }, {
-        key: 'execute_shell',
-        name: '执行shell脚本',
-        component: 'ExecuteShell'
-      }, {
-        key: 'release',
-        name: '发布',
-        component: 'Release'
-      }, {
-        key: 'deploy_k8s',
-        name: 'Kubernetes资源部署',
-        component: 'DeployK8s'
-      }, {
-        key: 'upgrade_app',
-        name: '应用部署',
-        component: 'AppDeploy'
-      }],
+      jobPlugins: jobPlugins,
       dialogTitleMap: {
         'edit_stage': '编辑阶段',
         'edit_job': '编辑任务',
@@ -369,6 +362,16 @@ export default {
         if(this.workspace.type == 'custom') {
           this.fetchWorkspaces()
         } else if(this.pipelineId) {
+          this.jobPlugin.push({
+            key: 'build_code_to_image',
+            name: '构建代码镜像',
+            component: 'CodeToImage'
+          })
+          this.jobPlugin.push({
+            key: 'release',
+            name: '发布',
+            component: 'Release'
+          })
           this.editPipeline.triggers = [{"type": "code", "branch_type": "branch", "operator": "equal", "branch": ""}]
         }
         this.loading = false

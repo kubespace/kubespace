@@ -49,8 +49,8 @@ func NewPipelineRunService(models *model.Models, kr *kube_resource.KubeResources
 	return r
 }
 
-func (r *ServicePipelineRun) ListPipelineRun(pipelineId uint, lastBuildNumber int) *utils.Response {
-	pipelineRuns, err := r.models.ManagerPipelineRun.ListPipelineRun(pipelineId, lastBuildNumber)
+func (r *ServicePipelineRun) ListPipelineRun(pipelineId uint, lastBuildNumber int, status string, limit int) *utils.Response {
+	pipelineRuns, err := r.models.ManagerPipelineRun.ListPipelineRun(pipelineId, lastBuildNumber, status, limit)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
@@ -211,9 +211,20 @@ func (r *ServicePipelineRun) MatchTriggerBranch(triggers types.PipelineTriggers,
 }
 
 type BuildForPipelineParamsBuilds struct {
-	PipelineId uint `json:"pipeline_id"`
-	BuildId    uint `json:"build_id"`
-	IsBuild    bool `json:"is_build"`
+	WorkspaceId         uint   `json:"workspace_id"`
+	WorkspaceName       string `json:"workspace_name"`
+	PipelineId          uint   `json:"pipeline_id"`
+	PipelineName        string `json:"pipeline_name"`
+	BuildReleaseVersion string `json:"build_release_version"`
+	BuildId             uint   `json:"build_id"`
+	BuildNumber         uint   `json:"build_number"`
+	BuildOperator       string `json:"build_operator"`
+	CodeAuthor          string `json:"code_author"`
+	CodeBranch          string `json:"code_branch"`
+	CodeComment         string `json:"code_comment"`
+	CodeCommit          string `json:"code_commit"`
+	CodeCommitTime      string `json:"code_commit_time"`
+	IsBuild             bool   `json:"is_build" default:"true"`
 }
 
 type BuildForPipelineParams struct {
@@ -249,7 +260,7 @@ func (r *ServicePipelineRun) InitialEnvs(pipeline *types.Pipeline, workspace *ty
 		}
 		var pipelineBuildId []string
 		for _, buildInfo := range buildPipelineParams.BuildIds {
-			if buildInfo.IsBuild {
+			if !buildInfo.IsBuild {
 				continue
 			}
 			find := false
@@ -384,6 +395,7 @@ func (r *ServicePipelineRun) Build(buildSer *serializers.PipelineBuildSerializer
 		PipelineId: buildSer.PipelineId,
 		Status:     types.PipelineStatusWait,
 		Operator:   user.Name,
+		Params:     buildSer.Params,
 		Env:        envs,
 		CreateTime: time.Now(),
 		UpdateTime: time.Now(),

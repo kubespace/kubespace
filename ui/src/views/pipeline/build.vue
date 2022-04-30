@@ -11,7 +11,9 @@
           <div class="build-info">
             <div class="build-info__left" @click="clickBuildDetail(build, 'source')">
               <div class="build-info__left-number">
-                <div class="build-info__left-number-inner" :style="{color: getBuildStatusColor(build.pipeline_run.status)}">
+                <div class="build-info__left-number-inner" 
+                  :style="{color: getBuildStatusColor(build.pipeline_run.status), 
+                    'line-height': pipeline.workspace.type == 'code' ? '22px' : '45px'}">
                   <template v-if="build.pipeline_run.status == 'ok'">
                     <i class="el-icon-success"></i>
                   </template>
@@ -31,7 +33,7 @@
                   <span class="build-info__left__number" @click="clickBuildNumber(build)"> #{{ build.pipeline_run.build_number }}</span>
                   <!-- #{{ build.pipeline_run.build_number }} -->
                 </div>
-                <div class="build-info__left-branch">
+                <div class="build-info__left-branch" v-if="pipeline.workspace && pipeline.workspace.type == 'code'">
                   <svg-icon icon-class="branch" /> {{ build.pipeline_run.env.PIPELINE_CODE_BRANCH }}
                 </div>
               </div>
@@ -99,7 +101,7 @@
               <div style="font-size: 14px; padding: 4px 3px 8px">
                 构建源
               </div>
-              <el-table
+              <el-table v-if="pipeline.workspace.type == 'code'"
                 :data="build.clickDetail ? build.clickDetail.commit || [] : []"
                 :cell-style="cellStyle"
                 style="width: 100%">
@@ -123,6 +125,42 @@
                 </el-table-column>
                 <el-table-column
                   prop="message"
+                  label="Comment"
+                  width="">
+                </el-table-column>
+              </el-table>
+              <el-table v-else
+                :data="build.clickDetail ? build.clickDetail.builds || [] : []"
+                :cell-style="cellStyle"
+                style="width: 100%">
+                <el-table-column
+                  prop="workspace_name"
+                  label="流水线空间"
+                  width="230">
+                </el-table-column>
+                <el-table-column
+                  prop="pipeline_name"
+                  label="流水线"
+                  width="150">
+                </el-table-column>
+                <el-table-column
+                  prop="when"
+                  label="构建号"
+                  width="140">
+                  <template slot-scope="scope">
+                    {{ scope.row.build_release_version ? scope.row.build_release_version : '#' + scope.row.build_number }} ({{scope.row.build_operator}})
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  prop="code_commit"
+                  label="CommitId"
+                  width="160">
+                  <template slot-scope="scope">
+                    {{ scope.row.code_commit.substr(0, 10) }} ({{ scope.row.code_author }})
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  prop="code_comment"
                   label="Comment"
                   width="">
                 </el-table-column>
@@ -162,7 +200,7 @@
         </div>
       </div>
       <div v-if="loadMore" style="text-align: center; margin: 15px 15px 5px;">
-          <el-button style="border-radius:0px;" type="primary" @click="fetchBuilds" size="small">加 载 更 多</el-button>
+          <el-button style="border-radius:0px;" type="primary" @click="fetchBuilds()" size="small">加 载 更 多</el-button>
       </div>
 
       <div v-if="builds && builds.length == 0" style="text-align: center; margin-top: 30px; margin-left: -100px; color: #606266; font-size: 14px;">
@@ -171,15 +209,56 @@
     </div>
 
     <el-dialog title="执行流水线" :visible.sync="dialogVisible" :destroy-on-close="true" 
-      @close="buildParams = {};" :close-on-click-modal="false">
+      :close-on-click-modal="false">
       <div v-loading="dialogLoading">
         <div class="dialogContent" style="padding: 0px 40px;">
           <el-form :model="buildParams" ref="" label-position="left" label-width="105px">
             <el-form-item label="流水线" prop="" :required="true">
               <el-input :disabled="true" style="width: 100%;" placeholder="" v-model="pipelineName" autocomplete="off" size="small"></el-input>
             </el-form-item>
-            <el-form-item label="构建分支" prop="" :required="true">
+            <el-form-item v-if="pipeline.workspace && pipeline.workspace.type == 'code'" label="构建分支" prop="" :required="true">
               <el-input style="width: 100%;" placeholder="请输入构建分支" v-model="buildParams.branch" autocomplete="off" size="small"></el-input>
+            </el-form-item>
+            <el-form-item v-if="pipeline.workspace && pipeline.workspace.type == 'custom'" label="" prop="" label-width="0px" :required="true">
+              <el-row style="margin-bottom: 5px; margin-top: 8px;">
+                <el-col :span="10" style="background-color: #F5F7FA; padding-left: 10px;">
+                  <div class="border-span-header">
+                    流水线空间
+                  </div>
+                </el-col>
+                <el-col :span="5" style="background-color: #F5F7FA">
+                  <div class="border-span-header">
+                    流水线
+                  </div>
+                </el-col>
+                <el-col :span="9" style="background-color: #F5F7FA">
+                  <div class="border-span-header">
+                    构建号
+                  </div>
+                </el-col>
+                <!-- <el-col :span="5"><div style="width: 100px;"></div></el-col> -->
+              </el-row>
+              <el-row style="padding-bottom: 0px;" v-for="(d, i) in pipeline.pipeline ? pipeline.pipeline.triggers : []" :key="i">
+                <el-col :span="10">
+                  <div class="border-span-header" style="margin-right: 10px;">
+                    {{ d.workspace_name }}
+                  </div>
+                </el-col>
+                <el-col :span="5">
+                  <div class="border-span-header">
+                    {{ d.pipeline_name }}
+                  </div>
+                </el-col>
+                <el-col :span="9">
+                  <div class="border-span-header">
+                    <el-select v-model="buildParams[d.pipeline].buildId" placeholder="流水线空间" size="small" style="width: 100%;"
+                      >
+                      <el-option v-for="w in pipelineBuilds[d.pipeline] || []" :key="w.pipeline_run.id" 
+                        :label="buildPipilineLabel(w)" :value="w.pipeline_run.id"></el-option>
+                    </el-select>
+                  </div>
+                </el-col>
+              </el-row>
             </el-form-item>
           </el-form>
         </div>
@@ -273,7 +352,8 @@ export default {
       },
       manualJobComponent: {
         release: Release
-      }
+      },
+      pipelineBuilds: {}
     }
   },
   created() {
@@ -310,6 +390,13 @@ export default {
         if (this.pipeline){
           this.titleName = ["流水线", this.pipeline.pipeline.name]
           this.pipelineName = this.pipeline.pipeline.name
+          if(this.pipeline.workspace.type == 'custom') {
+            for(let t of this.pipeline.pipeline.triggers || []) {
+              // this.buildParams[t.pipeline] = {}
+              this.$set(this.buildParams, t.pipeline, t)
+            }
+            console.log(this.buildParams)
+          }
         }
       }).catch(() => {
         
@@ -384,38 +471,6 @@ export default {
         that.refreshExecTime()
       }, 1000);
     },
-    // fetchPipelineSSE() {
-    //   let url = `/api/v1/pipeline/pipeline/${this.pipelineId}/sse`
-    //   this.pipelineSSE = new EventSource(url);
-    //   this.pipelineSSE.addEventListener('message', event => {
-    //     // console.log(event.data);
-    //     if(event.data && event.data != "\n") {
-    //       let data = JSON.parse(event.data)
-    //       // console.log(data)
-    //       if(data.object) {
-    //         let obj = data.object
-    //         for(let i in this.builds){
-    //           let build = this.builds[i]
-    //           if(build.pipeline_run.id == obj.pipeline_run.id) {
-    //             this.$set(this.builds, i, obj)
-    //             this.processExecTime()
-    //             break
-    //           }
-    //         }
-    //       }
-    //     }
-    //   });
-    //   this.pipelineSSE.addEventListener('error', event => {
-    //     if (event.readyState == EventSource.CLOSED) {
-    //       console.log('event was closed');
-    //     };
-    //     console.log(event)
-    //   });
-    //   this.pipelineSSE.addEventListener('close', event => {
-    //     console.log(event.type);
-    //     this.pipelineSSE.close();
-    //   });
-    // },
     fetchPipelineSSE() {
       let url = `/api/v1/pipeline/pipeline/${this.pipelineId}/sse`
       this.pipelineSSE = this.$sse.create({
@@ -465,14 +520,74 @@ export default {
     },
     openBuildParams() {
       this.dialogVisible = true
+      // this.dialogLoading = true
+      if(this.pipeline.workspace && this.pipeline.workspace.type == 'custom') {
+        this.pipelineBuilds = {}
+        for(let t of this.pipeline.pipeline.triggers || []) {
+          this.fetchPipelineBuilds(t.pipeline)
+        }
+      }
+    },
+    fetchPipelineBuilds(pipelineId) {
+      listBuilds(pipelineId, 0, "ok", 50).then((response) => {
+        let res = response.data || []
+        this.$set(this.pipelineBuilds, pipelineId, res)
+        if(res.length) {
+          // this.buildParams[pipelineId].build = {buildId: res[0].pipeline_run.id, pipelineId: res[0].pipeline_run.pipeline_id}
+          this.$set(this.buildParams[pipelineId], "buildId", res[0].pipeline_run.id)
+        }
+        // this.pipelineBuilds[pipelineId] = res
+      }).catch(() => {
+        this.loading = false
+      })
     },
     buildPipeline: function() {
-      if(!this.buildParams.branch) {
-        Message.error("请输入构建分支")
+      if(!this.pipeline.workspace) {
+        Message.error("获取流水线空间参数失败，请刷新重试")
         return
       }
+      let params = {}
+      if(this.pipeline.workspace.type == 'code') {
+        if(!this.buildParams.branch) {
+          Message.error("请输入构建分支")
+          return
+        }
+        params = {
+          branch: this.buildParams.branch
+        }
+      } else {
+        console.log(this.buildParams)
+        let build_ids = []
+        for(let pipelineId in this.buildParams) {
+          let build = this.buildParams[pipelineId]
+          let buildId = build.buildId
+          for(let b of this.pipelineBuilds[pipelineId]) {
+            if(buildId == b.pipeline_run.id) {
+              let info = {
+                workspace_id: build.workspace,
+                workspace_name: build.workspace_name,
+                pipeline_id: parseInt(pipelineId),
+                pipeline_name: build.pipeline_name,
+                build_id: this.buildParams[pipelineId].buildId,
+                build_number: b.pipeline_run.build_number,
+                build_operator: b.pipeline_run.operator,
+                build_release_version: b.stages_run[b.stages_run.length - 1].env.RELEASE_VERSION || "",
+                code_branch: b.pipeline_run.env["PIPELINE_CODE_BRANCH"],
+                code_author: b.pipeline_run.env["PIPELINE_CODE_COMMIT_AUTHOR"],
+                code_comment: b.pipeline_run.env["PIPELINE_CODE_COMMIT_MESSAGE"],
+                code_commit: b.pipeline_run.env["PIPELINE_CODE_COMMIT_ID"],
+                code_commit_time: b.pipeline_run.env["PIPELINE_CODE_COMMIT_TIME"],
+                is_build: true
+              }
+              build_ids.push(info)
+              break
+            }
+          }
+        }
+        params.build_ids = build_ids
+      }
       this.dialogLoading = true
-      buildPipeline(this.pipelineId, this.buildParams).then((response) => {
+      buildPipeline(this.pipelineId, params).then((response) => {
         this.$message({message: '构建成功', type: 'success'});
         this.dialogLoading = false
         this.fetchBuilds(0)
@@ -527,6 +642,7 @@ export default {
     
     clickBuildDetail(build, type, stage) {
       var clickDetail = build.clickDetail
+      console.log(clickDetail)
       if(clickDetail){
         if(type == 'source' && clickDetail.type == type) {
           this.$set(build, 'clickDetail', undefined)
@@ -538,13 +654,18 @@ export default {
         }
       }
       if(type == 'source') {
-        let commit = {
-          commitId: build.pipeline_run.env.PIPELINE_CODE_COMMIT_ID,
-          author: build.pipeline_run.env.PIPELINE_CODE_COMMIT_AUTHOR,
-          message: build.pipeline_run.env.PIPELINE_CODE_COMMIT_MESSAGE,
-          when: build.pipeline_run.env.PIPELINE_CODE_COMMIT_TIME,
+        if(this.pipeline.workspace.type == 'code') {
+          let commit = {
+            commitId: build.pipeline_run.env.PIPELINE_CODE_COMMIT_ID,
+            author: build.pipeline_run.env.PIPELINE_CODE_COMMIT_AUTHOR,
+            message: build.pipeline_run.env.PIPELINE_CODE_COMMIT_MESSAGE,
+            when: build.pipeline_run.env.PIPELINE_CODE_COMMIT_TIME,
+          }
+          this.$set(build, 'clickDetail', {type: type, commit: [commit]})
+        } else {
+          this.$set(build, 'clickDetail', {type: type, builds: build.pipeline_run.params.build_ids})
         }
-        this.$set(build, 'clickDetail', {type: type, commit: [commit]})
+        console.log(build.clickDetail)
       } else {
         this.$set(build, 'clickDetail', {type: type, stage: stage})
       }
@@ -629,7 +750,15 @@ export default {
       }).catch( (err) => {
         this.loading = false
       })
-    }
+    },
+    buildPipilineLabel(build) {
+      let build_num = '#' + build.pipeline_run.build_number
+      let lastStage = build.stages_run[build.stages_run.length - 1]
+      if(lastStage && lastStage.env.RELEASE_VERSION) {
+        build_num = lastStage.env.RELEASE_VERSION
+      }
+      return `${build_num} (${build.pipeline_run.operator})`
+    },
   },
 }
 </script>

@@ -23,16 +23,17 @@ func NewPipelineRunManager(db *gorm.DB, pluginManager *ManagerPipelinePlugin, mi
 	return &ManagerPipelineRun{DB: db, PluginManager: pluginManager, middleMessage: middleMessage}
 }
 
-func (p *ManagerPipelineRun) ListPipelineRun(pipelineId uint, lastBuildNumber int) ([]types.PipelineRun, error) {
+func (p *ManagerPipelineRun) ListPipelineRun(pipelineId uint, lastBuildNumber int, status string, limit int) ([]types.PipelineRun, error) {
 	var pipelineRuns []types.PipelineRun
-	if lastBuildNumber == 0 {
-		if err := p.DB.Order("id desc").Limit(20).Where("pipeline_id = ?", pipelineId).Find(&pipelineRuns).Error; err != nil {
-			return nil, err
-		}
-	} else {
-		if err := p.DB.Order("id desc").Limit(20).Where("pipeline_id = ? and build_number < ?", pipelineId, lastBuildNumber).Find(&pipelineRuns).Error; err != nil {
-			return nil, err
-		}
+	q := p.DB.Order("id desc").Limit(limit).Where("pipeline_id = ?", pipelineId)
+	if lastBuildNumber != 0 {
+		q = q.Where("build_number < ?", lastBuildNumber)
+	}
+	if status != "" {
+		q = q.Where("status = ?", status)
+	}
+	if err := q.Find(&pipelineRuns).Error; err != nil {
+		return nil, err
 	}
 	return pipelineRuns, nil
 }

@@ -54,7 +54,10 @@ func (p *PipelineRun) list(c *views.Context) *utils.Response {
 	if err := c.ShouldBindQuery(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	return p.pipelineRunService.ListPipelineRun(ser.PipelineId, ser.LastBuildNumber)
+	if ser.Limit == 0 {
+		ser.Limit = 20
+	}
+	return p.pipelineRunService.ListPipelineRun(ser.PipelineId, ser.LastBuildNumber, ser.Status, ser.Limit)
 }
 
 func (p *PipelineRun) get(c *views.Context) *utils.Response {

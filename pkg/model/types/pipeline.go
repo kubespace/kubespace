@@ -115,13 +115,15 @@ const (
 )
 
 type PipelineTrigger struct {
-	Type       string `json:"type"`
-	Workspace  uint   `json:"workspace"`
-	Pipeline   uint   `json:"pipeline"`
-	Stage      uint   `json:"stage"`
-	BranchType string `json:"branch_type"`
-	Operator   string `json:"operator"`
-	Branch     string `json:"branch"`
+	Type          string `json:"type"`
+	Workspace     uint   `json:"workspace"`
+	WorkspaceName string `json:"workspace_name"`
+	Pipeline      uint   `json:"pipeline"`
+	PipelineName  string `json:"pipeline_name"`
+	Stage         uint   `json:"stage"`
+	BranchType    string `json:"branch_type"`
+	Operator      string `json:"operator"`
+	Branch        string `json:"branch"`
 }
 
 type PipelineStage struct {
@@ -288,6 +290,7 @@ type PipelineRun struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
 	PipelineId  uint      `gorm:"not null;uniqueIndex:idx_pipeline_build_number" json:"pipeline_id"`
 	BuildNumber uint      `gorm:"not null;uniqueIndex:idx_pipeline_build_number" json:"build_number"`
+	Params      Map       `gorm:"type:json" json:"params"`
 	Status      string    `gorm:"size:50;not null" json:"status"`
 	Env         Map       `gorm:"type:json" json:"env"`
 	Operator    string    `gorm:"size:50;not null" json:"operator"`

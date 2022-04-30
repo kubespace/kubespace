@@ -1,12 +1,14 @@
 package pipeline
 
 import (
+	"errors"
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"github.com/kubespace/kubespace/pkg/views/serializers"
+	"gorm.io/gorm"
 	"time"
 )
 
@@ -173,6 +175,35 @@ func (p *ServicePipeline) GetPipeline(pipelineId uint) *utils.Response {
 	stages, err := p.models.ManagerPipeline.Stages(pipelineId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	if workspace.Type == types.WorkspaceTypeCustom {
+		var triggers []*types.PipelineTrigger
+		for i, t := range pipeline.Triggers {
+			if t.Type == types.PipelineTriggerTypePipeline {
+				w, err := p.models.PipelineWorkspaceManager.Get(t.Workspace)
+				if err != nil {
+					if !errors.Is(err, gorm.ErrRecordNotFound) {
+						return &utils.Response{Code: code.DBError, Msg: err.Error()}
+					} else {
+						continue
+					}
+				} else {
+					pipeline.Triggers[i].WorkspaceName = w.Name
+				}
+				p, err := p.models.ManagerPipeline.Get(t.Pipeline)
+				if err != nil {
+					if !errors.Is(err, gorm.ErrRecordNotFound) {
+						return &utils.Response{Code: code.DBError, Msg: err.Error()}
+					} else {
+						continue
+					}
+				} else {
+					pipeline.Triggers[i].PipelineName = p.Name
+				}
+				triggers = append(triggers, pipeline.Triggers[i])
+			}
+		}
+		pipeline.Triggers = triggers
 	}
 	data := map[string]interface{}{
 		"pipeline": pipeline,

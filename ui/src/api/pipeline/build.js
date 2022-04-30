@@ -1,10 +1,10 @@
 import request from '@/utils/request'
 
-export function listBuilds(pipeline_id, last_build_number) {
+export function listBuilds(pipeline_id, last_build_number, status, limit) {
   return request({
     url: `pipeline/build/list`,
     method: 'get',
-    params: {'pipeline_id': pipeline_id, last_build_number: last_build_number}
+    params: {'pipeline_id': pipeline_id, last_build_number: last_build_number, status, limit}
   })
 }
 
