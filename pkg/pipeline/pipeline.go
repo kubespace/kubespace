@@ -39,6 +39,7 @@ func (p *ServicePipeline) Create(pipelineSer *serializers.PipelineSerializer, us
 	if len(pipelineSer.Triggers) == 0 {
 		return &utils.Response{Code: code.ParamsError, Msg: "流水线触发源不能为空"}
 	}
+	triggerPipelineIdMap := make(map[uint]struct{})
 	for _, trigger := range pipelineSer.Triggers {
 		if workspace.Type == types.WorkspaceTypeCode && trigger.Type != types.PipelineTriggerTypeCode {
 			return &utils.Response{
@@ -57,8 +58,12 @@ func (p *ServicePipeline) Create(pipelineSer *serializers.PipelineSerializer, us
 				return &utils.Response{Code: code.ParamsError, Msg: "流水线触发空间不能为空"}
 			}
 			if trigger.Pipeline == 0 {
-				return &utils.Response{Code: code.ParamsError, Msg: "触发空间流水线不能为空"}
+				return &utils.Response{Code: code.ParamsError, Msg: "触发流水线源不能为空"}
 			}
+			if _, ok := triggerPipelineIdMap[trigger.Pipeline]; ok {
+				return &utils.Response{Code: code.ParamsError, Msg: "触发流水线源不能相同"}
+			}
+			triggerPipelineIdMap[trigger.Pipeline] = struct{}{}
 			//if trigger.Stage == 0 {
 			//	return &utils.Response{Code: code.ParamsError, Msg: "触发流水线阶段不能为空"}
 			//}
