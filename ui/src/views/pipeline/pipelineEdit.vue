@@ -372,10 +372,11 @@ export default {
             name: '发布',
             component: 'Release'
           })
+          if(!this.pipelineId) {
+            this.editPipeline.triggers = [{"type": "code", "branch_type": "branch", "operator": "equal", "branch": ""}]
+          }
         }
-        if(!this.pipelineId) {
-          this.editPipeline.triggers = [{"type": "code", "branch_type": "branch", "operator": "equal", "branch": ""}]
-        }
+        
         this.loading = false
       }).catch(() => {
         this.loading = false

@@ -39,35 +39,8 @@ func (p *ServicePipeline) Create(pipelineSer *serializers.PipelineSerializer, us
 	if len(pipelineSer.Triggers) == 0 {
 		return &utils.Response{Code: code.ParamsError, Msg: "流水线触发源不能为空"}
 	}
-	triggerPipelineIdMap := make(map[uint]struct{})
-	for _, trigger := range pipelineSer.Triggers {
-		if workspace.Type == types.WorkspaceTypeCode && trigger.Type != types.PipelineTriggerTypeCode {
-			return &utils.Response{
-				Code: code.ParamsError,
-				Msg:  fmt.Sprintf("pipeline trigger type %s is wrong", trigger.Type),
-			}
-		}
-		if workspace.Type == types.WorkspaceTypeCustom {
-			if trigger.Type != types.PipelineTriggerTypePipeline {
-				return &utils.Response{
-					Code: code.ParamsError,
-					Msg:  fmt.Sprintf("pipeline trigger type %s is wrong", trigger.Type),
-				}
-			}
-			if trigger.Workspace == 0 {
-				return &utils.Response{Code: code.ParamsError, Msg: "流水线触发空间不能为空"}
-			}
-			if trigger.Pipeline == 0 {
-				return &utils.Response{Code: code.ParamsError, Msg: "触发流水线源不能为空"}
-			}
-			if _, ok := triggerPipelineIdMap[trigger.Pipeline]; ok {
-				return &utils.Response{Code: code.ParamsError, Msg: "触发流水线源不能相同"}
-			}
-			triggerPipelineIdMap[trigger.Pipeline] = struct{}{}
-			//if trigger.Stage == 0 {
-			//	return &utils.Response{Code: code.ParamsError, Msg: "触发流水线阶段不能为空"}
-			//}
-		}
+	if resp := p.CheckTrigger(workspace, pipelineSer); !resp.IsSuccess() {
+		return resp
 	}
 	var stages []*types.PipelineStage
 	for _, stageSer := range pipelineSer.Stages {
@@ -98,21 +71,8 @@ func (p *ServicePipeline) Create(pipelineSer *serializers.PipelineSerializer, us
 	}
 }
 
-func (p *ServicePipeline) Update(pipelineSer *serializers.PipelineSerializer, user *types.User) *utils.Response {
-	workspace, err := p.models.PipelineWorkspaceManager.Get(pipelineSer.WorkspaceId)
-	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
-	}
-	pipeline, err := p.models.ManagerPipeline.Get(pipelineSer.ID)
-	if err != nil {
-		return &utils.Response{
-			Code: code.DBError,
-			Msg:  fmt.Sprintf("获取流水线失败:%s", err.Error()),
-		}
-	}
-	pipeline.Name = pipelineSer.Name
-	pipeline.Triggers = pipelineSer.Triggers
-	pipeline.UpdateUser = user.Name
+func (p *ServicePipeline) CheckTrigger(workspace *types.PipelineWorkspace, pipelineSer *serializers.PipelineSerializer) *utils.Response {
+	triggerWorkspaceIdMap := make(map[uint]struct{})
 	for _, trigger := range pipelineSer.Triggers {
 		if workspace.Type == types.WorkspaceTypeCode && trigger.Type != types.PipelineTriggerTypeCode {
 			return &utils.Response{
@@ -133,10 +93,35 @@ func (p *ServicePipeline) Update(pipelineSer *serializers.PipelineSerializer, us
 			if trigger.Pipeline == 0 {
 				return &utils.Response{Code: code.ParamsError, Msg: "触发空间流水线不能为空"}
 			}
+			if _, ok := triggerWorkspaceIdMap[trigger.Workspace]; ok {
+				return &utils.Response{Code: code.ParamsError, Msg: "触发流水线空间源不能相同"}
+			}
+			triggerWorkspaceIdMap[trigger.Workspace] = struct{}{}
 			//if trigger.Stage == 0 {
 			//	return &utils.Response{Code: code.ParamsError, Msg: "触发流水线阶段不能为空"}
 			//}
 		}
+	}
+	return &utils.Response{Code: code.Success}
+}
+
+func (p *ServicePipeline) Update(pipelineSer *serializers.PipelineSerializer, user *types.User) *utils.Response {
+	workspace, err := p.models.PipelineWorkspaceManager.Get(pipelineSer.WorkspaceId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	pipeline, err := p.models.ManagerPipeline.Get(pipelineSer.ID)
+	if err != nil {
+		return &utils.Response{
+			Code: code.DBError,
+			Msg:  fmt.Sprintf("获取流水线失败:%s", err.Error()),
+		}
+	}
+	pipeline.Name = pipelineSer.Name
+	pipeline.Triggers = pipelineSer.Triggers
+	pipeline.UpdateUser = user.Name
+	if resp := p.CheckTrigger(workspace, pipelineSer); !resp.IsSuccess() {
+		return resp
 	}
 	var stages []*types.PipelineStage
 	for _, stageSer := range pipelineSer.Stages {
