@@ -14,7 +14,7 @@ kubespace:
     repository: registry.cn-hangzhou.aliyuncs.com/kubespace/kubespace
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: "1.0.4"
+    tag: "1.0.6"
   imagePullSecrets: []
   service:
     type: NodePort
