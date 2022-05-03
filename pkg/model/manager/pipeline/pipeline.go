@@ -131,13 +131,19 @@ func (p *ManagerPipeline) Delete(pipelineId uint) error {
 			return err
 		}
 		for _, pipelineRun := range pipelineRuns {
-			if err := tx.Delete(&types.PipelineRunJobLog{}, "pipeline_run_id=?", pipelineRun.ID).Error; err != nil {
+			var pipelineRunJobs []types.PipelineRunJob
+			if err := tx.Where("pipeline_run_id = ?", pipelineRun.ID).Find(&pipelineRunJobs).Error; err != nil {
 				return err
+			}
+			for _, runJob := range pipelineRunJobs {
+				if err := tx.Delete(&types.PipelineRunJobLog{}, "job_run_id=?", runJob.ID).Error; err != nil {
+					return err
+				}
 			}
 			if err := tx.Delete(&types.PipelineRunJob{}, "pipeline_run_id=?", pipelineRun.ID).Error; err != nil {
 				return err
 			}
-			if err := tx.Delete(&types.PipelineStage{}, "pipeline_run_id=?", pipelineRun.ID).Error; err != nil {
+			if err := tx.Delete(&types.PipelineRunStage{}, "pipeline_run_id=?", pipelineRun.ID).Error; err != nil {
 				return err
 			}
 		}

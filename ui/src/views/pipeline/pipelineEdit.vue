@@ -361,17 +361,19 @@ export default {
         this.workspace = response.data || {};
         if(this.workspace.type == 'custom') {
           this.fetchWorkspaces()
-        } else if(this.pipelineId) {
-          this.jobPlugin.push({
+        } else{
+          this.jobPlugins.push({
             key: 'build_code_to_image',
             name: '构建代码镜像',
             component: 'CodeToImage'
           })
-          this.jobPlugin.push({
+          this.jobPlugins.push({
             key: 'release',
             name: '发布',
             component: 'Release'
           })
+        }
+        if(!this.pipelineId) {
           this.editPipeline.triggers = [{"type": "code", "branch_type": "branch", "operator": "equal", "branch": ""}]
         }
         this.loading = false
