@@ -75,6 +75,10 @@
                       @click="openCloneAppDiloag(scope.row, 'store_app')">发布</el-link>
                   </el-dropdown-item>
                   <el-dropdown-item>
+                    <el-link :disabled="!$editorRole()" :underline="false" class="operator-btn" type="primary" style="font-weight: 400"
+                      @click="openAppVersion(scope.row.id)">历史版本</el-link>
+                  </el-dropdown-item>
+                  <el-dropdown-item>
                     <el-link :disabled="!$editorRole()" :underline="false" class="operator-btn" type="danger" style="font-weight: 400"
                       v-if="scope.row.status!='UnInstall'" @click="handleDestroyApp(scope.row.id, scope.row.name)">销毁</el-link>
                     <el-link :disabled="!$editorRole()" :underline="false" type="danger" style="font-weight: 400" v-if="scope.row.status=='UnInstall'"
@@ -576,6 +580,9 @@ export default {
         this.fetchProjects()
       }
       this.cloneFormVisible = true
+    },
+    openAppVersion(id) {
+      this.$router.push({name: 'workspaceAppVersion', params: {'appId': id}})
     },
     handleDuplicateApp() {
       if(!this.cloneForm.scope) {

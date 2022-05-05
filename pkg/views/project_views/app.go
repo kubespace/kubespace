@@ -36,6 +36,7 @@ func NewProjectApp(models *model.Models, appService *project.AppService) *Projec
 		views.NewView(http.MethodPost, "/destroy", app.destroy),
 		views.NewView(http.MethodPost, "/import_storeapp", app.importStoreapp),
 		views.NewView(http.MethodPost, "/duplicate_app", app.duplicateApp),
+		views.NewView(http.MethodDelete, "/version/:id", app.deleteAppVersion),
 		views.NewView(http.MethodDelete, "/:id", app.deleteApp),
 	}
 	app.Views = vs
@@ -104,6 +105,17 @@ func (a *ProjectApp) getAppVersion(c *views.Context) *utils.Response {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
 	return a.AppService.GetAppVersion(uint(appVersionId))
+}
+
+func (a *ProjectApp) deleteAppVersion(c *views.Context) *utils.Response {
+	appVersionId, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	if err = a.models.ProjectAppVersionManager.DeleteVersion(uint(appVersionId)); err != nil {
+		return &utils.Response{Code: code.DBError, Msg: "删除应用版本失败：" + err.Error()}
+	}
+	return &utils.Response{Code: code.Success}
 }
 
 func (a *ProjectApp) install(c *views.Context) *utils.Response {

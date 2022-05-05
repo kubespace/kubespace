@@ -37,6 +37,13 @@ const Routes = [
     meta: { title: '应用管理', icon: 'workspace_app', 'group': 'workspace', sideName: 'workspaceApp',  object: 'pipeline' }
   },
   {
+    path: 'version_app/:appId',
+    name: 'workspaceAppVersion',
+    hidden: true,
+    component: () => import('@/views/workspace/appVersion'),
+    meta: { title: '应用管理', icon: 'workspace_app', 'group': 'workspace', sideName: 'workspaceApp',  object: 'pipeline' }
+  },
+  {
     path: '',
     component: Noop,
     name: 'workspaceConfiguration',

@@ -92,3 +92,10 @@ export function duplicateApp(data) {
     data,
   })
 }
+
+export function deleteAppVersion(id) {
+  return request({
+    url: `project/apps/version/${id}`,
+    method: 'delete',
+  })
+}
