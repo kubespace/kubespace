@@ -39,8 +39,17 @@ func (v *AppVersionManager) CreateAppVersionWithChartByte(chartBytes []byte, sco
 		appVersion.Scope = scope
 		appVersion.ScopeId = scopeId
 		appVersion.ChartPath = path
-		if err = v.DB.Create(appVersion).Error; err != nil {
+		if err = tx.Create(appVersion).Error; err != nil {
 			return err
+		}
+		var cnt int64
+		if err = tx.Model(&types.AppVersion{}).Where("scope = ? and scope_id = ? ", scope, scopeId).Count(&cnt).Error; err != nil {
+			return err
+		}
+		if cnt > 50 {
+			if err = tx.Delete(&types.AppVersion{}, "scope = ? and scope_id = ? order by id limit ?", scope, scopeId, cnt-50).Error; err != nil {
+				return err
+			}
 		}
 		chart := &types.AppVersionChart{
 			Path:       path,
@@ -48,7 +57,7 @@ func (v *AppVersionManager) CreateAppVersionWithChartByte(chartBytes []byte, sco
 			CreateTime: time.Now(),
 			UpdateTime: time.Now(),
 		}
-		if err = v.DB.Create(chart).Error; err != nil {
+		if err = tx.Create(chart).Error; err != nil {
 			return err
 		}
 		return nil
