@@ -52,6 +52,7 @@ func DbMigrate(db *gorm.DB) error {
 		&types.AppVersion{},
 		&types.AppVersionChart{},
 		&types.AppStore{},
+		&types.ProjectAppRevision{},
 	}
 	for _, model := range migrateTypes {
 		err = db.AutoMigrate(model)

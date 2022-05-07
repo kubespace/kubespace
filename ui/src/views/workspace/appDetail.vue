@@ -381,6 +381,14 @@
             </el-table>
           </div>
         </el-tab-pane>
+        <el-tab-pane label="Manifest" name="manifest">
+          <div class="msgClass">
+            <div style="white-space: pre; font-size: 14px; padding: 10px 20px; overflow: auto; color: #606266;"
+              :style="{height: maxHeight - 230 + 'px'}">
+              {{ originApp.manifest }}
+            </div>
+          </div>
+        </el-tab-pane>
       </el-tabs>
 
       <el-dialog title="终端" :visible.sync="terminalDialog" :close-on-click-modal="false" width="80%" top="55px">
@@ -413,7 +421,7 @@ export default {
       search_name: '',
       users: [],
       cellStyle: {border: 0},
-      maxHeight: window.innerHeight - 150,
+      maxHeight: window.innerHeight - 135,
       loading: true,
       originApp: {},
       // pods: [],
@@ -443,7 +451,7 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150
+        let heightStyle = window.innerHeight - 135
         that.maxHeight = heightStyle
       })()
     }

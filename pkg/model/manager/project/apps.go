@@ -136,6 +136,9 @@ func (a *AppManager) DeleteProjectApp(appId uint) error {
 				return err
 			}
 		}
+		if err = tx.Delete(&types.ProjectAppRevision{}, "project_app_id=?", appId).Error; err != nil {
+			return err
+		}
 		if err = tx.Delete(&types.ProjectApp{}, "id = ?", appId).Error; err != nil {
 			return err
 		}
@@ -167,4 +170,48 @@ func (a *AppManager) ImportApp(app *types.ProjectApp, appVersion *types.AppVersi
 		}
 		return nil
 	})
+}
+
+func (a *AppManager) CreateRevision(appVersion *types.AppVersion, app *types.ProjectApp) (*types.ProjectAppRevision, error) {
+	if app.Scope == types.AppVersionScopeProjectApp {
+		var revision types.ProjectAppRevision
+		err := a.DB.Transaction(func(tx *gorm.DB) error {
+			var lastRevisionNumber uint = 1
+			var lastRevision types.ProjectAppRevision
+			if err := tx.Last(&lastRevision, "project_app_id = ?", app.ID).Error; err != nil {
+				if !errors.Is(err, gorm.ErrRecordNotFound) {
+					return err
+				}
+			} else {
+				lastRevisionNumber = lastRevision.BuildRevision + 1
+			}
+			revision = types.ProjectAppRevision{
+				ProjectAppId:  app.ID,
+				BuildRevision: lastRevisionNumber,
+				AppVersionId:  appVersion.ID,
+				Values:        appVersion.Values,
+				CreateUser:    app.UpdateUser,
+				CreateTime:    time.Now(),
+				UpdateTime:    time.Now(),
+			}
+			if err := tx.Create(&revision).Error; err != nil {
+				return err
+			}
+			var cnt int64
+			if err := tx.Model(&types.ProjectAppRevision{}).Where("project_app_id=?", app.ID).Count(&cnt).Error; err != nil {
+				return err
+			}
+			if cnt > 50 {
+				if err := tx.Delete(&types.ProjectAppRevision{}, "project_app_id=? order by id limit ?", app.ID, cnt-50).Error; err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		return &revision, nil
+	}
+	return nil, nil
 }

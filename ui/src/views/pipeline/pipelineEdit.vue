@@ -210,7 +210,7 @@
               <el-row style="padding-bottom: 5px;" v-for="(d, i) in dialogData.triggers" :key="i">
                 <el-col :span="12">
                   <div class="border-span-header" style="margin-right: 10px;">
-                    <el-select v-model="d.workspace" placeholder="流水线空间" size="small" style="width: 100%;">
+                    <el-select v-model="d.workspace" placeholder="流水线空间" size="small" style="width: 100%;" @change="changePipeline">
                       <el-option v-for="w in workspaces" :key="w.id" :label="w.name" :value="w.id"></el-option>
                     </el-select>
                   </div>
@@ -474,7 +474,8 @@ export default {
       } else if(this.dialogType == 'add_job') {
         this.dialogOriginData.jobs.push(this.dialogData)
       } else if(this.dialogType == 'source') {
-        this.editPipeline.triggers = this.dialogData.triggers
+        // this.editPipeline.triggers = this.dialogData.triggers
+        this.$set(this.editPipeline, 'triggers', this.dialogData.triggers)
       }
       this.dialogVisible = false
     },
@@ -547,9 +548,11 @@ export default {
     },
     openEditSource() {
       this.dialogType = 'source'
-      this.dialogData = {
-        triggers: JSON.parse(JSON.stringify(this.editPipeline.triggers))
-      }
+      // this.dialogData = {
+      //   triggers: JSON.parse(JSON.stringify(this.editPipeline.triggers))
+      // }
+      
+      this.$set(this.dialogData, 'triggers', JSON.parse(JSON.stringify(this.editPipeline.triggers)))
       this.dialogVisible = true
     },
     fetchWorkspaces() {
@@ -584,6 +587,16 @@ export default {
         return '未知'
       }else {
         return ''
+      }
+    },
+    changePipeline(val) {
+      // this.$set(p, 'pipeline', '')
+      for(let d of this.dialogData.triggers) {
+        if(d.workspace == val) {
+          if(d.pipeline) delete d.pipeline
+          if(d.workspace_name) d.workspace_name = ''
+          if(d.pipeline_name) d.pipeline_name = ''
+        }
       }
     }
   }

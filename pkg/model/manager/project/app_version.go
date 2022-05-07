@@ -127,5 +127,8 @@ func (v *AppVersionManager) DeleteVersion(id uint) error {
 			return err
 		}
 	}
+	if err := v.DB.Delete(&types.ProjectAppRevision{}, "app_version_id=?", appVersion.ID).Error; err != nil {
+		return err
+	}
 	return nil
 }

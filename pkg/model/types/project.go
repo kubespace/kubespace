@@ -47,6 +47,17 @@ type ProjectApp struct {
 	UpdateTime   time.Time   `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`
 }
 
+type ProjectAppRevision struct {
+	ID            uint      `gorm:"primaryKey" json:"id"`
+	ProjectAppId  uint      `gorm:"not null;uniqueIndex:ProjectAppBuildRevisionUnique" json:"project_app_id"`
+	BuildRevision uint      `gorm:"not null;uniqueIndex:ProjectAppBuildRevisionUnique" json:"build_revision"`
+	AppVersionId  uint      `gorm:"not null;" json:"app_version_id"`
+	Values        string    `gorm:"type:longtext;not null" json:"values"`
+	CreateUser    string    `gorm:"size:50;not null" json:"create_user"`
+	CreateTime    time.Time `gorm:"column:create_time;not null;autoCreateTime" json:"create_time"`
+	UpdateTime    time.Time `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`
+}
+
 type AppStore struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
 	Name        string    `gorm:"size:255;not null;" json:"name"`

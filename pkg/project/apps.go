@@ -173,6 +173,9 @@ func (a *AppService) InstallApp(user *types.User, serializer serializers.Project
 	if err = a.models.ProjectAppVersionManager.UpdateAppVersion(versionApp, "values"); err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
+	if _, err = a.models.ProjectAppManager.CreateRevision(versionApp, projectApp); err != nil {
+		klog.Errorf("create project app id=%s, name=%s revision error: %s", projectApp.ID, projectApp.Name, err)
+	}
 	return &utils.Response{Code: code.Success}
 }
 
@@ -320,28 +323,29 @@ func (a *AppService) GetApp(appId uint) *utils.Response {
 		"package_name":    projectApp.AppVersion.PackageName,
 		"package_version": projectApp.AppVersion.PackageVersion,
 	}
+	appCharts, err := a.models.ProjectAppVersionManager.GetAppVersionChart(projectApp.AppVersion.ChartPath)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	chart, err := loader.LoadArchive(bytes.NewReader(appCharts.Content))
+	if err != nil {
+		return &utils.Response{Code: code.GetError, Msg: err.Error()}
+	}
+	actionConfig := new(action.Configuration)
+	clientInstall := action.NewInstall(actionConfig)
+	clientInstall.ReleaseName = projectApp.Name
+	clientInstall.Namespace = namespace
+	clientInstall.ClientOnly = true
+	clientInstall.DryRun = true
+	values := map[string]interface{}{}
+	yaml.Unmarshal([]byte(projectApp.AppVersion.Values), &values)
+	releaseDetail, err := clientInstall.Run(chart, values)
+	if err != nil {
+		klog.Errorf("install release error: %s", err)
+		return &utils.Response{Code: code.HelmError, Msg: err.Error()}
+	}
+	data["manifest"] = releaseDetail.Manifest
 	if projectApp.Status == types.AppStatusUninstall {
-		appCharts, err := a.models.ProjectAppVersionManager.GetAppVersionChart(projectApp.AppVersion.ChartPath)
-		if err != nil {
-			return &utils.Response{Code: code.DBError, Msg: err.Error()}
-		}
-		chart, err := loader.LoadArchive(bytes.NewReader(appCharts.Content))
-		if err != nil {
-			return &utils.Response{Code: code.GetError, Msg: err.Error()}
-		}
-		actionConfig := new(action.Configuration)
-		clientInstall := action.NewInstall(actionConfig)
-		clientInstall.ReleaseName = projectApp.Name
-		clientInstall.Namespace = namespace
-		clientInstall.ClientOnly = true
-		clientInstall.DryRun = true
-		values := map[string]interface{}{}
-		yaml.Unmarshal([]byte(projectApp.AppVersion.Values), &values)
-		releaseDetail, err := clientInstall.Run(chart, values)
-		if err != nil {
-			klog.Errorf("install release error: %s", err)
-			return &utils.Response{Code: code.HelmError, Msg: err.Error()}
-		}
 		objects := a.GetReleaseObjects(releaseDetail)
 		data["release"] = map[string]interface{}{
 			"objects":       objects,

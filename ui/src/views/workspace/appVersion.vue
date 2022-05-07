@@ -40,7 +40,7 @@
             <div class="tableOperate">
               <!-- <el-link :underline="false" style="margin-right: 13px; color:#409EFF" @click="nameClick(scope.row.id)">详情</el-link> -->
               <el-link v-if="scope.row.from=='space'" :disabled="!$editorRole(scope.row.id)" :underline="false" type="primary" style="margin-right: 13px" @click="openEditApp(scope.row.id)">编辑</el-link>
-              <el-link v-if="scope.row.id != originApp.app_version_id" :disabled="!$editorRole(scope.row.id)" :underline="false" type="danger" @click="handleDeleteAppVersion(scope.row.id, scope.row.package_version)">删除</el-link>
+              <el-link v-if="originApp.app_version_id && scope.row.id != originApp.app_version_id" :disabled="!$editorRole(scope.row.id)" :underline="false" type="danger" @click="handleDeleteAppVersion(scope.row.id, scope.row.package_version)">删除</el-link>
             </div>
           </template>
         </el-table-column>
