@@ -1,4 +1,4 @@
-ARG BASEIMAGE=kubespace/distroless-static:latest
+ARG BASEIMAGE=registry.cn-hangzhou.aliyuncs.com/kubespace/distroless-static:latest
 FROM $BASEIMAGE
 
 COPY kubespace /

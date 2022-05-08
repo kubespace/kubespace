@@ -321,7 +321,7 @@ func (r *ServicePipelineRun) InitialCodeEnvs(pipeline *types.Pipeline, workspace
 	go func() {
 		defer wg.Done()
 		_, branchErr := r.getCodeBranchCommitId(workspace.CodeUrl, branch.(string), workspace.CodeSecretId)
-		if err != nil {
+		if err == nil {
 			err = branchErr
 		}
 	}()
@@ -332,7 +332,7 @@ func (r *ServicePipelineRun) InitialCodeEnvs(pipeline *types.Pipeline, workspace
 		commit, commitErr := r.getCodeBranchCommit(workspace.CodeUrl, b, workspace.CodeSecretId)
 		if commitErr != nil {
 			klog.Errorf("get code %s commit error: %v", workspace.CodeUrl, err)
-			if err != nil {
+			if err == nil {
 				err = commitErr
 			}
 			return
