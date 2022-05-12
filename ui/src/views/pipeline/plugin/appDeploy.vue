@@ -70,7 +70,7 @@ export default {
         if(this.params.project) {
           for(let p of this.projects) {
             if (p.id == this.params.project) {
-              this.fetchApps()
+              this.fetchApps(true)
               break
             }
           }
@@ -79,9 +79,11 @@ export default {
         console.log(err)
       })
     },
-    fetchApps() {
+    fetchApps(unset) {
       this.apps = []
-      this.$set(this.params, 'apps', [])
+      if(!unset) {
+        this.$set(this.params, 'apps', [])
+      }
       listApps({scope_id: this.params.project, scope: "project_app"}).then((resp) => {
         let originApps = resp.data ? resp.data : []
         this.apps = originApps
