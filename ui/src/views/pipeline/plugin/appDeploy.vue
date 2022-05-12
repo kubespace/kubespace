@@ -67,6 +67,14 @@ export default {
       listProjects().then((resp) => {
         this.projects = resp.data ? resp.data : []
         this.projects.sort((a, b) => {return a.name > b.name ? 1 : -1})
+        if(this.params.project) {
+          for(let p of this.projects) {
+            if (p.id == this.params.project) {
+              this.fetchApps()
+              break
+            }
+          }
+        }
       }).catch((err) => {
         console.log(err)
       })

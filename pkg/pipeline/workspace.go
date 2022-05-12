@@ -25,7 +25,7 @@ func (w *WorkspaceService) getCodeName(codeType string, codeUrl string) string {
 	if codeType == types.WorkspaceCodeTypeHttps {
 		re, _ = regexp.Compile("http[s]?://[\\w\\.:]+/([\\w/\\-_]+)[.git]*")
 	} else if codeType == types.WorkspaceCodeTypeGit {
-		re, _ = regexp.Compile("git@[\\w\\.:]+/?([\\w/\\-_]+)[\\.git]*")
+		re, _ = regexp.Compile("git@[\\w\\.]+:/?([\\w/\\-_]+)[\\.git]*")
 	} else {
 		return ""
 	}
@@ -41,7 +41,7 @@ func (w *WorkspaceService) checkCodeUrl(codeType string, codeUrl string) bool {
 	if codeType == types.WorkspaceCodeTypeHttps {
 		re, _ = regexp.Compile("http[s]?://[\\w\\.:]+/([\\w/\\-_]+)[.git]*")
 	} else if codeType == types.WorkspaceCodeTypeGit {
-		re, _ = regexp.Compile("git@[\\w\\.:]+/?([\\w/\\-_]+)[\\.git]*")
+		re, _ = regexp.Compile("git@[\\w\\.]+:/?([\\w/\\-_]+)[\\.git]*")
 	} else {
 		return false
 	}
