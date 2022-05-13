@@ -223,7 +223,7 @@ func (m *MiddleMessage) SendWatch(cluster string, midRes *MiddleResponse) {
 		return
 	}
 	if num, ok := subNums[watchPubKey]; !ok || num <= 0 {
-		klog.Errorf("watch cluster %s is not in subscribe", cluster)
+		klog.Infof("watch cluster %s is not in subscribe", cluster)
 		return
 	}
 	respData, err := midRes.Serializer()

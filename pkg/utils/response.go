@@ -38,3 +38,9 @@ func (r Response) Value() (driver.Value, error) {
 	}
 	return string(bytes), nil
 }
+
+type WatchResponse struct {
+	Event    string      `json:"event"`
+	Obj      string      `json:"obj"`
+	Resource interface{} `json:"resource"`
+}

@@ -34,6 +34,7 @@ func NewCluster(models *model.Models, kr *kube_resource.KubeResources) *Cluster 
 		NewView(http.MethodPost, "/delete", cluster.delete),
 		NewView(http.MethodPost, "/apply/:cluster", cluster.apply),
 		NewView(http.MethodPost, "/createYaml/:cluster", cluster.createYaml),
+		NewView(http.MethodGet, "/:cluster/sse", cluster.resourceSSE),
 	}
 	cluster.Views = views
 	return cluster
@@ -198,9 +199,15 @@ func (clu *Cluster) delete(c *Context) *utils.Response {
 }
 
 func (clu *Cluster) resourceSSE(c *Context) *utils.Response {
+	if c.Param("cluster") == "" {
+		return &utils.Response{Code: code.ParamsError, Msg: "get param pipeline run id error"}
+	}
 	var ser serializers.ClusterSSESerializers
 	if err := c.ShouldBindQuery(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	if ser.Type == "" {
+		return &utils.Response{Code: code.ParamsError, Msg: "参数type不能为空"}
 	}
 	watchSelector := map[string]string{
 		sse.EventLabelType: ser.Type,
@@ -210,8 +217,9 @@ func (clu *Cluster) resourceSSE(c *Context) *utils.Response {
 	}
 
 	streamClient := sse.StreamClient{
+		Cluster:       c.Param("cluster"),
 		ClientId:      utils.CreateUUID(),
-		Catalog:       sse.CatalogDatabase,
+		Catalog:       sse.CatalogCluster,
 		WatchSelector: watchSelector,
 		ClientChan:    make(chan sse.Event),
 	}
@@ -219,18 +227,22 @@ func (clu *Cluster) resourceSSE(c *Context) *utils.Response {
 	defer sse.Stream.RemoveClient(streamClient)
 	w := c.Writer
 	clientGone := w.CloseNotify()
-	c.SSEvent("message", "")
+	c.SSEvent("message", "\n")
 	w.Flush()
 	//c.Stream()
+	tick := time.NewTicker(30 * time.Second)
 
 	for {
-		klog.Infof("select for channel")
+		klog.Infof("select for cluster %s resource %s channel", ser.Cluster, ser.Type)
 		select {
 		case <-clientGone:
-			klog.Info("client gone")
+			klog.Info("select for cluster %s resource %s client gone", ser.Cluster, ser.Type)
 			return nil
 		case event := <-streamClient.ClientChan:
 			c.SSEvent("message", event)
+			c.Writer.Flush()
+		case <-tick.C:
+			c.SSEvent("message", "\n")
 			c.Writer.Flush()
 		}
 	}

@@ -153,10 +153,15 @@ export default {
         search_name: '',
         delFunc: undefined,
         delPods: [],
+        clusterSSE: undefined
       }
   },
   created() {
     this.fetchData()
+    this.fetchPodSSE()
+  },
+  beforeDestroy() {
+    if(this.clusterSSE) this.clusterSSE.disconnect()
   },
   mounted() {
     const that = this
@@ -202,6 +207,9 @@ export default {
     },
     podsWatch: function() {
       return this.$store.getters["ws/podWatch"]
+    },
+    cluster() {
+      return this.$store.state.cluster
     }
   },
   methods: {
@@ -220,6 +228,40 @@ export default {
         this.loading = false
         Message.error("获取集群异常，请刷新重试")
       }
+    },
+    fetchPodSSE() {
+      let url = `/api/v1/cluster/${this.cluster}/sse`
+      this.clusterSSE = this.$sse.create({
+        url: url,
+        includeCredentials: false,
+        format: 'plain'
+      });
+      this.clusterSSE.on("message", (res) => {
+        // console.log(res)
+        if(res && res != "\n") {
+          let data = JSON.parse(res)
+          console.log(data)
+          // if(data.object) {
+          //   let obj = data.object
+          //   for(let i in this.builds){
+          //     let build = this.builds[i]
+          //     if(build.pipeline_run.id == obj.pipeline_run.id) {
+          //       this.$set(this.builds, i, obj)
+          //       this.processExecTime()
+          //       break
+          //     }
+          //   }
+          // }
+        }
+      })
+      this.clusterSSE.connect().then(() => {
+        console.log('[info] connected', 'system')
+      }).catch(() => {
+        console.log('[error] failed to connect', 'system')
+      })
+      this.clusterSSE.on('error', () => { // eslint-disable-line
+        console.log('[error] disconnected, automatically re-attempting connection', 'system')
+      })
     },
     nsSearch: function(vals) {
       this.search_ns = []

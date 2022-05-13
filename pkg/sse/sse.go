@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/redis"
+	"github.com/kubespace/kubespace/pkg/utils"
 	"k8s.io/klog"
 	"time"
 )
@@ -198,16 +199,23 @@ func (s *stream) clusterWatch(cluster string) {
 	for {
 		if clusterMiddle, ok := s.ClusterWatch[cluster]; ok {
 			err := clusterMiddle.ReceiveWatch(cluster, func(res string) {
-				var event Event
-				err := json.Unmarshal([]byte(res), &event)
+				//var event Event
+				//err := json.Unmarshal([]byte(res), &event)
+				//if err != nil {
+				//	klog.Errorf("unmarshal db message [%s] error: %s", res, err.Error())
+				//} else {
+				//	s.EventsChan <- event
+				//}
+				var watchRes utils.WatchResponse
+				err := json.Unmarshal([]byte(res), &watchRes)
 				if err != nil {
-					klog.Errorf("unmarshal db message [%s] error: %s", res, err.Error())
-				} else {
-					s.EventsChan <- event
+					klog.Errorf("unmarshal watch message [%s] error: %s", res, err.Error())
 				}
+				klog.Infof("receive cluster %s watch resource: %s %s", cluster, watchRes.Event, watchRes.Obj)
 			})
 			if err != nil {
 				klog.Errorf("receive global watch error: %s", err.Error())
+				time.Sleep(10 * time.Second)
 			}
 		} else {
 			klog.Infof("close cluster %s watch", cluster)

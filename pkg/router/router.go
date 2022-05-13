@@ -14,7 +14,7 @@ import (
 	views2 "github.com/kubespace/kubespace/pkg/views"
 	"github.com/kubespace/kubespace/pkg/views/kube_views"
 	"github.com/kubespace/kubespace/pkg/views/pipeline_views"
-	ws_views2 "github.com/kubespace/kubespace/pkg/views/ws_views"
+	wsviews2 "github.com/kubespace/kubespace/pkg/views/ws_views"
 	"html/template"
 	"io/ioutil"
 	"k8s.io/klog"
@@ -78,23 +78,23 @@ func NewRouter(redisOptions *redis.Options, mysqlOptions *mysql.Options) (*Route
 	apiGroup.POST("/logout", loginView.Logout)
 
 	// 连接k8s agent的websocket接口
-	kubeWs := ws_views2.NewKubeWs(redisOptions, models)
+	kubeWs := wsviews2.NewKubeWs(redisOptions, models)
 	apiGroup.GET("/kube/connect", kubeWs.Connect)
 
 	// 连接k8s agent的websocket接口，用来并发传输返回数据
-	kubeResp := ws_views2.NewKubeResp(redisOptions, models)
+	kubeResp := wsviews2.NewKubeResp(redisOptions, models)
 	apiGroup.GET("/kube/response", kubeResp.Connect)
 
 	// 连接api websocket接口
-	apiWs := ws_views2.NewApiWs(redisOptions, models, kubeResources)
+	apiWs := wsviews2.NewApiWs(redisOptions, models, kubeResources)
 	engine.GET("/ws/web/connect", apiWs.Connect)
 
 	// 连接exec websocket接口
-	execWs := ws_views2.NewExecWs(redisOptions, models, kubeResources)
+	execWs := wsviews2.NewExecWs(redisOptions, models, kubeResources)
 	engine.GET("/ws/exec/:cluster/:namespace/:pod", execWs.Connect)
 
 	// 连接log websocket接口
-	logWs := ws_views2.NewLogWs(redisOptions, models, kubeResources)
+	logWs := wsviews2.NewLogWs(redisOptions, models, kubeResources)
 	engine.GET("/ws/log/:cluster/:namespace/:pod", logWs.Connect)
 
 	helmView := kube_views.NewHelm(kubeResources, models)
