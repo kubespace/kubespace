@@ -4,14 +4,15 @@ import { dateFormat } from '@/utils/utils';
 
 export function podMatch(selector, labels) {
   let s = Selector(selector)
-  console.log(s, selector, labels)
+  // console.log(s, selector, labels)
   return s(labels)
 }
 
-export function listPods(cluster, label_selector=null, names=null) {
+export function listPods(cluster, label_selector=null, names=null, namespace) {
   let data = {}
   if (label_selector) data['label_selector'] = label_selector
   if (names) data['names'] = names
+  if(namespace) data['namespace'] = namespace
   return request({
     url: `pods/${cluster}/list`,
     method: 'post',

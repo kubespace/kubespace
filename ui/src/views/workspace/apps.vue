@@ -293,12 +293,14 @@ export default {
 
       },
       projects: [],
+      appStatusSSE: undefined
     };
   },
   created() {
     this.fetchApps();
   },
   beforeDestroy() {
+    if(this.appStatusSSE) this.appStatusSSE.disconnect()
     if(this.refreshStatusTimer) {
       clearTimeout(this.refreshStatusTimer)
     }
@@ -326,7 +328,8 @@ export default {
         let originApps = resp.data ? resp.data : []
         this.$set(this, 'originApps', originApps)
         this.loading = false
-        this.getAppStatus()
+        // this.getAppStatus()
+        if(!this.appStatusSSE) this.fetchAppStatusSSE()
       }).catch((err) => {
         this.loading = false
       })
@@ -480,17 +483,52 @@ export default {
     openEditApp(id) {
       this.$router.push({name: 'workspaceEditApp', params: {appVersionId: id}})
     },
+    fetchAppStatusSSE() {
+      let url = `/api/v1/project/apps/status_sse?scope=project_app&scope_id=${this.projectId}`
+      this.appStatusSSE = this.$sse.create({
+        url: url,
+        includeCredentials: false,
+        format: 'plain'
+      });
+      this.appStatusSSE.on("message", (res) => {
+        // console.log(res)
+        if(res && res != "\n") {
+          let data = JSON.parse(res)
+          // console.log(data)
+          if(data.code == 'Success') {
+            let mapStatus = data.data
+            // console.log(mapStatus)
+            for(let i in this.originApps) {
+              let app = this.originApps[i]
+              if(app.name in mapStatus) {
+                this.$set(app, 'status', mapStatus[app.name].status)
+                // app.status = mapStatus[app.name].status
+                this.$set(this.originApps, i, app)
+              }
+            } 
+          }
+        }
+      })
+      this.appStatusSSE.connect().then(() => {
+        console.log('[info] connected', 'system')
+      }).catch(() => {
+        console.log('[error] failed to connect', 'system')
+      })
+      this.appStatusSSE.on('error', () => { // eslint-disable-line
+        console.log('[error] disconnected, automatically re-attempting connection', 'system')
+      })
+    },
     getAppStatus() {
       listAppStatus({scope_id: this.projectId, scope: "project_app"}).then((resp) => {
-        let mapStatus = {}
-        for(let s of resp.data) {
-          mapStatus[s.name] = s
-        }
+        let mapStatus = resp.data
+        console.log(mapStatus)
         for(let i in this.originApps) {
           let app = this.originApps[i]
           if(app.name in mapStatus) {
-            app.status = mapStatus[app.name].status
+            this.$set(app, 'status', mapStatus[app.name].status)
+            // app.status = mapStatus[app.name].status
             this.$set(this.originApps, i, app)
+            console.log(this.originApps)
           }
         }
         this.refreshAppStatus()

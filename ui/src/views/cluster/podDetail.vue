@@ -1,10 +1,13 @@
 <template>
   <div>
     <clusterbar :titleName="titleName" :delFunc="deletePods" :editFunc="getPodYaml"/>
-    <div class="dashboard-container">
+    <div class="dashboard-container pod-container" style="margin: 10px 20px;">
       <div style="padding: 10px 8px 0px;">
         <div>基本信息</div>
         <el-form label-position="left" inline class="pod-item" style="margin: 15px 10px 20px 10px;">
+          <el-form-item label="名称">
+            <span>{{ pod.name }}</span>
+          </el-form-item>
           <el-form-item label="状态">
             <span>{{ pod.status }}</span>
           </el-form-item>
@@ -18,7 +21,7 @@
             <span>{{ pod.node_name }}</span>
           </el-form-item>
           <el-form-item label="服务账户">
-            <span>{{ pod.service_account }}</span>
+            <span>{{ pod.service_account || '-' }}</span>
           </el-form-item>
           <el-form-item label="Pod IP">
             <span>{{ pod.ip }}</span>
@@ -29,7 +32,7 @@
           <el-form-item label="QoS Class">
             <span>{{ pod.qos }}</span>
           </el-form-item>
-          <el-form-item label="标签">
+          <!-- <el-form-item label="标签">
             <template v-for="(val, key) in pod.labels">
               <span :key="key">{{key}}: {{val}}<br/></span>
             </template>
@@ -40,7 +43,7 @@
             <template v-else v-for="(val, key) in pod.annonations">
               <span :key="key">{{key}}: {{val}}<br/></span>
             </template>
-          </el-form-item>
+          </el-form-item> -->
         </el-form>
       </div>
 
@@ -353,6 +356,7 @@
 <script>
 import { Clusterbar, Yaml } from '@/views/components'
 import { getPod, deletePods, updatePod, buildPods, resourceFor } from '@/api/pods'
+import { sse } from '@/api/cluster'
 import { listEvents, buildEvent } from '@/api/event'
 import { Message } from 'element-ui'
 import { Terminal } from '@/views/components'
@@ -381,51 +385,14 @@ export default {
       eventLoading: true,
       activeName: "first",
       resourceFor: resourceFor,
+      clusterSSE: undefined
     }
   },
   created() {
     this.fetchData()
   },
-  watch: {
-    podWatch: function (newObj) {
-      if (newObj && this.pod) {
-        let newUid = newObj.resource.metadata.uid
-        if (newUid !== this.pod.uid) {
-          return
-        }
-        console.log("watch pod obj", newObj)
-        let newRv = newObj.resource.metadata.resourceVersion
-        if (this.pod.resource_version < newRv) {
-          // this.$set(this.originPod, newPod)
-          this.originPod = newObj.resource
-        }
-      }
-    },
-    eventWatch: function (newObj) {
-      if (newObj && this.originPod) {
-        let event = newObj.resource
-        if (event.involvedObject.namespace !== this.pod.namespace) return
-        if (event.involvedObject.uid !== this.pod.uid) return
-        let newUid = newObj.resource.metadata.uid
-        if (newObj.event === 'add') {
-          this.podEvents.push(buildEvent(event))
-        } else if (newObj.event == 'update') {
-          let newRv = newObj.resource.metadata.resourceVersion
-          for (let i in this.podEvents) {
-            let d = this.podEvents[i]
-            if (d.uid === newUid) {
-              if (d.resource_version < newRv){
-                let newEvent = buildEvent(newObj.resource)
-                this.$set(this.podEvents, i, newEvent)
-              }
-              break
-            }
-          }
-        } else if (newObj.event === 'delete') {
-          this.podEvents = this.podEvents.filter(( { uid } ) => uid !== newUid)
-        }
-      }
-    }
+  beforeDestroy() {
+    if(this.clusterSSE) this.clusterSSE.disconnect()
   },
   computed: {
     titleName: function() {
@@ -450,12 +417,6 @@ export default {
       if (this.pod && this.pod.init_containers) c = [...this.pod.init_containers, ...c]
       return c
     },
-    podWatch: function() {
-      return this.$store.getters["ws/podWatch"]
-    },
-    eventWatch: function() {
-      return this.$store.getters["ws/eventWatch"]
-    }
   },
   methods: {
     fetchData: function() {
@@ -485,7 +446,7 @@ export default {
       getPod(cluster, this.namespace, this.podName).then(response => {
         this.loading = false
         this.originPod = response.data
-
+        this.fetchPodSSE()
         listEvents(cluster, this.originPod.metadata.uid).then(response => {
           this.eventLoading = false
           if (response.data) {
@@ -498,6 +459,23 @@ export default {
         this.loading = false
         this.eventLoading = false
       })
+    },
+    fetchPodSSE() {
+      this.clusterSSE = sse(this.$sse, this.ssePodWatch, this.cluster, {type: 'pods', uid: this.pod.uid})
+    },
+    ssePodWatch: function (newObj) {
+      if (newObj && this.pod) {
+        let newUid = newObj.resource.metadata.uid
+        if (newUid !== this.pod.uid) {
+          return
+        }
+        console.log("watch pod obj", newObj)
+        let newRv = newObj.resource.metadata.resourceVersion
+        if (this.pod.resource_version < newRv) {
+          // this.$set(this.originPod, newPod)
+          this.originPod = newObj.resource
+        }
+      }
     },
     toogleExpand: function(row) {
       let $table = this.$refs.table;
@@ -609,62 +587,71 @@ export default {
 }
 </style>
 
-<style>
-/* .el-table__expand-icon {
-  display: none;
-} */
-.el-table__expanded-cell[class*=cell] {
-  padding-top: 5px;
-}
-.table-expand {
-  font-size: 0;
-}
-.table-expand label {
-  width: 90px;
-  color: #99a9bf;
-  font-weight: 400;
-}
-.table-expand .el-form-item {
-  margin-right: 0;
-  margin-bottom: 0;
-  width: 100%;
-}
+<style lang="scss">
+.pod-container {
+  /* .el-table__expand-icon {
+    display: none;
+  } */
+  .el-table__expanded-cell[class*=cell] {
+    padding-top: 5px;
+  }
+  .table-expand {
+    font-size: 0;
+  }
+  .table-expand label {
+    width: 90px;
+    color: #99a9bf;
+    font-weight: 400;
+  }
+  .table-expand .el-form-item {
+    margin-right: 0;
+    margin-bottom: 0;
+    width: 100%;
+  }
 
-.pod-item {
-  margin: 20px 5px 20px 5px;
-  padding: 10px 20px;
-  font-size: 0;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-}
-.pod-item label {
-  width: 90px;
-  color: #99a9bf;
-  font-weight: 400;
-}
-.pod-item .el-form-item {
-  margin-right: 0;
-  margin-bottom: 0;
-  width: 50%;
-}
-.pod-item span {
-  color: #606266;
-}
-/* .el-collapse {
-  border-top: 0px;
-} */
-.title-class {
-  margin-left: 5px;
-  color: #606266;
-  font-size: 13px;
-}
-.podCollapse .el-collapse-item__content {
-  padding: 0px 10px 15px;
-  /* font-size: 13px; */
-}
-.el-dialog__body {
-  padding-top: 5px;
-}
-.msgClass .el-table::before {
-  height: 0px;
+  .pod-item {
+    margin: 20px 5px 20px 5px;
+    padding: 10px 20px;
+    font-size: 0;
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  }
+  .pod-item label {
+    width: 90px;
+    color: #99a9bf;
+    font-weight: 400;
+  }
+  .pod-item .el-form-item {
+    margin-right: 0;
+    margin-bottom: 0;
+    width: 33%;
+  }
+  .pod-item span {
+    color: #606266;
+  }
+
+  .el-form-item__label{
+    line-height: 30px;
+  }
+  .el-form-item__content {
+    line-height: 30px;
+  }
+  /* .el-collapse {
+    border-top: 0px;
+  } */
+  .title-class {
+    margin-left: 5px;
+    color: #606266;
+    font-size: 13px;
+  }
+  .podCollapse .el-collapse-item__content {
+    padding: 0px 10px 15px;
+    /* font-size: 13px; */
+  }
+  .el-dialog__body {
+    padding-top: 5px;
+  }
+  .msgClass .el-table::before {
+    height: 0px;
+  }
 }
 </style>

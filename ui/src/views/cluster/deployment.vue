@@ -1,7 +1,7 @@
 <template>
   <div>
-    <clusterbar :titleName="titleName" :nsFunc="nsSearch" :nameFunc="nameSearch" :delFunc="delFunc" 
-      :createFunc="createFunc" createDisplay="创建"/>
+    <clusterbar :titleName="titleName" :nsFunc="nsSearch" :nameFunc="nameSearch" :delFunc="delFunc" />
+      <!-- :createFunc="createFunc" createDisplay="创建"/> -->
     <div class="dashboard-container">
       <!-- <div class="dashboard-text"></div> -->
       <el-table
@@ -80,6 +80,9 @@
           label="创建时间"
           min-width="70"
           show-overflow-tooltip>
+          <template slot-scope="scope">
+            {{ $dateFormat(scope.row.created) }}
+          </template>
         </el-table-column>
         <el-table-column
           label=""
@@ -146,6 +149,7 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
+import { sse } from '@/api/cluster'
 import { listDeployments, getDeployment, deleteDeployments, updateDeployment, updateDeploymentObj } from '@/api/deployment'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
@@ -166,7 +170,7 @@ export default {
         yamlLoading: true,
         cellStyle: {border: 0},
         titleName: ["Deployments"],
-        maxHeight: window.innerHeight - 150,
+        maxHeight: window.innerHeight - 135,
         loading: true,
         originDeployments: [],
         search_ns: [],
@@ -175,6 +179,7 @@ export default {
         delDeployment: [],
         update_replicas: 0,
         update_replicas_deployment: null,
+        clusterSSE: undefined
       }
   },
   created() {
@@ -184,18 +189,64 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150
+        let heightStyle = window.innerHeight - 135
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
     }
   },
-  watch: {
-    deploymentsWatch: function (newObj) {
+  beforeDestroy() {
+    if(this.clusterSSE) this.clusterSSE.disconnect()
+  },
+  computed: {
+    deployments: function() {
+      let dlist = []
+      for (let p of this.originDeployments) {
+        if (this.search_ns.length > 0 && this.search_ns.indexOf(p.namespace) < 0) continue
+        if (this.search_name && !p.name.includes(this.search_name)) continue
+        if (p.conditions && p.conditions.length > 0) p.conditions.sort()
+        dlist.push(p)
+      }
+      return dlist
+    },
+    cluster() {
+      return this.$store.state.cluster
+    }
+  },
+  methods: {
+    fetchData: function() {
+      this.loading = true
+      this.originDeployments = []
+      const cluster = this.$store.state.cluster
+      if (cluster) {
+        listDeployments(cluster).then(response => {
+          this.loading = false
+          this.originDeployments = response.data || []
+          if(!this.clusterSSE) this.fetchSSE()
+        }).catch(() => {
+          this.loading = false
+        })
+      } else {
+        this.loading = false
+        Message.error("获取集群异常，请刷新重试")
+      }
+    },
+    fetchSSE() {
+      if(!this.clusterSSE) {
+        this.clusterSSE = sse(this.$sse, this.sseWatch, this.cluster, {type: 'deployment'})
+      }
+    },
+    sseWatch(newObj) {
       if (newObj) {
         let newUid = newObj.resource.metadata.uid
         let newRv = newObj.resource.metadata.resourceVersion
         if (newObj.event === 'add') {
+          for(let i in this.originDeployments) {
+            let d = this.originDeployments[i]
+            if (d.uid === newUid) {
+              return
+            }
+          }
           this.originDeployments.push(this.buildDeployments(newObj.resource))
         } else if (newObj.event === 'update') {
           for (let i in this.originDeployments) {
@@ -212,39 +263,6 @@ export default {
           this.originDeployments = this.originDeployments.filter(( { uid } ) => uid !== newUid)
         }
       }
-    }
-  },
-  computed: {
-    deployments: function() {
-      let dlist = []
-      for (let p of this.originDeployments) {
-        if (this.search_ns.length > 0 && this.search_ns.indexOf(p.namespace) < 0) continue
-        if (this.search_name && !p.name.includes(this.search_name)) continue
-        if (p.conditions && p.conditions.length > 0) p.conditions.sort()
-        dlist.push(p)
-      }
-      return dlist
-    },
-    deploymentsWatch: function() {
-      return this.$store.getters["ws/deploymentWatch"]
-    }
-  },
-  methods: {
-    fetchData: function() {
-      this.loading = true
-      this.originDeployments = []
-      const cluster = this.$store.state.cluster
-      if (cluster) {
-        listDeployments(cluster).then(response => {
-          this.loading = false
-          this.originDeployments = response.data || []
-        }).catch(() => {
-          this.loading = false
-        })
-      } else {
-        this.loading = false
-        Message.error("获取集群异常，请刷新重试")
-      }
     },
     nsSearch: function(vals) {
       this.search_ns = []
@@ -258,7 +276,7 @@ export default {
     buildDeployments: function(deployment) {
       if (!deployment) return
       var conditions = []
-      for (let c of deployment.status.conditions) {
+      for (let c of deployment.status.conditions || []) {
         if (c.status === "True") {
           conditions.push(c.type)
         }

@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import qs from 'qs'
 
 export function listCluster() {
   return request({
@@ -52,4 +53,31 @@ export function createYaml(cluster, yaml) {
     method: 'post',
     data: {yaml: yaml},
   })
+}
+
+export function sse(vueSse, watchFunc, cluster, params) {
+  let p = qs.stringify(params)
+  let url = `/api/v1/cluster/${cluster}/sse?${p}`
+  let clusterSSE = vueSse.create({
+    url: url,
+    includeCredentials: false,
+    format: 'plain'
+  });
+  clusterSSE.on("message", (res) => {
+    // console.log(res)
+    if(res && res != "\n") {
+      let data = JSON.parse(res)
+      console.log(data)
+      watchFunc(data)
+    }
+  })
+  clusterSSE.connect().then(() => {
+    console.log('[info] connected', 'system')
+  }).catch(() => {
+    console.log('[error] failed to connect', 'system')
+  })
+  clusterSSE.on('error', () => { // eslint-disable-line
+    console.log('[error] disconnected, automatically re-attempting connection', 'system')
+  })
+  return clusterSSE
 }

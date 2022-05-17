@@ -7,7 +7,7 @@
           <span>{{ cronjob.name }}</span>
         </el-form-item>
         <el-form-item label="创建时间">
-          <span>{{ cronjob.created }}</span>
+          <span>{{ $dateFormat(cronjob.created) }}</span>
         </el-form-item>
         <el-form-item label="命名空间">
           <span>{{ cronjob.namespace }}</span>
@@ -108,6 +108,9 @@
               label="创建时间"
               min-width="40"
               show-overflow-tooltip>
+              <template slot-scope="scope">
+                {{ $dateFormat(scope.row.created) }}
+              </template>
             </el-table-column>
             <el-table-column
               label=""
@@ -326,6 +329,9 @@
                 label="触发时间"
                 min-width="50"
                 show-overflow-tooltip>
+                <template slot-scope="scope">
+                  {{ $dateFormat(scope.row.event_time) }}
+                </template>
               </el-table-column>
             </el-table>
             <div v-else style="color: #909399; text-align: center">暂无事件发生</div>

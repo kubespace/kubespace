@@ -1,7 +1,7 @@
 <template>
   <div>
-    <clusterbar :titleName="titleName" :nsFunc="nsSearch" :nameFunc="nameSearch" :delFunc="delFunc"
-      :createFunc="createFunc" createDisplay="创建"/>
+    <clusterbar :titleName="titleName" :nsFunc="nsSearch" :nameFunc="nameSearch" :delFunc="delFunc"/>
+      <!-- :createFunc="createFunc" createDisplay="创建"/> -->
     <div class="dashboard-container">
       <!-- <div class="dashboard-text"></div> -->
       <el-table
@@ -88,6 +88,9 @@
           label="创建时间"
           min-width="60"
           show-overflow-tooltip>
+          <template slot-scope="scope">
+            {{ $dateFormat(scope.row.created) }}
+          </template>
         </el-table-column>
         <el-table-column
           label=""

@@ -79,6 +79,9 @@
           label="创建时间"
           min-width="135"
           show-overflow-tooltip>
+          <template slot-scope="scope">
+            {{ $dateFormat(scope.row.created) }}
+          </template>
         </el-table-column>
         <el-table-column
           prop="status"
@@ -128,6 +131,7 @@
 <script>
 import { Clusterbar } from '@/views/components'
 import { listPods, getPod, deletePods, updatePod, buildPods } from '@/api/pods'
+import { sse } from '@/api/cluster'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
 
@@ -146,7 +150,7 @@ export default {
         yamlLoading: true,
         cellStyle: {border: 0},
         titleName: ["Pods"],
-        maxHeight: window.innerHeight - 150,
+        maxHeight: window.innerHeight - 135,
         loading: true,
         originPods: [],
         search_ns: [],
@@ -167,32 +171,10 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150
+        let heightStyle = window.innerHeight - 135
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
-    }
-  },
-  watch: {
-    podsWatch: function (newObj) {
-      if (newObj) {
-        let newUid = newObj.resource.metadata.uid
-        let newRv = newObj.resource.metadata.resourceVersion
-        if (newObj.event === 'add') {
-          this.originPods.push(buildPods(newObj.resource))
-        } else if (newObj.event === 'update') {
-          for (let i in this.originPods) {
-            let p = this.originPods[i]
-            if (p.uid === newUid && p.resource_version < newRv) {
-              let newPod = buildPods(newObj.resource)
-              this.$set(this.originPods, i, newPod)
-              break
-            }
-          }
-        } else if (newObj.event === 'delete') {
-          this.originPods = this.originPods.filter(( { uid } ) => uid !== newUid)
-        }
-      }
     }
   },
   computed: {
@@ -204,9 +186,6 @@ export default {
         plist.push(p)
       }
       return plist
-    },
-    podsWatch: function() {
-      return this.$store.getters["ws/podWatch"]
     },
     cluster() {
       return this.$store.state.cluster
@@ -230,38 +209,33 @@ export default {
       }
     },
     fetchPodSSE() {
-      let url = `/api/v1/cluster/${this.cluster}/sse`
-      this.clusterSSE = this.$sse.create({
-        url: url,
-        includeCredentials: false,
-        format: 'plain'
-      });
-      this.clusterSSE.on("message", (res) => {
-        // console.log(res)
-        if(res && res != "\n") {
-          let data = JSON.parse(res)
-          console.log(data)
-          // if(data.object) {
-          //   let obj = data.object
-          //   for(let i in this.builds){
-          //     let build = this.builds[i]
-          //     if(build.pipeline_run.id == obj.pipeline_run.id) {
-          //       this.$set(this.builds, i, obj)
-          //       this.processExecTime()
-          //       break
-          //     }
-          //   }
-          // }
+      this.clusterSSE = sse(this.$sse, this.ssePodsWatch, this.cluster, {type: 'pods'})
+    },
+    ssePodsWatch: function (newObj) {
+      if (newObj) {
+        let newUid = newObj.resource.metadata.uid
+        let newRv = newObj.resource.metadata.resourceVersion
+        if (newObj.event === 'add') {
+          for(let i in this.originPods) {
+            let p = this.originPods[i]
+            if (p.uid === newUid) {
+              return
+            }
+          }
+          this.originPods.push(buildPods(newObj.resource))
+        } else if (newObj.event === 'update') {
+          for (let i in this.originPods) {
+            let p = this.originPods[i]
+            if (p.uid === newUid && p.resource_version < newRv) {
+              let newPod = buildPods(newObj.resource)
+              this.$set(this.originPods, i, newPod)
+              break
+            }
+          }
+        } else if (newObj.event === 'delete') {
+          this.originPods = this.originPods.filter(( { uid } ) => uid !== newUid)
         }
-      })
-      this.clusterSSE.connect().then(() => {
-        console.log('[info] connected', 'system')
-      }).catch(() => {
-        console.log('[error] failed to connect', 'system')
-      })
-      this.clusterSSE.on('error', () => { // eslint-disable-line
-        console.log('[error] disconnected, automatically re-attempting connection', 'system')
-      })
+      }
     },
     nsSearch: function(vals) {
       this.search_ns = []

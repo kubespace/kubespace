@@ -1,7 +1,7 @@
 <template>
   <div>
-    <clusterbar :titleName="titleName" :nsFunc="nsSearch" :nameFunc="nameSearch" :delFunc="delFunc"
-      :createFunc="createFunc" createDisplay="创建"/>
+    <clusterbar :titleName="titleName" :nsFunc="nsSearch" :nameFunc="nameSearch" :delFunc="delFunc"/>
+      <!-- :createFunc="createFunc" createDisplay="创建"/> -->
     <div class="dashboard-container">
       <!-- <div class="dashboard-text"></div> -->
       <el-table
@@ -79,6 +79,9 @@
           label="创建时间"
           min-width="70"
           show-overflow-tooltip>
+          <template slot-scope="scope">
+            {{ $dateFormat(scope.row.created) }}
+          </template>
         </el-table-column>
         <el-table-column
           label=""
@@ -143,6 +146,7 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
+import { sse } from '@/api/cluster'
 import { listStatefulSets, getStatefulSet, deleteStatefulSets, updateStatefulSet, updateStatefulSetObj } from '@/api/statefulset'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
@@ -172,6 +176,7 @@ export default {
         delStatefulSets: [],
         update_replicas: 0,
         update_replicas_statefulset: null,
+        clusterSSE: undefined
       }
   },
   created() {
@@ -187,29 +192,8 @@ export default {
       })()
     }
   },
-  watch: {
-    statefulsetsWatch: function (newObj) {
-      if (newObj) {
-        let newUid = newObj.resource.metadata.uid
-        let newRv = newObj.resource.metadata.resourceVersion
-        if (newObj.event === 'add') {
-          this.originStatefulSets.push(this.buildStatefulSets(newObj.resource))
-        } else if (newObj.event === 'update') {
-          for (let i in this.originStatefulSets) {
-            let d = this.originStatefulSets[i]
-            if (d.uid === newUid) {
-              if (d.resource_version < newRv){
-                let newDp = this.buildStatefulSets(newObj.resource)
-                this.$set(this.originStatefulSets, i, newDp)
-              }
-              break
-            }
-          }
-        } else if (newObj.event === 'delete') {
-          this.originStatefulSets = this.originStatefulSets.filter(( { uid } ) => uid !== newUid)
-        }
-      }
-    }
+  beforeDestroy() {
+    if(this.clusterSSE) this.clusterSSE.disconnect()
   },
   computed: {
     statefulsets: function() {
@@ -226,8 +210,8 @@ export default {
       }
       return dlist
     },
-    statefulsetsWatch: function() {
-      return this.$store.getters["ws/statefulsetsWatch"]
+    cluster() {
+      return this.$store.state.cluster
     }
   },
   methods: {
@@ -239,12 +223,44 @@ export default {
         listStatefulSets(cluster).then(response => {
           this.loading = false
           this.originStatefulSets = response.data || []
+          if(!this.clusterSSE) this.fetchSSE()
         }).catch(() => {
           this.loading = false
         })
       } else {
         this.loading = false
         Message.error("获取集群异常，请刷新重试")
+      }
+    },
+    fetchSSE() {
+      if(!this.clusterSSE) {
+        this.clusterSSE = sse(this.$sse, this.sseWatch, this.cluster, {type: 'statefulset'})
+      }
+    },
+    sseWatch(newObj) {
+      if (newObj) {
+        let newUid = newObj.resource.metadata.uid
+        let newRv = newObj.resource.metadata.resourceVersion
+        if (newObj.event === 'add') {
+          for(let i in this.originStatefulSets) {
+            let d = this.originStatefulSets[i]
+            if (d.uid === newUid) return
+          }
+          this.originStatefulSets.push(this.buildStatefulSets(newObj.resource))
+        } else if (newObj.event === 'update') {
+          for (let i in this.originStatefulSets) {
+            let d = this.originStatefulSets[i]
+            if (d.uid === newUid) {
+              if (d.resource_version < newRv){
+                let newDp = this.buildStatefulSets(newObj.resource)
+                this.$set(this.originStatefulSets, i, newDp)
+              }
+              break
+            }
+          }
+        } else if (newObj.event === 'delete') {
+          this.originStatefulSets = this.originStatefulSets.filter(( { uid } ) => uid !== newUid)
+        }
       }
     },
     nsSearch: function(vals) {

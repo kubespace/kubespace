@@ -73,10 +73,9 @@ export default {
         Message.error("请输入要导入的YAML")
         return
       }
-      console.log(cluster, this.nav.yamlValue)
       applyYaml(cluster, this.nav.yamlValue).then((resp) => {
-        console.log(resp.msg)
         Message.success(resp.msg)
+        this.nav.dialog = false
       }).catch(() => {
         // console.log(e) 
       })

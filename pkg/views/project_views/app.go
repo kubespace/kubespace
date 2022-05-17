@@ -168,7 +168,6 @@ func (a *ProjectApp) statusSSE(c *views.Context) *utils.Response {
 	//c.Stream()
 	tick := time.NewTicker(5 * time.Second)
 	for {
-		klog.Infof("select for app status channel")
 		select {
 		case <-clientGone:
 			klog.Info("app status client gone")
@@ -177,6 +176,7 @@ func (a *ProjectApp) statusSSE(c *views.Context) *utils.Response {
 			tick.Stop()
 			res := a.AppService.ListAppStatus(ser)
 			c.SSEvent("message", res)
+			w.Flush()
 			tick.Reset(5 * time.Second)
 		}
 	}

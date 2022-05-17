@@ -38,3 +38,23 @@ export function updateDaemonSetObj(cluster, namespace, name, data) {
     data: data
   })
 }
+
+export function buildDaemonSet(daemonset) {
+  if (!daemonset) return {}
+  let p = {
+    uid: daemonset.metadata.uid,
+    namespace: daemonset.metadata.namespace,
+    name: daemonset.metadata.name,
+    desired_number_scheduled: daemonset.status.desiredNumberScheduled || 0,
+    number_ready: daemonset.status.numberReady || 0,
+    resource_version: daemonset.metadata.resourceVersion,
+    strategy: daemonset.spec.updateStrategy.type,
+    conditions: daemonset.status.conditions,
+    created: daemonset.metadata.creationTimestamp,
+    label_selector: daemonset.spec.selector,
+    labels: daemonset.metadata.labels,
+    annotations: daemonset.metadata.annotations,
+    volumes: daemonset.spec.template.spec.volumes,
+  }
+  return p
+}

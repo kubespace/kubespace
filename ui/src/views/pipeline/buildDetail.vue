@@ -388,7 +388,7 @@ export default {
 }
 </style>
 <style lang="scss">
-.dashboard-container-build-detail{
+.dashboard-container-build-detail {
   .el-form-item__label{
     line-height: 26px;
   }

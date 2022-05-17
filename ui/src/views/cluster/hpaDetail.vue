@@ -9,7 +9,7 @@
             <span>{{ hpa.metadata.name }}</span>
           </el-form-item>
           <el-form-item label="创建时间">
-            <span>{{ hpa.metadata.creationTimestamp }}</span>
+            <span>{{ $dateFormat(hpa.metadata.creationTimestamp) }}</span>
           </el-form-item>
           <el-form-item label="Namespace">
             <span>{{ hpa.metadata.namespace }}</span>
@@ -87,6 +87,9 @@
               label="触发时间"
               min-width="50"
               show-overflow-tooltip>
+              <template slot-scope="scope">
+                {{ $dateFormat(scope.row.event_time) }}
+              </template>
             </el-table-column>
           </el-table>
           <div v-else style="color: #909399; text-align: center">暂无数据</div>

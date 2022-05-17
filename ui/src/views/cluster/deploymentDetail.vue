@@ -460,6 +460,7 @@ import { Clusterbar, Yaml } from '@/views/components'
 import { getDeployment, deleteDeployments, updateDeployment } from '@/api/deployment'
 import { listEvents, buildEvent } from '@/api/event'
 import { listPods, containerClass, buildPods, buildContainer, podMatch, deletePods, envStr, resourceFor } from '@/api/pods'
+import { sse } from '@/api/cluster'
 import { Message } from 'element-ui'
 import { Terminal } from '@/views/components'
 import { Log } from '@/views/components'
@@ -491,25 +492,18 @@ export default {
       eventLoading: true,
       envStr: envStr,
       resourceFor: resourceFor,
+      podSSE: undefined,
+      deploymentSSE: undefined,
     }
   },
   created() {
     this.fetchData()
   },
+  beforeDestroy() {
+    if(this.podSSE) this.podSSE.disconnect()
+    if(this.deploymentSSE) this.deploymentSSE.disconnect()
+  },
   watch: {
-    deploymentWatch: function (newObj) {
-      if (newObj && this.originDeployment) {
-        let newUid = newObj.resource.metadata.uid
-        if (newUid !== this.deployment.uid) {
-          return
-        }
-        let newRv = newObj.resource.metadata.resourceVersion
-        if (this.deployment.resource_version < newRv) {
-          // this.$set(this.originPod, newPod)
-          this.originDeployment = newObj.resource
-        }
-      }
-    },
     eventWatch: function (newObj) {
       if (newObj && this.originDeployment) {
         let event = newObj.resource
@@ -535,29 +529,6 @@ export default {
         }
       }
     },
-    podsWatch: function (newObj) {
-      if (newObj && this.originDeployment) {
-        let isPodMatch = podMatch(this.originDeployment.spec.selector, newObj.resource.metadata.labels)
-        if (isPodMatch) {
-          let newUid = newObj.resource.metadata.uid
-          let newRv = newObj.resource.metadata.resourceVersion
-          if (newObj.event === 'add') {
-            this.pods.push(buildPods(newObj.resource))
-          } else if (newObj.event === 'update') {
-            for (let i in this.pods) {
-              let p = this.pods[i]
-              if (p.uid === newUid && p.resource_version < newRv) {
-                let newPod = buildPods(newObj.resource)
-                this.$set(this.pods, i, newPod)
-                break
-              }
-            }
-          } else if (newObj.event === 'delete') {
-            this.pods = this.pods.filter(( { uid } ) => uid !== newUid)
-          }
-        }
-      }
-    }
   },
   computed: {
     titleName: function() {
@@ -630,9 +601,11 @@ export default {
       getDeployment(cluster, this.namespace, this.deploymentName).then(response => {
         // this.loading = false
         this.originDeployment = response.data
+        this.fetchDeploymentSSE()
         listPods(cluster, this.originDeployment.spec.selector).then(response => {
           this.loading = false
           this.pods = response.data
+          this.fetchPodSSE()
         }).catch(() => {
           this.loading = false
         })
@@ -649,6 +622,59 @@ export default {
         this.loading = false
         this.eventLoading = false
       })
+    },
+    fetchDeploymentSSE() {
+      this.deploymentSSE = sse(this.$sse, this.sseDeploymentWatch, this.cluster, {type: 'deployment', uid: this.deployment.uid})
+    },
+    sseDeploymentWatch: function (newObj) {
+      if (newObj && this.originDeployment) {
+        let newUid = newObj.resource.metadata.uid
+        if (newUid !== this.deployment.uid) {
+          return
+        }
+        let newRv = newObj.resource.metadata.resourceVersion
+        if (this.deployment.resource_version < newRv) {
+          // this.$set(this.originPod, newPod)
+          this.originDeployment = newObj.resource
+        }
+      }
+    },
+    fetchPodSSE() {
+      let params = {
+        type: 'pods',
+        namespace: this.deployment.namespace,
+        selector: JSON.stringify(this.deployment.label_selector.matchLabels)
+      }
+      this.podSSE = sse(this.$sse, this.ssePodsWatch, this.cluster, params)
+    },
+    ssePodsWatch: function (newObj) {
+      if (newObj && this.originDeployment) {
+        let isPodMatch = podMatch(this.originDeployment.spec.selector, newObj.resource.metadata.labels)
+        if (isPodMatch) {
+          let newUid = newObj.resource.metadata.uid
+          let newRv = newObj.resource.metadata.resourceVersion
+          if (newObj.event === 'add') {
+            for (let i in this.pods) {
+              let p = this.pods[i]
+              if (p.uid === newUid) {
+                return
+              }
+            }
+            this.pods.push(buildPods(newObj.resource))
+          } else if (newObj.event === 'update') {
+            for (let i in this.pods) {
+              let p = this.pods[i]
+              if (p.uid === newUid && p.resource_version < newRv) {
+                let newPod = buildPods(newObj.resource)
+                this.$set(this.pods, i, newPod)
+                break
+              }
+            }
+          } else if (newObj.event === 'delete') {
+            this.pods = this.pods.filter(( { uid } ) => uid !== newUid)
+          }
+        }
+      }
     },
     buildDeployment: function(deployment) {
       if (!deployment) return {}

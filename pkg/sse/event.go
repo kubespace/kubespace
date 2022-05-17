@@ -5,7 +5,11 @@ const (
 	EventTypePipelineRun string = "pipeline_run"
 )
 
-const EventLabelType = "__event_type"
+const (
+	EventLabelType        = "__event_type"
+	EventClusterNamespace = "__namespace"
+	EventClusterUid       = "__uid"
+)
 
 const (
 	CatalogDatabase = "database"

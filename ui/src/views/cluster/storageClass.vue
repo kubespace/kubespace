@@ -53,6 +53,9 @@
           label="创建时间"
           min-width="30"
           show-overflow-tooltip>
+          <template slot-scope="scope">
+            {{ $dateFormat(scope.row.create_time) }}
+          </template>
         </el-table-column>
         <el-table-column
           label=""

@@ -213,8 +213,19 @@ func (clu *Cluster) resourceSSE(c *Context) *utils.Response {
 		sse.EventLabelType: ser.Type,
 	}
 	if ser.Namespace != "" {
-		watchSelector["namespace"] = ser.Namespace
+		watchSelector[sse.EventClusterNamespace] = ser.Namespace
 	}
+	if ser.Uid != "" {
+		watchSelector[sse.EventClusterUid] = ser.Uid
+	}
+	if ser.Selector != nil {
+		for k, v := range ser.Selector {
+			watchSelector[k] = v
+		}
+	}
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Set("Connection", "keep-alive")
 
 	streamClient := sse.StreamClient{
 		Cluster:       c.Param("cluster"),
@@ -239,7 +250,7 @@ func (clu *Cluster) resourceSSE(c *Context) *utils.Response {
 			klog.Info("select for cluster %s resource %s client gone", ser.Cluster, ser.Type)
 			return nil
 		case event := <-streamClient.ClientChan:
-			c.SSEvent("message", event)
+			c.SSEvent("message", event.Object)
 			c.Writer.Flush()
 		case <-tick.C:
 			c.SSEvent("message", "\n")

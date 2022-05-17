@@ -72,6 +72,9 @@
           min-width="45"
           show-overflow-tooltip
         >
+          <template slot-scope="scope">
+            {{ $dateFormat(scope.row.created) }}
+          </template>
         </el-table-column>
         <el-table-column label="" show-overflow-tooltip width="45">
           <template slot-scope="scope">

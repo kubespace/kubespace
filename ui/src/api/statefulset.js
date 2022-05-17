@@ -38,3 +38,24 @@ export function updateStatefulSetObj(cluster, namespace, name, data) {
     data: data
   })
 }
+
+export function buildStatefulSet(statefulset) {
+  if (!statefulset) return {}
+  let p = {
+    uid: statefulset.metadata.uid,
+    namespace: statefulset.metadata.namespace,
+    name: statefulset.metadata.name,
+    replicas: statefulset.spec.replicas,
+    status_replicas: statefulset.status.replicas || 0,
+    ready_replicas: statefulset.status.readyReplicas || 0,
+    resource_version: statefulset.metadata.resourceVersion,
+    strategy: statefulset.spec.updateStrategy.type,
+    conditions: statefulset.status.conditions,
+    created: statefulset.metadata.creationTimestamp,
+    label_selector: statefulset.spec.selector,
+    labels: statefulset.metadata.labels,
+    annotations: statefulset.metadata.annotations,
+    volumes: statefulset.spec.template.spec.volumes,
+  }
+  return p
+}

@@ -1,48 +1,50 @@
 <template>
   <div>
-    <clusterbar :titleName="titleName" :delFunc="deleteDaemonSets" :editFunc="getDaemonSetYaml"/>
-    <div class="dashboard-container">
-
+    <clusterbar :titleName="titleName" :delFunc="deleteWorkloads" :editFunc="getWorkloadYaml"/>
+    <div class="dashboard-container workload-container" style="margin: 10px 20px;">
       <div style="padding: 10px 8px 0px;">
         <div>基本信息</div>
-        <el-form label-position="left" inline class="pod-item" style="margin: 15px 10px 30px 10px;">
+        <el-form label-position="left" inline class="pod-item" label-width="90px" style="margin: 15px 10px 30px 10px;">
           <el-form-item label="名称">
-            <span>{{ daemonset.name }}</span>
+            <span>{{ workload.name }}</span>
           </el-form-item>
           <el-form-item label="创建时间">
-            <span>{{ $dateFormat(daemonset.created) }}</span>
+            <span>{{ $dateFormat(workload.created) }}</span>
           </el-form-item>
           <el-form-item label="命名空间">
-            <span>{{ daemonset.namespace }}</span>
+            <span>{{ workload.namespace }}</span>
           </el-form-item>
           <el-form-item label="更新策略">
-            <span>{{ daemonset.strategy }}</span>
+            <span>{{ workload.strategy }}</span>
           </el-form-item>
-          <el-form-item label="Pod副本">
-            <span>{{ daemonset.number_ready + "/" + daemonset.desired_number_scheduled }}</span>
+          <el-form-item label="Pod副本" v-if="kind != 'daemonset'">
+            <span>{{ workload.ready_replicas + "/" + workload.replicas }}</span>
           </el-form-item>
-          <el-form-item label="选择器">
-            <span v-if="!daemonset.label_selector">—</span>
-            <template v-else v-for="(val, key) in daemonset.label_selector.matchLabels">
+          <el-form-item label="Pod副本" v-else>
+            <span>{{ workload.number_ready + "/" + workload.desired_number_scheduled }}</span>
+          </el-form-item>
+          <!-- <el-form-item label="选择器">
+            <span v-if="!deployment.label_selector">—</span>
+            <template v-else v-for="(val, key) in deployment.label_selector.matchLabels">
               <span :key="key">{{key}}: {{val}}<br/></span>
             </template>
           </el-form-item>
           <el-form-item label="标签">
-            <span v-if="!daemonset.labels">—</span>
-            <template v-else v-for="(val, key) in daemonset.labels">
+            <span v-if="!deployment.labels">—</span>
+            <template v-else v-for="(val, key) in deployment.labels">
               <span :key="key">{{key}}: {{val}}<br/></span>
             </template>
-          </el-form-item>
+          </el-form-item> -->
           <!-- <el-form-item label="注解">
-            <span v-if="!daemonset.annotations">—</span>
+            <span v-if="!deployment.annotations">—</span>
             
-            <template v-else v-for="(val, key) in daemonset.annotations">
+            <template v-else v-for="(val, key) in deployment.annotations">
               <span :key="key">{{key}}: {{val}}<br/></span>
             </template>
           </el-form-item> -->
         </el-form>
       </div>
-      
+
       <div style="padding: 0px 8px;">
         <div>Pods</div>
         <div class="msgClass" style="margin: 15px 10px 20px 10px;">
@@ -62,9 +64,16 @@
               min-width="150"
               show-overflow-tooltip>
               <template slot-scope="scope">
-                <span class="name-class" v-on:click="namePodClick(scope.row.namespace, scope.row.name)">
-                  {{ scope.row.name }}
-                </span>
+                <template v-if="$podOpPerm('get')">
+                  <span class="name-class" v-on:click="namePodClick(scope.row.namespace, scope.row.name)">
+                    {{ scope.row.name }}
+                  </span>
+                </template>
+                <template v-else>
+                  <span class="name-class">
+                    {{ scope.row.name }}
+                  </span>
+                </template>
               </template>
             </el-table-column>
             <el-table-column
@@ -126,7 +135,7 @@
                       <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="detail" />
                       <span style="margin-left: 5px;">详情</span>
                     </el-dropdown-item>
-                    <div v-if="$podOpPerm('update')" @mouseover="logContainerShow = true;" @mouseout="logContainerShow = false;">
+                    <div v-if="$podOpPerm('get')" @mouseover="logContainerShow = true;" @mouseout="logContainerShow = false;">
                       <el-dropdown-item @click.native.prevent="selectContainer = scope.row.containers[0].name; selectPodName = scope.row.name; logDialog = true;">
                         <div class="download">
                           <div>
@@ -173,6 +182,7 @@
           </el-table>
         </div>
       </div>
+
       <el-tabs value="containers" style="padding: 0px 8px;">
         <el-tab-pane label="容器" name="containers">
           <div class="msgClass">
@@ -270,6 +280,7 @@
               <el-table-column
                 prop="name"
                 label="名称"
+                min-width="8"
                 show-overflow-tooltip>
                 <template slot-scope="scope">
                   <span class="name-class" @click="toogleExpand(scope.row)">
@@ -280,13 +291,13 @@
               <el-table-column
                 prop="image"
                 label="镜像"
-                min-width=""
+                min-width="15"
                 show-overflow-tooltip>
               </el-table-column>
               <el-table-column
                 prop="image_pull_policy"
                 label="镜像拉取策略"
-                min-width=""
+                min-width="4"
                 show-overflow-tooltip>
               </el-table-column>
             </el-table>
@@ -294,17 +305,17 @@
         </el-tab-pane>
         <el-tab-pane label="存储" name="volumes">
           <div class="msgClass" style="padding: 10px 0px;">
-            <template v-if="daemonset.volumes && daemonset.volumes.length > 0">
-              <div v-for="v in daemonset.volumes" :key="v.name" style="margin: 15px 25px; font-size: 14px; color: #606266">
+            <template v-if="workload.volumes && workload.volumes.length > 0">
+              <div v-for="v in workload.volumes" :key="v.name" style="margin: 15px 25px; font-size: 14px; color: #606266">
                 <div style="margin-bottom: 6px;"><b>{{v.name}}</b></div>
                 <template v-for="(val, key) in v">
-                    <span v-if="key !== 'name'" :key="key"> 
-                      <span class="back-class">{{key}}</span>
-                      <span v-for="(ival, ikey) in val" :key="ikey" class="back-class">
-                        {{ikey}}: {{ival}}
-                      </span>
+                  <span v-if="key !== 'name'" :key="key"> 
+                    <span class="back-class">{{key}}</span>
+                    <span v-for="(ival, ikey) in val" :key="ikey" class="back-class">
+                      {{ikey}}: {{ival}}
                     </span>
-                  </template>
+                  </span>
+                </template>
               </div>
             </template>
             <div v-else style="padding: 25px 15px ;color: #909399; text-align: center">无挂载存储</div>
@@ -313,8 +324,8 @@
         <el-tab-pane label="状态" name="conditions">
           <div class="msgClass">
             <el-table
-              v-if="daemonset && daemonset.conditions && daemonset.conditions.length > 0"
-              :data="daemonset.conditions"
+              v-if="workload && workload.conditions && workload.conditions.length > 0"
+              :data="workload.conditions"
               class="table-fix"
               tooltip-effect="dark"
               style="width: 100%"
@@ -365,14 +376,14 @@
                 </template>
               </el-table-column>
             </el-table>
-            <div v-else style="padding: 25px 15px ;color: #909399; text-align: center">暂无数据</div>
+            <div v-else style="padding: 25px 15px ; color: #909399; text-align: center">暂无数据</div>
           </div>
         </el-tab-pane>
         <el-tab-pane label="事件" name="events">
-          <div class="msgClass">
+          <div class="msgClass" >
             <el-table
-              v-if="daemonsetEvents && daemonsetEvents.length > 0"
-              :data="daemonsetEvents"
+            v-if="events && events.length > 0"
+              :data="events"
               class="table-fix"
               tooltip-effect="dark"
               style="width: 100%"
@@ -404,7 +415,7 @@
                 show-overflow-tooltip>
                 <template slot-scope="scope">
                   <span>
-                    {{ scope.row.reason ? scope.row.reason : "—" }}
+                    {{ scope.row.reason ? scope.row.reason : "——" }}
                   </span>
                 </template>
               </el-table-column>
@@ -415,7 +426,7 @@
                 show-overflow-tooltip>
                 <template slot-scope="scope">
                   <span>
-                    {{ scope.row.message ? scope.row.message : "—" }}
+                    {{ scope.row.message ? scope.row.message : "——" }}
                   </span>
                 </template>
               </el-table-column>
@@ -424,12 +435,9 @@
                 label="触发时间"
                 min-width="50"
                 show-overflow-tooltip>
-                <template slot-scope="scope">
-                  {{ $dateFormat(scope.row.event_time) }}
-                </template>
               </el-table-column>
             </el-table>
-            <div v-else style="padding: 25px 15px ;color: #909399; text-align: center">暂无事件发生</div>
+            <div v-else style=" padding: 25px 15px ; color: #909399; text-align: center">暂无事件发生</div>
           </div>
         </el-tab-pane>
       </el-tabs>
@@ -446,7 +454,7 @@
         <yaml v-if="yamlDialog" v-model="yamlValue" :loading="yamlLoading"></yaml>
         <span slot="footer" class="dialog-footer">
           <el-button plain @click="yamlDialog = false" size="small">取 消</el-button>
-          <el-button plain @click="updateDaemonSet()" size="small">确 定</el-button>
+          <el-button plain @click="updateStatefulSet()" size="small">确 定</el-button>
         </span>
       </el-dialog>
     </div>
@@ -455,21 +463,25 @@
 
 <script>
 import { Clusterbar, Yaml } from '@/views/components'
-import { getDaemonSet, deleteDaemonSets, updateDaemonSet } from '@/api/daemonset'
 import { listEvents, buildEvent } from '@/api/event'
-import { listPods, containerClass, buildPods, podMatch, deletePods,  buildContainer, envStr, resourceFor} from '@/api/pods'
+import { getDeployment, deleteDeployments, updateDeployment, buildDeployment } from '@/api/deployment'
+import { getStatefulSet, deleteStatefulSets, updateStatefulSet, buildStatefulSet } from '@/api/statefulset'
+import { getDaemonSet, deleteDaemonSets, updateDaemonSet, buildDaemonSet } from '@/api/daemonset'
+import { listPods, containerClass, buildPods, buildContainer, podMatch, deletePods, envStr, resourceFor } from '@/api/pods'
+import { sse } from '@/api/cluster'
 import { Message } from 'element-ui'
 import { Terminal } from '@/views/components'
 import { Log } from '@/views/components'
 
 export default {
-  name: 'DaemonSetDetail',
+  name: 'WorkloadDetail',
   components: {
     Clusterbar,
     Terminal,
     Log,
     Yaml
   },
+  props: ["kind", "name"],
   data() {
     return {
       logContainerShow: false,
@@ -481,111 +493,62 @@ export default {
       terminalDialog: false,
       cellStyle: {border: 0},
       loading: true,
-      originDaemonSet: undefined,
+      originWorkload: undefined,
       pods: [],
       selectContainer: '',
       selectPodName: '',
-      daemonsetEvents: [],
+      events: [],
       eventLoading: true,
       envStr: envStr,
       resourceFor: resourceFor,
+      podSSE: undefined,
+      workloadSSE: undefined,
+      getFuncMap: {
+        'deployment': getDeployment,
+        'statefulset': getStatefulSet,
+        'daemonset': getDaemonSet,
+      },
+      deleteFuncMap: {
+        'deployment': deleteDeployments,
+        'statefulset': deleteStatefulSets,
+        'daemonset': deleteDaemonSets,
+      },
+      updateFuncMap: {
+        'deployment': updateDeployment,
+        'statefulset': updateStatefulSet,
+        'daemonset': updateDaemonSet,
+      },
+      buildFuncMap: {
+        'deployment': buildDeployment,
+        'statefulset': buildStatefulSet,
+        'daemonset': buildDaemonSet
+      }
     }
   },
   created() {
     this.fetchData()
   },
-  watch: {
-    daemonsetWatch: function (newObj) {
-      if (newObj && this.originDaemonSet) {
-        let newUid = newObj.resource.metadata.uid
-        if (newUid !== this.daemonset.uid) {
-          return
-        }
-        let newRv = newObj.resource.metadata.resourceVersion
-        if (this.daemonset.resource_version < newRv) {
-          this.originDaemonSet = newObj.resource
-        }
-      }
-    },
-    eventWatch: function (newObj) {
-      if (newObj && this.originDaemonSet) {
-        let event = newObj.resource
-        if (event.involvedObject.namespace !== this.daemonset.namespace) return
-        if (event.involvedObject.uid !== this.daemonset.uid) return
-        let newUid = newObj.resource.metadata.uid
-        if (newObj.event === 'add') {
-          this.daemonsetEvents.push(buildEvent(event))
-        } else if (newObj.event == 'update') {
-          let newRv = newObj.resource.metadata.resourceVersion
-          for (let i in this.daemonsetEvents) {
-            let d = this.daemonsetEvents[i]
-            if (d.uid === newUid) {
-              if (d.resource_version < newRv){
-                let newEvent = buildEvent(newObj.resource)
-                this.$set(this.daemonsetEvents, i, newEvent)
-              }
-              break
-            }
-          }
-        } else if (newObj.event === 'delete') {
-          this.daemonsetEvents = this.daemonsetEvents.filter(( { uid } ) => uid !== newUid)
-        }
-      }
-    },
-    podsWatch: function (newObj) {
-      if (newObj && this.originDaemonSet) {
-        let isPodMatch = podMatch(this.originDaemonSet.spec.selector, newObj.resource.metadata.labels)
-        if (isPodMatch) {
-          let newUid = newObj.resource.metadata.uid
-          let newRv = newObj.resource.metadata.resourceVersion
-          if (newObj.event === 'add') {
-            this.pods.push(buildPods(newObj.resource))
-          } else if (newObj.event === 'update') {
-            for (let i in this.pods) {
-              let p = this.pods[i]
-              if (p.uid === newUid && p.resource_version < newRv) {
-                let newPod = buildPods(newObj.resource)
-                this.$set(this.pods, i, newPod)
-                break
-              }
-            }
-          } else if (newObj.event === 'delete') {
-            this.pods = this.pods.filter(( { uid } ) => uid !== newUid)
-          }
-        }
-      }
-    }
+  beforeDestroy() {
+    if(this.workloadSSE) this.workloadSSE.disconnect()
+    if(this.podSSE) this.podSSE.disconnect()
   },
   computed: {
     titleName: function() {
-      return ['DaemonSets', this.daemonsetName]
-    },
-    daemonsetName: function() {
-      return this.$route.params ? this.$route.params.daemonsetName : ''
+      return ['Deployments', this.name]
     },
     namespace: function() {
       return this.$route.params ? this.$route.params.namespace : ''
     },
-    daemonset: function() {
-      let p = this.buildDaemonSet(this.originDaemonSet)
+    workload: function() {
+      if(!this.originWorkload) return {}
+      if(!this.buildFuncMap[this.kind]) return {}
+      let p = this.buildFuncMap[this.kind](this.originWorkload)
       return p
     },
-    cluster: function() {
-      return this.$store.state.cluster
-    },
-    daemonsetWatch: function() {
-      return this.$store.getters["ws/daemonsetsWatch"]
-    },
-    eventWatch: function() {
-      return this.$store.getters["ws/eventWatch"]
-    },
-    podsWatch: function() {
-      return this.$store.getters["ws/podWatch"]
-    },
     containers: function() {
-      if (!this.originDaemonSet) return []
+      if (!this.originWorkload) return []
       let containers = []
-      let tmpl = this.originDaemonSet.spec.template;
+      let tmpl = this.originWorkload.spec.template;
       for (let c of tmpl.spec.containers) {
         let bc = buildContainer(c)
         containers.push(bc)
@@ -598,11 +561,14 @@ export default {
       }
       return [...init_containers, ...containers]
     },
+    cluster: function() {
+      return this.$store.state.cluster
+    },
   },
   methods: {
     fetchData: function() {
-      this.originDaemonSet = null
-      this.daemonsetEvents = []
+      this.originWorkload = null
+      this.events = []
       this.loading = true
       this.eventLoading = true
       const cluster = this.$store.state.cluster
@@ -618,26 +584,34 @@ export default {
         this.eventLoading = false
         return
       }
-      if (!this.daemonsetName) {
-        Message.error("获取DaemonSet名称参数异常，请刷新重试")
+      if (!this.name) {
+        Message.error("名称参数名称异常，请刷新重试")
         this.loading = false
         this.eventLoading = false
         return
       }
-      getDaemonSet(cluster, this.namespace, this.daemonsetName).then(response => {
+      if(!this.getFuncMap[this.kind]) {
+        Message.error("获取参数类型异常，请刷新重试")
+        this.loading = false
+        this.eventLoading = false
+        return
+      }
+      this.getFuncMap[this.kind](cluster, this.namespace, this.name).then(response => {
         // this.loading = false
-        this.originDaemonSet = response.data
-        listPods(cluster, this.originDaemonSet.spec.selector).then(response => {
+        this.originWorkload = response.data
+        this.fetchWorkloadSSE()
+        listPods(cluster, this.originWorkload.spec.selector).then(response => {
           this.loading = false
           this.pods = response.data
+          this.fetchPodSSE()
         }).catch(() => {
           this.loading = false
         })
 
-        listEvents(cluster, this.originDaemonSet.metadata.uid).then(response => {
+        listEvents(cluster, this.originWorkload.metadata.uid).then(response => {
           this.eventLoading = false
           if (response.data) {
-            this.daemonsetEvents = response.data.length > 0 ? response.data : []
+            this.events = response.data.length > 0 ? response.data : []
           }
         }).catch(() => {
           this.eventLoading = false
@@ -647,83 +621,121 @@ export default {
         this.eventLoading = false
       })
     },
-    buildDaemonSet: function(daemonset) {
-      if (!daemonset) return {}
-      let p = {
-        uid: daemonset.metadata.uid,
-        namespace: daemonset.metadata.namespace,
-        name: daemonset.metadata.name,
-        desired_number_scheduled: daemonset.status.desiredNumberScheduled || 0,
-        number_ready: daemonset.status.numberReady || 0,
-        resource_version: daemonset.metadata.resourceVersion,
-        strategy: daemonset.spec.updateStrategy.type,
-        conditions: daemonset.status.conditions,
-        created: daemonset.metadata.creationTimestamp,
-        label_selector: daemonset.spec.selector,
-        labels: daemonset.metadata.labels,
-        annotations: daemonset.metadata.annotations,
-        volumes: daemonset.spec.template.spec.volumes,
+    fetchWorkloadSSE() {
+      this.workloadSSE = sse(this.$sse, this.sseWorkloadWatch, this.cluster, {type: this.kind, uid: this.workload.uid})
+    },
+    sseWorkloadWatch: function (newObj) {
+      if (newObj && this.originWorkload) {
+        let newUid = newObj.resource.metadata.uid
+        if (newUid !== this.workload.uid) {
+          return
+        }
+        let newRv = newObj.resource.metadata.resourceVersion
+        if (this.workload.resource_version < newRv) {
+          // this.$set(this.originPod, newPod)
+          this.originWorkload = newObj.resource
+        }
       }
-      return p
+    },
+    fetchPodSSE() {
+      let params = {
+        type: 'pods',
+        namespace: this.namespace,
+        selector: JSON.stringify(this.workload.label_selector.matchLabels)
+      }
+      this.podSSE = sse(this.$sse, this.ssePodsWatch, this.cluster, params)
+    },
+    ssePodsWatch: function (newObj) {
+      if (newObj && this.originWorkload) {
+        let isPodMatch = podMatch(this.originWorkload.spec.selector, newObj.resource.metadata.labels)
+        if (isPodMatch) {
+          let newUid = newObj.resource.metadata.uid
+          let newRv = newObj.resource.metadata.resourceVersion
+          if (newObj.event === 'add') {
+            for (let i in this.pods) {
+              let p = this.pods[i]
+              if (p.uid === newUid) return
+            }
+            this.pods.push(buildPods(newObj.resource))
+          } else if (newObj.event === 'update') {
+            for (let i in this.pods) {
+              let p = this.pods[i]
+              if (p.uid === newUid && p.resource_version < newRv) {
+                let newPod = buildPods(newObj.resource)
+                this.$set(this.pods, i, newPod)
+                break
+              }
+            }
+          } else if (newObj.event === 'delete') {
+            this.pods = this.pods.filter(( { uid } ) => uid !== newUid)
+          }
+        }
+      }
     },
     toogleExpand: function(row) {
       let $table = this.$refs.table;
       $table.toggleRowExpansion(row)
     },
-    deleteDaemonSets: function() {
+    deleteWorkloads: function() {
       const cluster = this.$store.state.cluster
       if (!cluster) {
         Message.error("获取集群参数异常，请刷新重试")
         return
       }
-      if ( !this.daemonset ) {
-        Message.error("获取DaemonSet参数异常，请刷新重试")
+      if ( !this.workload ) {
+        Message.error("获取资源数据异常，请刷新重试")
+        return
       }
-      let daemonsets = [{
-        namespace: this.daemonset.namespace,
-        name: this.daemonset.name,
+      if(!this.deleteFuncMap(this.kind)) {
+        Message.error("获取资源类型异常，请刷新重试")
+        return
+      }
+      let workloads = [{
+        namespace: this.namespace,
+        name: this.name,
       }]
       let params = {
-        resources: daemonsets
+        resources: workloads
       }
-      deleteDaemonSets(cluster, params).then(() => {
+      this.deleteFuncMap[this.kind](cluster, params).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)
       })
     },
-    getDaemonSetYaml: function() {
-      if (!this.daemonset) {
-        Message.error("获取DaemonSet参数异常，请刷新重试")
+    getWorkloadYaml: function() {
+      if (!this.workload) {
+        Message.error("获取资源参数异常，请刷新重试")
         return
       }
-      const cluster = this.$store.state.cluster
-      if (!cluster) {
+      if (!this.cluster) {
         Message.error("获取集群参数异常，请刷新重试")
         return
       }
       this.yamlValue = ""
       this.yamlDialog = true
       this.yamlLoading = true
-      getDaemonSet(cluster, this.daemonset.namespace, this.daemonset.name, "yaml").then(response => {
+      this.getFuncMap[this.kind](this.cluster, this.namespace, this.name, "yaml").then(response => {
         this.yamlLoading = false
         this.yamlValue = response.data
       }).catch(() => {
         this.yamlLoading = false
       })
     },
-    updateDaemonSet: function() {
-      if (!this.daemonset) {
-        Message.error("获取DaemonSet参数异常，请刷新重试")
+    updateWorkload: function() {
+      if (!this.workload) {
+        Message.error("获取资源参数异常，请刷新重试")
         return
       }
-      const cluster = this.$store.state.cluster
-      if (!cluster) {
+      if (!this.cluster) {
         Message.error("获取集群参数异常，请刷新重试")
         return
       }
-      console.log(this.yamlValue)
-      updateDaemonSet(cluster, this.daemonset.namespace, this.daemonset.name, this.yamlValue).then(() => {
+      if(!this.updateFuncMap(this.kind)) {
+        Message.error("获取资源类型异常，请刷新重试")
+        return
+      }
+      this.updateFuncMap[this.kind](this.cluster, this.namespace, this.name, this.yamlValue).then(() => {
         Message.success("更新成功")
       }).catch(() => {
         // console.log(e) 
@@ -736,8 +748,7 @@ export default {
       this.$router.push({name: 'podsDetail', params: {namespace: namespace, podName: name}})
     },
     deletePods: function(pods) {
-      const cluster = this.$store.state.cluster
-      if (!cluster) {
+      if (!this.cluster) {
         Message.error("获取集群参数异常，请刷新重试")
         return
       }
@@ -748,7 +759,7 @@ export default {
       let params = {
         resources: pods
       }
-      deletePods(cluster, params).then(() => {
+      deletePods(this.cluster, params).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)
@@ -761,7 +772,7 @@ export default {
 <style lang="scss" scoped>
 .dashboard {
   &-container {
-    margin: 10px 30px;
+    margin: 10px 20px;
   }
   &-text {
     font-size: 30px;
@@ -820,65 +831,73 @@ export default {
 }
 </style>
 
-<style>
+<style lang="scss">
 /* .el-table__expand-icon {
   display: none;
 } */
-.el-table__expanded-cell[class*=cell] {
-  padding-top: 5px;
-}
-.table-expand {
-  font-size: 0;
-}
-.table-expand label {
-  width: 90px;
-  color: #99a9bf;
-  font-weight: 400;
-}
-.table-expand .el-form-item {
-  margin-right: 0;
-  margin-bottom: 0;
-  width: 100%;
-}
+.workload-container {
+  .el-table__expanded-cell[class*=cell] {
+    padding-top: 5px;
+  }
+  .table-expand {
+    font-size: 0;
+  }
+  .table-expand label {
+    width: 90px;
+    color: #99a9bf;
+    font-weight: 400;
+  }
+  .table-expand .el-form-item {
+    margin-right: 0;
+    margin-bottom: 0;
+    width: 100%;
+  }
 
-.pod-item {
-  margin: 20px 5px 30px 5px;
-  padding: 10px 20px;
-  font-size: 0;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-}
-.pod-item label {
-  width: 90px;
-  color: #99a9bf;
-  font-weight: 400;
-}
-.pod-item .el-form-item {
-  margin-right: 0;
-  margin-bottom: 0;
-  width: 50%;
-}
-.pod-item span {
-  color: #606266;
-}
-/* .el-collapse {
-  border-top: 0px;
-} */
-.title-class {
-  margin-left: 5px;
-  color: #606266;
-  font-size: 13px;
-}
-.podCollapse .el-collapse-item__content {
-  padding: 0px 10px 15px;
-  /* font-size: 13px; */
-}
-.el-dialog__body {
-  padding-top: 5px;
-}
-/* .msgClass {
-  margin: 0px 25px;
-} */
-.msgClass .el-table::before {
-  height: 0px;
+  .pod-item {
+    margin: 20px 5px 30px 5px;
+    padding: 10px 20px;
+    font-size: 0;
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  }
+  .pod-item label {
+    /* width: 90px; */
+    color: #99a9bf;
+    font-weight: 400;
+  }
+  .pod-item .el-form-item {
+    margin-right: 0;
+    margin-bottom: 0;
+    width: 33%;
+  }
+  .pod-item span {
+    color: #606266;
+  }
+  .el-form-item__label{
+    line-height: 30px;
+  }
+  .el-form-item__content {
+    line-height: 30px;
+  }
+  /* .el-collapse {
+    border-top: 0px;
+  } */
+  .title-class {
+    margin-left: 5px;
+    color: #606266;
+    font-size: 13px;
+  }
+  .podCollapse .el-collapse-item__content {
+    padding: 0px 10px 15px;
+    /* font-size: 13px; */
+  }
+  .el-dialog__body {
+    padding-top: 5px;
+  }
+  /* .msgClass {
+    margin: 0px 25px;
+  } */
+  .msgClass .el-table::before {
+    height: 0px;
+  }
 }
 </style>
