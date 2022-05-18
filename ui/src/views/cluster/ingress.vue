@@ -22,11 +22,11 @@
           label="名称"
           min-width="50"
           show-overflow-tooltip>
-          <template slot-scope="scope">
+          <!-- <template slot-scope="scope">
             <span class="name-class" v-on:click="nameClick(scope.row.namespace, scope.row.name)">
               {{ scope.row.name }}
             </span>
-          </template>
+          </template> -->
         </el-table-column>
         <el-table-column
           prop="namespace"
@@ -593,7 +593,7 @@ export default {
         Message.error(err)
         return
       }
-      if(this.ingressGroup == 'networking.k8s.io') {
+      if(this.ingressGroup == 'networking') {
         ingress.apiVersion = 'networking.k8s.io/v1'
       }
       
