@@ -41,8 +41,6 @@ func (a *ClusterAgent) resolveHost(r *http.Request) (host string) {
 }
 
 var clusterAgentYaml = `
----
-
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -53,7 +51,7 @@ metadata:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: kubespace
+  name: kubespace-agent
   namespace: kubespace
 
 ---
@@ -61,11 +59,11 @@ metadata:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: kubespace-admin
+  name: kubespace-agent
   namespace: kubespace
 subjects:
 - kind: ServiceAccount
-  name: kubespace
+  name: kubespace-agent
   namespace: kubespace
 roleRef:
   kind: ClusterRole
@@ -77,11 +75,11 @@ roleRef:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: kubespace-admin
+  name: kubespace-agent
   namespace: kubespace
 subjects:
 - kind: ServiceAccount
-  name: kubespace
+  name: kubespace-agent
   namespace: kubespace
 roleRef:
   kind: ClusterRole
@@ -96,19 +94,23 @@ metadata:
   name: kubespace-agent
   namespace: kubespace
   labels:
-    kubespace-app: agent
+    kubespace-app: kubespace-agent
 spec:
   replicas: 1
   selector:
     matchLabels:
-      kubespace-app: agent
+      app.kubernetes.io/instance: kubespace
+      app.kubernetes.io/name: kubespace
+      kubespace-app: kubespace-agent
   template:
     metadata:
       labels:
-        kubespace-app: agent
+        app.kubernetes.io/instance: kubespace
+        app.kubernetes.io/name: kubespace
+        kubespace-app: kubespace-agent
     spec:
       containers:
-      - name: agent
+      - name: kubespace-agent
         image: %s:%s
         command:
         - "/agent"
@@ -118,5 +120,5 @@ spec:
         env:
         - name: TZ
           value: Asia/Shanghai
-      serviceAccountName: kubespace
+      serviceAccountName: kubespace-agent
 `
