@@ -240,7 +240,6 @@ func (clu *Cluster) resourceSSE(c *Context) *utils.Response {
 	clientGone := w.CloseNotify()
 	c.SSEvent("message", "\n")
 	w.Flush()
-	//c.Stream()
 	tick := time.NewTicker(30 * time.Second)
 
 	for {

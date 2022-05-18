@@ -121,7 +121,8 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { listJobs, getJob, deleteJobs, updateJob } from '@/api/job'
+import { sse } from '@/api/cluster'
+import { listJobs, getJob, deleteJobs, updateJob, buildJobs } from '@/api/job'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
 
@@ -140,50 +141,30 @@ export default {
         yamlLoading: true,
         cellStyle: {border: 0},
         titleName: ["Jobs"],
-        maxHeight: window.innerHeight - 150,
+        maxHeight: window.innerHeight - 135,
         loading: true,
         originJobs: [],
         search_ns: [],
         search_name: '',
         delFunc: undefined,
         delJobs: [],
+        clusterSSE: undefined
       }
   },
   created() {
     this.fetchData()
   },
+  beforeDestroy() {
+    if(this.clusterSSE) this.clusterSSE.disconnect()
+  },
   mounted() {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150
+        let heightStyle = window.innerHeight - 135
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
-    }
-  },
-  watch: {
-    jobsWatch: function (newObj) {
-      if (newObj) {
-        let newUid = newObj.resource.metadata.uid
-        let newRv = newObj.resource.metadata.resourceVersion
-        if (newObj.event === 'add') {
-          this.originJobs.push(this.buildJobs(newObj.resource))
-        } else if (newObj.event === 'update') {
-          for (let i in this.originJobs) {
-            let d = this.originJobs[i]
-            if (d.uid === newUid) {
-              if (d.resource_version < newRv){
-                let newDp = this.buildJobs(newObj.resource)
-                this.$set(this.originJobs, i, newDp)
-              }
-              break
-            }
-          }
-        } else if (newObj.event === 'delete') {
-          this.originJobs = this.originJobs.filter(( { uid } ) => uid !== newUid)
-        }
-      }
     }
   },
   computed: {
@@ -201,8 +182,8 @@ export default {
       }
       return dlist
     },
-    jobsWatch: function() {
-      return this.$store.getters["ws/jobsWatch"]
+    cluster() {
+      return this.$store.state.cluster
     }
   },
   methods: {
@@ -214,12 +195,46 @@ export default {
         listJobs(cluster).then(response => {
           this.loading = false
           this.originJobs = response.data ? response.data : []
+          if(!this.clusterSSE) this.fetchSSE()
         }).catch(() => {
           this.loading = false
         })
       } else {
         this.loading = false
         Message.error("获取集群异常，请刷新重试")
+      }
+    },
+    fetchSSE() {
+      if(!this.clusterSSE) {
+        this.clusterSSE = sse(this.$sse, this.sseWatch, this.cluster, {type: 'job'})
+      }
+    },
+    sseWatch(newObj) {
+      if (newObj) {
+        let newUid = newObj.resource.metadata.uid
+        let newRv = newObj.resource.metadata.resourceVersion
+        if (newObj.event === 'add') {
+          for(let i in this.originJobs) {
+            let d = this.originJobs[i]
+            if (d.uid === newUid) {
+              return
+            }
+          }
+          this.originJobs.push(buildJobs(newObj.resource))
+        } else if (newObj.event === 'update') {
+          for (let i in this.originJobs) {
+            let d = this.originJobs[i]
+            if (d.uid === newUid) {
+              if (d.resource_version < newRv){
+                let newDp = buildJobs(newObj.resource)
+                this.$set(this.originJobs, i, newDp)
+              }
+              break
+            }
+          }
+        } else if (newObj.event === 'delete') {
+          this.originJobs = this.originJobs.filter(( { uid } ) => uid !== newUid)
+        }
       }
     },
     nsSearch: function(vals) {

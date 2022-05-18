@@ -142,7 +142,7 @@ const Routes = [
         path: 'job/:namespace/:jobName',
         name: 'jobDetail',
         hidden: true,
-        component: () => import('@/views/cluster/jobDetail'),
+        component: () => import('@/views/cluster/jobDetail1'),
         meta: { title: '任务', group: 'cluster', sideName: "job", object: 'job' }
       },
       {

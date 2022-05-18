@@ -16,11 +16,11 @@
         row-key="uid"
         >
         <el-table-column prop="name" label="名称" show-overflow-tooltip min-width="15">
-          <template slot-scope="scope">
+          <!-- <template slot-scope="scope">
             <span class="name-class" v-on:click="nameClick(scope.row.id)">
               {{ scope.row.name }}
             </span>
-          </template>
+          </template> -->
         </el-table-column>
         <el-table-column prop="package_version" label="版本" show-overflow-tooltip min-width="15">
           <template slot-scope="scope">

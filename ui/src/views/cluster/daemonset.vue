@@ -130,6 +130,7 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
+import { sse } from '@/api/cluster'
 import { listDaemonSets, getDaemonSet, deleteDaemonSets, updateDaemonSet } from '@/api/daemonset'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
@@ -149,13 +150,14 @@ export default {
         yamlLoading: true,
         cellStyle: {border: 0},
         titleName: ["DaemonSets"],
-        maxHeight: window.innerHeight - 150,
+        maxHeight: window.innerHeight - 135,
         loading: true,
         originDaemonSets: [],
         search_ns: [],
         search_name: '',
         delFunc: undefined,
         delDaemonSets: [],
+        clusterSSE: undefined
       }
   },
   created() {
@@ -165,35 +167,14 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150
+        let heightStyle = window.innerHeight - 135
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
     }
   },
-  watch: {
-    daemonsetsWatch: function (newObj) {
-      if (newObj) {
-        let newUid = newObj.resource.metadata.uid
-        let newRv = newObj.resource.metadata.resourceVersion
-        if (newObj.event === 'add') {
-          this.originDaemonSets.push(this.buildDaemonSets(newObj.resource))
-        } else if (newObj.event === 'update') {
-          for (let i in this.originDaemonSets) {
-            let d = this.originDaemonSets[i]
-            if (d.uid === newUid) {
-              if (d.resource_version < newRv){
-                let newDp = this.buildDaemonSets(newObj.resource)
-                this.$set(this.originDaemonSets, i, newDp)
-              }
-              break
-            }
-          }
-        } else if (newObj.event === 'delete') {
-          this.originDaemonSets = this.originDaemonSets.filter(( { uid } ) => uid !== newUid)
-        }
-      }
-    }
+  beforeDestroy() {
+    if(this.clusterSSE) this.clusterSSE.disconnect()
   },
   computed: {
     daemonsets: function() {
@@ -210,8 +191,8 @@ export default {
       }
       return dlist
     },
-    daemonsetsWatch: function() {
-      return this.$store.getters["ws/daemonsetsWatch"]
+    cluster() {
+      return this.$store.state.cluster
     }
   },
   methods: {
@@ -223,12 +204,46 @@ export default {
         listDaemonSets(cluster).then(response => {
           this.loading = false
           this.originDaemonSets = response.data
+          if(!this.clusterSSE) this.fetchSSE()
         }).catch(() => {
           this.loading = false
         })
       } else {
         this.loading = false
         Message.error("获取集群异常，请刷新重试")
+      }
+    },
+    fetchSSE() {
+      if(!this.clusterSSE) {
+        this.clusterSSE = sse(this.$sse, this.sseWatch, this.cluster, {type: 'daemonset'})
+      }
+    },
+    sseWatch(newObj) {
+      if (newObj) {
+        let newUid = newObj.resource.metadata.uid
+        let newRv = newObj.resource.metadata.resourceVersion
+        if (newObj.event === 'add') {
+          for(let i in this.originDaemonSets) {
+            let d = this.originDaemonSets[i]
+            if (d.uid === newUid) {
+              return
+            }
+          }
+          this.originDaemonSets.push(this.buildDaemonSets(newObj.resource))
+        } else if (newObj.event === 'update') {
+          for (let i in this.originDaemonSets) {
+            let d = this.originDaemonSets[i]
+            if (d.uid === newUid) {
+              if (d.resource_version < newRv){
+                let newDp = this.buildDaemonSets(newObj.resource)
+                this.$set(this.originDaemonSets, i, newDp)
+              }
+              break
+            }
+          }
+        } else if (newObj.event === 'delete') {
+          this.originDaemonSets = this.originDaemonSets.filter(( { uid } ) => uid !== newUid)
+        }
       }
     },
     nsSearch: function(vals) {

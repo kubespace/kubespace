@@ -122,8 +122,8 @@ export default {
 
 <style scoped>
 .log-class {
-  /* background: #000; */
-  /* color: #fff; */
+  background: #303133;
+  color: #C0C4CC;
   padding: 0px 10px;
   font-size: 14px;
   height: 500px;

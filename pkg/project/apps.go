@@ -364,17 +364,17 @@ func (a *AppService) GetApp(appId uint) *utils.Response {
 			"name":           projectApp.Name,
 			"with_workloads": true,
 		}
-		nameStatusMap := map[string]*AppRuntimeStatus{}
+		//nameStatusMap := map[string]*AppRuntimeStatus{}
 		res := a.KubeResources.Helm.Get(clusterId, statusParams)
 		if res.IsSuccess() {
-			var appStatuses []*AppRuntimeStatus
+			var appStatuses AppRuntimeStatus
 			dataBytes, _ := json.Marshal(res.Data)
 			err = json.Unmarshal(dataBytes, &appStatuses)
 			if err != nil {
 				klog.Error("unmarshal app status error: ", err.Error())
-			}
-			for _, status := range appStatuses {
-				nameStatusMap[status.Name] = status
+				klog.Infof("unmarshal app data: %s", string(dataBytes))
+			} else {
+				data["status"] = appStatuses.Status
 			}
 		} else {
 			klog.Error("get app status error: ", res.Msg)

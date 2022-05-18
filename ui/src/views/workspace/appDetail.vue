@@ -405,7 +405,7 @@
 <script>
 import { Clusterbar, Log, Terminal } from '@/views/components'
 import { getApp } from '@/api/project/apps'
-import { containerClass, buildPods } from '@/api/pods'
+import { containerClass, buildPods, deletePods } from '@/api/pods'
 import { Message } from 'element-ui'
 
 export default {
@@ -532,15 +532,32 @@ export default {
         return
       }
       this.loading = true
-      getApp(this.appId)
-        .then((response) => {
-          this.originApp = response.data || {};
-          this.titleName = ["应用管理", this.originApp.name]
-          this.loading = false
-        })
-        .catch(() => {
-          this.loading = false
-        })
+      getApp(this.appId).then((response) => {
+        this.originApp = response.data || {};
+        this.titleName = ["应用管理", this.originApp.name]
+        this.loading = false
+      }).catch(() => {
+        this.loading = false
+      })
+    },
+    deletePods: function(pods) {
+      if (!this.originApp.cluster_id) {
+        Message.error("获取集群参数异常，请刷新重试")
+        return
+      }
+      if ( pods.length <= 0 ){
+        Message.error("请选择要删除的Pod")
+        return
+      }
+      let params = {
+        resources: pods
+      }
+      deletePods(this.originApp.cluster_id, params).then(() => {
+        Message.success("删除成功")
+        this.fetchData()
+      }).catch(() => {
+        // console.log(e)
+      })
     },
   },
 }

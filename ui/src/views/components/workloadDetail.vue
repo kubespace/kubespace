@@ -14,34 +14,30 @@
           <el-form-item label="命名空间">
             <span>{{ workload.namespace }}</span>
           </el-form-item>
-          <el-form-item label="更新策略">
+          <el-form-item v-if="kind != 'job' && kind != 'cronjob'" label="更新策略">
             <span>{{ workload.strategy }}</span>
           </el-form-item>
-          <el-form-item label="Pod副本" v-if="kind != 'daemonset'">
-            <span>{{ workload.ready_replicas + "/" + workload.replicas }}</span>
+          <el-form-item v-if="kind == 'job'" label="Completions">
+            <span>{{ workload.completions }}</span>
           </el-form-item>
-          <el-form-item label="Pod副本" v-else>
+          <el-form-item label="Pod副本" v-if="kind == 'daemonset'">
             <span>{{ workload.number_ready + "/" + workload.desired_number_scheduled }}</span>
           </el-form-item>
-          <!-- <el-form-item label="选择器">
-            <span v-if="!deployment.label_selector">—</span>
-            <template v-else v-for="(val, key) in deployment.label_selector.matchLabels">
-              <span :key="key">{{key}}: {{val}}<br/></span>
-            </template>
+          <el-form-item label="Pod副本" v-else-if="kind != 'job' && kind != 'cronjob'">
+            <span>{{ workload.ready_replicas + "/" + workload.replicas }}</span>
           </el-form-item>
-          <el-form-item label="标签">
-            <span v-if="!deployment.labels">—</span>
-            <template v-else v-for="(val, key) in deployment.labels">
-              <span :key="key">{{key}}: {{val}}<br/></span>
-            </template>
-          </el-form-item> -->
-          <!-- <el-form-item label="注解">
-            <span v-if="!deployment.annotations">—</span>
-            
-            <template v-else v-for="(val, key) in deployment.annotations">
-              <span :key="key">{{key}}: {{val}}<br/></span>
-            </template>
-          </el-form-item> -->
+          <el-form-item v-if="kind == 'job'" label="Pods">
+            <!-- <span>{{ job.number_ready + "/" + job.desired_number_scheduled }}</span> -->
+            <span v-if="workload.active > 0" class="back-class">
+              {{ workload.active }} Running
+            </span>
+            <span v-if="workload.succeeded > 0" class="back-class">
+              {{ workload.succeeded }} Succeeded
+            </span>
+            <span v-if="workload.failed > 0" class="back-class">
+              {{ workload.failed }} Failed
+            </span>
+          </el-form-item>
         </el-form>
       </div>
 
@@ -64,13 +60,8 @@
               min-width="150"
               show-overflow-tooltip>
               <template slot-scope="scope">
-                <template v-if="$podOpPerm('get')">
+                <template>
                   <span class="name-class" v-on:click="namePodClick(scope.row.namespace, scope.row.name)">
-                    {{ scope.row.name }}
-                  </span>
-                </template>
-                <template v-else>
-                  <span class="name-class">
                     {{ scope.row.name }}
                   </span>
                 </template>
@@ -131,11 +122,11 @@
                 <el-dropdown size="medium" >
                   <el-link :underline="false"><svg-icon style="width: 1.3em; height: 1.3em;" icon-class="operate" /></el-link>
                   <el-dropdown-menu slot="dropdown">
-                    <el-dropdown-item v-if="$podOpPerm('get')" @click.native.prevent="namePodClick(scope.row.namespace, scope.row.name)">
+                    <el-dropdown-item @click.native.prevent="namePodClick(scope.row.namespace, scope.row.name)">
                       <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="detail" />
                       <span style="margin-left: 5px;">详情</span>
                     </el-dropdown-item>
-                    <div v-if="$podOpPerm('get')" @mouseover="logContainerShow = true;" @mouseout="logContainerShow = false;">
+                    <div @mouseover="logContainerShow = true;" @mouseout="logContainerShow = false;">
                       <el-dropdown-item @click.native.prevent="selectContainer = scope.row.containers[0].name; selectPodName = scope.row.name; logDialog = true;">
                         <div class="download">
                           <div>
@@ -155,7 +146,7 @@
                         </div>
                       </el-dropdown-item>
                     </div>
-                    <div v-if="$podOpPerm('update')" @mouseover="termContainerShow = true;" @mouseout="termContainerShow = false;">
+                    <div @mouseover="termContainerShow = true;" @mouseout="termContainerShow = false;">
                       <el-dropdown-item @click.native.prevent="selectContainer = scope.row.containers[0].name; selectPodName = scope.row.name; terminalDialog = true;">
                         <div class="download">
                           <div>
@@ -171,7 +162,7 @@
                         </div>
                       </el-dropdown-item>
                     </div>
-                    <el-dropdown-item v-if="$podOpPerm('delete')" @click.native.prevent="deletePods([{namespace: scope.row.namespace, name: scope.row.name}])">
+                    <el-dropdown-item @click.native.prevent="deletePods([{namespace: scope.row.namespace, name: scope.row.name}])">
                       <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="delete" />
                       <span style="margin-left: 5px;">删除</span>
                     </el-dropdown-item>
@@ -467,6 +458,7 @@ import { listEvents, buildEvent } from '@/api/event'
 import { getDeployment, deleteDeployments, updateDeployment, buildDeployment } from '@/api/deployment'
 import { getStatefulSet, deleteStatefulSets, updateStatefulSet, buildStatefulSet } from '@/api/statefulset'
 import { getDaemonSet, deleteDaemonSets, updateDaemonSet, buildDaemonSet } from '@/api/daemonset'
+import { getJob, deleteJobs, updateJob, buildJobs } from '@/api/job'
 import { listPods, containerClass, buildPods, buildContainer, podMatch, deletePods, envStr, resourceFor } from '@/api/pods'
 import { sse } from '@/api/cluster'
 import { Message } from 'element-ui'
@@ -507,21 +499,25 @@ export default {
         'deployment': getDeployment,
         'statefulset': getStatefulSet,
         'daemonset': getDaemonSet,
+        'job': getJob,
       },
       deleteFuncMap: {
         'deployment': deleteDeployments,
         'statefulset': deleteStatefulSets,
         'daemonset': deleteDaemonSets,
+        'job': deleteJobs,
       },
       updateFuncMap: {
         'deployment': updateDeployment,
         'statefulset': updateStatefulSet,
         'daemonset': updateDaemonSet,
+        'job': updateJob,
       },
       buildFuncMap: {
         'deployment': buildDeployment,
         'statefulset': buildStatefulSet,
-        'daemonset': buildDaemonSet
+        'daemonset': buildDaemonSet,
+        'job': buildJobs
       }
     }
   },
@@ -534,7 +530,13 @@ export default {
   },
   computed: {
     titleName: function() {
-      return ['Deployments', this.name]
+      let titleMap = {
+        'deployment': 'Deployments',
+        'statefulset': 'StatefulSets',
+        'daemonset': 'DaemonSets',
+        'job': "Jobs"
+      }
+      return [titleMap[this.kind], this.name]
     },
     namespace: function() {
       return this.$route.params ? this.$route.params.namespace : ''
@@ -602,7 +604,7 @@ export default {
         this.fetchWorkloadSSE()
         listPods(cluster, this.originWorkload.spec.selector).then(response => {
           this.loading = false
-          this.pods = response.data
+          this.pods = response.data || []
           this.fetchPodSSE()
         }).catch(() => {
           this.loading = false
@@ -686,7 +688,7 @@ export default {
         Message.error("获取资源数据异常，请刷新重试")
         return
       }
-      if(!this.deleteFuncMap(this.kind)) {
+      if(!this.deleteFuncMap[this.kind]) {
         Message.error("获取资源类型异常，请刷新重试")
         return
       }
@@ -731,7 +733,7 @@ export default {
         Message.error("获取集群参数异常，请刷新重试")
         return
       }
-      if(!this.updateFuncMap(this.kind)) {
+      if(!this.updateFuncMap[this.kind]) {
         Message.error("获取资源类型异常，请刷新重试")
         return
       }

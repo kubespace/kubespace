@@ -61,7 +61,8 @@ export function buildJobs(job) {
     resource_version: job.metadata.resourceVersion,
     conditions: conditions,
     node_selector: job.spec.template.spec.nodeSelector,
-    created: job.metadata.creationTimestamp
+    created: job.metadata.creationTimestamp,
+    label_selector: job.spec.selector,
   }
   return p
 }
