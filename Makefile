@@ -1,6 +1,6 @@
 ENVVAR=CGO_ENABLED=0 LD_FLAGS=-s
 GOOS?=linux
-REGISTRY?=openspacee
+REGISTRY?=kubespace
 TAG?=dev
 
 
