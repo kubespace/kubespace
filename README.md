@@ -1,80 +1,112 @@
-# OpenSpace
+# KubeSpace
 
-OpenSpace是一个用来管理多Kubernetes集群的开源项目。OpenSpace可以兼容不同云厂商的Kubernetes集群，极大的方便了集群的管理工作。
+KubeSpace是一个DevOps以及Kubernetes多集群管理平台。KubeSpace可以兼容不同云厂商的Kubernetes集群，极大的方便了集群的管理工作。
 
-### 快速开始
+KubeSpace平台当前包括如下功能：
 
+1. 集群管理：Kubernetes集群原生资源的管理；
+2. 工作空间：以环境（测试、生产等）以及应用为视角的工作空间管理；
+3. 流水线：通过多种任务插件支持CICD，快速发布代码并部署到不同的工作空间；
+4. 应用商店：内置丰富的中间件（mysql、redis等），以及支持导入发布自定义应用；
+5. 平台配置：密钥、镜像仓库管理，以及不同模块的权限管理。
+
+### 安装
+
+通过[helm](https://helm.sh/docs/intro/install/)安装kubespace，执行如下命令：
 ```
-sudo docker run -d --restart=unless-stopped -p 443:443 -v /root/data:/var/lib/redis --name openspace openspacee/osp
+helm repo add kubespace https://kubespace.cn/charts
+helm install kubespace -n kubespace kubespace/kubespace --create-namespace
 ```
 
-启动之后，在浏览器打开：https://${ip}，请将ip替换为启动服务所在服务器ip地址。
+安装之后，查看所有Pod是否运行正常：
+```
+kubectl get pods -n kubespace -owide -w
+```
+
+当所有Pod运行正常后，通过如下命令查看浏览器访问地址：
+```
+export NODE_PORT=$(kubectl get -n kubespace -o jsonpath="{.spec.ports[0].nodePort}" services kubespace)
+export NODE_IP=$(kubectl get nodes -o jsonpath="{.items[0].status.addresses[0].address}")
+echo http://$NODE_IP:$NODE_PORT
+```
+
+### 升级
+
+通过[helm](https://helm.sh/docs/intro/install/)升级kubespace，执行如下命令：
+```
+helm repo update
+helm upgrade -n kubespace kubespace kubespace/kubespace
+```
+
 
 ### 使用说明
 
 #### 1. 首次登录
 
-在OpenSpace第一次登录时，会要求输入admin超级管理员的密码，然后以admin帐号登录。
+在KubeSpace第一次登录时，会要求输入admin超级管理员的密码，然后以admin帐号登录。
 
-![](docs/images/first_login.png)
+![image-20220417231527522](docs/images/first-login.png)
 
-#### 2. 添加集群
+#### 2. 导入集群
 
-首次登录之后，需要添加集群，输入集群名称，该名称在OpenSpace系统中只是作显示之用。
+首次登录之后，默认会将当前集群添加到平台。
 
-![image-20201121205437689](docs/images/add_cluster.png)
+![image-20220417231727415](docs/images/local-cluster.png)
 
-集群添加之后，会提示将Kubernetes集群导入连接到OpenSpace系统。
+您还可以添加其它集群到平台，点击「添加集群」，输入集群名称，集群添加之后，会提示将Kubernetes集群导入连接到KubeSpace平台。
 
-![image-20201208175010107](docs/images/connect-cluster.png)
+![image-20220417231929325](docs/images/load-cluster.png)
 
-#### 3. 导入集群
+在Kubernetes集群中使用上述的kubectl命令部署agent服务，将集群连接导入到KubeSpace平台。
 
-在Kubernetes集群中使用上述的kubectl命令部署ospagent服务，将集群连接导入到OpenSpace系统。
+等待几分钟后，查看agent服务是否启动。
 
-![image-20201208175404479](docs/images/kubectl-ospagent.png)
+> kubectl get pods -n kubespace
 
-等待几分钟后，查看ospagent服务是否启动。
+![image-20220417232659510](docs/images/connect-agent.png)
 
-> kubectl get all -n osp
+可以看到agent服务的pod已经是Running状态，在KubeSpace平台可以看到集群状态为Connect。
 
-![image-20201121210931613](docs/images/ospagent.png)
+#### 3. 集群管理
 
-可以看到ospagent服务的pod已经是Running状态。
+将Kubernetes集群成功连接导入到KubeSpace平台之后，就可以统一管理集群中的资源了。
 
-#### 4. 集群管理
+![image-20220417233240672](docs/images/cluster-manage.png)
 
-将Kubernetes集群成功连接导入到OpenSpace系统之后，就可以统一管理集群中的资源了。
+#### 4. 工作空间
 
-![image-20201121211314376](docs/images/cluster_manage.png)
+在工作空间，可以创建多个环境，绑定不同集群的namespace，来隔离应用以及资源。
 
-### 软件架构
+![image-20220417233850207](docs/images/workspace-index.png)
 
-![image-20201122110225534](docs/images/architecture.png)
+在每个空间中，可以创建应用或导入应用商店中的应用，并进行安装/升级。
 
+![image-20220417234019156](docs/images/workspace-app.png)
 
+#### 5. 应用商店
 
-### 后续功能
+KubeSpace平台内置了丰富的中间件，可以快速导入到工作空间，并安装使用。同时也可以导入/发布自己的应用到应用商店。
 
-- [ ] 1.界面持续优化迭代，整体操作更简单易用；
-- [x] 2.增加用户权限管理；
-- [ ] 3.增加K8s资源添加及修改操作；
-- [ ] 4.增加**工作台**功能，包括项目管理及CI/CD流程等；
-- [ ] 5.增加支持Helm包管理工具；
-- [ ] 6.增加支持添加监控功能。
+![image-20220417234208024](docs/images/appstore.png)
+
+#### 6. 流水线
+
+在流水线中，可以配置多种任务插件，来快速构建代码并部署到工作空间中。
+
+![image-20220417234523342](docs/images/pipelin-build.png)
 
 ### 交流讨论
 
-如果您在使用过程中，有任何问题、建议或功能需求，可以随时在[issues](https://github.com/openspacee/osp/issues)中提交请求，我们会及时跟进。
+最后，不要忘了点个star，支持一下^o^!
+
+如果您在使用过程中，有任何问题、建议或功能需求，可以随时在[issues](https://github.com/kubespace/kubespace/issues)中提交请求，我们会及时跟进。
 
 欢迎随时跟我们交流，可以使用QQ扫描下面二维码，加入我们的QQ交流群。
 
-![OpenSpace容器平台群二维码](docs/images/OpenSpace容器平台群二维码.png)
-
-最后，不要忘了点个star，支持一下😊！
+![image-20220417234523342](docs/images/qq-qrcode-1.png)
 
 ### License
-Copyright 2020 OpenSpace.
+Copyright 2020 KubeSpace.
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
 
