@@ -60,6 +60,9 @@
           label="上一次执行"
           min-width="50"
           show-overflow-tooltip>
+          <template slot-scope="scope">
+            {{ $dateFormat(scope.row.last_schedule_time) }}
+          </template>
         </el-table-column>
         <el-table-column
           prop="created"

@@ -14,3 +14,19 @@ export function getNamespace(cluster, name, output) {
     params: { output }
   })
 }
+
+export function deleteNamespaces(cluster, data) {
+  return request({
+    url: `namespace/${cluster}/delete`,
+    method: 'post',
+    data: data
+  })
+}
+
+export function updateNamespace(cluster, name, yaml) {
+  return request({
+    url: `namespace/${cluster}/update/${name}`,
+    method: 'post',
+    data: { yaml, name }
+  })
+}

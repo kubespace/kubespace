@@ -1,6 +1,6 @@
 <template>
   <div>
-    <clusterbar :titleName="titleName" :nameFunc="nameSearch" :delFunc="delFunc"/>
+    <clusterbar :titleName="titleName" :nameFunc="nameSearch" :delFunc="delFunc" :createFunc="openCreateFormDialog"/>
     <div class="dashboard-container">
       <!-- <div class="dashboard-text"></div> -->
       <el-table
@@ -93,14 +93,34 @@
         <el-button plain @click="updateNamespace()" size="small">确 定</el-button>
       </span>
     </el-dialog>
+
+    <el-dialog title="创建命名空间" :visible.sync="createFormVisible"
+      :destroy-on-close="true" width="40%" :close-on-click-modal="false">
+      <div v-loading="dialogLoading">
+        <div class="dialogContent" style="margin: 0px;">
+          <el-form :model="form.metadata" :rules="rules" ref="form" label-position="left" label-width="105px">
+            <el-form-item label="名称" prop="name" autofocus required>
+              <el-input v-model="form.metadata.name" style="width: 100%;" autocomplete="off" 
+                placeholder="只能包含小写字母数字以及-和.,数字或者字母开头或结尾" size="small"></el-input>
+            </el-form-item>
+          </el-form>
+        </div>
+        <div slot="footer" class="dialogFooter" style="margin-top: 25px;">
+          <el-button @click="createFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
+          <el-button type="primary" @click="handleCreateNamespace()" >确 定</el-button>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { listNamespace, getNamespace } from '@/api/namespace'
+import { listNamespace, getNamespace, deleteNamespaces, updateNamespace } from '@/api/namespace'
+import { createYaml } from '@/api/cluster'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
+import yaml from 'js-yaml'
 
 export default {
   name: 'Namespace',
@@ -109,22 +129,30 @@ export default {
     Yaml
   },
   data() {
-      return {
-        yamlDialog: false,
-        yamlNamespace: "",
-        yamlName: "",
-        yamlValue: "",
-        yamlLoading: true,
-        cellStyle: {border: 0},
-        titleName: ["Namespaces"],
-        maxHeight: window.innerHeight - 150,
-        loading: true,
-        originNamespaces: [],
-        search_ns: [],
-        search_name: '',
-        delFunc: undefined,
-        delNamespaces: [],
-      }
+    return {
+      yamlDialog: false,
+      yamlNamespace: "",
+      yamlName: "",
+      yamlValue: "",
+      yamlLoading: true,
+      cellStyle: {border: 0},
+      titleName: ["Namespaces"],
+      maxHeight: window.innerHeight - 150,
+      loading: true,
+      originNamespaces: [],
+      search_ns: [],
+      search_name: '',
+      delFunc: undefined,
+      delNamespaces: [],
+      createFormVisible: false,
+      form: {
+        apiVersion: "v1",
+        kind: "Namespace",
+        metadata: {name: ""}
+      },
+      rules: {},
+      dialogLoading: false
+    }
   },
   created() {
     this.fetchData()
@@ -180,7 +208,10 @@ export default {
     },
     namespacesWatch: function() {
       return this.$store.getters["ws/namespacesWatch"]
-    }
+    },
+    cluster: function() {
+      return this.$store.state.cluster
+    },
   },
   methods: {
     fetchData: function() {
@@ -240,7 +271,7 @@ export default {
         this.yamlLoading = false
       })
     },
-    deleteNamespaces: function(namespaces) {
+    deleteNamespaces(namespaces) {
       const cluster = this.$store.state.cluster
       if (!cluster) {
         Message.error("获取集群参数异常，请刷新重试")
@@ -253,11 +284,26 @@ export default {
       let params = {
         resources: namespaces
       }
-      deleteNamespaces(cluster, params).then(() => {
-        Message.success("删除成功")
-      }).catch(() => {
-        // console.log(e)
-      })
+      let cs = ''
+      for(let c of namespaces) {
+        cs += `${c.name},`
+      }
+      cs = cs.substr(0, cs.length - 1)
+      this.$confirm(`请确认是否删除「${cs}」命名空间?`, '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        this.loading = true
+        deleteNamespaces(this.cluster, params).then(() => {
+          Message.success("删除命名空间成功")
+          this.loading = false
+          this.fetchData()
+        }).catch((err) => {
+          this.loading = false
+        });
+      }).catch(() => {       
+      });
     },
     updateNamespace: function() {
       const cluster = this.$store.state.cluster
@@ -269,7 +315,6 @@ export default {
         Message.error("获取Namespace参数异常，请刷新重试")
         return
       }
-      console.log(this.yamlValue)
       updateNamespace(cluster, this.yamlName, this.yamlValue).then(() => {
         Message.success("更新成功")
       }).catch(() => {
@@ -292,6 +337,32 @@ export default {
       } else {
         this.delFunc = undefined
       }
+    },
+    handleCreateNamespace() {
+      if(!this.form.metadata.name) {
+        Message.error("请输入命名空间名称")
+        return
+      }
+      let yamlStr = yaml.dump(this.form)
+      this.dialogLoading = true
+      createYaml(this.cluster, yamlStr).then((response) => {
+        this.dialogLoading = false
+        this.createFormVisible = false
+        Message.success("创建命名空间成功")
+        this.fetchData()
+      }).catch(() => {
+        this.dialogLoading = false
+      })
+    },
+    openCreateFormDialog() {
+      this.form = {
+        apiVersion: "v1",
+        kind: "Namespace",
+        metadata: {
+          name: "",
+        }
+      }
+      this.createFormVisible = true
     },
   }
 }
