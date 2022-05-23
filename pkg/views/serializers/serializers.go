@@ -49,3 +49,8 @@ type UserRoleUpdateSerializers struct {
 	ScopeId uint   `json:"scope_id" form:"scope_id"`
 	Role    string `json:"role" form:"from"`
 }
+
+type UpdatePasswordSerializers struct {
+	OriginPassword string `json:"origin_password" form:"origin_password"`
+	NewPassword    string `json:"new_password" form:"new_password"`
+}

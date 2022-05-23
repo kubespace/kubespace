@@ -26,6 +26,25 @@
         <el-button plain @click="applyYaml()" size="small">确 定</el-button>
       </span>
     </el-dialog>
+    <el-dialog title="修改密码" :visible.sync="nav.changePwdDialog" :close-on-click-modal="false" width="50%" top="55px">
+      <div>
+        <el-form :model="form" ref="form" label-position="left" label-width="90px">
+          <el-form-item label="原密码" prop="name" autofocus>
+            <el-input v-model="form.originPassword" type="password" autocomplete="off" placeholder="请输入原密码" size="small"></el-input>
+          </el-form-item>
+          <el-form-item label="新密码" prop="description">
+            <el-input v-model="form.newPassword" type="password" autocomplete="off" placeholder="请输入新密码" size="small"></el-input>
+          </el-form-item>
+          <el-form-item label="确认新密码" prop="description">
+            <el-input v-model="form.newConfirmPassword" type="password" autocomplete="off" placeholder="请输入新密码确认" size="small"></el-input>
+          </el-form-item>
+        </el-form>
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button plain @click="nav.changePwdDialog = false; form={}" size="small">取 消</el-button>
+        <el-button type="primary" @click="changePwd()" size="small">确 定</el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
@@ -34,6 +53,7 @@ import { Navbar, Sidebar, AppMain} from './components'
 import { Yaml } from '@/views/components'
 import { Message } from 'element-ui'
 import { applyYaml } from '@/api/cluster'
+import { updatePassword } from '@/api/user'
 
 export default {
   name: 'Layout',
@@ -47,7 +67,8 @@ export default {
   data() {
     return {
       yamlValue: "",
-      nav: {dialog: false, yamlValue: ''}
+      nav: {dialog: false, yamlValue: '', changePwdDialog: false},
+      form: {}
     }
   },
   computed: {
@@ -80,6 +101,30 @@ export default {
         // console.log(e) 
       })
     },
+    changePwd() {
+      if(!this.form.originPassword) {
+        Message.error("请输入原密码")
+        return
+      }
+      if(!this.form.newPassword) {
+        Message.error("请输入新密码")
+        return
+      }
+      if(!this.form.newConfirmPassword) {
+        Message.error("请输入新密码确认")
+        return
+      }
+      if(this.form.newConfirmPassword != this.form.newPassword) {
+        Message.error("新密码两次输入不同，请重新输入")
+        return
+      }
+      updatePassword({origin_password: this.form.originPassword, new_password: this.form.newPassword}).then((resp) => {
+        Message.success("修改密码成功")
+        this.nav.changePwdDialog = false
+      }).catch(() => {
+        // console.log(e) 
+      })
+    }
   }
 }
 </script>

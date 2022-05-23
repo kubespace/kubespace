@@ -51,7 +51,7 @@
       </el-table>
 
       <el-dialog :title="updateFormVisible ? '修改空间' : form.clone ? '克隆空间-' + form.oriName : '创建空间'" :visible.sync="createFormVisible"
-      @close="closeFormDialog" :destroy-on-close="true">
+      @close="closeFormDialog" :destroy-on-close="true" :close-on-click-modal="false">
         <div v-loading="dialogLoading">
           <div class="dialogContent" style="">
             <el-alert v-if="form.clone" style="margin-bottom: 10px;" title="克隆会将工作空间中的应用以及K8s资源复制到新的工作空间" :closable="false" type="info"></el-alert>

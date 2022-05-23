@@ -32,6 +32,7 @@ func NewUser(models *model.Models) *User {
 
 		NewView(http.MethodGet, "/token", user.tokenUser),
 		NewView(http.MethodPost, "/delete", user.delete),
+		NewView(http.MethodPost, "/update_password", user.updatePassword),
 	}
 	user.Views = views
 	return user
@@ -263,4 +264,24 @@ func (u *User) roles(c *Context) *utils.Response {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
 	return &utils.Response{Code: code.Success, Data: roles}
+}
+
+func (u *User) updatePassword(c *Context) *utils.Response {
+	var ser serializers.UpdatePasswordSerializers
+	if err := c.ShouldBind(&ser); err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	userObj, err := u.models.UserManager.GetById(c.User.ID)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	if userObj.Password != utils.Encrypt(ser.OriginPassword) {
+		return &utils.Response{Code: code.ParamsError, Msg: "原密码不正确，请重新输入"}
+	}
+	userObj.Password = utils.Encrypt(ser.NewPassword)
+
+	if err = u.models.UserManager.Update(userObj); err != nil {
+		return &utils.Response{Code: code.UpdateError, Msg: "更新密码失败：" + err.Error()}
+	}
+	return &utils.Response{Code: code.Success}
 }

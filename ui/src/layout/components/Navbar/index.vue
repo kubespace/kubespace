@@ -11,8 +11,9 @@
           <img class="avatar-class" src="@/assets/user.png" />
           {{ username }}<i class="el-icon-arrow-down el-icon--right"></i>
         </span>
-        <el-dropdown-menu slot="dropdown" @click.native="logout">
-          <el-dropdown-item>登出</el-dropdown-item>
+        <el-dropdown-menu slot="dropdown">
+          <el-dropdown-item @click.native="logout">登出</el-dropdown-item>
+          <el-dropdown-item @click.native="openChgPwdDialog">修改密码</el-dropdown-item>
         </el-dropdown-menu>
       </el-dropdown>
     </div>
@@ -30,7 +31,11 @@ export default {
   props: ['nav',],
   data() {
     return {
-      importYaml: false
+      importYaml: false,
+      changePwdVisible: false,
+      form: {
+
+      }
     }
   },
 
@@ -68,6 +73,10 @@ export default {
       this.nav.yamlValue = '';
       this.nav.dialog = true;
     },
+    openChgPwdDialog() {
+      this.nav.changePwdDialog = true
+      console.log(this.nav)
+    }
   }
 }
 </script>
