@@ -23,6 +23,14 @@ export function createProject(data) {
   })
 }
 
+export function cloneProject(data) {
+  return request({
+    url: '/project/workspace/clone',
+    method: 'post',
+    data,
+  })
+}
+
 export function updateProject(id, data) {
   return request({
     url: `/project/workspace/${id}`,
@@ -31,10 +39,11 @@ export function updateProject(id, data) {
   })
 }
 
-export function deleteProject(id) {
+export function deleteProject(id, data) {
   return request({
     url: `/project/workspace/${id}`,
     method: 'delete',
+    data
   })
 }
 

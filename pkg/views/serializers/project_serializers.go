@@ -8,6 +8,30 @@ type ProjectSerializer struct {
 	Owner       string `json:"owner" form:"owner"`
 }
 
+type ProjectCloneAppSerializer struct {
+	Id uint `json:"id" form:"id"`
+}
+
+type ProjectCloneResourceSerializer struct {
+	Type string `json:"type" form:"type"`
+	Name string `json:"name" form:"name"`
+}
+
+type ProjectCloneSerializer struct {
+	OriginProjectId uint                              `json:"origin_project_id" form:"origin_project_id"`
+	Name            string                            `json:"name" form:"name"`
+	Description     string                            `json:"description" form:"description"`
+	ClusterId       string                            `json:"cluster_id" form:"cluster_id"`
+	Namespace       string                            `json:"namespace" form:"namespace"`
+	Owner           string                            `json:"owner" form:"owner"`
+	Resources       []*ProjectCloneResourceSerializer `json:"resources" form:"resources"`
+	Apps            []*ProjectCloneAppSerializer      `json:"apps" form:"apps"`
+}
+
+type ProjectDeleteSerializer struct {
+	DelResource bool `json:"del_resource" form:"del_resource"`
+}
+
 type ProjectCreateAppSerializer struct {
 	Scope              string            `json:"scope" form:"scope"`
 	ScopeId            uint              `json:"scope_id" form:"scope_id"`

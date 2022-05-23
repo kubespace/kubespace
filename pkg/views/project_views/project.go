@@ -30,6 +30,7 @@ func NewProject(models *model.Models, projectService *projectservice.ServiceProj
 		views.NewView(http.MethodGet, "", pipelineWs.list),
 		views.NewView(http.MethodGet, "/:id", pipelineWs.get),
 		views.NewView(http.MethodPost, "", pipelineWs.create),
+		views.NewView(http.MethodPost, "/clone", pipelineWs.clone),
 		views.NewView(http.MethodPut, "/:id", pipelineWs.update),
 		views.NewView(http.MethodDelete, "/:id", pipelineWs.delete),
 	}
@@ -142,7 +143,12 @@ func (p *Project) delete(c *views.Context) *utils.Response {
 	if err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	return p.projectService.Delete(uint(projectId))
+	var ser serializers.ProjectDeleteSerializer
+	if err = c.ShouldBind(&ser); err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+
+	return p.projectService.Delete(uint(projectId), ser.DelResource)
 }
 
 func (p *Project) get(c *views.Context) *utils.Response {
@@ -151,4 +157,12 @@ func (p *Project) get(c *views.Context) *utils.Response {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
 	return p.projectService.Get(uint(projectId), true)
+}
+
+func (p *Project) clone(c *views.Context) *utils.Response {
+	var ser serializers.ProjectCloneSerializer
+	if err := c.ShouldBind(&ser); err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	return p.projectService.Clone(&ser, c.User)
 }

@@ -38,21 +38,23 @@
             {{ $dateFormat(scope.row.update_time) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150">
+        <el-table-column label="操作" width="170">
           <template slot-scope="scope">
             <div class="tableOperate">
-              <el-link :underline="false" style="margin-right: 13px; color:#409EFF" @click="nameClick(scope.row.id)">详情</el-link>
+              <el-link :underline="false" style="margin-right: 13px;" type="primary" @click="nameClick(scope.row.id)">详情</el-link>
               <el-link :disabled="!$editorRole(scope.row.id)" :underline="false" type="primary" style="margin-right: 13px" @click="openUpdateFormDialog(scope.row)">编辑</el-link>
+              <el-link :disabled="!$adminRole(scope.row.id)" :underline="false" type="primary" style="margin-right: 13px" @click="openCloneFormDialog(scope.row)">克隆</el-link>
               <el-link :disabled="!$adminRole(scope.row.id)" :underline="false" type="danger" @click="handleDeleteWorkspace(scope.row.id, scope.row.name)">删除</el-link>
             </div>
           </template>
         </el-table-column>
       </el-table>
 
-      <el-dialog :title="updateFormVisible ? '修改空间' : '创建空间'" :visible.sync="createFormVisible"
+      <el-dialog :title="updateFormVisible ? '修改空间' : form.clone ? '克隆空间-' + form.oriName : '创建空间'" :visible.sync="createFormVisible"
       @close="closeFormDialog" :destroy-on-close="true">
         <div v-loading="dialogLoading">
           <div class="dialogContent" style="">
+            <el-alert v-if="form.clone" style="margin-bottom: 10px;" title="克隆会将工作空间中的应用以及K8s资源复制到新的工作空间" :closable="false" type="info"></el-alert>
             <el-form :model="form" :rules="rules" ref="form" label-position="left" label-width="105px">
               <el-form-item label="名称" prop="name" autofocus>
                 <el-input v-model="form.name" autocomplete="off" placeholder="请输入空间名称" size="small"></el-input>
@@ -90,7 +92,7 @@
           </div>
           <div slot="footer" class="dialogFooter" style="margin-top: 20px;">
             <el-button @click="createFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
-            <el-button type="primary" @click="updateFormVisible ? handleUpdateWorkspace() : handleCreateWorkspace()" >确 定</el-button>
+            <el-button type="primary" @click="updateFormVisible ? handleUpdateWorkspace() : form.clone ? handleCloneWorkspace() : handleCreateWorkspace()" >确 定</el-button>
           </div>
         </div>
       </el-dialog>
@@ -99,7 +101,7 @@
 </template>
 <script>
 import { Clusterbar } from "@/views/components";
-import { createProject, listProjects, updateProject, deleteProject } from "@/api/project/project";
+import { createProject, cloneProject, listProjects, updateProject, deleteProject } from "@/api/project/project";
 import { listCluster } from '@/api/cluster'
 import { listNamespace } from '@/api/namespace'
 import { Message } from "element-ui";
@@ -130,6 +132,9 @@ export default {
       clusters: [],
       namespaces: [],
       form: {
+        clone: false,
+        oriId: '',
+        oriName: '',
         id: "",
         name: "",
         description: "",
@@ -202,11 +207,48 @@ export default {
       createProject(project).then(() => {
         this.dialogLoading = false
         this.createFormVisible = false;
-        Message.success("创建项目空间成功")
+        Message.success("创建工作空间成功")
         this.fetchWorkspaces()
       }).catch((err) => {
         this.dialogLoading = false
         console.log(err)
+      });
+    },
+    handleCloneWorkspace() {
+      if(!this.form.name) {
+        Message.error("空间名称不能为空");
+        return
+      }
+      if(!this.form.cluster_id) {
+        Message.error("请选择要绑定的集群");
+        return
+      }
+      if(!this.form.namespace) {
+        Message.error("请选择要绑定的集群命名空间");
+        return
+      }
+      if(!this.form.owner) {
+        Message.error("空间负责人不能为空");
+        return
+      }
+      let project = {
+        origin_project_id: this.form.oriId,
+        name: this.form.name, 
+        description: this.form.description, 
+        cluster_id: this.form.cluster_id,
+        namespace: this.form.namespace,
+        owner: this.form.owner
+      }
+      this.dialogLoading = true
+      cloneProject(project).then(() => {
+        this.dialogLoading = false
+        this.createFormVisible = false;
+        Message.success("克隆工作空间成功")
+        this.fetchWorkspaces()
+      }).catch((err) => {
+        this.dialogLoading = false
+        this.createFormVisible = false;
+        this.fetchWorkspaces()
       });
     },
     handleUpdateWorkspace() {
@@ -231,7 +273,7 @@ export default {
       updateProject(this.form.id, project).then(() => {
         this.dialogLoading = false
         this.createFormVisible = false;
-        Message.success("更新项目空间成功")
+        Message.success("更新工作空间成功")
         this.fetchWorkspaces()
       }).catch((err) => {
         this.dialogLoading = false
@@ -243,15 +285,15 @@ export default {
         Message.error("获取密钥id参数异常，请刷新重试");
         return
       }
-      this.$confirm(`请确认是否删除「${name}」此项目空间?`, '提示', {
+      this.$confirm(`请确认是否删除「${name}」此工作空间，并同时删除该命名空间下资源?`, '提示', {
           confirmButtonText: '确定',
           cancelButtonText: '取消',
           type: 'warning'
         }).then(() => {
           this.loading = true
-          deleteProject(id).then(() => {
+          deleteProject(id, {"del_resource": true}).then(() => {
             this.loading = false
-            Message.success("删除项目空间成功")
+            Message.success("删除工作空间成功")
             this.fetchWorkspaces()
           }).catch((err) => {
             this.loading = false
@@ -307,6 +349,20 @@ export default {
       }
       this.fetchClusters()
       this.updateFormVisible = true;
+      this.createFormVisible = true;
+    },
+    openCloneFormDialog(project) {
+      this.form = {
+        clone: true,
+        oriName: project.name,
+        oriId: project.id,
+        name: "",
+        description: "",
+        cluster_id: "",
+        namespace: "",
+        owner: this.$store.getters.username,
+      }
+      this.fetchClusters()
       this.createFormVisible = true;
     },
     closeFormDialog() {
