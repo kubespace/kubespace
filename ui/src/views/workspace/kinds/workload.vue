@@ -89,11 +89,11 @@
     </el-form>
     <el-tabs tab-position="left" style="" value="container">
       <el-tab-pane label="容器组" name="container">
-        <container :template="template" :appResources="appResources"></container>
+        <container :template="template" :appResources="appResources" :projectResources="projectResources"></container>
       </el-tab-pane>
       <el-tab-pane label="存储">
         <div class="border-workload-content">
-          <pod-volume :template="template" :appResources="appResources"></pod-volume>
+          <pod-volume :template="template" :appResources="appResources" :projectResources="projectResources"></pod-volume>
         </div>
       </el-tab-pane>
       <el-tab-pane label="网络">
@@ -134,7 +134,7 @@ export default {
       },
     }
   },
-  props: ['template', 'noName', 'appResources'],
+  props: ['template', 'noName', 'appResources', 'projectResources'],
   computed: {
   },
   methods: {

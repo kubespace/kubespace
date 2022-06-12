@@ -43,7 +43,7 @@
           min-width="12"
           show-overflow-tooltip>
           <template slot-scope="scope">
-            {{ $dateFormat(scope.row.created) }}
+            {{ $dateFormat(scope.row.create_time) }}
           </template>
         </el-table-column>
         <el-table-column

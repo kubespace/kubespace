@@ -97,3 +97,7 @@ type DuplicateAppSerializer struct {
 	Scope     string `json:"scope" form:"scope"`
 	ScopeId   uint   `json:"scope_id" form:"scope_id"`
 }
+
+type ProjectResourcesSerializer struct {
+	ProjectId uint `json:"project_id" form:"project_id"`
+}

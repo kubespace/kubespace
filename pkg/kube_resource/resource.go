@@ -19,6 +19,7 @@ const (
 	APPLY            = "apply"
 	CREATE           = "create"
 	STATUS           = "status"
+	LISTOBJS         = "list_objects"
 )
 
 type KubeResource struct {
@@ -32,6 +33,10 @@ func (k *KubeResource) Get(cluster string, params interface{}) *utils.Response {
 
 func (k *KubeResource) List(cluster string, params interface{}) *utils.Response {
 	return k.request(cluster, ListAction, params)
+}
+
+func (k *KubeResource) ListObjs(cluster string, params interface{}) *utils.Response {
+	return k.request(cluster, LISTOBJS, params)
 }
 
 func (k *KubeResource) Delete(cluster string, params interface{}) *utils.Response {

@@ -925,7 +925,7 @@ function transferConfigMap(tpl) {
   return {tpl}
 }
 
-function resolveConfigMap(tpl) {
+export function resolveConfigMap(tpl) {
   let data = []
   for(let k in tpl.data) {
     data.push({key: k, value: tpl.data[k]})

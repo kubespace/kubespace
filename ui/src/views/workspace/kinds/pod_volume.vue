@@ -274,7 +274,7 @@
 </template>
 
 <script>
-import { newPodVolume } from '@/views/workspace/kinds'
+import { newPodVolume, resolveConfigMap } from '@/views/workspace/kinds'
 import { transferSecret } from '@/api/secret'
 
 export default {
@@ -300,7 +300,7 @@ export default {
       },
     }
   },
-  props: ['template', 'appResources'],
+  props: ['template', 'appResources', 'projectResources'],
   computed: {
     nsPvcs() {
       let c = []
@@ -311,6 +311,13 @@ export default {
           })
         }
       }
+      for(let r in this.projectResources) {
+        if(r == 'PersistentVolumeClaim') {
+          for(let p of this.projectResources[r]) {
+            c.push({name: p.metadata.name})
+          }
+        }
+      }
       return c
     },
     nsConfigmaps() {
@@ -318,6 +325,15 @@ export default {
       for(let r of this.appResources) {
         if(r.kind == 'ConfigMap' && r.metadata.name) {
           c[r.metadata.name] = r
+        }
+      }
+      for(let r in this.projectResources) {
+        if(r == 'ConfigMap') {
+          for(let cm of this.projectResources[r]) {
+            let configmap = JSON.parse(JSON.stringify(cm))
+            resolveConfigMap(configmap)
+            c[cm.metadata.name] = configmap
+          }
         }
       }
       return c
@@ -331,6 +347,14 @@ export default {
           let err = transferSecret(secret)
           if(!err) {
             c[r.metadata.name] = secret
+          }
+        }
+      }
+      for(let r in this.projectResources) {
+        if(r == 'Secret') {
+          for(let s of this.projectResources[r]) {
+            let secret = JSON.parse(JSON.stringify(s))
+            c[s.metadata.name] = secret
           }
         }
       }

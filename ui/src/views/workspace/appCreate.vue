@@ -51,7 +51,7 @@
               <div style="display: block; font-size: 14px; line-height: 20px; align: center; font-weight: 500">{{ t.metadata.name ? t.metadata.name : ' unnaming'}}</div>
             </div>
             <div style="padding-bottom: 20px;">
-              <workload v-if="workloadTypes.indexOf(t.kind) >= 0" :template="t" :appResources="form.templates"></workload>
+              <workload v-if="workloadTypes.indexOf(t.kind) >= 0" :template="t" :appResources="form.templates" :projectResources="projectResources"></workload>
               <service v-if="t.kind == 'Service'" :template="t" :containers="form.templates[0].spec.template.spec.containers"></service>
               <config-map v-if="t.kind == 'ConfigMap'" :template="t"></config-map>
               <secret v-if="t.kind == 'Secret'" :template="t"></secret>
@@ -97,7 +97,9 @@
 <script>
 import { Clusterbar } from "@/views/components";
 import { createApp, getAppVersion } from "@/api/project/apps";
+import { listConfigMaps } from '@/api/config_map'
 import { Message } from "element-ui";
+import { projectLabels, getProjectResources } from '@/api/project/project'
 import { Workload, kindTemplate, Service, ConfigMap, Secret, pvc, transferTemplate, resolveToTemplate } from '@/views/workspace/kinds'
 import yaml from 'js-yaml'
 
@@ -124,7 +126,7 @@ export default {
     return {
       maxHeight: window.innerHeight - 130,
       cellStyle: { border: 0 },
-      titleName: ["应用管理", "创建"],
+      titleName: ["应用管理"],
       loading: false,
       createFormVisible: false,
       updateFormVisible: false,
@@ -151,19 +153,23 @@ export default {
         version: [{ required: true, message: ' ', trigger: ['blur', 'change'] },],
         description: [{ required: true, message: ' ', trigger: ['blur', 'change'] },],
       },
+      projectResources: {}
     };
   },
   created() {
+    this.getProjectResources()
     if(this.appVersionId) {
+      this.titleName.push("编辑")
       this.getAppVersion()
     } else {
+      this.titleName.push("创建")
       let defaultWorkloadTpl = kindTemplate('Workload')
       this.form.templates = [defaultWorkloadTpl]
     }
   },
   computed: {
     projectId() {
-      return this.$route.params.workspaceId
+      return parseInt(this.$route.params.workspaceId)
     },
     appVersionId() {
       return this.$route.params.appVersionId
@@ -174,6 +180,7 @@ export default {
     getAppVersion() {
       this.loading = true
       getAppVersion(this.appVersionId).then((resp) => {
+        // this.titleName = ["应用管理", "编辑"]
         this.form.id = resp.data.id
         this.form.name = resp.data.name
         this.form.type = resp.data.type
@@ -203,7 +210,6 @@ export default {
           }
           this.form.templates.push(data)
         }
-        console.log(this.form)
         this.loading = false
       }).catch((err) => {
         this.loading = false
@@ -281,7 +287,7 @@ export default {
           return
         }
         let tpl = obj.tpl
-        console.log(tpl)
+        // console.log(tpl)
         if(this.workloadTypes.indexOf(template.kind) > -1) {
           let containers = {}
           let spec = {}
@@ -316,7 +322,7 @@ export default {
         idx++
       }
       this.chart.values = yaml.dump(valuesDict)
-      console.log(this.chart.templates)
+      // console.log(this.chart.templates)
       this.form.fourthVersion = (Math.floor(new Date() / 1000)).toString(36)
       this.createFormVisible = true;
     },
@@ -350,6 +356,16 @@ export default {
       }
       this.form.templates.push(tpl)
       this.resourceTabVal = (this.form.templates.length - 1) + ''
+    },
+    getProjectResources: function() {
+      getProjectResources({project_id: this.projectId}).then((response) => {
+        // this.loading = false
+        // let originConfigMaps = response.data || []
+        console.log(response.data)
+        this.$set(this, 'projectResources', response.data)
+      }).catch(() => {
+        // this.loading = false
+      })
     },
   },
 };

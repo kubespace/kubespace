@@ -22,20 +22,21 @@ type Project struct {
 }
 
 func NewProject(models *model.Models, projectService *projectservice.ServiceProject) *Project {
-	pipelineWs := &Project{
+	projectWs := &Project{
 		models:         models,
 		projectService: projectService,
 	}
 	vs := []*views.View{
-		views.NewView(http.MethodGet, "", pipelineWs.list),
-		views.NewView(http.MethodGet, "/:id", pipelineWs.get),
-		views.NewView(http.MethodPost, "", pipelineWs.create),
-		views.NewView(http.MethodPost, "/clone", pipelineWs.clone),
-		views.NewView(http.MethodPut, "/:id", pipelineWs.update),
-		views.NewView(http.MethodDelete, "/:id", pipelineWs.delete),
+		views.NewView(http.MethodGet, "", projectWs.list),
+		views.NewView(http.MethodPost, "/resources", projectWs.getProjectResources),
+		views.NewView(http.MethodGet, "/:id", projectWs.get),
+		views.NewView(http.MethodPost, "", projectWs.create),
+		views.NewView(http.MethodPost, "/clone", projectWs.clone),
+		views.NewView(http.MethodPut, "/:id", projectWs.update),
+		views.NewView(http.MethodDelete, "/:id", projectWs.delete),
 	}
-	pipelineWs.Views = vs
-	return pipelineWs
+	projectWs.Views = vs
+	return projectWs
 }
 
 func (p *Project) create(c *views.Context) *utils.Response {
@@ -165,4 +166,12 @@ func (p *Project) clone(c *views.Context) *utils.Response {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
 	return p.projectService.Clone(&ser, c.User)
+}
+
+func (p *Project) getProjectResources(c *views.Context) *utils.Response {
+	var ser serializers.ProjectResourcesSerializer
+	if err := c.ShouldBind(&ser); err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	return p.projectService.GetProjectNamespaceResources(&ser)
 }

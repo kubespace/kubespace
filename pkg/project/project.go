@@ -340,3 +340,35 @@ func (p *ServiceProject) Clone(ser *serializers.ProjectCloneSerializer, user *ty
 	}
 	return &utils.Response{Code: code.Success}
 }
+
+func (p *ServiceProject) GetProjectNamespaceResources(ser *serializers.ProjectResourcesSerializer) *utils.Response {
+	oriProject, err := p.models.ProjectManager.Get(ser.ProjectId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: "获取工作空间失败:" + err.Error()}
+	}
+	data := map[string]interface{}{}
+	var kubeResource *kube_resource.KubeResource
+	for _, kind := range []string{"ConfigMap", "Secret", "PersistentVolumeClaim"} {
+		switch kind {
+		case "ConfigMap":
+			kubeResource = p.KubeResources.ConfigMap
+		case "Secret":
+			kubeResource = p.KubeResources.Secret
+		case "PersistentVolumeClaim":
+			kubeResource = p.KubeResources.Pvc
+		}
+		if kubeResource == nil {
+			return &utils.Response{Code: code.ParamsError, Msg: "get kuberesource error"}
+		}
+		res := kubeResource.ListObjs(oriProject.ClusterId, map[string]interface{}{
+			"namespace": oriProject.Namespace,
+			"labels":    map[string]string{"kubespace.cn/belong-to": "project"},
+		})
+		if res.IsSuccess() {
+			data[kind] = res.Data
+		} else {
+			return res
+		}
+	}
+	return &utils.Response{Code: code.Success, Data: data}
+}
