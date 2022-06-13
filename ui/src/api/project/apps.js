@@ -85,6 +85,14 @@ export function importStoreApp(data) {
   })
 }
 
+export function importCustomApp(data) {
+  return request({
+    url: `/project/apps/import_custom_app`,
+    method: 'post',
+    data,
+  })
+}
+
 export function duplicateApp(data) {
   return request({
     url: `/project/apps/duplicate_app`,

@@ -327,7 +327,7 @@
                 <template slot-scope="scope">
                   <template v-for="(v, k) in scope.row.data">
                     <el-tooltip :key="k" class="item" effect="light" placement="right-end">
-                      <div slot="content" style="max-width: 400px;white-space: pre-line;">
+                      <div slot="content" style="max-width: 400px;white-space: pre;">
                         {{ v }}
                       </div>
                       <span class="back-class">
@@ -368,7 +368,7 @@
                 <template slot-scope="scope">
                   <template v-for="(v, k) in scope.row.data">
                     <el-tooltip :key="k" class="item" effect="light" placement="right-end">
-                      <div slot="content" style="max-width: 400px;white-space: pre-line;">
+                      <div slot="content" style="max-width: 400px;white-space: pre;">
                         {{ decodeBase(v) }}
                       </div>
                       <span class="back-class">

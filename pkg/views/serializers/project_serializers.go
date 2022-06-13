@@ -101,3 +101,14 @@ type DuplicateAppSerializer struct {
 type ProjectResourcesSerializer struct {
 	ProjectId uint `json:"project_id" form:"project_id"`
 }
+
+type ImportCustomAppSerializer struct {
+	Scope              string `json:"scope" form:"scope"`
+	ScopeId            uint   `json:"scope_id" form:"scope_id"`
+	Name               string `json:"name" form:"name"`
+	PackageVersion     string `json:"package_version" form:"package_version"`
+	AppVersion         string `json:"app_version" form:"app_version"`
+	Description        string `json:"description" form:"description"`
+	VersionDescription string `json:"version_description" form:"version_description"`
+	Type               string `json:"type" form:"type"`
+}

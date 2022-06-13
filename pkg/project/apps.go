@@ -12,6 +12,8 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/release"
+	"io"
+	"io/ioutil"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	yamlutil "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/klog"
@@ -604,4 +606,71 @@ func (a *AppService) DuplicateApp(ser *serializers.DuplicateAppSerializer, user 
 	} else {
 		return &utils.Response{Code: code.ParamsError, Msg: "参数scope错误"}
 	}
+}
+
+func (a *AppService) ImportCustomApp(user *types.User, serializer serializers.ImportCustomAppSerializer, chartIn io.Reader) *utils.Response {
+	app, err := a.models.ProjectAppManager.GetByName(serializer.Scope, serializer.ScopeId, serializer.Name)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	if app != nil {
+		sameVersion, err := a.models.ProjectAppManager.GetAppVersion(types.AppVersionScopeProjectApp, app.ID, serializer.Name, serializer.PackageVersion)
+		if err != nil {
+			return &utils.Response{Code: code.DBError, Msg: err.Error()}
+		}
+		if sameVersion != nil {
+			return &utils.Response{Code: code.ParamsError, Msg: "该应用已存在相同版本，请重新输入版本号"}
+		}
+		app.UpdateUser = user.Name
+		app.UpdateTime = time.Now()
+		app.Description = serializer.Description
+	} else {
+		if serializer.Type != types.AppTypeOrdinaryApp && serializer.Type != types.AppTypeMiddleware {
+			return &utils.Response{Code: code.ParamsError, Msg: "应用类型参数错误"}
+		}
+		app = &types.ProjectApp{
+			Scope:       serializer.Scope,
+			ScopeId:     serializer.ScopeId,
+			Name:        serializer.Name,
+			Status:      types.AppStatusUninstall,
+			Type:        serializer.Type,
+			Description: serializer.Description,
+			CreateUser:  user.Name,
+			UpdateUser:  user.Name,
+			CreateTime:  time.Now(),
+			UpdateTime:  time.Now(),
+		}
+	}
+
+	chartBytes, err := ioutil.ReadAll(chartIn)
+	if err != nil {
+		return &utils.Response{Code: code.GetError, Msg: "获取chart文件失败: " + err.Error()}
+	}
+	charts, err := loader.LoadArchive(bytes.NewBuffer(chartBytes))
+	if err != nil {
+		return &utils.Response{Code: code.GetError, Msg: err.Error()}
+	}
+	values := ""
+	for _, rawFile := range charts.Raw {
+		if rawFile.Name == "values.yaml" {
+			values = string(rawFile.Data)
+			break
+		}
+	}
+	appVersion := &types.AppVersion{
+		PackageName:    serializer.Name,
+		PackageVersion: serializer.PackageVersion,
+		AppVersion:     serializer.AppVersion,
+		Values:         values,
+		Description:    serializer.VersionDescription,
+		From:           types.AppVersionFromImport,
+		CreateUser:     user.Name,
+		CreateTime:     time.Now(),
+		UpdateTime:     time.Now(),
+	}
+	_, err = a.models.ProjectAppManager.CreateProjectAppWithBytes(chartBytes, app, appVersion)
+	if err != nil {
+		return &utils.Response{Code: code.CreateError, Msg: err.Error()}
+	}
+	return &utils.Response{Code: code.Success}
 }

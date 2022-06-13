@@ -35,6 +35,7 @@ func NewProjectApp(models *model.Models, appService *project.AppService) *Projec
 		views.NewView(http.MethodPost, "/install", app.install),
 		views.NewView(http.MethodPost, "/destroy", app.destroy),
 		views.NewView(http.MethodPost, "/import_storeapp", app.importStoreapp),
+		views.NewView(http.MethodPost, "/import_custom_app", app.importCustomApp),
 		views.NewView(http.MethodPost, "/duplicate_app", app.duplicateApp),
 		views.NewView(http.MethodDelete, "/version/:id", app.deleteAppVersion),
 		views.NewView(http.MethodDelete, "/:id", app.deleteApp),
@@ -140,6 +141,23 @@ func (a *ProjectApp) importStoreapp(c *views.Context) *utils.Response {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
 	return a.AppService.ImportStoreApp(ser, c.User)
+}
+
+func (a *ProjectApp) importCustomApp(c *views.Context) *utils.Response {
+	var ser serializers.ImportCustomAppSerializer
+	if err := c.ShouldBind(&ser); err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: "get chart file error: " + err.Error()}
+	}
+	chartIn, err := file.Open()
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: "get chart file error: " + err.Error()}
+	}
+	return a.AppService.ImportCustomApp(c.User, ser, chartIn)
 }
 
 func (a *ProjectApp) duplicateApp(c *views.Context) *utils.Response {

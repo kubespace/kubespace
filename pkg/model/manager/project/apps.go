@@ -47,6 +47,36 @@ func (a *AppManager) CreateProjectApp(chartFilePath string, app *types.ProjectAp
 	return app, nil
 }
 
+func (a *AppManager) CreateProjectAppWithBytes(chartBytes []byte, app *types.ProjectApp, appVersion *types.AppVersion) (*types.ProjectApp, error) {
+	var err error
+	err = a.DB.Transaction(func(tx *gorm.DB) error {
+		if app.ID == 0 {
+			if err = tx.Create(app).Error; err != nil {
+				return err
+			}
+		} else {
+			if err = a.DB.Model(app).Select("update_user", "update_time", "description").Updates(*app).Error; err != nil {
+				return err
+			}
+		}
+		appVersion, err = a.AppVersionManager.CreateAppVersionWithChartByte(chartBytes, types.AppVersionScopeProjectApp, app.ID, appVersion)
+		if err != nil {
+			return err
+		}
+		if app.Status == types.AppStatusUninstall {
+			app.AppVersionId = appVersion.ID
+			if err = tx.Save(app).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return app, nil
+}
+
 func (a *AppManager) GetByName(scope string, projectId uint, name string) (*types.ProjectApp, error) {
 	var app types.ProjectApp
 	err := a.DB.First(&app, "scope = ? and scope_id = ? and name = ?", scope, projectId, name).Error

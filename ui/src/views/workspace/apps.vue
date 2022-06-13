@@ -5,9 +5,18 @@
         <el-button size="small" type="primary" @click="openCreateApp" icon="el-icon-plus" :disabled="!$editorRole()">
           创建应用
         </el-button>
-        <el-button @click="openImportStoreAppDialog" type="primary" size="small" v-if="$editorRole()">
+        <!-- <el-button @click="openImportStoreAppDialog" type="primary" size="small" v-if="$editorRole()">
           导入应用
-        </el-button>
+        </el-button> -->
+        <el-dropdown style="margin-left: 15px;" v-if="$editorRole()">
+          <el-button type="primary" size="small">
+            导入应用<i class="el-icon-arrow-down el-icon--right"></i>
+          </el-button>
+          <el-dropdown-menu slot="dropdown">
+            <el-dropdown-item @click.native="openImportStoreAppDialog">导入应用商店</el-dropdown-item>
+            <el-dropdown-item @click.native="openImportCustomDialog">导入自定义</el-dropdown-item>
+          </el-dropdown-menu>
+        </el-dropdown>
       </div>
     </clusterbar>
     <div class="dashboard-container" ref="tableCot">
@@ -94,7 +103,7 @@
       <el-dialog :title="updateFormVisible ? '升级应用' : '安装应用'" :visible.sync="installFormVisible"
         @close="closeFormDialog" :destroy-on-close="true" :close-on-click-modal="false" top="5vh" width="70%">
         <div v-loading="dialogLoading">
-          <div class="dialogContent" style="margin-top: -10px;">
+          <div class="dialogContent projectApp" style="margin-top: -10px;">
             <el-form :model="form" :rules="rules" ref="form" label-position="left" label-width="105px">
               <el-form-item label="应用名称" prop="" autofocus>
                 <span>{{ form.name }}</span>
@@ -212,13 +221,63 @@
           </div>
         </div>
       </el-dialog>
+
+      <el-dialog title="导入自定义应用" :visible.sync="importCustomVisible" top="5vh" width="70%"
+        @close="closeImportCustomDialog" :destroy-on-close="true" :close-on-click-modal="false" v-loading="dialogLoading">
+        <div class="dialogContent importCustomApp" style="">
+          <el-form :model="importCustomForm" abel-position="left" label-width="105px">
+            <el-form-item label="charts包" prop="" required>
+              <el-upload
+                class="appStoreUpload"
+                drag
+                ref="appUpload"
+                :limit="1"
+                :data="importCustomForm"
+                :on-success="fileResolve"
+                :on-remove="fileRemove"
+                action="/api/v1/appstore/resolve">
+                <i class="el-icon-upload"></i>
+                <div class="el-upload__text">将charts包文件拖到此处，或<em>点击上传</em></div>
+              </el-upload>
+              <span style="line-height: 20px;" v-if="resolveErrMsg">{{ resolveErrMsg }}</span>
+            </el-form-item>
+            
+            <el-form-item v-if="importCustomForm.name" label="应用名称" prop="" required style="margin-top: 0px;">
+              <el-input v-model="importCustomForm.name" autocomplete="off" placeholder="请输入应用名称" size="small"></el-input>
+            </el-form-item>
+            <el-form-item v-if="importCustomForm.name" label="chart版本" prop="" required style="margin-top: 0px;">
+              {{ importCustomForm.package_version }}
+            </el-form-item>
+            <el-form-item v-if="importCustomForm.name" label="app版本" prop="" required style="margin-top: 0px;">
+              {{ importCustomForm.app_version }}
+            </el-form-item>
+            <el-form-item v-if="importCustomForm.name" label="应用类型" prop="secret_type" style="margin-top: 0px;" required>
+              <el-radio-group v-model="importCustomForm.type" name="middleware" size="small">
+                <el-radio-button label="ordinary_app">普通应用</el-radio-button>
+                <el-radio-button label="middleware">中间件</el-radio-button>
+              </el-radio-group>
+            </el-form-item>
+            <el-form-item v-if="importCustomForm.name" label="应用描述" prop="" required style="margin-top: 0px;">
+              <el-input type="textarea" v-model="importCustomForm.description" autocomplete="off" placeholder="请输入应用描述" size="small"></el-input>
+            </el-form-item>
+            <el-form-item v-if="importCustomForm.name" label="版本说明" prop="" required style="margin-top: 0px;">
+              <el-input type="textarea" v-model="importCustomForm.version_description" autocomplete="off" placeholder="请输入应用版本说明" size="small"></el-input>
+            </el-form-item>
+            
+          </el-form>
+        </div>
+        <div slot="footer" class="dialogFooter" style="margin-top: 0px;">
+          <el-button @click="importCustomVisible = false" style="margin-right: 20px;" >取 消</el-button>
+          <el-button type="primary" @click="handleImportCustomApp" >导 入</el-button>
+        </div>
+      </el-dialog>
     </div>
   </div>
 </template>
 <script>
 import { Clusterbar, Yaml } from "@/views/components";
 import { listProjects } from "@/api/project/project";
-import { listApps, listAppStatus, listAppVersions, installApp, destroyApp, deleteApp, importStoreApp, duplicateApp } from "@/api/project/apps";
+import { listApps, listAppStatus, listAppVersions, installApp, destroyApp, deleteApp, importStoreApp, duplicateApp, importCustomApp } from "@/api/project/apps";
 import { Message } from "element-ui";
 import { listStoreApps } from '@/api/project/appStore'
 import yaml from 'js-yaml'
@@ -293,7 +352,12 @@ export default {
 
       },
       projects: [],
-      appStatusSSE: undefined
+      appStatusSSE: undefined,
+      importCustomVisible: false,
+      importCustomForm: {
+
+      },
+      resolveErrMsg: "",
     };
   },
   created() {
@@ -665,7 +729,82 @@ export default {
       }).catch(() => {
         this.dialogLoading = false
       })
-    }
+    },
+    openImportCustomDialog() {
+      this.importCustomForm = {
+        icon: ''
+      }
+      this.importCustomVisible = true 
+    },
+    closeImportCustomDialog() {
+      // this.form = {icon: "", type: "middleware"}
+      this.resolveErrMsg = ''
+    },
+    fileResolve(response, file, flist) {
+      this.resolveErrMsg = ''
+      if(response.code != "Success") {
+        file.status = 'error'
+        this.resolveErrMsg = response.msg
+        Message.error(response.msg)
+        this.$refs.appUpload.clearFiles()
+      } else {
+        let charts = response.data
+        this.importCustomForm = {
+          name: charts.package_name,
+          package_version: charts.package_version,
+          app_version: charts.app_version,
+          description: charts.description,
+          version_description: '',
+          type: 'ordinary_app'
+        }
+      }
+    },
+    fileRemove(file) {
+      this.importCustomForm = {
+      }
+    },
+    handleImportCustomApp() {
+      var appUpload = this.$refs.appUpload
+      if(appUpload.uploadFiles.length == 0) {
+        Message.error("请上传charts包")
+        return
+      }
+      if(!this.importCustomForm.name) {
+        Message.error('请输入应用名称')
+        return
+      }
+      if(!this.importCustomForm.description) {
+        Message.error("请输入应用描述")
+        return
+      }
+      if(!this.importCustomForm.version_description) {
+        Message.error("请输入应用版本说明")
+        return
+      }
+      if(!this.importCustomForm.type) {
+        Message.error('请选择应用类型')
+        return
+      }
+      var data = new FormData()
+      data.append("scope", "project_app")
+      data.append("scope_id", this.projectId)
+      data.append("file", appUpload.uploadFiles[0].raw)
+      data.append('name', this.importCustomForm.name)
+      data.append('package_version', this.importCustomForm.package_version)
+      data.append('app_version', this.importCustomForm.app_version)
+      data.append('description', this.importCustomForm.description)
+      data.append('version_description', this.importCustomForm.version_description)
+      data.append('type', this.importCustomForm.type)
+      this.dialogLoading = true
+      importCustomApp(data).then(response => {
+        this.dialogLoading = false
+        Message.success("导入自定义应用成功")
+        this.importCustomVisible = false
+        this.fetchApps()
+      }).catch(() => {
+        this.dialogLoading = false
+      })
+    },
   },
 };
 </script>
@@ -690,4 +829,25 @@ export default {
   margin: 0px 5px 3px 0px;
 }
 
+</style>
+<style lang="scss">
+.importCustomApp {
+  .appStoreUpload {
+    .el-upload-dragger {
+      height: 100px;
+
+      .el-icon-upload {
+        margin: 10px 0px 0px;
+      }
+    }
+    .el-upload-list__item:first-child {
+      margin-top: 0px;
+    }
+    .el-upload__text {
+      line-height: 20px;
+      margin-bottom: 10px;
+      margin-top: -7px;
+    }
+  }
+}
 </style>
