@@ -2,7 +2,7 @@
   <div>
     <clusterbar :titleName="titleName" :titleLink="['workspaceApp']"/>
     <div class="dashboard-container detail-dashboard" ref="tableCot" v-loading="loading">
-      <div style="padding: 10px 0px 0px;">
+      <div style="padding: 10px 0px 0px;" class="appDetailBaseInfo">
         <div>基本信息</div>
         <el-form label-position="left" inline class="pod-item" label-width="80px" style="margin: 15px 10px 20px 10px;">
           <el-form-item label="应用名称">
@@ -565,4 +565,14 @@ export default {
 
 <style lang="scss" scoped>
 
+</style>
+<style lang="scss">
+.appDetailBaseInfo {
+  .el-form-item__label{
+    line-height: 29px;
+  }
+  .el-form-item__content {
+    line-height: 29px;
+  }
+}
 </style>

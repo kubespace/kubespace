@@ -371,6 +371,13 @@ const Routes = [
     meta: { title: 'CRD', icon: 'crd', group: 'cluster', object: 'crd' },
   },
   {
+    path: 'cr/:group/:resource/:version',
+    name: 'cr',
+    hidden: true,
+    component: () => import('@/views/cluster/cr'),
+    meta: { title: 'CRD', icon: 'crd', group: 'cluster', sideName: 'crd', object: 'cr' },
+  },
+  {
     path: 'permission',
     name: 'clusterPermission',
     component: () => import('@/views/cluster/clusterRole'),

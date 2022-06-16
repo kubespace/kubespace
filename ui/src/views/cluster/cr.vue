@@ -20,21 +20,15 @@
           min-width="28"
           show-overflow-tooltip>
           <template slot-scope="scope">
-            <span class="name-class" v-on:click="nameClick(scope.row)">
+            <span >
               {{ scope.row.name }}
             </span>
           </template>
         </el-table-column>
         <el-table-column
-          prop="version"
-          label="版本"
-          min-width="18"
-          show-overflow-tooltip>
-        </el-table-column>
-        <el-table-column
-          prop="scope"
-          label="scope"
-          min-width="18"
+          prop="namespace"
+          label="命名空间"
+          min-width="12"
           show-overflow-tooltip>
         </el-table-column>
         <el-table-column
@@ -54,18 +48,18 @@
             <el-dropdown size="medium" >
               <el-link :underline="false"><svg-icon style="width: 1.3em; height: 1.3em;" icon-class="operate" /></el-link>
               <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item @click.native.prevent="nameClick(scope.row.name)">
+                <!-- <el-dropdown-item @click.native.prevent="nameClick(scope.row.name)">
                   <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="detail" />
                   <span style="margin-left: 5px;">详情</span>
-                </el-dropdown-item>
-                <el-dropdown-item v-if="$editorRole()" @click.native.prevent="getCrdYaml(scope.row.name)">
+                </el-dropdown-item> -->
+                <el-dropdown-item v-if="$editorRole()" @click.native.prevent="getCrYaml(scope.row.name, scope.row.namespace)">
                   <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="edit" />
                   <span style="margin-left: 5px;">修改</span>
                 </el-dropdown-item>
-                <!-- <el-dropdown-item @click.native.prevent="deleteNodes([{namespace: scope.row.namespace, name: scope.row.name}])">
+                <el-dropdown-item v-if="$editorRole()" @click.native.prevent="deleteCr(scope.row.name, scope.row.namespace)">
                   <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="delete" />
                   <span style="margin-left: 5px;">删除</span>
-                </el-dropdown-item> -->
+                </el-dropdown-item>
               </el-dropdown-menu>
             </el-dropdown>
           </template>
@@ -76,7 +70,7 @@
       <yaml v-if="yamlDialog" v-model="yamlValue" :loading="yamlLoading"></yaml>
       <span slot="footer" class="dialog-footer">
         <el-button plain @click="yamlDialog = false" size="small">取 消</el-button>
-        <el-button plain @click="updateNode()" size="small">确 定</el-button>
+        <el-button plain @click="applyYaml()" size="small">确 定</el-button>
       </span>
     </el-dialog>
   </div>
@@ -84,24 +78,28 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { listCrds, getCrd } from '@/api/crd'
+import { listCrs, getCr, deleteCr } from '@/api/crd'
+import { updateGvr } from '@/api/cluster'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
 
 export default {
-  name: 'CRD',
+  name: 'CR',
   components: {
     Clusterbar,
     Yaml
   },
   data() {
+    let group = this.$route.params ? this.$route.params.group : ''
+    let resource = this.$route.params ? this.$route.params.resource : ''
+    let cr = resource + "." + group
       return {
         yamlDialog: false,
         yamlName: "",
         yamlValue: "",
         yamlLoading: true,
         cellStyle: {border: 0},
-        titleName: ["CRD"],
+        titleName: ["CRD", cr],
         maxHeight: window.innerHeight - 150,
         loading: true,
         originCrds: [],
@@ -136,6 +134,15 @@ export default {
       }
       return dlist
     },
+    group() {
+      return this.$route.params ? this.$route.params.group : ''
+    },
+    version() {
+      return this.$route.params ? this.$route.params.version : ''
+    },
+    resource() {
+      return this.$route.params ? this.$route.params.resource : ''
+    }
   },
   methods: {
     fetchData: function() {
@@ -143,7 +150,12 @@ export default {
       this.originCrds = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listCrds(cluster).then(response => {
+        let params = {
+          group: this.group,
+          version: this.version,
+          resource: this.resource,
+        }
+        listCrs(cluster, params).then(response => {
           this.loading = false
           this.originCrds = response.data
         }).catch(() => {
@@ -157,10 +169,10 @@ export default {
     nameSearch: function(val) {
       this.search_name = val
     },
-    nameClick: function(obj) {
-      this.$router.push({name: 'cr', params: {group: obj.group, resource: obj.resource, version: obj.version}})
+    nameClick: function(name) {
+      this.$router.push({name: 'nodeDetail', params: {nodeName: name}})
     },
-    getCrdYaml: function(name) {
+    getCrYaml: function(name, namespace) {
       this.yamlName = ""
       const cluster = this.$store.state.cluster
       if (!cluster) {
@@ -174,71 +186,63 @@ export default {
       this.yamlValue = ""
       this.yamlDialog = true
       this.yamlLoading = true
-      getCrd(cluster, name, "yaml").then(response => {
+      let params = {
+          group: this.group,
+          version: this.version,
+          resource: this.resource,
+          output: "yaml",
+          namespace
+        }
+      getCr(cluster, name, params).then(response => {
         this.yamlLoading = false
-        this.yamlValue = response.data
+        this.yamlValue = atob(response.data)
         this.yamlName = name
       }).catch(() => {
         this.yamlLoading = false
       })
     },
-    deleteCrds: function(nodes) {
+    applyYaml: function() {
       const cluster = this.$store.state.cluster
       if (!cluster) {
         Message.error("获取集群参数异常，请刷新重试")
         return
       }
-      if ( nodes.length <= 0 ){
-        Message.error("请选择要删除的Nodes")
+      if (!this.yamlValue) {
+        Message.error("请输入YAML")
+        return
+      }
+      this.yamlLoading = true
+      updateGvr(cluster, this.yamlValue).then((resp) => {
+        Message.success("修改成功")
+        this.yamlLoading = false
+        this.yamlDialog = false
+      }).catch(() => {
+        // console.log(e) 
+      })
+    },
+    deleteCr: function(name, namespace) {
+      const cluster = this.$store.state.cluster
+      if (!cluster) {
+        Message.error("获取集群参数异常，请刷新重试")
+        return
+      }
+      if ( !name ){
+        Message.error("请选择要删除资源")
         return
       }
       let params = {
-        resources: nodes
+        group: this.group,
+        version: this.version,
+        resource: this.resource,
+        namespace
       }
-      // deleteNodes(cluster, params).then(() => {
-      //   Message.success("删除成功")
-      // }).catch(() => {
-      //   // console.log(e)
-      // })
+      deleteCr(cluster, name, params).then(() => {
+        Message.success("删除成功")
+        this.fetchData()
+      }).catch(() => {
+        // console.log(e)
+      })
     },
-    // updateNode: function() {
-    //   const cluster = this.$store.state.cluster
-    //   if (!cluster) {
-    //     Message.error("获取集群参数异常，请刷新重试")
-    //     return
-    //   }
-    //   if (!this.yamlNamespace) {
-    //     Message.error("获取命名空间参数异常，请刷新重试")
-    //     return
-    //   }
-    //   if (!this.yamlName) {
-    //     Message.error("获取Node参数异常，请刷新重试")
-    //     return
-    //   }
-    //   console.log(this.yamlValue)
-    //   updateNode(cluster, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
-    //     Message.success("更新成功")
-    //   }).catch(() => {
-    //     // console.log(e) 
-    //   })
-    // },
-    // _delNodesFunc: function() {
-    //   if (this.delNodes.length > 0){
-    //     let delNodes = []
-    //     for (var p of this.delNodes) {
-    //       delNodes.push({namespace: p.namespace, name: p.name})
-    //     }
-    //     this.deleteNodes(delNodes)
-    //   }
-    // },
-    // handleSelectionChange(val) {
-    //   this.delNodes = val;
-    //   if (val.length > 0){
-    //     this.delFunc = this._delNodesFunc
-    //   } else {
-    //     this.delFunc = undefined
-    //   }
-    // }
   }
 }
 </script>

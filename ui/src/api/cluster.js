@@ -55,6 +55,14 @@ export function createYaml(cluster, yaml) {
   })
 }
 
+export function updateGvr(cluster, yaml) {
+  return request({
+    url: `/cluster/updateGvr/${cluster}`,
+    method: 'post',
+    data: {yaml: yaml},
+  })
+}
+
 export function sse(vueSse, watchFunc, cluster, params) {
   let p = qs.stringify(params)
   let url = `/api/v1/cluster/${cluster}/sse?${p}`

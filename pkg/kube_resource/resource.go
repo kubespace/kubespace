@@ -12,6 +12,7 @@ const (
 	GetAction        = "get"
 	DeleteAction     = "delete"
 	UpdateYamlAction = "update_yaml"
+	UpdateGvrAction  = "update_gvr"
 	UpdateObjAction  = "update_obj"
 	StdinAction      = "stdin"
 	OpenLogAction    = "openLog"
@@ -53,6 +54,10 @@ func (k *KubeResource) UpdateObj(cluster string, params interface{}) *utils.Resp
 
 func (k *KubeResource) Create(cluster string, params interface{}) *utils.Response {
 	return k.request(cluster, CREATE, params)
+}
+
+func (k *KubeResource) UpdateGvr(cluster string, params interface{}) *utils.Response {
+	return k.request(cluster, UpdateGvrAction, params)
 }
 
 func (k *KubeResource) Apply(cluster string, params interface{}) *utils.Response {
@@ -132,6 +137,7 @@ const (
 	StorageClassType   = "storageClass"
 	Helm               = "helm"
 	Crd                = "crd"
+	Cr                 = "cr"
 )
 
 type KubeResources struct {
@@ -161,6 +167,7 @@ type KubeResources struct {
 	StorageClass   *KubeResource
 	Helm           *KubeResource
 	Crd            *KubeResource
+	Cr             *KubeResource
 }
 
 func NewKubeResources(message *MiddleMessage) *KubeResources {
@@ -191,5 +198,6 @@ func NewKubeResources(message *MiddleMessage) *KubeResources {
 		StorageClass:   &KubeResource{ResType: StorageClassType, KubeMessage: message},
 		Helm:           &KubeResource{ResType: Helm, KubeMessage: message},
 		Crd:            &KubeResource{ResType: Crd, KubeMessage: message},
+		Cr:             &KubeResource{ResType: Cr, KubeMessage: message},
 	}
 }

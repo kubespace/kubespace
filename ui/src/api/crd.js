@@ -14,3 +14,27 @@ export function getCrd(cluster, name, output='') {
     params: { output }
   })
 }
+
+export function listCrs(cluster, params) {
+  return request({
+    url: `crd/${cluster}/cr`,
+    method: 'get',
+    params
+  })
+}
+
+export function getCr(cluster, name, params) {
+  return request({
+    url: `crd/${cluster}/cr/${name}`,
+    method: 'get',
+    params
+  })
+}
+
+export function deleteCr(cluster, name, params) {
+  return request({
+    url: `crd/${cluster}/cr/${name}`,
+    method: 'delete',
+    data: params
+  })
+}
