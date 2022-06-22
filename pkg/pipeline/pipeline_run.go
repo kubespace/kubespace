@@ -664,19 +664,42 @@ func (r *ServicePipelineRun) getJobRunResultEnvs(jobRun *types.PipelineRunJob) m
 		klog.Errorf("get jobRun %s(%s) plugin error: %s", jobRun.ID, jobRun.Name, err.Error())
 		return nil
 	}
-	if len(plugin.ResultEnv.EnvPath) == 0 {
-		return nil
-	}
 	var envs = map[string]interface{}{}
-	resData, ok := jobRun.Result.Data.(map[string]interface{})
-	if ok {
-		for _, envPath := range plugin.ResultEnv.EnvPath {
-			if v, ok := resData[envPath.ResultName]; ok {
-				envs[envPath.EnvName] = v
+	if plugin.Key == types.BuiltinPluginExecuteShell {
+		// 执行脚本，更新当前阶段的环境变量
+		stageRun, err := r.models.ManagerPipelineRun.GetStageRun(jobRun.StageRunId)
+		if err != nil {
+			klog.Errorf("get callback job stage run error: %s", err.Error())
+			return nil
+		}
+		var stageEnvKeys []string
+		for envKey, _ := range stageRun.Env {
+			stageEnvKeys = append(stageEnvKeys, envKey)
+		}
+		resData, ok := jobRun.Result.Data.(map[string]interface{})
+		if ok {
+			for k, v := range resData {
+				if utils.Contains(stageEnvKeys, k) {
+					envs[k] = v
+				}
 			}
+		} else {
+			klog.Errorf("get job run id=%d result data error, data=%+v", jobRun.ID, jobRun.Result)
 		}
 	} else {
-		klog.Errorf("get job run id=%d result data error", jobRun.ID)
+		if len(plugin.ResultEnv.EnvPath) == 0 {
+			return nil
+		}
+		resData, ok := jobRun.Result.Data.(map[string]interface{})
+		if ok {
+			for _, envPath := range plugin.ResultEnv.EnvPath {
+				if v, ok := resData[envPath.ResultName]; ok {
+					envs[envPath.EnvName] = v
+				}
+			}
+		} else {
+			klog.Errorf("get job run id=%d result data error, data=%+v", jobRun.ID, jobRun.Result)
+		}
 	}
 	return envs
 }

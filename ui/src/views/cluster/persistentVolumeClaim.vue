@@ -311,7 +311,7 @@ export default {
         type: 'warning'
       }).then(() => {
         this.loading = true
-        deletePersistentVolumeClaims(this.cluster, {resources: cms}).then(() => {
+        deletePersistentVolumeClaims(this.cluster, {resources: pvcs}).then(() => {
           Message.success("删除PVC成功")
           this.loading = false
           this.fetchData()
