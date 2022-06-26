@@ -3,7 +3,7 @@
     <transition name="navbarLogoFade">
       <router-link key="logo" class="navbar-logo-link" to="/">
         <!-- <img v-if="logo" :src="logo" class="navbar-logo"> -->
-        <h1 class="navbar-title">{{ title }} </h1>
+        <h1 class="navbar-title"><span style="color:#409eff">Kube</span>Space</h1>
       </router-link>
     </transition>
   </div>
@@ -49,7 +49,7 @@ export default {
       margin: 0px 0px 0px 25px;
       font-weight: 500;
       font-size: 20px;
-      font-family: Avenir, Helvetica Neue, Arial, Helvetica, sans-serif;
+      font-family: Chalkduster, Avenir, Helvetica Neue, Arial, Helvetica, sans-serif;
       vertical-align: top;
       // background: linear-gradient(to right,#F56C6C, rgb(110, 147, 184));
       // -webkit-background-clip: text;

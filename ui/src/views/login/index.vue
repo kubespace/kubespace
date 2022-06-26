@@ -3,7 +3,7 @@
         <div class="login-box">
             <el-row style="margin-bottom: 25px;">
                 <el-col :span="16" :offset="4" align="center">
-                    <span class='login-title'>KubeSpace</span>
+                    <span class='login-title'><span style="color: #409eff">Kube</span>Space</span>
                 </el-col>
             </el-row>
             <el-row>
@@ -121,7 +121,7 @@ export default {
 }
 .login-title {
     font-size: 32px;
-    font-family: Avenir, Helvetica Neue, Arial, Helvetica, sans-serif;
+    font-family: Chalkduster, Avenir, Helvetica Neue, Arial, Helvetica, sans-serif;
     /* background: linear-gradient(to right,#F56C6C, rgb(110, 147, 184)); */
     /* -webkit-background-clip: text; */
     /* color: transparent; */
