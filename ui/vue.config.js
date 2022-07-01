@@ -13,6 +13,8 @@ const name = 'KubeSpace' // page title
 // You can change the port by the following methods:
 // port = 9528 npm run dev OR npm run dev --port = 9528
 const port = process.env.port || process.env.npm_config_port || 9527 // dev port
+const backend_url = process.env.backend_url || "127.0.0.1"
+const backend_port = process.env.backend_port || 80
 
 // All configuration item explanations can be find in https://cli.vuejs.org/config/
 module.exports = {
@@ -38,19 +40,19 @@ module.exports = {
     // before: require('./mock/mock-server.js')
     proxy: {
       '/ws': {
-        target: 'ws://127.0.0.1:80',
+        target: `ws://${backend_url}:${backend_port}`,
         ws: true,
         secure: false,
         changeOrigin: true,
       },
       '/api/v1': {
-        target: 'http://127.0.0.1:80',
+        target: `http://${backend_url}:${backend_port}`,
         ws: true,
         secure: false,
         changeOrigin: true,
       },
       '/app': {
-        target: 'http://127.0.0.1:80',
+        target: `http://${backend_url}:${backend_port}`,
         ws: true,
         secure: false,
         changeOrigin: true,
