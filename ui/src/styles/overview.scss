@@ -1,0 +1,26 @@
+.overview-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    .el-card__body {
+        padding: 0px 10px!important;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+    }
+    &_left {
+        color: $menuActiveText;
+        .svg-icon {
+            width: 2rem!important;
+            height: 2rem!important;
+            fill: $menuActiveText!important;
+        }
+    }
+    &_right {
+        font-size: 16px;
+        &_number {
+            margin-bottom: 4px;
+        }
+    }
+}

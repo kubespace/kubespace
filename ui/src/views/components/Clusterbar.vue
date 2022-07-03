@@ -198,7 +198,7 @@ export default {
   // height: 50px;
   overflow: hidden;
   // box-shadow: inset 0 0 4px rgba(0, 21, 41, 0.1);
-  margin: 15px 30px 0px;
+  margin: 15px 16px 0px;;
 
   .app-breadcrumb.el-breadcrumb {
     // display: inline-block;

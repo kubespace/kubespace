@@ -3,6 +3,7 @@
 @import './transition.scss';
 @import './element-ui.scss';
 @import './sidebar.scss';
+@import './overview.scss';
 body {
   height: 100%;
   -moz-osx-font-smoothing: grayscale;
@@ -22,6 +23,7 @@ html {
 
 #app {
   height: 100%;
+  background-color: #f2f2f2;
 }
 
 *,
@@ -85,7 +87,7 @@ div:focus {
   }
   .dashboard {
     &-container {
-      margin: 2px 30px 5px;
+      margin: 2px 16px 5px!important;
     }
     &-text {
       font-size: 30px;

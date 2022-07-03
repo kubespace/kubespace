@@ -22,9 +22,8 @@
           </el-form-item>
         </el-form>
       </div> -->
-
+      <div slot="header" class="title" style="">基本信息</div> 
       <el-card shadow="never">
-        <div slot="header" style="">基本信息</div>
         <el-form label-position="left" inline class="pod-item" label-width="80px" 
           style="margin: -10px 0px; box-shadow: none; padding: 0px;">
           <el-form-item label="空间名称">
@@ -44,72 +43,35 @@
           </el-form-item>
         </el-form>
       </el-card>
-
-      <el-card shadow="never" style="margin-top: 20px;">
-        <div slot="header" style="">空间资源</div>
-        
-          <div class="border-class">
-            <el-row :gutter="5">
-              <el-col :span="3">
-                <el-card shadow="never" style="height: 140px">
-                  <div style="text-align: center; height: 20px;">应用</div>
-                  <div style="text-align: center; padding-top: 39px; font-size: 20px;">{{ originApps.length }}</div>
-                </el-card>
-              </el-col>
-              <el-col :span="3">
-                <el-card shadow="never" style="height: 64px; color: #409EFF; margin-top: 3px;">
-                  <div style="text-align: center; font-size: 13px">未安装</div>
-                  <div style="text-align: center; padding-top: 4px;">{{ uninstallCnt }}</div>
-                </el-card>
-                <el-card shadow="never" style="height: 64px; margin-top: 6px; color: #E6A23C;">
-                  <div style="text-align: center; font-size: 13px;">未就绪</div>
-                  <div style="text-align: center; padding-top: 4px;">{{ notReadyCnt }}</div>
-                </el-card>
-              </el-col>
-              <el-col :span="3">
-                <el-card shadow="never" style="height: 64px; color: #67C23A; margin-top: 3px;">
-                  <div style="text-align: center; font-size: 13px">运行中</div>
-                  <div style="text-align: center; padding-top: 4px;">{{ runningCnt }}</div>
-                </el-card>
-                <el-card shadow="never" style="height: 64px; margin-top: 6px; color: #F56C6C">
-                  <div style="text-align: center; font-size: 13px;">运行故障</div>
-                  <div style="text-align: center; padding-top: 4px;">{{ runningFaultCnt }}</div>
-                </el-card>
-              </el-col>
-              <el-col :span="3">
-                <el-card shadow="never" style="height: 140px">
-                  <div style="text-align: center; height: 20px; font-size: 13px;">ConfigMap</div>
-                  <div style="text-align: center; padding-top: 39px; font-size: 20px;">{{ resource.config_map_num }}</div>
-                </el-card>
-              </el-col>
-              <el-col :span="3">
-                <el-card shadow="never" style="height: 140px">
-                  <div style="text-align: center; height: 20px; font-size: 13px;">Secret</div>
-                  <div style="text-align: center; padding-top: 39px; font-size: 20px;">{{ resource.secret_num }}</div>
-                </el-card>
-              </el-col>
-              <el-col :span="3">
-                <el-card shadow="never" style="height: 140px">
-                  <div style="text-align: center; height: 20px; font-size: 13px;">Service</div>
-                  <div style="text-align: center; padding-top: 39px; font-size: 20px;">{{ resource.service_num }}</div>
-                </el-card>
-              </el-col>
-              <el-col :span="3">
-                <el-card shadow="never" style="height: 140px">
-                  <div style="text-align: center; height: 20px; font-size: 13px;">Ingress</div>
-                  <div style="text-align: center; padding-top: 39px; font-size: 20px;">{{ resource.ingress_num }}</div>
-                </el-card>
-              </el-col>
-              <el-col :span="3">
-                <el-card shadow="never" style="height: 140px">
-                  <div style="text-align: center; height: 20px; font-size: 13px;">PVC</div>
-                  <div style="text-align: center; padding-top: 39px; font-size: 20px;">{{ resource.pvc_num }}</div>
-                </el-card>
-              </el-col>
-            </el-row>
-          </div>
-        
-      </el-card>
+      <div slot="header" class="title" style="margin-top: 20px;">空间资源</div>
+      <el-row :gutter="5">
+          <el-col :sm="5" :md="4" :lg="3">
+            <OverviewCard icon="workspace_app" title="应用" :number="originApps.length" style="height: 100px;"/>
+          </el-col>
+          <el-col :sm="4" :md="3" :lg="3">
+             <OverviewCard icon="workspace_app" title="未安装" :number="uninstallCnt" style="height: 45px;color: #409EFF;"/>
+             <OverviewCard icon="workspace_app" title="未就绪" :number="notReadyCnt" style="height: 45px;color: #E6A23C;margin-top: 10px;"/>
+          </el-col>
+          <el-col :sm="4" :md="3" :lg="3">
+            <OverviewCard icon="workspace_app" title="运行中" :number="runningCnt" style="height: 45px;color: #67C23A;"/>
+             <OverviewCard icon="workspace_app" title="运行故障" :number="runningFaultCnt" style="height: 45px;color: #F56C6C;margin-top: 10px;"/>
+          </el-col>
+          <el-col :sm="5" :md="4" :lg="3">
+             <OverviewCard icon="configuration" title="ConfigMap" :number="resource.config_map_num" style="height: 100px;"/>
+          </el-col>
+          <el-col :sm="5" :md="4" :lg="3">
+            <OverviewCard icon="configuration" title="Secret" :number="resource.secret_num" style="height: 100px;"/>
+          </el-col>
+          <el-col :sm="5" :md="4" :lg="3">
+             <OverviewCard icon="network" title="Service" :number="resource.service_num" style="height: 100px;"/>
+          </el-col>
+          <el-col :sm="5" :md="4" :lg="3">
+             <OverviewCard icon="network" title="Ingress" :number="resource.ingress_num" style="height: 100px;"/>
+          </el-col>
+          <el-col :sm="5" :md="4" :lg="3">
+            <OverviewCard icon="storage" title="PVC" :number="resource.pvc_num" style="height: 100px;"/>
+          </el-col>
+        </el-row>
 
       <!-- <div style="padding: 15px 0px 0px;">
         <div style="margin-bottom: 10px;">空间资源</div>
@@ -184,11 +146,10 @@
 import { getProject } from '@/api/project/project'
 import { listApps } from '@/api/project/apps'
 import { Message } from 'element-ui'
-
+import OverviewCard from "./overviewCard.vue";
 export default {
   name: 'ProjectOverview',
-  components: {
-  },
+  components: { OverviewCard },
   data() {
     return {
       titleName: ["项目空间"],
@@ -270,6 +231,12 @@ export default {
 <style lang="scss" scoped>
 .project-overview-baseinfo {
   padding: 20px 0px;
+}
+.dashboard-container {
+  .title {
+    margin-bottom: 20px;
+    font-weight: 500;
+  }
 }
 </style>
 
