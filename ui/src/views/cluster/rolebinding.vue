@@ -131,7 +131,7 @@ export default {
         yamlValue: "",
         yamlKind: "",
         yamlLoading: true,
-        cellStyle: {border: 0},
+        cellStyle: {border: 1},
         titleName: ["Role Bindings"],
         maxHeight: window.innerHeight - 150,
         loading: true,

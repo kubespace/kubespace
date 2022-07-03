@@ -483,7 +483,7 @@ export default {
       yamlLoading: true,
       logDialog: false,
       terminalDialog: false,
-      cellStyle: {border: 0},
+      cellStyle: {border: 1},
       loading: true,
       originWorkload: undefined,
       pods: [],

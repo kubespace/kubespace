@@ -72,7 +72,7 @@ export default {
       yamlDialog: false,
       yamlValue: "",
       yamlLoading: true,
-      cellStyle: {border: 0},
+      cellStyle: {border: 1},
       loading: true,
       originRoleBinding: undefined,
     }

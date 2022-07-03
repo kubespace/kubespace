@@ -138,7 +138,7 @@ export default {
       titleName: ["Clusters"],
       search_name: '',
       users: [],
-      cellStyle: {border: 0},
+      cellStyle: {border: 1},
       maxHeight: window.innerHeight - 150,
       loading: true,
       clusters: [],

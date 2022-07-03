@@ -160,7 +160,7 @@ export default {
       titleName: ["集群管理"],
       search_name: '',
       users: [],
-      cellStyle: {border: 0},
+      cellStyle: {border: 1},
       maxHeight: window.innerHeight - 150,
       loading: true,
       clusters: [],

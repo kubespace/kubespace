@@ -139,7 +139,7 @@ export default {
         yamlName: "",
         yamlValue: "",
         yamlLoading: true,
-        cellStyle: {border: 0},
+        cellStyle: {border: 1},
         titleName: ["Jobs"],
         maxHeight: window.innerHeight - 135,
         loading: true,

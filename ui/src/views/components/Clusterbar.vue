@@ -195,26 +195,25 @@ export default {
 @import "~@/styles/variables.scss";
 .cluster-bar {
   transition: width 0.28s;
-  height: 50px;
+  // height: 50px;
   overflow: hidden;
   // box-shadow: inset 0 0 4px rgba(0, 21, 41, 0.1);
-  border: 1px solid #EBEEF5;
-  margin: 15px 20px 0px;
+  margin: 15px 30px 0px;
 
   .app-breadcrumb.el-breadcrumb {
-    display: inline-block;
-    font-size: 20px;
-    line-height: 52px;
-    margin-left: 8px;
+    // display: inline-block;
+    font-size: 14px;
+    // line-height: 52px;
+    //  margin-left: 8px;
 
     .no-redirect {
       // color: #97a8be;
       cursor: text;
-      font-size: 17px;
+      font-size: 16px;
       font-family: Avenir, Helvetica Neue, Arial, Helvetica, sans-serif;
     }
     .no-redirect:first-child {
-      margin-left: 15px;
+     // margin-left: 15px;
     }
   }
 
@@ -234,7 +233,7 @@ export default {
     float: right;
     height: 100%;
     line-height: 45px;
-    margin-right: 25px;
+    // margin-right: 25px;
 
     .el-input {
       width: 195px;

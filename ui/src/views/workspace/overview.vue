@@ -193,7 +193,7 @@ export default {
     return {
       titleName: ["项目空间"],
       search_name: '',
-      cellStyle: {border: 0},
+      cellStyle: {border: 1},
       maxHeight: window.innerHeight - 150,
       loading: true,
       project: {},

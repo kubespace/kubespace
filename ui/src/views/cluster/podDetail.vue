@@ -377,7 +377,7 @@ export default {
       yamlLoading: true,
       log: false,
       terminal: false,
-      cellStyle: {border: 0},
+      cellStyle: {border: 1},
       loading: true,
       originPod: undefined,
       selectContainer: '',

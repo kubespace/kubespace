@@ -64,7 +64,7 @@ export default {
       yamlDialog: false,
       yamlValue: "",
       yamlLoading: true,
-      cellStyle: {border: 0},
+      cellStyle: {border: 1},
       loading: true,
       originServiceAccount: undefined,
       // pods: [],

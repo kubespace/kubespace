@@ -53,7 +53,7 @@ export default {
       vertical-align: top;
       // background: linear-gradient(to right,#F56C6C, rgb(110, 147, 184));
       // -webkit-background-clip: text;
-      // color: transparent;
+      color: #fff;
     }
   }
 

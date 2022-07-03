@@ -192,7 +192,7 @@ export default {
       yamlValue: "",
       yamlLoading: true,
       dialogLoading: false,
-      cellStyle: {border: 0},
+      cellStyle: {border: 1},
       titleName: ["Components"],
       maxHeight: window.innerHeight - 150,
       loading: true,

@@ -146,7 +146,7 @@ export default {
   },
   data() {
     return {
-      cellStyle: {border: 0},
+      cellStyle: {border: 1},
       yamlDialog: false,
       yamlValue: "",
       yamlLoading: true,

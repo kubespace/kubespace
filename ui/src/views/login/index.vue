@@ -26,7 +26,7 @@
             </el-row>
             <el-row style="margin-top: 30px;">
                 <el-col :span="16" :offset="4" align="center">
-                    <el-button :loading="loading" size="medium" plain style="width: 100%;" @click.native.prevent="handleLogin">
+                    <el-button :loading="loading" size="medium" type="primary" style="width: 100%;" @click.native.prevent="handleLogin">
                         <span style="margin-right: 20px;">登</span>
                         <span>录</span>
                     </el-button>

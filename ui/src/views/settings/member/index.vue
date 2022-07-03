@@ -101,7 +101,7 @@ export default {
   data() {
     return {
       maxHeight: window.innerHeight - 150,
-      cellStyle: { border: 0 },
+      cellStyle: { border: 1 },
       titleName: ["用户管理"],
       createUserFormVisible: false,
       updateUserVisible: false,

@@ -84,7 +84,7 @@ export default {
       titleName: ["流水线"],
       search_name: '',
       users: [],
-      cellStyle: {border: 0},
+      cellStyle: {border: 1},
       maxHeight: window.innerHeight - 150,
       loading: true,
       pipelines: [],

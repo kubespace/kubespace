@@ -420,7 +420,7 @@ export default {
       titleName: ["应用管理"],
       search_name: '',
       users: [],
-      cellStyle: {border: 0},
+      cellStyle: {border: 1},
       maxHeight: window.innerHeight - 135,
       loading: true,
       originApp: {},

@@ -128,7 +128,7 @@ export default {
         yamlName: "",
         yamlValue: "",
         yamlLoading: true,
-        cellStyle: {border: 0},
+        cellStyle: {border: 1},
         titleName: ["CronJobs"],
         maxHeight: window.innerHeight - 150,
         loading: true,

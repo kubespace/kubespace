@@ -136,7 +136,7 @@ export default {
   },
   data() {
       return {
-        cellStyle: {border: 0},
+        cellStyle: {border: 1},
         titleName: ["应用商店"],
         maxHeight: window.innerHeight - 135,
         loading: true,

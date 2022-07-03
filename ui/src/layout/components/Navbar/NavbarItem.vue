@@ -1,6 +1,12 @@
 <template>
   <div class="navbar-item">
-    <el-menu :default-active="activeMenu" mode="horizontal" >
+    <el-menu 
+        :default-active="activeMenu" 
+         mode="horizontal" 
+         background-color="#000"
+         text-color="#fff"
+         active-text-color="#409eef">
+        >
         <el-menu-item index="workspace" class="submenu-class" v-on:click="workspaceClick">工作空间</el-menu-item>
         <el-menu-item index="pipeline" class="submenu-class" v-on:click="pipelineClick">流水线</el-menu-item>
         <el-menu-item index="cluster" class="submenu-class" v-on:click="clusterClick">集群管理</el-menu-item>
@@ -59,6 +65,7 @@ export default {
   line-height: 50px;
   overflow: hidden;
   margin-left: 90px;
+  font-weight: 400;
 
 }
 </style>
