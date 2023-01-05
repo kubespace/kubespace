@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/go-redis/redis/v8"
-	oredis "github.com/kubespace/kubespace/pkg/redis"
+	oredis "github.com/kubespace/kubespace/pkg/core/redis"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"k8s.io/klog"

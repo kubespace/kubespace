@@ -1,16 +1,28 @@
 package model
 
 import (
+	"github.com/kubespace/kubespace/pkg/core/mysql"
+	"github.com/kubespace/kubespace/pkg/core/redis"
 	"github.com/kubespace/kubespace/pkg/kube_resource"
+	"github.com/kubespace/kubespace/pkg/model/listwatcher/config"
 	"github.com/kubespace/kubespace/pkg/model/manager"
+	"github.com/kubespace/kubespace/pkg/model/manager/cluster"
 	"github.com/kubespace/kubespace/pkg/model/manager/pipeline"
 	"github.com/kubespace/kubespace/pkg/model/manager/project"
-	"github.com/kubespace/kubespace/pkg/model/mysql"
-	"github.com/kubespace/kubespace/pkg/redis"
+	"github.com/kubespace/kubespace/pkg/model/types"
+	"gorm.io/gorm"
 )
 
+type Options struct {
+	RedisOptions *redis.Options
+	MysqlOptions *mysql.Options
+}
+
 type Models struct {
-	*manager.ClusterManager
+	db                *gorm.DB
+	ListWatcherConfig *config.ListWatcherConfig
+
+	*cluster.ClusterManager
 	*manager.UserManager
 	*manager.UserRoleManager
 	*manager.TokenManager
@@ -32,18 +44,18 @@ type Models struct {
 	AppStoreManager          *project.AppStoreManager
 }
 
-func NewModels(redisOp *redis.Options, mysqlOptions *mysql.Options) (*Models, error) {
-	client := redis.NewRedisClient(redisOp)
-
-	db, err := mysql.NewMysqlDb(mysqlOptions)
+func NewModels(options *Options) (*Models, error) {
+	db, err := mysql.NewMysqlDb(options.MysqlOptions)
 	if err != nil {
 		return nil, err
 	}
+	redisClient := redis.NewRedisClient(options.RedisOptions)
+	listWatcherConfig := config.NewListWatcherConfig(db, redisClient)
 
-	middleMessage := kube_resource.NewMiddleMessageWithClient(nil, client)
-	role := manager.NewRoleManager(client)
-	tk := manager.NewTokenManager(client)
-	app := manager.NewAppManager(client)
+	middleMessage := kube_resource.NewMiddleMessageWithClient(nil, redisClient)
+	role := manager.NewRoleManager(redisClient)
+	tk := manager.NewTokenManager(redisClient)
+	app := manager.NewAppManager(redisClient)
 
 	user := manager.NewUserManager(db)
 	userRole := manager.NewUserRoleManager(db, user)
@@ -63,9 +75,11 @@ func NewModels(redisOp *redis.Options, mysqlOptions *mysql.Options) (*Models, er
 	appStoreMgr := project.NewAppStoreManager(appVersionMgr, db)
 	projectMgr := project.NewManagerProject(db, projectAppMgr)
 
-	cm := manager.NewClusterManager(db, projectAppMgr)
+	cm := cluster.NewClusterManager(db, listWatcherConfig, projectAppMgr)
 
 	return &Models{
+		db:                       db,
+		ListWatcherConfig:        listWatcherConfig,
 		ClusterManager:           cm,
 		UserManager:              user,
 		UserRoleManager:          userRole,
@@ -86,4 +100,41 @@ func NewModels(redisOp *redis.Options, mysqlOptions *mysql.Options) (*Models, er
 		ImageRegistryManager:     imageRegistry,
 		AppStoreManager:          appStoreMgr,
 	}, nil
+}
+
+func DbMigrate(db *gorm.DB) error {
+	var err error
+	migrateTypes := []interface{}{
+		&types.Cluster{},
+		&types.User{},
+		&types.UserRole{},
+		&types.PipelineWorkspace{},
+		&types.Pipeline{},
+		&types.PipelineStage{},
+		&types.PipelinePlugin{},
+		&types.PipelineRun{},
+		&types.PipelineRunStage{},
+		&types.PipelineRunJob{},
+		&types.PipelineRunJobLog{},
+		&types.PipelineResource{},
+		&types.PipelineWorkspaceRelease{},
+
+		&types.SettingsSecret{},
+		&types.SettingsImageRegistry{},
+
+		&types.Project{},
+		&types.ProjectApp{},
+		&types.AppVersion{},
+		&types.AppVersionChart{},
+		&types.AppStore{},
+		&types.ProjectAppRevision{},
+	}
+	for _, model := range migrateTypes {
+		err = db.AutoMigrate(model)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

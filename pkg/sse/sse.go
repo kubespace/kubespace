@@ -2,8 +2,8 @@ package sse
 
 import (
 	"encoding/json"
+	"github.com/kubespace/kubespace/pkg/core/redis"
 	"github.com/kubespace/kubespace/pkg/kube_resource"
-	"github.com/kubespace/kubespace/pkg/redis"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/klog"

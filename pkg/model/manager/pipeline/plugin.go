@@ -2,7 +2,7 @@ package pipeline
 
 import (
 	"errors"
-	"github.com/kubespace/kubespace/pkg/conf"
+	"github.com/kubespace/kubespace/pkg/core/conf"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"gorm.io/gorm"
 	"k8s.io/klog"
