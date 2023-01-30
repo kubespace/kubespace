@@ -8,7 +8,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"gorm.io/gorm"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"time"
 )
 

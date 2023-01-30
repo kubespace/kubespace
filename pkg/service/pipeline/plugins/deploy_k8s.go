@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/model"
+	"github.com/kubespace/kubespace/pkg/service/cluster"
 	"github.com/kubespace/kubespace/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -21,11 +21,11 @@ var WorkloadKinds = []string{"Deployment", "StatefulSet", "DaemonSet", "Job", "P
 
 type DeployK8sPlugin struct {
 	*model.Models
-	*kube_resource.KubeResources
+	KubeClient *cluster.KubeClient
 }
 
 func (p DeployK8sPlugin) Execute(params *PluginParams) (interface{}, error) {
-	deploy, err := NewDeployK8s(params, p.Models, p.KubeResources)
+	deploy, err := NewDeployK8s(params, p.Models, p.KubeClient)
 	if err != nil {
 		return nil, err
 	}
@@ -47,15 +47,15 @@ type deployK8sResult struct {
 }
 
 type deployK8s struct {
-	models        *model.Models
-	kubeResources *kube_resource.KubeResources
-	params        *deployK8sParams
-	images        []string
-	result        *deployK8sResult
+	models     *model.Models
+	kubeClient *cluster.KubeClient
+	params     *deployK8sParams
+	images     []string
+	result     *deployK8sResult
 	*PluginLogger
 }
 
-func NewDeployK8s(params *PluginParams, models *model.Models, kr *kube_resource.KubeResources) (*deployK8s, error) {
+func NewDeployK8s(params *PluginParams, models *model.Models, kubeClient *cluster.KubeClient) (*deployK8s, error) {
 	var deployParams deployK8sParams
 	marshalParams, err := json.Marshal(params.Params)
 	if err != nil {
@@ -69,11 +69,11 @@ func NewDeployK8s(params *PluginParams, models *model.Models, kr *kube_resource.
 		return nil, fmt.Errorf("unmarshal deploy k8s params error: %s", err.Error())
 	}
 	return &deployK8s{
-		models:        models,
-		kubeResources: kr,
-		params:        &deployParams,
-		result:        &deployK8sResult{},
-		PluginLogger:  params.Logger,
+		models:       models,
+		kubeClient:   kubeClient,
+		params:       &deployParams,
+		result:       &deployK8sResult{},
+		PluginLogger: params.Logger,
 	}, nil
 }
 
@@ -118,7 +118,7 @@ func (u *deployK8s) execute() error {
 	}
 	u.Log(destYamlStr)
 	u.Log("开始部署资源到集群「%s」", cluster.Name1)
-	resp := u.kubeResources.Cluster.Apply(cluster.Name, map[string]string{
+	resp := u.kubeClient.Apply(cluster.Name, map[string]string{
 		"yaml": destYamlStr,
 	})
 	if !resp.IsSuccess() {

@@ -8,7 +8,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/sse"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"gorm.io/gorm"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"strings"
 	"time"
 )

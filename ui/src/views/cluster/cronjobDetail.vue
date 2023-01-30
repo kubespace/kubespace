@@ -1,40 +1,43 @@
 <template>
   <div>
     <clusterbar :titleName="titleName" :delFunc="deleteCronJobs" :editFunc="getCronJobYaml"/>
-    <div class="dashboard-container">
-      <el-form label-position="left" inline class="pod-item">
-        <el-form-item label="名称">
-          <span>{{ cronjob.name }}</span>
-        </el-form-item>
-        <el-form-item label="创建时间">
-          <span>{{ $dateFormat(cronjob.created) }}</span>
-        </el-form-item>
-        <el-form-item label="命名空间">
-          <span>{{ cronjob.namespace }}</span>
-        </el-form-item>
-        <el-form-item label="定时">
-          <span>{{ cronjob.schedule }}</span>
-        </el-form-item>
-        <el-form-item label="挂起">
-          <span>{{ cronjob.suspend }}</span>
-        </el-form-item>
-        <el-form-item label="并发策略">
-          <span>{{ cronjob.concurrency_policy }}</span>
-        </el-form-item>
-        <el-form-item label="标签">
-          <span v-if="!cronjob.labels">—</span>
-          <template v-else v-for="(val, key) in cronjob.labels">
-            <span :key="key">{{key}}: {{val}}<br/></span>
-          </template>
-        </el-form-item>
-        <!-- <el-form-item label="注解">
-          <span v-if="!cronjob.annotations">—</span>
-          
-          <template v-else v-for="(val, key) in cronjob.annotations">
-            <span :key="key">{{key}}: {{val}}<br/></span>
-          </template>
-        </el-form-item> -->
-      </el-form>
+    <div class="dashboard-container workload-container" style="margin: 10px 20px;">
+      <div style="padding: 10px 8px 0px;">
+        <div>基本信息</div>
+        <el-form label-position="left" inline class="pod-item" label-width="90px" style="margin: 15px 10px 30px 10px;">
+          <el-form-item label="名称">
+            <span>{{ cronjob.name }}</span>
+          </el-form-item>
+          <el-form-item label="创建时间">
+            <span>{{ $dateFormat(cronjob.created) }}</span>
+          </el-form-item>
+          <el-form-item label="命名空间">
+            <span>{{ cronjob.namespace }}</span>
+          </el-form-item>
+          <el-form-item label="定时">
+            <span>{{ cronjob.schedule }}</span>
+          </el-form-item>
+          <el-form-item label="挂起">
+            <span>{{ cronjob.suspend }}</span>
+          </el-form-item>
+          <el-form-item label="并发策略">
+            <span>{{ cronjob.concurrency_policy }}</span>
+          </el-form-item>
+          <el-form-item label="标签">
+            <span v-if="!cronjob.labels">—</span>
+            <template v-else v-for="(val, key) in cronjob.labels">
+              <span :key="key">{{key}}: {{val}}<br/></span>
+            </template>
+          </el-form-item>
+          <!-- <el-form-item label="注解">
+            <span v-if="!cronjob.annotations">—</span>
+            
+            <template v-else v-for="(val, key) in cronjob.annotations">
+              <span :key="key">{{key}}: {{val}}<br/></span>
+            </template>
+          </el-form-item> -->
+        </el-form>
+      </div>
 
       <div style="padding: 0px 8px;">
         <div>Jobs</div>
@@ -109,7 +112,7 @@
               min-width="40"
               show-overflow-tooltip>
               <template slot-scope="scope">
-                {{ $dateFormat(scope.row.created) }}
+                {{ scope.row.created }}
               </template>
             </el-table-column>
             <el-table-column
@@ -233,6 +236,7 @@
               <el-table-column
                 prop="name"
                 label="名称"
+                min-width="8"
                 show-overflow-tooltip>
                 <template slot-scope="scope">
                   <span class="name-class" @click="toogleExpand(scope.row)">
@@ -243,13 +247,13 @@
               <el-table-column
                 prop="image"
                 label="镜像"
-                min-width=""
+                min-width="15"
                 show-overflow-tooltip>
               </el-table-column>
               <el-table-column
                 prop="image_pull_policy"
                 label="镜像拉取策略"
-                min-width=""
+                min-width="4"
                 show-overflow-tooltip>
               </el-table-column>
             </el-table>
@@ -334,7 +338,7 @@
                 </template>
               </el-table-column>
             </el-table>
-            <div v-else style="color: #909399; text-align: center">暂无事件发生</div>
+            <div v-else style=" padding: 25px 15px ; color: #909399; text-align: center">暂无事件发生</div>
           </div>
         </el-tab-pane>
       </el-tabs>
@@ -360,7 +364,7 @@
 
 <script>
 import { Clusterbar, Yaml } from '@/views/components'
-import { getCronJob, deleteCronJobs, updateCronJob } from '@/api/cronjob'
+import { ResType, listResource, watchResource, getResource, delResource, updateResource } from '@/api/cluster/resource'
 import { listEvents, buildEvent } from '@/api/event'
 import { listJobs, deleteJobs, buildJobs } from '@/api/job'
 import { buildContainer, envStr, resourceFor } from '@/api/pods'
@@ -536,18 +540,21 @@ export default {
         this.eventLoading = false
         return
       }
-      getCronJob(cluster, this.namespace, this.cronjobName).then(response => {
+      getResource(cluster, ResType.CronJob, this.namespace, this.cronjobName).then(response => {
         // this.loading = false
         this.originCronJob = response.data
-        console.log(response.data)
-        listJobs(cluster, this.originCronJob.metadata.uid).then(response => {
+        listResource(cluster, ResType.Job, {
+          namespace: this.namespace, 
+          owner_reference_kind: "CronJob",
+          owner_reference_name: this.cronjobName
+        }).then(response => {
           this.loading = false
           this.jobs = response.data
         }).catch(() => {
           this.loading = false
         })
 
-        listEvents(cluster, this.originCronJob.metadata.uid).then(response => {
+        listResource(cluster, ResType.Event, {kind: "CronJob", namespace: this.namespace, name: this.cronjobName}).then(response => {
           this.eventLoading = false
           if (response.data) {
             this.cronjobEvents = response.data.length > 0 ? response.data : []
@@ -600,7 +607,7 @@ export default {
       let params = {
         resources: cronjobs
       }
-      deleteCronJobs(cluster, params).then(() => {
+      delResource(cluster, ResType.CronJob, params).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)
@@ -619,7 +626,7 @@ export default {
       this.yamlValue = ""
       this.yamlDialog = true
       this.yamlLoading = true
-      getCronJob(cluster, this.cronjob.namespace, this.cronjob.name, "yaml").then(response => {
+      getResource(cluster, ResType.CronJob, this.cronjob.namespace, this.cronjob.name, "yaml").then(response => {
         this.yamlLoading = false
         this.yamlValue = response.data
       }).catch(() => {
@@ -637,7 +644,7 @@ export default {
         return
       }
       console.log(this.yamlValue)
-      updateCronJob(cluster, this.cronjob.namespace, this.cronjob.name, this.yamlValue).then(() => {
+      updateResource(cluster, ResType.CronJob, this.cronjob.namespace, this.cronjob.name, this.yamlValue).then(() => {
         Message.success("更新成功")
       }).catch(() => {
         // console.log(e) 
@@ -662,7 +669,7 @@ export default {
       let params = {
         resources: jobs
       }
-      deleteJobs(cluster, params).then(() => {
+      delResource(cluster, ResType.Job, params).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)
@@ -729,7 +736,7 @@ export default {
 }
 
 .msgClass {
-  margin: 6px 6px;
+  margin: 8px 10px 15px 10px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 }
 </style>

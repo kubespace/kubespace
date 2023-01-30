@@ -23,7 +23,7 @@
         <el-table-column
           prop="name"
           label="名称"
-          min-width="45"
+          min-width="65"
           show-overflow-tooltip>
           <template slot-scope="scope">
             <span class="name-class" v-on:click="nameClick(scope.row.namespace, scope.row.name)">
@@ -34,19 +34,19 @@
         <el-table-column
           prop="namespace"
           label="命名空间"
-          min-width="40"
+          min-width="50"
           show-overflow-tooltip>
         </el-table-column>
         <el-table-column
           prop="schedule"
           label="定时"
-          min-width="40"
+          min-width="45"
           show-overflow-tooltip>
         </el-table-column>
         <el-table-column
           prop="suspend"
           label="挂起"
-          min-width="40"
+          min-width="30"
           show-overflow-tooltip>
         </el-table-column>
         <el-table-column
@@ -58,16 +58,16 @@
         <el-table-column
           prop="last_schedule_time"
           label="上一次执行"
-          min-width="50"
+          min-width="55"
           show-overflow-tooltip>
           <template slot-scope="scope">
-            {{ $dateFormat(scope.row.last_schedule_time) }}
+            {{ scope.row.last_schedule_time }}
           </template>
         </el-table-column>
         <el-table-column
           prop="created"
           label="创建时间"
-          min-width="50"
+          min-width="47"
           show-overflow-tooltip>
           <template slot-scope="scope">
             {{ $dateFormat(scope.row.created) }}
@@ -111,7 +111,7 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { listCronJobs, getCronJob, deleteCronJobs, updateCronJob } from '@/api/cronjob'
+import { ResType, listResource, watchResource, getResource, delResource, updateResource } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
 
@@ -130,13 +130,14 @@ export default {
         yamlLoading: true,
         cellStyle: {border: 0},
         titleName: ["CronJobs"],
-        maxHeight: window.innerHeight - 150,
+        maxHeight: window.innerHeight - this.$contentHeight,
         loading: true,
         originCronJobs: [],
         search_ns: [],
         search_name: '',
         delFunc: undefined,
         delCronJobs: [],
+        clusterSSE: undefined
       }
   },
   created() {
@@ -146,35 +147,14 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150
+        let heightStyle = window.innerHeight - this.$contentHeight
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
     }
   },
-  watch: {
-    cronjobsWatch: function (newObj) {
-      if (newObj) {
-        let newUid = newObj.resource.metadata.uid
-        let newRv = newObj.resource.metadata.resourceVersion
-        if (newObj.event === 'add') {
-          this.originCronJobs.push(this.buildCronJobs(newObj.resource))
-        } else if (newObj.event === 'update') {
-          for (let i in this.originCronJobs) {
-            let d = this.originCronJobs[i]
-            if (d.uid === newUid) {
-              if (d.resource_version < newRv){
-                let newDp = this.buildCronJobs(newObj.resource)
-                this.$set(this.originCronJobs, i, newDp)
-              }
-              break
-            }
-          }
-        } else if (newObj.event === 'delete') {
-          this.originCronJobs = this.originCronJobs.filter(( { uid } ) => uid !== newUid)
-        }
-      }
-    }
+  beforeDestroy() {
+    if(this.clusterSSE) this.clusterSSE.disconnect()
   },
   computed: {
     cronjobs: function() {
@@ -191,8 +171,8 @@ export default {
       }
       return dlist
     },
-    cronjobsWatch: function() {
-      return this.$store.getters["ws/cronjobsWatch"]
+    cluster() {
+      return this.$store.state.cluster
     }
   },
   methods: {
@@ -201,15 +181,47 @@ export default {
       this.originCronJobs = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listCronJobs(cluster).then(response => {
+        listResource(cluster, ResType.CronJob).then(response => {
           this.loading = false
           this.originCronJobs = response.data ? response.data : []
+          this.fetchSSE()
         }).catch(() => {
           this.loading = false
         })
       } else {
         this.loading = false
         Message.error("获取集群异常，请刷新重试")
+      }
+    },
+    fetchSSE() {
+      if(!this.clusterSSE) {
+        this.clusterSSE = watchResource(this.$sse, this.cluster, ResType.CronJob, this.sseWatch, {process: true})
+      }
+    },
+    sseWatch(newObj) {
+      if (newObj) {
+        let newUid = newObj.resource.uid
+        let newRv = newObj.resource.resource_version
+        if (newObj.event === 'add') {
+          for(let i in this.originCronJobs) {
+            let d = this.originCronJobs[i]
+            if (d.uid === newUid) return
+          }
+          this.originCronJobs.push(newObj.resource)
+        } else if (newObj.event === 'update') {
+          for (let i in this.originCronJobs) {
+            let d = this.originCronJobs[i]
+            if (d.uid === newUid) {
+              if (d.resource_version < newRv){
+                let newDp = newObj.resource
+                this.$set(this.originCronJobs, i, newDp)
+              }
+              break
+            }
+          }
+        } else if (newObj.event === 'delete') {
+          this.originCronJobs = this.originCronJobs.filter(( { uid } ) => uid !== newUid)
+        }
       }
     },
     nsSearch: function(vals) {
@@ -220,30 +232,6 @@ export default {
     },
     nameSearch: function(val) {
       this.search_name = val
-    },
-    buildCronJobs: function(cronjob) {
-      if (!cronjob) return
-      var conditions = []
-      if(cronjob.status.conditions) {
-        for (let c of cronjob.status.conditions) {
-          if (c.status === "True") {
-            conditions.push(c.type)
-          }
-        }
-      }
-      let p = {
-        uid: cronjob.metadata.uid,
-        namespace: cronjob.metadata.namespace,
-        name: cronjob.metadata.name,
-        active: cronjob.status.active,
-        last_schedule_time: cronjob.status.lastScheduleTime,
-        schedule: cronjob.spec.schedule,
-        resource_version: cronjob.metadata.resourceVersion,
-        concurrency_policy: cronjob.Spec.concurrencyPolicy,
-        suspend: cronjob.spec.suspend,
-        created: cronjob.metadata.creationTimestamp
-      }
-      return p
     },
     nameClick: function(namespace, name) {
       this.$router.push({name: 'cronjobDetail', params: {namespace: namespace, cronjobName: name}})
@@ -267,7 +255,7 @@ export default {
       this.yamlValue = ""
       this.yamlDialog = true
       this.yamlLoading = true
-      getCronJob(cluster, namespace, name, "yaml").then(response => {
+      getResource(cluster, ResType.CronJob, namespace, name, "yaml").then(response => {
         this.yamlLoading = false
         this.yamlValue = response.data
         this.yamlNamespace = namespace
@@ -289,7 +277,7 @@ export default {
       let params = {
         resources: cronjobs
       }
-      deleteCronJobs(cluster, params).then(() => {
+      delResource(cluster, ResType.CronJob, params).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)
@@ -309,9 +297,11 @@ export default {
         Message.error("获取CronJob参数异常，请刷新重试")
         return
       }
-      console.log(this.yamlValue)
-      updateCronJob(cluster, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
+      this.yamlLoading = true
+      updateResource(cluster, ResType.CronJob, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
         Message.success("更新成功")
+        this.yamlLoading = false
+        this.yamlDialog = false
       }).catch(() => {
         // console.log(e) 
       })

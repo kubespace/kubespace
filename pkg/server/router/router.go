@@ -3,20 +3,17 @@ package router
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/config"
 	"github.com/kubespace/kubespace/pkg/server/views"
-	"github.com/kubespace/kubespace/pkg/server/views/kube_views"
-	"github.com/kubespace/kubespace/pkg/server/views/pipeline_views"
-	"github.com/kubespace/kubespace/pkg/server/views/ws_views"
-	"github.com/kubespace/kubespace/pkg/sse"
+	"github.com/kubespace/kubespace/pkg/server/views/cluster"
+	"github.com/kubespace/kubespace/pkg/server/views/user"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"html/template"
 	"io/ioutil"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"net/http"
 	"runtime"
 	"strings"
@@ -26,9 +23,9 @@ type Router struct {
 	*gin.Engine
 }
 
-func NewRouter(serverConfig *config.ServerConfig) (*Router, error) {
-	redisOptions := serverConfig.RedisOptions
-	models := serverConfig.Models
+func NewRouter(conf *config.ServerConfig) (*Router, error) {
+	//redisOptions := serverConfig.RedisOptions
+	models := conf.Models
 
 	engine := gin.Default()
 
@@ -48,13 +45,13 @@ func NewRouter(serverConfig *config.ServerConfig) (*Router, error) {
 		c.HTML(http.StatusOK, "/index.html", nil)
 	})
 
-	kubeMessage := kube_resource.NewMiddleMessage(redisOptions)
-	kubeResources := kube_resource.NewKubeResources(kubeMessage)
-	sse.Stream = sse.NewStream(redisOptions, kubeResources)
+	//kubeMessage := kube_resource.NewMiddleMessage(redisOptions)
+	//kubeResources := kube_resource.NewKubeResources(kubeMessage)
+	//sse.Stream = sse.NewStream(redisOptions, kubeResources)
 
 	// 统一认证的api接口
 	apiGroup := engine.Group("/api/v1")
-	viewsets := NewViewSets(serverConfig, kubeResources, models)
+	viewsets := NewViewSets(conf)
 	for group, vs := range *viewsets {
 		g := apiGroup.Group(group)
 		for _, v := range vs {
@@ -62,41 +59,38 @@ func NewRouter(serverConfig *config.ServerConfig) (*Router, error) {
 		}
 	}
 
-	pipelineCallbackView := pipeline_views.NewPipelineCallback(models, kubeResources)
-	apiGroup.POST("/pipeline/callback", pipelineCallbackView.Callback)
-
-	clusterAgent := views.NewClusterAgent(models)
-	engine.GET("/v1/import/:token", clusterAgent.AgentYaml)
-
+	//pipelineCallbackView := pipeline_views.NewPipelineCallback(models, kubeResources)
+	//apiGroup.POST("/pipeline/callback", pipelineCallbackView.Callback)
+	//
+	//clusterAgent := views.NewClusterAgent(models)
+	//engine.GET("/v1/import/:token", clusterAgent.AgentYaml)
+	//
 	// 登录登出接口
-	loginView := views.NewLogin(models)
+	loginView := user.NewLogin(models)
 	apiGroup.POST("/login", loginView.Login)
 	apiGroup.GET("/has_admin", loginView.HasAdmin)
 	apiGroup.POST("/admin", loginView.CreateAdmin)
 	apiGroup.POST("/logout", loginView.Logout)
-
+	//
 	// 连接k8s agent的websocket接口
-	kubeWs := ws_views.NewKubeWs(redisOptions, models)
-	apiGroup.GET("/kube/connect", kubeWs.Connect)
-
-	// 连接k8s agent的websocket接口，用来并发传输返回数据
-	kubeResp := ws_views.NewKubeResp(redisOptions, models)
-	apiGroup.GET("/kube/response", kubeResp.Connect)
-
-	// 连接api websocket接口
-	apiWs := ws_views.NewApiWs(redisOptions, models, kubeResources)
-	engine.GET("/ws/web/connect", apiWs.Connect)
-
-	// 连接exec websocket接口
-	execWs := ws_views.NewExecWs(redisOptions, models, kubeResources)
-	engine.GET("/ws/exec/:cluster/:namespace/:pod", execWs.Connect)
-
-	// 连接log websocket接口
-	logWs := ws_views.NewLogWs(redisOptions, models, kubeResources)
-	engine.GET("/ws/log/:cluster/:namespace/:pod", logWs.Connect)
-
-	helmView := kube_views.NewHelm(kubeResources, models)
-	engine.GET("/app/charts/*path", helmView.GetAppChart)
+	agentView := cluster.NewAgentViews(conf)
+	apiGroup.GET("/agent/connect", agentView.Connect)
+	apiGroup.GET("/agent/response", agentView.Response)
+	//
+	//// 连接api websocket接口
+	//apiWs := ws_views.NewApiWs(redisOptions, models, kubeResources)
+	//engine.GET("/ws/web/connect", apiWs.Connect)
+	//
+	//// 连接exec websocket接口
+	//execWs := ws_views.NewExecWs(redisOptions, models, kubeResources)
+	//engine.GET("/ws/exec/:cluster/:namespace/:pod", execWs.Connect)
+	//
+	//// 连接log websocket接口
+	//logWs := ws_views.NewLogWs(redisOptions, models, kubeResources)
+	//engine.GET("/ws/log/:cluster/:namespace/:pod", logWs.Connect)
+	//
+	//helmView := kube_views.NewHelm(kubeResources, models)
+	//engine.GET("/app/charts/*path", helmView.GetAppChart)
 
 	return &Router{
 		Engine: engine,
@@ -153,6 +147,7 @@ func auth(m *model.Models, c *gin.Context) *utils.Response {
 		return &resp
 	}
 	resp.Data = u
+	//resp.Data = &types.User{}
 	return &resp
 }
 

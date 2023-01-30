@@ -7,7 +7,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/model"
 	kubewebsocket "github.com/kubespace/kubespace/pkg/server/websockets"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"net/http"
 )
 

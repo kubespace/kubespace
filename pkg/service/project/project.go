@@ -2,34 +2,35 @@ package project
 
 import (
 	"fmt"
-	"github.com/kubespace/kubespace/pkg/kube_resource"
+	kubetypes "github.com/kubespace/kubespace/pkg/kubernetes/types"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
+	"github.com/kubespace/kubespace/pkg/server/views/serializers"
+	"github.com/kubespace/kubespace/pkg/service/cluster"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
-	"github.com/kubespace/kubespace/pkg/views/serializers"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/yaml"
 	"time"
 )
 
-type ServiceProject struct {
-	models *model.Models
-	*kube_resource.KubeResources
+type ProjectService struct {
+	models     *model.Models
+	kubeClient *cluster.KubeClient
 	appService *AppService
 }
 
-func NewProjectService(models *model.Models, kr *kube_resource.KubeResources, appService *AppService) *ServiceProject {
-	return &ServiceProject{
-		models:        models,
-		KubeResources: kr,
-		appService:    appService,
+func NewProjectService(models *model.Models, kubeClient *cluster.KubeClient, appService *AppService) *ProjectService {
+	return &ProjectService{
+		models:     models,
+		kubeClient: kubeClient,
+		appService: appService,
 	}
 }
 
-func (p *ServiceProject) Delete(projectId uint, delResource bool) *utils.Response {
+func (p *ProjectService) Delete(projectId uint, delResource bool) *utils.Response {
 	resp := &utils.Response{Code: code.Success}
 	project, err := p.models.ProjectManager.Get(projectId)
 	if err != nil {
@@ -68,7 +69,7 @@ func (p *ServiceProject) Delete(projectId uint, delResource bool) *utils.Respons
 	return resp
 }
 
-func (p *ServiceProject) Get(projectId uint, withDetail bool) *utils.Response {
+func (p *ProjectService) Get(projectId uint, withDetail bool) *utils.Response {
 	project, err := p.models.ProjectManager.Get(projectId)
 	if err != nil {
 		return &utils.Response{Code: code.GetError, Msg: "获取工作空间失败: " + err.Error()}
@@ -83,13 +84,13 @@ func (p *ServiceProject) Get(projectId uint, withDetail bool) *utils.Response {
 		"create_time": project.CreateTime,
 		"update_time": project.UpdateTime,
 	}
-	cluster, err := p.models.ClusterManager.GetByName(project.ClusterId)
+	clusterObj, err := p.models.ClusterManager.GetByName(project.ClusterId)
 	if err != nil {
 		return &utils.Response{Code: code.GetError, Msg: "获取集群信息失败: %s" + err.Error()}
 	}
-	data["cluster"] = cluster
+	data["cluster"] = clusterObj
 	if withDetail {
-		resp := p.KubeResources.Cluster.Get(project.ClusterId, map[string]interface{}{
+		resp := p.kubeClient.Get(project.ClusterId, kubetypes.ClusterType, map[string]interface{}{
 			"workspace": project.ID,
 			"namespace": project.Namespace,
 		})
@@ -103,24 +104,23 @@ func (p *ServiceProject) Get(projectId uint, withDetail bool) *utils.Response {
 	return &utils.Response{Code: code.Success, Data: data}
 }
 
-func (p *ServiceProject) deleteK8sResource(project *types.Project, kind string) error {
-	var kubeResource *kube_resource.KubeResource
+func (p *ProjectService) deleteK8sResource(project *types.Project, kind string) error {
+	var resType string
 	switch kind {
 	case "ConfigMap":
-		kubeResource = p.KubeResources.ConfigMap
+		resType = kubetypes.ConfigMapType
 	case "Secret":
-		kubeResource = p.KubeResources.Secret
+		resType = kubetypes.SecretType
 	case "Service":
-		kubeResource = p.KubeResources.Service
+		resType = kubetypes.ServiceType
 	case "Ingress":
-		kubeResource = p.KubeResources.Ingress
+		resType = kubetypes.IngressType
 	case "PersistentVolumeClaim":
-		kubeResource = p.KubeResources.Pvc
-	}
-	if kubeResource == nil {
+		resType = kubetypes.PersistentVolumeClaimType
+	default:
 		return fmt.Errorf("not found %s kind", kind)
 	}
-	res := kubeResource.List(project.ClusterId, map[string]interface{}{
+	res := p.kubeClient.List(project.ClusterId, resType, map[string]interface{}{
 		"namespace": project.Namespace,
 		"labels":    map[string]string{"kubespace.cn/belong-to": "project"},
 	})
@@ -158,7 +158,7 @@ func (p *ServiceProject) deleteK8sResource(project *types.Project, kind string) 
 				params := map[string]interface{}{
 					"resources": delRes,
 				}
-				resObj := kubeResource.Delete(project.ClusterId, params)
+				resObj := p.kubeClient.Delete(project.ClusterId, resType, params)
 				if !resObj.IsSuccess() {
 					return fmt.Errorf("delete %s resources error: %s\n", kind, resObj.Msg)
 				}
@@ -175,7 +175,7 @@ func (p *ServiceProject) deleteK8sResource(project *types.Project, kind string) 
 	return nil
 }
 
-func (p *ServiceProject) processServiceObj(obj *unstructured.Unstructured, kind, name string) error {
+func (p *ProjectService) processServiceObj(obj *unstructured.Unstructured, kind, name string) error {
 	if err := unstructured.SetNestedField(obj.Object, "", "spec", "clusterIP"); err != nil {
 		klog.Errorf("set object %s/%s spec.clusterIP error: %s\n", kind, name, err.Error())
 	}
@@ -208,25 +208,24 @@ func (p *ServiceProject) processServiceObj(obj *unstructured.Unstructured, kind,
 	return nil
 }
 
-func (p *ServiceProject) cloneK8sResource(oriProject, destProject *types.Project, kind string) error {
-	var kubeResource *kube_resource.KubeResource
+func (p *ProjectService) cloneK8sResource(oriProject, destProject *types.Project, kind string) error {
 	apiVersion := "v1"
+	var resType string
 	switch kind {
 	case "ConfigMap":
-		kubeResource = p.KubeResources.ConfigMap
+		resType = kubetypes.ConfigMapType
 	case "Secret":
-		kubeResource = p.KubeResources.Secret
+		resType = kubetypes.SecretType
 	case "Service":
-		kubeResource = p.KubeResources.Service
+		resType = kubetypes.ServiceType
 	case "Ingress":
-		kubeResource = p.KubeResources.Ingress
+		resType = kubetypes.IngressType
 	case "PersistentVolumeClaim":
-		kubeResource = p.KubeResources.Pvc
-	}
-	if kubeResource == nil {
+		resType = kubetypes.PersistentVolumeClaimType
+	default:
 		return fmt.Errorf("not found %s kind", kind)
 	}
-	res := kubeResource.List(oriProject.ClusterId, map[string]interface{}{
+	res := p.kubeClient.List(oriProject.ClusterId, resType, map[string]interface{}{
 		"namespace": oriProject.Namespace,
 		"labels":    map[string]string{"kubespace.cn/belong-to": "project"},
 	})
@@ -257,7 +256,7 @@ func (p *ServiceProject) cloneK8sResource(oriProject, destProject *types.Project
 				for _, do := range data {
 					d := do.(map[string]interface{})
 					if name, ok := d["name"]; ok {
-						resObj := kubeResource.Get(oriProject.ClusterId, map[string]interface{}{
+						resObj := p.kubeClient.Get(oriProject.ClusterId, resType, map[string]interface{}{
 							"name":      name,
 							"namespace": oriProject.Namespace,
 						})
@@ -281,7 +280,7 @@ func (p *ServiceProject) cloneK8sResource(oriProject, destProject *types.Project
 							}
 							yamlStr, _ := yaml.Marshal(unstructuredObj.Object)
 							klog.Info(string(yamlStr))
-							applyRes := p.KubeResources.Cluster.Apply(destProject.ClusterId, map[string]interface{}{
+							applyRes := p.kubeClient.Apply(destProject.ClusterId, map[string]interface{}{
 								"yaml": string(yamlStr),
 							})
 							if !applyRes.IsSuccess() {
@@ -307,7 +306,7 @@ func (p *ServiceProject) cloneK8sResource(oriProject, destProject *types.Project
 	return nil
 }
 
-func (p *ServiceProject) Clone(ser *serializers.ProjectCloneSerializer, user *types.User) *utils.Response {
+func (p *ProjectService) Clone(ser *serializers.ProjectCloneSerializer, user *types.User) *utils.Response {
 	oriProject, err := p.models.ProjectManager.Get(ser.OriginProjectId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: "获取工作空间失败:" + err.Error()}
@@ -341,26 +340,29 @@ func (p *ServiceProject) Clone(ser *serializers.ProjectCloneSerializer, user *ty
 	return &utils.Response{Code: code.Success}
 }
 
-func (p *ServiceProject) GetProjectNamespaceResources(ser *serializers.ProjectResourcesSerializer) *utils.Response {
+func (p *ProjectService) GetProjectNamespaceResources(ser *serializers.ProjectResourcesSerializer) *utils.Response {
 	oriProject, err := p.models.ProjectManager.Get(ser.ProjectId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: "获取工作空间失败:" + err.Error()}
 	}
 	data := map[string]interface{}{}
-	var kubeResource *kube_resource.KubeResource
 	for _, kind := range []string{"ConfigMap", "Secret", "PersistentVolumeClaim"} {
+		var resType string
 		switch kind {
 		case "ConfigMap":
-			kubeResource = p.KubeResources.ConfigMap
+			resType = kubetypes.ConfigMapType
 		case "Secret":
-			kubeResource = p.KubeResources.Secret
+			resType = kubetypes.SecretType
+		case "Service":
+			resType = kubetypes.ServiceType
+		case "Ingress":
+			resType = kubetypes.IngressType
 		case "PersistentVolumeClaim":
-			kubeResource = p.KubeResources.Pvc
-		}
-		if kubeResource == nil {
+			resType = kubetypes.PersistentVolumeClaimType
+		default:
 			return &utils.Response{Code: code.ParamsError, Msg: "get kuberesource error"}
 		}
-		res := kubeResource.ListObjs(oriProject.ClusterId, map[string]interface{}{
+		res := p.kubeClient.List(oriProject.ClusterId, resType, map[string]interface{}{
 			"namespace": oriProject.Namespace,
 			"labels":    map[string]string{"kubespace.cn/belong-to": "project"},
 		})

@@ -147,7 +147,7 @@
 <script>
 import { Clusterbar, Yaml } from '@/views/components'
 import { Message } from 'element-ui'
-import { listHpas } from '@/api/hpa'
+import { ResType, listResource } from '@/api/cluster/resource'
 
 export default {
   name: 'HorizontalPodAutoscalers',
@@ -162,7 +162,7 @@ export default {
       search_name: '',
       search_ns: [],
       cellStyle: { border: 0 },
-      maxHeight: window.innerHeight - 150,
+      maxHeight: window.innerHeight - this.$contentHeight,
       loading: true,
       yamlDialog: false,
       yamlNamespace: '',
@@ -173,6 +173,16 @@ export default {
   },
   created() {
     this.fetchData()
+  },
+  mounted() {
+    const that = this
+    window.onresize = () => {
+      return (() => {
+        let heightStyle = window.innerHeight - this.$contentHeight
+        // console.log(heightStyle)
+        that.maxHeight = heightStyle
+      })()
+    }
   },
   computed: {
     hpas: function() {
@@ -188,7 +198,6 @@ export default {
   },
   methods: {
     nameClick: function(namespace, name) {
-      console.log(namespace, name);
       this.$router.push({
         name: 'hpaDetail',
         params: { namespace: namespace, hpaName: name },
@@ -208,9 +217,9 @@ export default {
       this.originHpas = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listHpas(cluster).then(response => {
+        listResource(cluster, ResType.Hpa).then(response => {
           this.loading = false
-          this.originHpas = response.data
+          this.originHpas = response.data || []
         }).catch(() => {
           this.loading = false
         })

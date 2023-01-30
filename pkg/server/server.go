@@ -13,7 +13,7 @@ type Server struct {
 }
 
 func NewServer(config *config.ServerConfig) (*Server, error) {
-	r, err := router.NewRouter(config.RedisOptions, config.MysqlOptions)
+	r, err := router.NewRouter(config)
 	if err != nil {
 		return nil, err
 	}

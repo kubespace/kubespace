@@ -7,5 +7,5 @@ import (
 
 type ServiceConfig struct {
 	Models          *model.Models
-	InformerFactory informer.InformerFactory
+	InformerFactory informer.Factory
 }

@@ -23,7 +23,7 @@
         <el-table-column
           prop="name"
           label="名称"
-          min-width="50"
+          min-width="60"
           show-overflow-tooltip>
           <template slot-scope="scope">
             <span class="name-class" v-on:click="nameClick(scope.row.namespace, scope.row.name)">
@@ -40,7 +40,7 @@
         <el-table-column
           prop="ready_replicas"
           label="Pods"
-          min-width="55"
+          min-width="45"
           show-overflow-tooltip>
           <template slot-scope="scope">
             <span v-if="scope.row.active > 0" class="back-class">
@@ -57,13 +57,13 @@
         <el-table-column
           prop="completions"
           label="Completions"
-          min-width="40"
+          min-width="30"
           show-overflow-tooltip>
         </el-table-column>
         <el-table-column
           prop="conditions"
           label="状态"
-          min-width="30"
+          min-width="25"
           show-overflow-tooltip>
           <template slot-scope="scope">
             <template v-if="scope.row.conditions && scope.row.conditions.length > 0">
@@ -77,7 +77,7 @@
         <el-table-column
           prop="created"
           label="创建时间"
-          min-width="40"
+          min-width="35"
           show-overflow-tooltip>
           <template slot-scope="scope">
             {{ $dateFormat(scope.row.created) }}
@@ -122,6 +122,7 @@
 <script>
 import { Clusterbar } from '@/views/components'
 import { sse } from '@/api/cluster'
+import { ResType, listResource, watchResource, getResource, delResource, updateResource, patchResource } from '@/api/cluster/resource'
 import { listJobs, getJob, deleteJobs, updateJob, buildJobs } from '@/api/job'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
@@ -141,7 +142,7 @@ export default {
         yamlLoading: true,
         cellStyle: {border: 0},
         titleName: ["Jobs"],
-        maxHeight: window.innerHeight - 135,
+        maxHeight: window.innerHeight - this.$contentHeight,
         loading: true,
         originJobs: [],
         search_ns: [],
@@ -161,7 +162,7 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 135
+        let heightStyle = window.innerHeight - this.$contentHeight
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
@@ -192,7 +193,7 @@ export default {
       this.originJobs = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listJobs(cluster).then(response => {
+        listResource(cluster, ResType.Job).then(response => {
           this.loading = false
           this.originJobs = response.data ? response.data : []
           if(!this.clusterSSE) this.fetchSSE()
@@ -206,13 +207,13 @@ export default {
     },
     fetchSSE() {
       if(!this.clusterSSE) {
-        this.clusterSSE = sse(this.$sse, this.sseWatch, this.cluster, {type: 'job'})
+        this.clusterSSE = watchResource(this.$sse, this.cluster, ResType.Job, this.sseWatch, {process: true})
       }
     },
     sseWatch(newObj) {
       if (newObj) {
-        let newUid = newObj.resource.metadata.uid
-        let newRv = newObj.resource.metadata.resourceVersion
+        let newUid = newObj.resource.uid
+        let newRv = newObj.resource.resource_version
         if (newObj.event === 'add') {
           for(let i in this.originJobs) {
             let d = this.originJobs[i]
@@ -220,13 +221,13 @@ export default {
               return
             }
           }
-          this.originJobs.push(buildJobs(newObj.resource))
+          this.originJobs.push(newObj.resource)
         } else if (newObj.event === 'update') {
           for (let i in this.originJobs) {
             let d = this.originJobs[i]
             if (d.uid === newUid) {
               if (d.resource_version < newRv){
-                let newDp = buildJobs(newObj.resource)
+                let newDp = newObj.resource
                 this.$set(this.originJobs, i, newDp)
               }
               break
@@ -245,31 +246,6 @@ export default {
     },
     nameSearch: function(val) {
       this.search_name = val
-    },
-    buildJobs: function(job) {
-      if (!job) return
-      var conditions = []
-      if(job.status.conditions) {
-        for (let c of job.status.conditions) {
-          if (c.status === "True") {
-            conditions.push(c.type)
-          }
-        }
-      }
-      let p = {
-        uid: job.metadata.uid,
-        namespace: job.metadata.namespace,
-        name: job.metadata.name,
-        completions: job.spec.completions || 0,
-        active: job.status.active || 0,
-        succeeded: job.status.succeeded || 0,
-        failed: job.status.failed || 0,
-        resource_version: job.metadata.resourceVersion,
-        conditions: conditions,
-        node_selector: job.spec.template.spec.nodeSelector,
-        created: job.metadata.creationTimestamp
-      }
-      return p
     },
     nameClick: function(namespace, name) {
       this.$router.push({name: 'jobDetail', params: {namespace: namespace, jobName: name}})
@@ -293,7 +269,7 @@ export default {
       this.yamlValue = ""
       this.yamlDialog = true
       this.yamlLoading = true
-      getJob(cluster, namespace, name, "yaml").then(response => {
+      getResource(cluster, ResType.Job, namespace, name, "yaml").then(response => {
         this.yamlLoading = false
         this.yamlValue = response.data
         this.yamlNamespace = namespace
@@ -315,7 +291,7 @@ export default {
       let params = {
         resources: jobs
       }
-      deleteJobs(cluster, params).then(() => {
+      delResource(cluster, ResType.Job, params).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)
@@ -335,9 +311,11 @@ export default {
         Message.error("获取Job参数异常，请刷新重试")
         return
       }
-      console.log(this.yamlValue)
-      updateJob(cluster, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
+      this.yamlLoading = true
+      updateJob(cluster, ResType.Job, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
         Message.success("更新成功")
+        this.yamlLoading = false
+        this.yamlDialog = false
       }).catch(() => {
         // console.log(e) 
       })

@@ -185,8 +185,7 @@
 </template>
 
 <script>
-import { clusterDetail } from '@/api/cluster'
-import { listEvents } from '@/api/event'
+import { ResType, listResource, getResource } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
 
 export default {
@@ -222,14 +221,13 @@ export default {
       this.originCronJobs = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        clusterDetail(cluster).then(response => {
+        getResource(cluster, ResType.Cluster).then(response => {
           this.loading = false
           this.cluster_detail = response.data
-          console.log(this.cluster_detail)
         }).catch(() => {
           this.loading = false
         })
-        listEvents(cluster).then(response => {
+        listResource(cluster, ResType.Event).then(response => {
           this.originEvents = response.data ? response.data : []
         }).catch(() => {
         })

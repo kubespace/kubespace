@@ -77,7 +77,7 @@
                 show-overflow-tooltip>
                 <template slot-scope="scope">
                   <span>
-                    {{ scope.row.lastProbeTime ? scope.row.lastProbeTime : scope.row.lastTransitionTime }}
+                    {{ scope.row.lastProbeTime ? $dateFormat(scope.row.lastProbeTime) : $dateFormat(scope.row.lastTransitionTime) }}
                   </span>
                 </template>
               </el-table-column>
@@ -241,6 +241,11 @@
                 label="触发时间"
                 min-width="50"
                 show-overflow-tooltip>
+                <template slot-scope="scope">
+                  <span>
+                    {{ $dateFormat(scope.row.event_time) }}
+                  </span>
+                </template>
               </el-table-column>
             </el-table>
             <div v-else style="padding: 25px 15px; color: #909399; text-align: center">暂无事件发生</div>
@@ -261,8 +266,7 @@
 
 <script>
 import { Clusterbar, Yaml } from '@/views/components'
-import { getNode, updateNode } from '@/api/nodes'
-import { listEvents } from '@/api/event'
+import { ResType, listResource, getResource, updateResource } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
 
 export default {
@@ -320,10 +324,10 @@ export default {
         this.eventLoading = false
         return
       }
-      getNode(cluster, this.nodeName).then(response => {
+      getResource(cluster, ResType.Node, "", this.nodeName).then(response => {
         this.loading = false
         this.originNode = response.data
-        listEvents(cluster, this.originNode.metadata.uid).then(response => {
+        listResource(cluster, ResType.Event, {kind: "Node", name: this.nodeName}).then(response => {
           this.eventLoading = false
           if (response.data) {
             this.nodeEvents = response.data.length > 0 ? response.data : []
@@ -348,7 +352,7 @@ export default {
       this.yamlValue = ''
       this.yamlDialog = true
       this.yamlLoading = true
-      getNode(cluster, this.nodeName, 'yaml')
+      getResource(cluster, ResType.Node, "", this.nodeName, 'yaml')
         .then((response) => {
           this.yamlLoading = false
           this.yamlValue = response.data
@@ -367,7 +371,7 @@ export default {
         Message.error("获取集群参数异常，请刷新重试")
         return
       }
-      updateNode(cluster, this.nodeName, this.yamlValue).then(() => {
+      updateResource(cluster, ResType.Node, "", this.nodeName, this.yamlValue).then(() => {
         Message.success("更新成功")
       }).catch(() => {
         // console.log(e) 

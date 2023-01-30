@@ -10,16 +10,16 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	sshgit "github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v5/storage/memory"
-	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/manager/pipeline"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
+	"github.com/kubespace/kubespace/pkg/service/cluster"
 	"github.com/kubespace/kubespace/pkg/service/pipeline/plugins"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"golang.org/x/crypto/ssh"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"os"
 	"regexp"
 	"runtime"
@@ -41,11 +41,11 @@ type ServicePipelineRun struct {
 	builtInPlugins *plugins.Plugins
 }
 
-func NewPipelineRunService(models *model.Models, kr *kube_resource.KubeResources) *ServicePipelineRun {
+func NewPipelineRunService(models *model.Models, kubeClient *cluster.KubeClient) *ServicePipelineRun {
 	r := &ServicePipelineRun{
 		models: models,
 	}
-	r.builtInPlugins = plugins.NewPlugins(models, kr, r.Callback)
+	r.builtInPlugins = plugins.NewPlugins(models, kubeClient, r.Callback)
 	return r
 }
 

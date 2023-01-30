@@ -3,22 +3,23 @@ package plugins
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/kubespace/kubespace/pkg/kube_resource"
+	kubetypes "github.com/kubespace/kubespace/pkg/kubernetes/types"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
+	"github.com/kubespace/kubespace/pkg/service/cluster"
 	"github.com/kubespace/kubespace/pkg/utils"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/yaml"
 	"strings"
 )
 
 type UpgradeAppPlugin struct {
 	*model.Models
-	*kube_resource.KubeResources
+	KubeClient *cluster.KubeClient
 }
 
 func (p UpgradeAppPlugin) Execute(params *PluginParams) (interface{}, error) {
-	upgrade, err := NewUpgradeApp(params, p.Models, p.KubeResources)
+	upgrade, err := NewUpgradeApp(params, p.Models, p.KubeClient)
 	if err != nil {
 		return nil, err
 	}
@@ -47,16 +48,17 @@ type upgradeAppResult struct {
 }
 
 type upgradeApp struct {
-	models        *model.Models
-	kubeResources *kube_resource.KubeResources
-	params        *upgradeAppParams
-	images        []string
-	result        *upgradeAppResult
-	project       *types.Project
+	models     *model.Models
+	kubeClient *cluster.KubeClient
+	//kubeResources *kube_resource.KubeResources
+	params  *upgradeAppParams
+	images  []string
+	result  *upgradeAppResult
+	project *types.Project
 	*PluginLogger
 }
 
-func NewUpgradeApp(params *PluginParams, models *model.Models, kr *kube_resource.KubeResources) (*upgradeApp, error) {
+func NewUpgradeApp(params *PluginParams, models *model.Models, kubeClient *cluster.KubeClient) (*upgradeApp, error) {
 	var upgradeParams upgradeAppParams
 	marshalParams, err := json.Marshal(params.Params)
 	if err != nil {
@@ -70,11 +72,11 @@ func NewUpgradeApp(params *PluginParams, models *model.Models, kr *kube_resource
 		return nil, fmt.Errorf("unmarshal upgrade app params error: %s", err.Error())
 	}
 	return &upgradeApp{
-		models:        models,
-		kubeResources: kr,
-		params:        &upgradeParams,
-		result:        &upgradeAppResult{},
-		PluginLogger:  params.Logger,
+		models:       models,
+		kubeClient:   kubeClient,
+		params:       &upgradeParams,
+		result:       &upgradeAppResult{},
+		PluginLogger: params.Logger,
 	}, nil
 }
 
@@ -138,10 +140,10 @@ func (u *upgradeApp) upgrade(appId uint, withInstall bool) error {
 			var resp *utils.Response
 			if app.Status != types.AppStatusUninstall {
 				u.Log("开始对应用进行升级")
-				resp = u.kubeResources.Helm.UpdateObj(u.project.ClusterId, installParams)
+				resp = u.kubeClient.Update(u.project.ClusterId, kubetypes.HelmType, installParams)
 			} else {
 				u.Log("开始对应用进行安装")
-				resp = u.kubeResources.Helm.Create(u.project.ClusterId, installParams)
+				resp = u.kubeClient.Create(u.project.ClusterId, kubetypes.HelmType, installParams)
 			}
 			if resp.IsSuccess() {
 				u.Log("安装/升级成功")

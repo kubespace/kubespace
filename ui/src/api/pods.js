@@ -14,7 +14,7 @@ export function listPods(cluster, label_selector=null, names=null, namespace) {
   if (names) data['names'] = names
   if(namespace) data['namespace'] = namespace
   return request({
-    url: `pods/${cluster}/list`,
+    url: `kuberesource/${cluster}/pod/list`,
     method: 'post',
     data,
   })
@@ -22,7 +22,7 @@ export function listPods(cluster, label_selector=null, names=null, namespace) {
 
 export function getPod(cluster, namespace, name, output='') {
   return request({
-    url: `pods/${cluster}/${namespace}/${name}`,
+    url: `kuberesource/${cluster}/pod/namespace/${namespace}/${name}`,
     method: 'get',
     params: { output }
   })

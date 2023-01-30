@@ -117,6 +117,7 @@
 <script>
 import { Clusterbar } from '@/views/components'
 import { listNamespace, getNamespace, deleteNamespaces, updateNamespace } from '@/api/namespace'
+import { listResource } from '@/api/cluster/resource'
 import { createYaml } from '@/api/cluster'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
@@ -219,7 +220,7 @@ export default {
       this.originNamespaces = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listNamespace(cluster).then(response => {
+        listResource(cluster, "namespace").then(response => {
           this.loading = false
           this.originNamespaces = response.data
         }).catch(() => {

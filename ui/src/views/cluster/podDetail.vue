@@ -171,6 +171,11 @@
                 prop="start_time"
                 label="开始时间"
                 show-overflow-tooltip>
+                <template slot-scope="scope">
+                  <span>
+                    {{ scope.row.start_time ? $dateFormat(scope.row.start_time) : '' }}
+                  </span>
+                </template>
               </el-table-column>
               <el-table-column
                 prop="status"
@@ -264,7 +269,7 @@
                 show-overflow-tooltip>
                 <template slot-scope="scope">
                   <span>
-                    {{ scope.row.lastProbeTime ? scope.row.lastProbeTime : scope.row.lastTransitionTime }}
+                    {{ $dateFormat(scope.row.lastProbeTime ? scope.row.lastProbeTime : scope.row.lastTransitionTime) }}
                   </span>
                 </template>
               </el-table-column>
@@ -327,6 +332,11 @@
                 label="触发时间"
                 min-width="50"
                 show-overflow-tooltip>
+                <template slot-scope="scope">
+                  <span>
+                    {{ $dateFormat(scope.row.event_time) }}
+                  </span>
+                </template>
               </el-table-column>
             </el-table>
             <div v-else style="padding: 25px 15px ; color: #909399; text-align: center">暂无事件发生</div>
@@ -355,9 +365,8 @@
 
 <script>
 import { Clusterbar, Yaml } from '@/views/components'
-import { getPod, deletePods, updatePod, buildPods, resourceFor } from '@/api/pods'
-import { sse } from '@/api/cluster'
-import { listEvents, buildEvent } from '@/api/event'
+import { getPod, deletePods, updatePod } from '@/api/pods'
+import { ResType, listResource, getResource, buildPods, resourceFor, watchResource } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
 import { Terminal } from '@/views/components'
 import { Log } from '@/views/components'
@@ -420,7 +429,6 @@ export default {
   },
   methods: {
     fetchData: function() {
-      this.originPods = []
       this.podEvents = []
       this.loading = true
       this.eventLoading = true
@@ -443,11 +451,11 @@ export default {
         this.eventLoading = false
         return
       }
-      getPod(cluster, this.namespace, this.podName).then(response => {
+      getResource(cluster, ResType.Pod, this.namespace, this.podName).then(response => {
         this.loading = false
         this.originPod = response.data
         this.fetchPodSSE()
-        listEvents(cluster, this.originPod.metadata.uid).then(response => {
+        listResource(cluster, ResType.Event, {kind: "Pod", namespace: this.namespace, name: this.podName}).then(response => {
           this.eventLoading = false
           if (response.data) {
             this.podEvents = response.data.length > 0 ? response.data : []
@@ -461,15 +469,15 @@ export default {
       })
     },
     fetchPodSSE() {
-      this.clusterSSE = sse(this.$sse, this.ssePodWatch, this.cluster, {type: 'pods', uid: this.pod.uid})
+      this.clusterSSE = watchResource(this.$sse, this.cluster, ResType.Pod, this.podsWatchFunc, 
+                                      {namespace: this.namespace, name: this.podName})
     },
-    ssePodWatch: function (newObj) {
+    podsWatchFunc: function (newObj) {
       if (newObj && this.pod) {
         let newUid = newObj.resource.metadata.uid
         if (newUid !== this.pod.uid) {
           return
         }
-        console.log("watch pod obj", newObj)
         let newRv = newObj.resource.metadata.resourceVersion
         if (this.pod.resource_version < newRv) {
           // this.$set(this.originPod, newPod)

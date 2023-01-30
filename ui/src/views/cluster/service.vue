@@ -221,6 +221,7 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
+import { ResType, listResource, getResource, delResource, updateResource, createResource } from '@/api/cluster/resource'
 import { listServices, getService, deleteServices, updateService } from '@/api/service'
 import { createYaml } from '@/api/cluster'
 import { listNamespace } from '@/api/namespace'
@@ -242,7 +243,7 @@ export default {
       yamlLoading: true,
       cellStyle: {border: 0},
       titleName: ["Services"],
-      maxHeight: window.innerHeight - 135,
+      maxHeight: window.innerHeight - this.$contentHeight,
       loading: true,
       originServices: [],
       search_ns: [],
@@ -275,38 +276,38 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 135
+        let heightStyle = window.innerHeight - this.$contentHeight
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
     }
   },
   watch: {
-    servicesWatch: function (newObj) {
-      if (newObj) {
-        let newUid = newObj.resource.metadata.uid
-        let newRv = newObj.resource.metadata.resourceVersion
-        if (newObj.event === 'add') {
-          this.originServices.push(this.buildServices(newObj.resource))
-        } else if (newObj.event === 'update') {
-          for (let i in this.originServices) {
-            let d = this.originServices[i]
-            if (d.uid === newUid) {
-              if (d.resource_version < newRv){
-                let newDp = this.buildServices(newObj.resource)
-                this.$set(this.originServices, i, newDp)
-              }
-              break
-            }
-          }
-        } else if (newObj.event === 'delete') {
-          this.originServices = this.originServices.filter(( { uid } ) => uid !== newUid)
-        }
-      }
-    },
-    cluster: function() {
-      this.fetchData()
-    }
+    // servicesWatch: function (newObj) {
+    //   if (newObj) {
+    //     let newUid = newObj.resource.metadata.uid
+    //     let newRv = newObj.resource.metadata.resourceVersion
+    //     if (newObj.event === 'add') {
+    //       this.originServices.push(this.buildServices(newObj.resource))
+    //     } else if (newObj.event === 'update') {
+    //       for (let i in this.originServices) {
+    //         let d = this.originServices[i]
+    //         if (d.uid === newUid) {
+    //           if (d.resource_version < newRv){
+    //             let newDp = this.buildServices(newObj.resource)
+    //             this.$set(this.originServices, i, newDp)
+    //           }
+    //           break
+    //         }
+    //       }
+    //     } else if (newObj.event === 'delete') {
+    //       this.originServices = this.originServices.filter(( { uid } ) => uid !== newUid)
+    //     }
+    //   }
+    // },
+    // cluster: function() {
+    //   this.fetchData()
+    // }
   },
   computed: {
     services: function() {
@@ -339,7 +340,7 @@ export default {
       let params = {namespace: this.namespace}
       if(this.projectId) params['labels'] = projectLabels()
       if (cluster) {
-        listServices(cluster, params).then(response => {
+        listResource(cluster, ResType.Service, params).then(response => {
           this.loading = false
           let originServices = response.data || []
           this.$set(this, 'originServices', originServices)
@@ -395,7 +396,7 @@ export default {
         return
       }
       this.dialogLoading = true
-      getService(cluster, namespace, name,).then(response => {
+      getResource(cluster, ResType.Service, namespace, name,).then(response => {
         let service = response.data
         let selector = []
         for(let k in service.spec.selector) {
@@ -420,7 +421,7 @@ export default {
         type: 'warning'
       }).then(() => {
         this.loading = true
-        deleteServices(this.cluster, {resources: services}).then(() => {
+        delResource(this.cluster, ResType.Service, {resources: services}).then(() => {
           Message.success("删除Service成功")
           this.loading = false
           this.fetchData()
@@ -472,7 +473,7 @@ export default {
       }
       let yamlStr = yaml.dump(service)
       this.dialogLoading = true
-      createYaml(cluster, yamlStr).then(() => {
+      createResource(cluster, yamlStr).then(() => {
         Message.success("创建Service成功")
         this.dialogLoading = false
         this.createFormVisible = false
@@ -509,7 +510,7 @@ export default {
       }
       let yamlStr = yaml.dump(service)
       this.dialogLoading = true
-      updateService(cluster, this.service.metadata.namespace, this.service.metadata.name, yamlStr).then(() => {
+      updateResource(cluster, ResType.Service, this.service.metadata.namespace, this.service.metadata.name, yamlStr).then(() => {
         this.dialogLoading = false
         this.createFormVisible = false
         Message.success("编辑Service成功")
@@ -552,7 +553,7 @@ export default {
       this.namespaces = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listNamespace(cluster).then(response => {
+        listResource(cluster, ResType.Namespace).then(response => {
           this.namespaces = response.data
           this.namespaces.sort((a, b) => {return a.name > b.name ? 1 : -1})
         }).catch((err) => {

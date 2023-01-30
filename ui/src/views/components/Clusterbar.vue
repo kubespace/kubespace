@@ -57,6 +57,7 @@
 <script>
 // import { mapGetters } from 'vuex'
 import { listNamespace } from '@/api/namespace'
+import { listResource } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
 import storage from '@/utils/storage'
 
@@ -167,7 +168,7 @@ export default {
       this.namespaces = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listNamespace(cluster).then(response => {
+        listResource(cluster, "namespace").then(response => {
           this.namespaces = response.data
           this.namespaces.sort((a, b) => {return a.name > b.name ? 1 : -1})
           let nsCache = storage.get(this.nsKey)

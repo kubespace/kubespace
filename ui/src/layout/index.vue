@@ -52,7 +52,8 @@
 import { Navbar, Sidebar, AppMain} from './components'
 import { Yaml } from '@/views/components'
 import { Message } from 'element-ui'
-import { applyYaml } from '@/api/cluster'
+//import { applyYaml } from '@/api/cluster'
+import { applyResource } from '@/api/cluster/resource'
 import { updatePassword } from '@/api/user'
 
 export default {
@@ -94,7 +95,7 @@ export default {
         Message.error("请输入要导入的YAML")
         return
       }
-      applyYaml(cluster, this.nav.yamlValue).then((resp) => {
+      applyResource(cluster, this.nav.yamlValue).then((resp) => {
         Message.success(resp.msg)
         this.nav.dialog = false
       }).catch(() => {

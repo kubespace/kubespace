@@ -3,13 +3,13 @@ package plugins
 import (
 	"bytes"
 	"fmt"
-	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
+	"github.com/kubespace/kubespace/pkg/service/cluster"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"runtime"
 )
 
@@ -47,19 +47,18 @@ type PluginCallback func(callbackSer serializers.PipelineCallbackSerializer) *ut
 type Plugins struct {
 	Plugins  map[string]PluginExecutor
 	callback PluginCallback
-	*kube_resource.KubeResources
+	//*kube_resource.KubeResources
 	*model.Models
 }
 
-func NewPlugins(models *model.Models, kr *kube_resource.KubeResources, callback PluginCallback) *Plugins {
+func NewPlugins(models *model.Models, kubeClient *cluster.KubeClient, callback PluginCallback) *Plugins {
 	p := &Plugins{
-		Plugins:       make(map[string]PluginExecutor),
-		callback:      callback,
-		Models:        models,
-		KubeResources: kr,
+		Plugins:  make(map[string]PluginExecutor),
+		callback: callback,
+		Models:   models,
 	}
-	p.Plugins[types.BuiltinPluginUpgradeApp] = UpgradeAppPlugin{Models: models, KubeResources: kr}
-	p.Plugins[types.BuiltinPluginDeployK8s] = DeployK8sPlugin{Models: models, KubeResources: kr}
+	p.Plugins[types.BuiltinPluginUpgradeApp] = UpgradeAppPlugin{Models: models, KubeClient: kubeClient}
+	p.Plugins[types.BuiltinPluginDeployK8s] = DeployK8sPlugin{Models: models, KubeClient: kubeClient}
 	return p
 }
 

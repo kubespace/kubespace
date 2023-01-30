@@ -1,6 +1,6 @@
 <template>
   <div>
-    <clusterbar :titleName="titleName" :delFunc="deleteWorkloads" :editFunc="getWorkloadYaml"/>
+    <clusterbar :titleName="titleName" :editFunc="getWorkloadYaml"/>
     <div class="dashboard-container workload-container" style="margin: 10px 20px;">
       <div style="padding: 10px 8px 0px;">
         <div>基本信息</div>
@@ -362,7 +362,7 @@
                 show-overflow-tooltip>
                 <template slot-scope="scope">
                   <span>
-                    {{ scope.row.lastProbeTime ? scope.row.lastProbeTime : scope.row.lastTransitionTime }}
+                    {{ $dateFormat(scope.row.lastProbeTime ? scope.row.lastProbeTime : scope.row.lastTransitionTime) }}
                   </span>
                 </template>
               </el-table-column>
@@ -426,6 +426,11 @@
                 label="触发时间"
                 min-width="50"
                 show-overflow-tooltip>
+                <template slot-scope="scope">
+                  <span>
+                    {{ $dateFormat(scope.row.event_time) }}
+                  </span>
+                </template>
               </el-table-column>
             </el-table>
             <div v-else style=" padding: 25px 15px ; color: #909399; text-align: center">暂无事件发生</div>
@@ -441,11 +446,11 @@
         <log v-if="logDialog" :cluster="cluster" :namespace="namespace" :pod="selectPodName" :container="selectContainer"></log>
       </el-dialog>
 
-      <el-dialog title="编辑" :visible.sync="yamlDialog" :close-on-click-modal="false" width="60%" top="55px">
+      <el-dialog title="编辑" :visible.sync="yamlDialog" :close-on-click-modal="false" width="60%" top="55px" v-loading="yamlLoading">
         <yaml v-if="yamlDialog" v-model="yamlValue" :loading="yamlLoading"></yaml>
         <span slot="footer" class="dialog-footer">
           <el-button plain @click="yamlDialog = false" size="small">取 消</el-button>
-          <el-button plain @click="updateStatefulSet()" size="small">确 定</el-button>
+          <el-button plain @click="updateWorkload()" size="small">确 定</el-button>
         </span>
       </el-dialog>
     </div>
@@ -454,13 +459,9 @@
 
 <script>
 import { Clusterbar, Yaml } from '@/views/components'
-import { listEvents, buildEvent } from '@/api/event'
-import { getDeployment, deleteDeployments, updateDeployment, buildDeployment } from '@/api/deployment'
-import { getStatefulSet, deleteStatefulSets, updateStatefulSet, buildStatefulSet } from '@/api/statefulset'
-import { getDaemonSet, deleteDaemonSets, updateDaemonSet, buildDaemonSet } from '@/api/daemonset'
-import { getJob, deleteJobs, updateJob, buildJobs } from '@/api/job'
-import { listPods, containerClass, buildPods, buildContainer, podMatch, deletePods, envStr, resourceFor } from '@/api/pods'
-import { sse } from '@/api/cluster'
+import { ResType, listResource, getResource, watchResource, updateResource, deleteResource,
+         containerClass, buildContainer, podMatch, resourceFor, envStr,
+         buildDeployment, buildStatefulSet, buildDaemonSet, buildJobs } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
 import { Terminal } from '@/views/components'
 import { Log } from '@/views/components'
@@ -495,24 +496,6 @@ export default {
       resourceFor: resourceFor,
       podSSE: undefined,
       workloadSSE: undefined,
-      getFuncMap: {
-        'deployment': getDeployment,
-        'statefulset': getStatefulSet,
-        'daemonset': getDaemonSet,
-        'job': getJob,
-      },
-      deleteFuncMap: {
-        'deployment': deleteDeployments,
-        'statefulset': deleteStatefulSets,
-        'daemonset': deleteDaemonSets,
-        'job': deleteJobs,
-      },
-      updateFuncMap: {
-        'deployment': updateDeployment,
-        'statefulset': updateStatefulSet,
-        'daemonset': updateDaemonSet,
-        'job': updateJob,
-      },
       buildFuncMap: {
         'deployment': buildDeployment,
         'statefulset': buildStatefulSet,
@@ -537,6 +520,15 @@ export default {
         'job': "Jobs"
       }
       return [titleMap[this.kind], this.name]
+    },
+    ResKind: function() {
+      let kindMap = {
+        'deployment': 'Deployment',
+        'statefulset': 'StatefulSet',
+        'daemonset': 'DaemonSet',
+        'job': "Job"
+      }
+      return kindMap[this.kind]
     },
     namespace: function() {
       return this.$route.params ? this.$route.params.namespace : ''
@@ -592,17 +584,15 @@ export default {
         this.eventLoading = false
         return
       }
-      if(!this.getFuncMap[this.kind]) {
-        Message.error("获取参数类型异常，请刷新重试")
-        this.loading = false
-        this.eventLoading = false
-        return
-      }
-      this.getFuncMap[this.kind](cluster, this.namespace, this.name).then(response => {
+      getResource(cluster, this.kind, this.namespace, this.name).then(response => {
         // this.loading = false
         this.originWorkload = response.data
         this.fetchWorkloadSSE()
-        listPods(cluster, this.originWorkload.spec.selector).then(response => {
+        let params = {
+          namespace: this.namespace,
+          label_selector: this.originWorkload.spec.selector
+        }
+        listResource(cluster, ResType.Pod, params).then(response => {
           this.loading = false
           this.pods = response.data || []
           this.fetchPodSSE()
@@ -610,7 +600,7 @@ export default {
           this.loading = false
         })
 
-        listEvents(cluster, this.originWorkload.metadata.uid).then(response => {
+        listResource(cluster, ResType.Event, {kind: this.ResKind, namespace: this.namespace, name: this.name}).then(response => {
           this.eventLoading = false
           if (response.data) {
             this.events = response.data.length > 0 ? response.data : []
@@ -624,9 +614,10 @@ export default {
       })
     },
     fetchWorkloadSSE() {
-      this.workloadSSE = sse(this.$sse, this.sseWorkloadWatch, this.cluster, {type: this.kind, uid: this.workload.uid})
+      this.workloadSSE = watchResource(this.$sse, this.cluster, this.kind, this.workloadWatchFunc, 
+                                      {namespace: this.namespace, name: this.name})
     },
-    sseWorkloadWatch: function (newObj) {
+    workloadWatchFunc: function (newObj) {
       if (newObj && this.originWorkload) {
         let newUid = newObj.resource.metadata.uid
         if (newUid !== this.workload.uid) {
@@ -641,29 +632,29 @@ export default {
     },
     fetchPodSSE() {
       let params = {
-        type: 'pods',
         namespace: this.namespace,
-        selector: JSON.stringify(this.workload.label_selector.matchLabels)
+        label_selector: this.originWorkload.spec.selector,
+        process: true,
       }
-      this.podSSE = sse(this.$sse, this.ssePodsWatch, this.cluster, params)
+      this.podSSE = watchResource(this.$sse, this.cluster, ResType.Pod, this.podsWatchFunc, params)
     },
-    ssePodsWatch: function (newObj) {
+    podsWatchFunc: function (newObj) {
       if (newObj && this.originWorkload) {
-        let isPodMatch = podMatch(this.originWorkload.spec.selector, newObj.resource.metadata.labels)
+        let isPodMatch = podMatch(this.originWorkload.spec.selector, newObj.resource.labels)
         if (isPodMatch) {
-          let newUid = newObj.resource.metadata.uid
-          let newRv = newObj.resource.metadata.resourceVersion
+          let newUid = newObj.resource.uid
+          let newRv = newObj.resource.resource_version
           if (newObj.event === 'add') {
             for (let i in this.pods) {
               let p = this.pods[i]
               if (p.uid === newUid) return
             }
-            this.pods.push(buildPods(newObj.resource))
+            this.pods.push(newObj.resource)
           } else if (newObj.event === 'update') {
             for (let i in this.pods) {
               let p = this.pods[i]
               if (p.uid === newUid && p.resource_version < newRv) {
-                let newPod = buildPods(newObj.resource)
+                let newPod = newObj.resource
                 this.$set(this.pods, i, newPod)
                 break
               }
@@ -688,10 +679,6 @@ export default {
         Message.error("获取资源数据异常，请刷新重试")
         return
       }
-      if(!this.deleteFuncMap[this.kind]) {
-        Message.error("获取资源类型异常，请刷新重试")
-        return
-      }
       let workloads = [{
         namespace: this.namespace,
         name: this.name,
@@ -699,7 +686,7 @@ export default {
       let params = {
         resources: workloads
       }
-      this.deleteFuncMap[this.kind](cluster, params).then(() => {
+      deleteResource(cluster, this.kind, params).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)
@@ -717,7 +704,7 @@ export default {
       this.yamlValue = ""
       this.yamlDialog = true
       this.yamlLoading = true
-      this.getFuncMap[this.kind](this.cluster, this.namespace, this.name, "yaml").then(response => {
+      getResource(this.cluster, this.kind, this.namespace, this.name, "yaml").then(response => {
         this.yamlLoading = false
         this.yamlValue = response.data
       }).catch(() => {
@@ -733,14 +720,14 @@ export default {
         Message.error("获取集群参数异常，请刷新重试")
         return
       }
-      if(!this.updateFuncMap[this.kind]) {
-        Message.error("获取资源类型异常，请刷新重试")
-        return
-      }
-      this.updateFuncMap[this.kind](this.cluster, this.namespace, this.name, this.yamlValue).then(() => {
+      this.yamlLoading = true
+      updateResource(this.cluster, this.kind, this.namespace, this.name, this.yamlValue).then(() => {
         Message.success("更新成功")
+        this.yamlLoading = false
+        this.yamlDialog = false
       }).catch(() => {
         // console.log(e) 
+        this.yamlLoading = false
       })
     },
     containerClass: function(status) {
@@ -761,7 +748,7 @@ export default {
       let params = {
         resources: pods
       }
-      deletePods(this.cluster, params).then(() => {
+      deleteResource(this.cluster, ResType.Pod, params).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)

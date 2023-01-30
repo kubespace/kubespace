@@ -5,7 +5,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/kubespace/kubespace/pkg/core/redis"
 	"github.com/kubespace/kubespace/pkg/kube_resource"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 type ApiWebsocket struct {

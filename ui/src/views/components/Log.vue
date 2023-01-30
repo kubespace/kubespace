@@ -79,7 +79,7 @@ export default {
       }
 
       var protocal = window.location.protocol == 'http:' ? 'ws':'wss'
-      let wsUrl = `${protocal}://${window.location.host}/ws/log/${this.cluster}/${this.namespace}/${this.pod}`
+      let wsUrl = `${protocal}://${window.location.host}/api/v1/cluster/${this.cluster}/pod/log/${this.namespace}/${this.pod}`
       this.socket = new WebSocket(wsUrl + `?container=${this.container}&token=${token}`);
       this.socketOnClose();
       this.socketOnOpen();

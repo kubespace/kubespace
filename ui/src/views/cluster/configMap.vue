@@ -145,10 +145,8 @@
 <script>
 import { Clusterbar } from '@/views/components'
 import { Message } from 'element-ui'
-import { listConfigMaps, getConfigMap, updateConfigMap, deleteConfigMaps } from '@/api/config_map'
-import { createYaml } from '@/api/cluster'
+import { ResType, listResource, getResource, delResource, updateResource, createResource } from '@/api/cluster/resource'
 import { projectLabels } from '@/api/project/project'
-import { listNamespace } from '@/api/namespace'
 import yaml from 'js-yaml'
 
 export default {
@@ -163,7 +161,7 @@ export default {
       search_name: '',
       search_ns: [],
       cellStyle: { border: 0 },
-      maxHeight: window.innerHeight - 135,
+      maxHeight: window.innerHeight - this.$contentHeight,
       loading: true,
       dialogLoading: false,
       createFormVisible: false,
@@ -184,7 +182,7 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 135
+        let heightStyle = window.innerHeight - this.$contentHeight
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
@@ -252,7 +250,7 @@ export default {
       let params = {namespace: this.namespace}
       if(this.projectId) params['labels'] = projectLabels()
       if (cluster) {
-        listConfigMaps(cluster, params)
+        listResource(cluster, ResType.ConfigMap, params)
           .then((response) => {
             this.loading = false
             let originConfigMaps = response.data || []
@@ -297,7 +295,7 @@ export default {
       }
       let yamlStr = yaml.dump(configMap)
       this.dialogLoading = true
-      createYaml(this.cluster, yamlStr).then((response) => {
+      createResource(this.cluster, yamlStr).then((response) => {
         this.dialogLoading = false
         this.createFormVisible = false
         Message.success("创建ConfigMap成功")
@@ -319,7 +317,7 @@ export default {
       configMap.data = data
       let yamlStr = yaml.dump(configMap)
       this.dialogLoading = true
-      updateConfigMap(this.cluster, configMap.metadata.namespace, configMap.metadata.name, yamlStr).then((response) => {
+      updateResource(this.cluster, ResType.ConfigMap, configMap.metadata.namespace, configMap.metadata.name, yamlStr).then((response) => {
         this.dialogLoading = false
         this.createFormVisible = false
         Message.success("编辑ConfigMap成功")
@@ -340,7 +338,7 @@ export default {
         type: 'warning'
       }).then(() => {
         this.loading = true
-        deleteConfigMaps(this.cluster, {resources: cms}).then(() => {
+        delResource(this.cluster, ResType.ConfigMap, {resources: cms}).then(() => {
           Message.success("删除ConfigMap成功")
           this.loading = false
           this.fetchData()
@@ -365,7 +363,7 @@ export default {
         return
       }
       this.dialogLoading = true
-      getConfigMap(cluster, namespace, name,).then((response) => {
+      getResource(cluster, ResType.ConfigMap, namespace, name,).then((response) => {
         this.dialogLoading = false
         this.configMap = response.data
         let data = []
@@ -381,7 +379,7 @@ export default {
       this.namespaces = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listNamespace(cluster).then(response => {
+        listResource(cluster, ResType.Namespace).then(response => {
           this.namespaces = response.data
           this.namespaces.sort((a, b) => {return a.name > b.name ? 1 : -1})
         }).catch((err) => {

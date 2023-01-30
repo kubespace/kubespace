@@ -10,7 +10,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"log"
 	"math/big"
 	"net"

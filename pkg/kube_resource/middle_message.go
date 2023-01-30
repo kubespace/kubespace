@@ -7,7 +7,7 @@ import (
 	oredis "github.com/kubespace/kubespace/pkg/core/redis"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"time"
 )
 

@@ -2,12 +2,12 @@ package cluster
 
 import (
 	"fmt"
-	"github.com/kubespace/kubespace/pkg/model/listwatcher/config"
+	"github.com/kubespace/kubespace/pkg/informer/listwatcher/config"
 	"github.com/kubespace/kubespace/pkg/model/manager/project"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"gorm.io/gorm"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"strconv"
 	"time"
 )
@@ -30,7 +30,7 @@ func NewClusterManager(db *gorm.DB, listWatcherConfig *config.ListWatcherConfig,
 	if cnt == 0 {
 		localCluster := &types.Cluster{
 			Name1:      "local",
-			Token:      "local",
+			Token:      utils.ShortUUID(),
 			CreatedBy:  "admin",
 			CreateTime: time.Now(),
 			UpdateTime: time.Now(),

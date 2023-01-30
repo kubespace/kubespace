@@ -7,7 +7,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"io/ioutil"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"os"
 	"path/filepath"
 	"strings"

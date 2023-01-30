@@ -1,9 +1,9 @@
 package config
 
 import (
-	"github.com/kubespace/kubespace/pkg/core/mysql"
-	coreRedis "github.com/kubespace/kubespace/pkg/core/redis"
+	"github.com/kubespace/kubespace/pkg/core/db"
 	"github.com/kubespace/kubespace/pkg/informer"
+	listwatcherconfig "github.com/kubespace/kubespace/pkg/informer/listwatcher/config"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/service"
 	"github.com/kubespace/kubespace/pkg/service/config"
@@ -14,26 +14,30 @@ import (
 type ServerConfig struct {
 	InsecurePort    int
 	Port            int
-	RedisOptions    *coreRedis.Options
-	MysqlOptions    *mysql.Options
 	CertFilePath    string
 	KeyFilePath     string
+	DB              *db.DB
 	Models          *model.Models
-	InformerFactory informer.InformerFactory
+	InformerFactory informer.Factory
 	ServiceFactory  *service.Factory
 }
 
 func NewServerConfig(op *ServerOptions) (*ServerConfig, error) {
-	redisOp := &coreRedis.Options{
-		Addr:     op.RedisAddress,
-		Password: op.RedisPassword,
-		DB:       op.RedisDB,
-	}
-	mysqlOp := &mysql.Options{
-		Host:     op.MysqlHost,
-		Username: op.MysqlUser,
-		Password: op.MysqlPassword,
-		DbName:   op.MysqlDbName,
+	dB, err := db.NewDb(&db.Config{
+		Mysql: &db.MysqlConfig{
+			Username: op.MysqlUser,
+			Password: op.MysqlPassword,
+			Host:     op.MysqlHost,
+			DbName:   op.MysqlDbName,
+		},
+		Redis: &db.RedisConfig{
+			Addr:     op.RedisAddress,
+			Password: op.RedisPassword,
+			DB:       op.RedisDB,
+		},
+	})
+	if err != nil {
+		return nil, err
 	}
 	certFilePath := op.CertFilePath
 	keyFilePath := op.KeyFilePath
@@ -51,9 +55,10 @@ func NewServerConfig(op *ServerOptions) (*ServerConfig, error) {
 			}
 		}
 	}
-	models, err := model.NewModels(&model.Options{
-		RedisOptions: redisOp,
-		MysqlOptions: mysqlOp,
+	listWatcherConfig := listwatcherconfig.NewListWatcherConfig(dB, op.ListWatcherResyncSec)
+	models, err := model.NewModels(&model.Config{
+		Db:                dB,
+		ListWatcherConfig: listWatcherConfig,
 	})
 	if err != nil {
 		return nil, err
@@ -64,10 +69,9 @@ func NewServerConfig(op *ServerOptions) (*ServerConfig, error) {
 		InformerFactory: informerFactory,
 	})
 	return &ServerConfig{
+		DB:              dB,
 		InsecurePort:    op.InsecurePort,
 		Port:            op.Port,
-		RedisOptions:    redisOp,
-		MysqlOptions:    mysqlOp,
 		CertFilePath:    certFilePath,
 		KeyFilePath:     keyFilePath,
 		Models:          models,

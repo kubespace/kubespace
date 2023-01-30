@@ -116,19 +116,18 @@
         </el-table-column>
       </el-table>
     </div>
-    <el-dialog title="编辑" :visible.sync="yamlDialog" :close-on-click-modal="false" width="60%" top="55px">
+    <el-dialog title="编辑" :visible.sync="yamlDialog" :close-on-click-modal="false" width="60%" top="55px" v-loading="yamlLoading">
       <yaml v-if="yamlDialog" v-model="yamlValue" :loading="yamlLoading"></yaml>
       <span slot="footer" class="dialog-footer">
         <el-button plain @click="yamlDialog = false" size="small">取 消</el-button>
         <el-button plain @click="updateDeployment()" size="small">确 定</el-button>
       </span>
     </el-dialog>
-    <el-dialog title="扩缩容" :visible.sync="replicaDialog" :close-on-click-modal="false" width="380px" top="14%" class="replicaDialog" >
+    <el-dialog title="扩缩容" :visible.sync="replicaDialog" :close-on-click-modal="false" width="380px" top="14%" class="replicaDialog" v-loading="yamlLoading">
       <div slot="title">
         <span style="line-height: 24px; font-size: 18px; color: #303133;">扩缩容:</span>
         <span style="line-height: 24px; font-size: 15px; color: #606266;">{{ update_replicas_deployment ? update_replicas_deployment.name : '' }}</span>
       </div>
-      <!-- <label style="margin-bottom: 10px;">{{ update_replicas_deployment ? update_replicas_deployment.name : '' }}</label> -->
       <el-form ref="form" label-position="left" label-width="100px">
         <el-form-item label="当前副本数">
           <label>{{ update_replicas_deployment ? update_replicas_deployment.replicas : 0 }}</label>
@@ -149,8 +148,7 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { sse } from '@/api/cluster'
-import { listDeployments, getDeployment, deleteDeployments, updateDeployment, updateDeploymentObj } from '@/api/deployment'
+import { ResType, listResource, getResource, delResource, updateResource, watchResource, patchResource } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
 
@@ -219,7 +217,7 @@ export default {
       this.originDeployments = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listDeployments(cluster).then(response => {
+        listResource(cluster, ResType.Deployment).then(response => {
           this.loading = false
           this.originDeployments = response.data || []
           if(!this.clusterSSE) this.fetchSSE()
@@ -233,13 +231,13 @@ export default {
     },
     fetchSSE() {
       if(!this.clusterSSE) {
-        this.clusterSSE = sse(this.$sse, this.sseWatch, this.cluster, {type: 'deployment'})
+        this.clusterSSE = watchResource(this.$sse, this.cluster, ResType.Deployment, this.sseWatch, {process: true})
       }
     },
     sseWatch(newObj) {
       if (newObj) {
-        let newUid = newObj.resource.metadata.uid
-        let newRv = newObj.resource.metadata.resourceVersion
+        let newUid = newObj.resource.uid
+        let newRv = newObj.resource.resource_version
         if (newObj.event === 'add') {
           for(let i in this.originDeployments) {
             let d = this.originDeployments[i]
@@ -247,13 +245,13 @@ export default {
               return
             }
           }
-          this.originDeployments.push(this.buildDeployments(newObj.resource))
+          this.originDeployments.push(newObj.resource)
         } else if (newObj.event === 'update') {
           for (let i in this.originDeployments) {
             let d = this.originDeployments[i]
             if (d.uid === newUid) {
               if (d.resource_version < newRv){
-                let newDp = this.buildDeployments(newObj.resource)
+                let newDp = newObj.resource
                 this.$set(this.originDeployments, i, newDp)
               }
               break
@@ -272,31 +270,6 @@ export default {
     },
     nameSearch: function(val) {
       this.search_name = val
-    },
-    buildDeployments: function(deployment) {
-      if (!deployment) return
-      var conditions = []
-      for (let c of deployment.status.conditions || []) {
-        if (c.status === "True") {
-          conditions.push(c.type)
-        }
-      }
-      let p = {
-        uid: deployment.metadata.uid,
-        namespace: deployment.metadata.namespace,
-        name: deployment.metadata.name,
-        replicas: deployment.spec.replicas,
-        status_replicas: deployment.status.replicas || 0,
-        ready_replicas: deployment.status.readyReplicas || 0,
-        update_replicas: deployment.status.updateReplicas,
-        available_replicas: deployment.status.availableReplicas,
-        unavailable_replicas: deployment.status.unavailabelReplicas,
-        resource_version: deployment.metadata.resourceVersion,
-        strategy: deployment.spec.strategy.type,
-        conditions: conditions,
-        created: deployment.metadata.creationTimestamp
-      }
-      return p
     },
     nameClick: function(namespace, name) {
       this.$router.push({name: 'deploymentDetail', params: {namespace: namespace, deploymentName: name}})
@@ -320,7 +293,7 @@ export default {
       this.yamlValue = ""
       this.yamlDialog = true
       this.yamlLoading = true
-      getDeployment(cluster, namespace, name, "yaml").then(response => {
+      getResource(cluster, ResType.Deployment, namespace, name, "yaml").then(response => {
         this.yamlLoading = false
         this.yamlValue = response.data
         this.yamlNamespace = namespace
@@ -342,7 +315,7 @@ export default {
       let params = {
         resources: deployments
       }
-      deleteDeployments(cluster, params).then(() => {
+      delResource(cluster, ResType.Deployment, params).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)
@@ -362,15 +335,16 @@ export default {
         Message.error("获取Deployment参数异常，请刷新重试")
         return
       }
-      console.log(this.yamlValue)
-      updateDeployment(cluster, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
+      this.yamlLoading = true
+      updateResource(cluster, ResType.Deployment, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
         Message.success("更新成功")
+        this.yamlLoading = false
+        this.yamlDialog = false
       }).catch(() => {
         // console.log(e) 
       })
     },
     updateDeploymentObj: function(update_obj) {
-      console.log(update_obj)
       const cluster = this.$store.state.cluster
       if (!cluster) {
         Message.error("获取集群参数异常，请刷新重试")
@@ -389,7 +363,10 @@ export default {
         Message.error("获取Deployment参数异常，请刷新重试")
         return
       }
-      let update_params = {}
+      let update_params = {
+        name: deployment.name,
+        namespace: deployment.namespace,
+      }
       if (update_obj.replicas) {
         if (update_obj.replicas < 1) {
           Message.error("副本数不能小于1，请重新输入")
@@ -399,14 +376,16 @@ export default {
           Message.error("副本数与当前值相同，请重新输入")
           return
         }
-        update_params["replicas"] = update_obj.replicas
+        update_params["data"] = {spec: {replicas: update_obj.replicas}}
       }
       if (Object.keys(update_params).length === 0) {
         Message.error("更新参数为空")
         return
       }
-      updateDeploymentObj(cluster, deployment.namespace, deployment.name, update_params).then(() => {
+      this.yamlLoading = true
+      patchResource(cluster, ResType.Deployment, update_params).then(() => {
         Message.success("更新成功")
+        this.yamlLoading = false
         this.replicaDialog = false;
       }).catch(() => {
         // console.log(e) 

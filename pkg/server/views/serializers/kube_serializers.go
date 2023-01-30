@@ -10,6 +10,13 @@ type ListSerializers struct {
 	Names         []string          `json:"names"`
 }
 
+type ClusterWatchSerializers struct {
+	Namespace string            `json:"namespace" form:"namespace"`
+	Name      string            `json:"name" form:"name"`
+	Uid       string            `json:"uid" form:"uid"`
+	Selector  map[string]string `json:"selector" form:"selector"`
+}
+
 type ClusterSSESerializers struct {
 	Cluster   string            `json:"cluster" form:"cluster"`
 	Type      string            `json:"type" form:"type"`
@@ -54,12 +61,18 @@ type DeleteResource struct {
 }
 
 type DeleteSerializers struct {
-	Resources []DeleteResource `json:"resources"`
+	Resources []*DeleteResource `json:"resources"`
 }
 
 type UpdateSerializers struct {
 	Yaml string `json:"yaml"`
 	Kind string `json:"kind"`
+}
+
+type PatchSerializers struct {
+	Name      string      `json:"name"`
+	Namespace string      `json:"namespace"`
+	Data      interface{} `json:"data"`
 }
 
 type UpdateWorkloadSerializers struct {

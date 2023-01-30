@@ -6,7 +6,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/server"
 	"github.com/kubespace/kubespace/pkg/server/config"
 	"github.com/kubespace/kubespace/pkg/utils"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 var (

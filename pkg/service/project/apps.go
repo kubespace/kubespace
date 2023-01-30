@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/kubespace/kubespace/pkg/kube_resource"
+	kubetypes "github.com/kubespace/kubespace/pkg/kubernetes/types"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
+	"github.com/kubespace/kubespace/pkg/service/cluster"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"helm.sh/helm/v3/pkg/action"
@@ -16,7 +17,7 @@ import (
 	"io/ioutil"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	yamlutil "k8s.io/apimachinery/pkg/util/yaml"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"os"
 	"sigs.k8s.io/yaml"
 	"strings"
@@ -24,14 +25,14 @@ import (
 )
 
 type AppService struct {
-	*kube_resource.KubeResources
 	*AppBaseService
+	kubeClient *cluster.KubeClient
 }
 
-func NewAppService(kr *kube_resource.KubeResources, appBaseService *AppBaseService) *AppService {
+func NewAppService(kubeClient *cluster.KubeClient, appBaseService *AppBaseService) *AppService {
 	return &AppService{
+		kubeClient:     kubeClient,
 		AppBaseService: appBaseService,
-		KubeResources:  kr,
 	}
 }
 
@@ -158,9 +159,9 @@ func (a *AppService) InstallApp(user *types.User, serializer serializers.Project
 	}
 	var resp *utils.Response
 	if serializer.Upgrade {
-		resp = a.Helm.UpdateObj(clusterId, installParams)
+		resp = a.kubeClient.Update(clusterId, kubetypes.HelmType, installParams)
 	} else {
-		resp = a.Helm.Create(clusterId, installParams)
+		resp = a.kubeClient.Create(clusterId, kubetypes.HelmType, installParams)
 	}
 	if !resp.IsSuccess() {
 		return resp
@@ -203,7 +204,7 @@ func (a *AppService) DestroyApp(user *types.User, serializer serializers.Project
 		"namespace": namespace,
 		"name":      projectApp.Name,
 	}
-	resp := a.Helm.Delete(clusterId, destroyParams)
+	resp := a.kubeClient.Delete(clusterId, kubetypes.HelmType, destroyParams)
 	if !resp.IsSuccess() {
 		return resp
 	}
@@ -246,7 +247,7 @@ func (a *AppService) updateAppStatus(scope string, scopeId uint, projectApps []*
 			"namespace": namespace,
 			"names":     appNames,
 		}
-		res := a.KubeResources.Helm.Status(clusterId, statusParams)
+		res := a.kubeClient.List(clusterId, kubetypes.HelmType, statusParams)
 		if res.IsSuccess() {
 			var appStatuses []*AppRuntimeStatus
 			dataBytes, _ := json.Marshal(res.Data)
@@ -304,7 +305,7 @@ func (a *AppService) GetApp(appId uint) *utils.Response {
 		clusterId = fmt.Sprintf("%d", projectApp.ScopeId)
 		namespace = projectApp.Namespace
 	}
-	cluster, err := a.models.ClusterManager.GetByName(clusterId)
+	clusterObj, err := a.models.ClusterManager.GetByName(clusterId)
 	if err != nil {
 		klog.Errorf("get app %s cluster error: %s", appId, err.Error())
 	}
@@ -313,7 +314,7 @@ func (a *AppService) GetApp(appId uint) *utils.Response {
 		"name":            projectApp.Name,
 		"status":          projectApp.Status,
 		"cluster_id":      clusterId,
-		"cluster":         cluster,
+		"cluster":         clusterObj,
 		"namespace":       namespace,
 		"app_version_id":  projectApp.AppVersionId,
 		"app_version":     projectApp.AppVersion.AppVersion,
@@ -367,7 +368,7 @@ func (a *AppService) GetApp(appId uint) *utils.Response {
 			"with_workloads": true,
 		}
 		//nameStatusMap := map[string]*AppRuntimeStatus{}
-		res := a.KubeResources.Helm.Get(clusterId, statusParams)
+		res := a.kubeClient.Get(clusterId, kubetypes.HelmType, statusParams)
 		if res.IsSuccess() {
 			var appStatuses AppRuntimeStatus
 			dataBytes, _ := json.Marshal(res.Data)

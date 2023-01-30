@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"os"
 	"strconv"
 )

@@ -188,11 +188,11 @@
 <script>
 import { Clusterbar } from '@/views/components'
 import { Message } from 'element-ui'
-import { listSecrets, getSecret, updateSecret, deleteSecrets, transferSecret, resolveSecret } from '@/api/secret'
-import { createYaml } from '@/api/cluster'
+import { ResType, listResource, getResource, delResource, updateResource, createResource,
+         resolveSecret, transferSecret } from '@/api/cluster/resource'
 import { projectLabels } from '@/api/project/project'
-import { listNamespace } from '@/api/namespace'
 import yaml from 'js-yaml'
+import { Base64 } from 'js-base64';
 
 export default {
   name: 'Secrets',
@@ -206,7 +206,7 @@ export default {
       search_name: '',
       search_ns: [],
       cellStyle: { border: 0 },
-      maxHeight: window.innerHeight - 135,
+      maxHeight: window.innerHeight - this.$contentHeight,
       loading: true,
       dialogLoading: false,
       createFormVisible: false,
@@ -235,7 +235,7 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 135
+        let heightStyle = window.innerHeight - this.$contentHeight
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
@@ -270,13 +270,12 @@ export default {
   methods: {
     decodeBase(val) {
       try{
-        return atob(val)
+        return Base64.decode(val)
       } catch(e) {
         return val
       }
     },
     nameClick: function(namespace, name) {
-      console.log(namespace, name);
       this.$router.push({
         name: 'secretDetail',
         params: { namespace: namespace, secretName: name },
@@ -298,7 +297,7 @@ export default {
       let params = {namespace: this.namespace}
       if(this.projectId) params['labels'] = projectLabels()
       if (cluster) {
-        listSecrets(cluster, params).then(response => {
+        listResource(cluster, ResType.Secret, params).then(response => {
           this.loading = false
           let originSecrets = response.data || []
           this.$set(this, 'originSecrets', originSecrets)
@@ -333,7 +332,7 @@ export default {
       }
       let yamlStr = yaml.dump(secret)
       this.dialogLoading = true
-      createYaml(this.cluster, yamlStr).then((response) => {
+      createResource(this.cluster, yamlStr).then((response) => {
         this.dialogLoading = false
         this.createFormVisible = false
         Message.success("创建Secret成功")
@@ -351,7 +350,7 @@ export default {
       }
       let yamlStr = yaml.dump(secret)
       this.dialogLoading = true
-      updateSecret(this.cluster, this.secret.metadata.namespace, this.secret.metadata.name, yamlStr).then((response) => {
+      updateResource(this.cluster, ResType.Secret, this.secret.metadata.namespace, this.secret.metadata.name, yamlStr).then((response) => {
         this.dialogLoading = false
         this.createFormVisible = false
         Message.success("编辑Secret成功")
@@ -372,7 +371,7 @@ export default {
         type: 'warning'
       }).then(() => {
         this.loading = true
-        deleteSecrets(this.cluster, {resources: cms}).then(() => {
+        delResource(this.cluster, ResType.Secret, {resources: cms}).then(() => {
           Message.success("删除Secret成功")
           this.loading = false
           this.fetchData()
@@ -397,7 +396,7 @@ export default {
         return
       }
       this.dialogLoading = true
-      getSecret(cluster, namespace, name,).then((response) => {
+      getResource(cluster, ResType.Secret, namespace, name,).then((response) => {
         this.dialogLoading = false
         let secret = response.data
         resolveSecret(secret)
@@ -410,7 +409,7 @@ export default {
       this.namespaces = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listNamespace(cluster).then(response => {
+        listResource(cluster, ResType.Namespace).then(response => {
           this.namespaces = response.data
           this.namespaces.sort((a, b) => {return a.name > b.name ? 1 : -1})
         }).catch((err) => {

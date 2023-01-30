@@ -130,8 +130,7 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { listPods, getPod, deletePods, updatePod, buildPods } from '@/api/pods'
-import { sse } from '@/api/cluster'
+import { ResType, listResource, getResource, delResource, updateResource, watchResource } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
 
@@ -162,7 +161,6 @@ export default {
   },
   created() {
     this.fetchData()
-    this.fetchPodSSE()
   },
   beforeDestroy() {
     if(this.clusterSSE) this.clusterSSE.disconnect()
@@ -197,9 +195,10 @@ export default {
       this.originPods = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listPods(cluster).then(response => {
+        listResource(cluster, "pod").then(response => {
           this.loading = false
           this.originPods = response.data
+          this.podsWatch()
         }).catch(() => {
           this.loading = false
         })
@@ -208,13 +207,13 @@ export default {
         Message.error("获取集群异常，请刷新重试")
       }
     },
-    fetchPodSSE() {
-      this.clusterSSE = sse(this.$sse, this.ssePodsWatch, this.cluster, {type: 'pods'})
+    podsWatch() {
+      this.clusterSSE = watchResource(this.$sse, this.cluster, ResType.Pod, this.podsWatchFunc, {process: true})
     },
-    ssePodsWatch: function (newObj) {
+    podsWatchFunc: function (newObj) {
       if (newObj) {
-        let newUid = newObj.resource.metadata.uid
-        let newRv = newObj.resource.metadata.resourceVersion
+        let newUid = newObj.resource.uid
+        let newRv = newObj.resource.resource_version
         if (newObj.event === 'add') {
           for(let i in this.originPods) {
             let p = this.originPods[i]
@@ -222,12 +221,12 @@ export default {
               return
             }
           }
-          this.originPods.push(buildPods(newObj.resource))
+          this.originPods.push(newObj.resource)
         } else if (newObj.event === 'update') {
           for (let i in this.originPods) {
             let p = this.originPods[i]
             if (p.uid === newUid && p.resource_version < newRv) {
-              let newPod = buildPods(newObj.resource)
+              let newPod = newObj.resource
               this.$set(this.originPods, i, newPod)
               break
             }
@@ -273,7 +272,7 @@ export default {
       this.yamlValue = ""
       this.yamlDialog = true
       this.yamlLoading = true
-      getPod(cluster, namespace, podName, "yaml").then(response => {
+      getResource(cluster, ResType.Pod, namespace, podName, "yaml").then(response => {
         this.yamlLoading = false
         this.yamlValue = response.data
         this.yamlNamespace = namespace
@@ -295,7 +294,7 @@ export default {
       let params = {
         resources: pods
       }
-      deletePods(cluster, params).then(() => {
+      delResource(cluster, ResType.Pod, params).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)
@@ -315,15 +314,13 @@ export default {
         Message.error("获取POD参数异常，请刷新重试")
         return
       }
-      console.log(this.yamlValue)
-      updatePod(cluster, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
+      updateResource(cluster, ResType.Pod, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
         Message.success("更新成功")
       }).catch(() => {
         // console.log(e) 
       })
     },
     _delPodsFunc: function() {
-      console.log('delete ', this.delPods)
       if (this.delPods.length > 0){
         let delPods = []
         for (var p of this.delPods) {
@@ -333,7 +330,6 @@ export default {
       }
     },
     handleSelectionChange(val) {
-      console.log(val);
       this.delPods = val;
       if (val.length > 0){
         this.delFunc = this._delPodsFunc

@@ -64,6 +64,7 @@
         <el-table-column
           prop="conditions"
           label="状态"
+          min-width="45"
           show-overflow-tooltip>
           <template slot-scope="scope">
             <template v-if="scope.row.conditions && scope.row.conditions.length > 0">
@@ -77,7 +78,7 @@
         <el-table-column
           prop="created"
           label="创建时间"
-          min-width="70"
+          min-width="55"
           show-overflow-tooltip>
           <template slot-scope="scope">
             {{ $dateFormat(scope.row.created) }}
@@ -114,7 +115,7 @@
         </el-table-column>
       </el-table>
     </div>
-    <el-dialog title="编辑" :visible.sync="yamlDialog" :close-on-click-modal="false" width="60%" top="55px">
+    <el-dialog title="编辑" :visible.sync="yamlDialog" :close-on-click-modal="false" width="60%" top="55px" v-loading="yamlLoading">
       <yaml v-if="yamlDialog" v-model="yamlValue" :loading="yamlLoading"></yaml>
       <span slot="footer" class="dialog-footer">
         <el-button plain @click="yamlDialog = false" size="small">取 消</el-button>
@@ -146,8 +147,7 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { sse } from '@/api/cluster'
-import { listStatefulSets, getStatefulSet, deleteStatefulSets, updateStatefulSet, updateStatefulSetObj } from '@/api/statefulset'
+import { ResType, listResource, watchResource, getResource, delResource, updateResource, patchResource } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
 
@@ -167,7 +167,7 @@ export default {
         yamlLoading: true,
         cellStyle: {border: 0},
         titleName: ["StatefulSets"],
-        maxHeight: window.innerHeight - 150,
+        maxHeight: window.innerHeight - this.$contentHeight,
         loading: true,
         originStatefulSets: [],
         search_ns: [],
@@ -186,7 +186,7 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150
+        let heightStyle = window.innerHeight - this.$contentHeight
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
@@ -220,7 +220,7 @@ export default {
       this.originStatefulSets = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listStatefulSets(cluster).then(response => {
+        listResource(cluster, ResType.Statefulset).then(response => {
           this.loading = false
           this.originStatefulSets = response.data || []
           if(!this.clusterSSE) this.fetchSSE()
@@ -234,25 +234,25 @@ export default {
     },
     fetchSSE() {
       if(!this.clusterSSE) {
-        this.clusterSSE = sse(this.$sse, this.sseWatch, this.cluster, {type: 'statefulset'})
+        this.clusterSSE = watchResource(this.$sse, this.cluster, ResType.Statefulset, this.sseWatch, {process: true})
       }
     },
     sseWatch(newObj) {
       if (newObj) {
-        let newUid = newObj.resource.metadata.uid
-        let newRv = newObj.resource.metadata.resourceVersion
+        let newUid = newObj.resource.uid
+        let newRv = newObj.resource.resource_version
         if (newObj.event === 'add') {
           for(let i in this.originStatefulSets) {
             let d = this.originStatefulSets[i]
             if (d.uid === newUid) return
           }
-          this.originStatefulSets.push(this.buildStatefulSets(newObj.resource))
+          this.originStatefulSets.push(newObj.resource)
         } else if (newObj.event === 'update') {
           for (let i in this.originStatefulSets) {
             let d = this.originStatefulSets[i]
             if (d.uid === newUid) {
               if (d.resource_version < newRv){
-                let newDp = this.buildStatefulSets(newObj.resource)
+                let newDp = newObj.resource
                 this.$set(this.originStatefulSets, i, newDp)
               }
               break
@@ -271,30 +271,6 @@ export default {
     },
     nameSearch: function(val) {
       this.search_name = val
-    },
-    buildStatefulSets: function(statefulset) {
-      if (!statefulset) return
-      var conditions = []
-      if(statefulset.status.conditions) {
-        for (let c of statefulset.status.conditions) {
-          if (c.status === "True") {
-            conditions.push(c.type)
-          }
-        }
-      }
-      let p = {
-        uid: statefulset.metadata.uid,
-        namespace: statefulset.metadata.namespace,
-        name: statefulset.metadata.name,
-        replicas: statefulset.spec.replicas,
-        status_replicas: statefulset.status.replicas || 0,
-        ready_replicas: statefulset.status.readyReplicas || 0,
-        resource_version: statefulset.metadata.resourceVersion,
-        strategy: statefulset.spec.updateStrategy.type,
-        conditions: conditions,
-        created: statefulset.metadata.creationTimestamp
-      }
-      return p
     },
     nameClick: function(namespace, name) {
       this.$router.push({name: 'statefulsetDetail', params: {namespace: namespace, statefulsetName: name}})
@@ -318,7 +294,7 @@ export default {
       this.yamlValue = ""
       this.yamlDialog = true
       this.yamlLoading = true
-      getStatefulSet(cluster, namespace, name, "yaml").then(response => {
+      getResource(cluster, ResType.Statefulset, namespace, name, "yaml").then(response => {
         this.yamlLoading = false
         this.yamlValue = response.data
         this.yamlNamespace = namespace
@@ -340,7 +316,7 @@ export default {
       let params = {
         resources: statefulsets
       }
-      deleteStatefulSets(cluster, params).then(() => {
+      delResource(cluster, ResType.Statefulset, params).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)
@@ -360,9 +336,11 @@ export default {
         Message.error("获取StatefulSet参数异常，请刷新重试")
         return
       }
-      console.log(this.yamlValue)
-      updateStatefulSet(cluster, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
+      this.yamlLoading = true
+      updateResource(cluster, ResType.Statefulset, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
         Message.success("更新成功")
+        this.yamlLoading = false
+        this.yamlDialog = false
       }).catch(() => {
         // console.log(e) 
       })
@@ -387,7 +365,10 @@ export default {
         Message.error("获取StatefulSet参数异常，请刷新重试")
         return
       }
-      let update_params = {}
+      let update_params = {
+        name: statefulset.name,
+        namespace: statefulset.namespace,
+      }
       if (update_obj.replicas) {
         if (update_obj.replicas < 1) {
           Message.error("副本数不能小于1，请重新输入")
@@ -397,14 +378,16 @@ export default {
           Message.error("副本数与当前值相同，请重新输入")
           return
         }
-        update_params["replicas"] = update_obj.replicas
+        update_params["data"] = {spec: {replicas: update_obj.replicas}}
       }
       if (Object.keys(update_params).length === 0) {
         Message.error("更新参数为空")
         return
       }
-      updateStatefulSetObj(cluster, statefulset.namespace, statefulset.name, update_params).then(() => {
+      this.yamlLoading = true
+      patchResource(cluster, ResType.Statefulset, update_params).then(() => {
         Message.success("更新成功")
+        this.yamlLoading = false
         this.replicaDialog = false;
       }).catch(() => {
         // console.log(e) 

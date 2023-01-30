@@ -173,13 +173,13 @@ const Routes = [
         component: () => import('@/views/cluster/configMap'),
         meta: { title: '配置项', group: 'cluster', object: 'configmap' },
       },
-      {
-        path: 'configmaps/:namespace/:configMapName',
-        name: 'configMapDetail',
-        hidden: true,
-        component: () => import('@/views/cluster/configMapDetail'),
-        meta: { title: '配置项', group: 'cluster', sideName: 'configmaps', object: 'configmap' },
-      },
+      // {
+      //   path: 'configmaps/:namespace/:configMapName',
+      //   name: 'configMapDetail',
+      //   hidden: true,
+      //   component: () => import('@/views/cluster/configMapDetail'),
+      //   meta: { title: '配置项', group: 'cluster', sideName: 'configmaps', object: 'configmap' },
+      // },
       {
         path: 'secrets',
         name: 'secrets',

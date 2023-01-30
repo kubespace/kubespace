@@ -118,7 +118,7 @@
         </el-table-column>
       </el-table>
     </div>
-    <el-dialog title="编辑" :visible.sync="yamlDialog" :close-on-click-modal="false" width="60%" top="55px">
+    <el-dialog title="编辑" :visible.sync="yamlDialog" :close-on-click-modal="false" width="60%" top="55px" v-loading="yamlLoading">
       <yaml v-if="yamlDialog" v-model="yamlValue" :loading="yamlLoading"></yaml>
       <span slot="footer" class="dialog-footer">
         <el-button plain @click="yamlDialog = false" size="small">取 消</el-button>
@@ -130,8 +130,7 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { sse } from '@/api/cluster'
-import { listDaemonSets, getDaemonSet, deleteDaemonSets, updateDaemonSet } from '@/api/daemonset'
+import { ResType, listResource, watchResource, getResource, delResource, updateResource } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
 
@@ -150,7 +149,7 @@ export default {
         yamlLoading: true,
         cellStyle: {border: 0},
         titleName: ["DaemonSets"],
-        maxHeight: window.innerHeight - 135,
+        maxHeight: window.innerHeight - this.$contentHeight,
         loading: true,
         originDaemonSets: [],
         search_ns: [],
@@ -167,7 +166,7 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 135
+        let heightStyle = window.innerHeight - this.$contentHeight
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
@@ -201,7 +200,7 @@ export default {
       this.originDaemonSets = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listDaemonSets(cluster).then(response => {
+        listResource(cluster, ResType.Daemonset).then(response => {
           this.loading = false
           this.originDaemonSets = response.data
           if(!this.clusterSSE) this.fetchSSE()
@@ -215,13 +214,13 @@ export default {
     },
     fetchSSE() {
       if(!this.clusterSSE) {
-        this.clusterSSE = sse(this.$sse, this.sseWatch, this.cluster, {type: 'daemonset'})
+        this.clusterSSE = watchResource(this.$sse, this.cluster, ResType.Daemonset, this.sseWatch, {process: true})
       }
     },
     sseWatch(newObj) {
       if (newObj) {
-        let newUid = newObj.resource.metadata.uid
-        let newRv = newObj.resource.metadata.resourceVersion
+        let newUid = newObj.resource.uid
+        let newRv = newObj.resource.resource_version
         if (newObj.event === 'add') {
           for(let i in this.originDaemonSets) {
             let d = this.originDaemonSets[i]
@@ -229,13 +228,13 @@ export default {
               return
             }
           }
-          this.originDaemonSets.push(this.buildDaemonSets(newObj.resource))
+          this.originDaemonSets.push(newObj.resource)
         } else if (newObj.event === 'update') {
           for (let i in this.originDaemonSets) {
             let d = this.originDaemonSets[i]
             if (d.uid === newUid) {
               if (d.resource_version < newRv){
-                let newDp = this.buildDaemonSets(newObj.resource)
+                let newDp = newObj.resource
                 this.$set(this.originDaemonSets, i, newDp)
               }
               break
@@ -254,30 +253,6 @@ export default {
     },
     nameSearch: function(val) {
       this.search_name = val
-    },
-    buildDaemonSets: function(daemonset) {
-      if (!daemonset) return
-      var conditions = []
-      if(daemonset.status.conditions) {
-        for (let c of daemonset.status.conditions) {
-          if (c.status === "True") {
-            conditions.push(c.type)
-          }
-        }
-      }
-      let p = {
-        uid: daemonset.metadata.uid,
-        namespace: daemonset.metadata.namespace,
-        name: daemonset.metadata.name,
-        desired_number_scheduled: daemonset.status.desiredNumberScheduled || 0,
-        number_ready: daemonset.status.numberReady || 0,
-        resource_version: daemonset.metadata.resourceVersion,
-        strategy: daemonset.spec.updateStrategy.type,
-        conditions: conditions,
-        node_selector: daemonset.spec.template.spec.nodeSelector,
-        created: daemonset.metadata.creationTimestamp
-      }
-      return p
     },
     nameClick: function(namespace, name) {
       this.$router.push({name: 'daemonsetDetail', params: {namespace: namespace, daemonsetName: name}})
@@ -301,7 +276,7 @@ export default {
       this.yamlValue = ""
       this.yamlDialog = true
       this.yamlLoading = true
-      getDaemonSet(cluster, namespace, name, "yaml").then(response => {
+      getResource(cluster, ResType.Daemonset, namespace, name, "yaml").then(response => {
         this.yamlLoading = false
         this.yamlValue = response.data
         this.yamlNamespace = namespace
@@ -323,7 +298,7 @@ export default {
       let params = {
         resources: daemonsets
       }
-      deleteDaemonSets(cluster, params).then(() => {
+      delResource(cluster, ResType.Daemonset, params).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)
@@ -343,9 +318,11 @@ export default {
         Message.error("获取DaemonSet参数异常，请刷新重试")
         return
       }
-      console.log(this.yamlValue)
-      updateDaemonSet(cluster, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
+      this.yamlLoading = true
+      updateResource(cluster, ResType.Daemonset, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
         Message.success("更新成功")
+        this.yamlLoading = false
+        this.yamlDialog = false
       }).catch(() => {
         // console.log(e) 
       })

@@ -6,7 +6,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/utils"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"strings"
 )
 

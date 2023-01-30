@@ -1,10 +1,10 @@
 package model
 
 import (
-	"github.com/kubespace/kubespace/pkg/core/mysql"
-	"github.com/kubespace/kubespace/pkg/core/redis"
+	"fmt"
+	"github.com/kubespace/kubespace/pkg/core/db"
+	"github.com/kubespace/kubespace/pkg/informer/listwatcher/config"
 	"github.com/kubespace/kubespace/pkg/kube_resource"
-	"github.com/kubespace/kubespace/pkg/model/listwatcher/config"
 	"github.com/kubespace/kubespace/pkg/model/manager"
 	"github.com/kubespace/kubespace/pkg/model/manager/cluster"
 	"github.com/kubespace/kubespace/pkg/model/manager/pipeline"
@@ -13,9 +13,9 @@ import (
 	"gorm.io/gorm"
 )
 
-type Options struct {
-	RedisOptions *redis.Options
-	MysqlOptions *mysql.Options
+type Config struct {
+	Db                *db.DB
+	ListWatcherConfig *config.ListWatcherConfig
 }
 
 type Models struct {
@@ -44,42 +44,39 @@ type Models struct {
 	AppStoreManager          *project.AppStoreManager
 }
 
-func NewModels(options *Options) (*Models, error) {
-	db, err := mysql.NewMysqlDb(options.MysqlOptions)
-	if err != nil {
-		return nil, err
+func NewModels(c *Config) (*Models, error) {
+	if err := DbMigrate(c.Db.Instance); err != nil {
+		return nil, fmt.Errorf("migrate db error: %s", err.Error())
 	}
-	redisClient := redis.NewRedisClient(options.RedisOptions)
-	listWatcherConfig := config.NewListWatcherConfig(db, redisClient)
 
-	middleMessage := kube_resource.NewMiddleMessageWithClient(nil, redisClient)
-	role := manager.NewRoleManager(redisClient)
-	tk := manager.NewTokenManager(redisClient)
-	app := manager.NewAppManager(redisClient)
+	middleMessage := kube_resource.NewMiddleMessageWithClient(nil, c.Db.RedisInstance)
+	role := manager.NewRoleManager(c.Db.RedisInstance)
+	tk := manager.NewTokenManager(c.Db.RedisInstance)
+	app := manager.NewAppManager(c.Db.RedisInstance)
 
-	user := manager.NewUserManager(db)
-	userRole := manager.NewUserRoleManager(db, user)
-	pipelinePluginMgr := pipeline.NewPipelinePluginManager(db)
-	pipelineMgr := pipeline.NewPipelineManager(db)
-	pipelineWorkspaceMgr := pipeline.NewWorkspaceManager(db, pipelineMgr)
-	pipelineRunMgr := pipeline.NewPipelineRunManager(db, pipelinePluginMgr, middleMessage)
-	pipelineResourceMgr := pipeline.NewResourceManager(db)
-	jobLogMgr := pipeline.NewJobLogManager(db)
-	pipelineReleaseMgr := pipeline.NewReleaseManager(db)
+	user := manager.NewUserManager(c.Db.Instance)
+	userRole := manager.NewUserRoleManager(c.Db.Instance, user)
+	pipelinePluginMgr := pipeline.NewPipelinePluginManager(c.Db.Instance)
+	pipelineMgr := pipeline.NewPipelineManager(c.Db.Instance)
+	pipelineWorkspaceMgr := pipeline.NewWorkspaceManager(c.Db.Instance, pipelineMgr)
+	pipelineRunMgr := pipeline.NewPipelineRunManager(c.Db.Instance, pipelinePluginMgr, middleMessage)
+	pipelineResourceMgr := pipeline.NewResourceManager(c.Db.Instance)
+	jobLogMgr := pipeline.NewJobLogManager(c.Db.Instance)
+	pipelineReleaseMgr := pipeline.NewReleaseManager(c.Db.Instance)
 
-	secrets := manager.NewSettingsSecretManager(db)
-	imageRegistry := manager.NewSettingsImageRegistryManager(db)
+	secrets := manager.NewSettingsSecretManager(c.Db.Instance)
+	imageRegistry := manager.NewSettingsImageRegistryManager(c.Db.Instance)
 
-	appVersionMgr := project.NewAppVersionManager(db)
-	projectAppMgr := project.NewAppManager(appVersionMgr, db)
-	appStoreMgr := project.NewAppStoreManager(appVersionMgr, db)
-	projectMgr := project.NewManagerProject(db, projectAppMgr)
+	appVersionMgr := project.NewAppVersionManager(c.Db.Instance)
+	projectAppMgr := project.NewAppManager(appVersionMgr, c.Db.Instance)
+	appStoreMgr := project.NewAppStoreManager(appVersionMgr, c.Db.Instance)
+	projectMgr := project.NewManagerProject(c.Db.Instance, projectAppMgr)
 
-	cm := cluster.NewClusterManager(db, listWatcherConfig, projectAppMgr)
+	cm := cluster.NewClusterManager(c.Db.Instance, c.ListWatcherConfig, projectAppMgr)
 
 	return &Models{
-		db:                       db,
-		ListWatcherConfig:        listWatcherConfig,
+		db:                       c.Db.Instance,
+		ListWatcherConfig:        c.ListWatcherConfig,
 		ClusterManager:           cm,
 		UserManager:              user,
 		UserRoleManager:          userRole,

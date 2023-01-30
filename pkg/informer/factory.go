@@ -1,33 +1,25 @@
 package informer
 
 import (
-	"github.com/kubespace/kubespace/pkg/informer/cluster"
-	listwatcher_cluster "github.com/kubespace/kubespace/pkg/model/listwatcher/cluster"
-	"github.com/kubespace/kubespace/pkg/model/listwatcher/config"
+	"github.com/kubespace/kubespace/pkg/informer/listwatcher/cluster"
+	"github.com/kubespace/kubespace/pkg/informer/listwatcher/config"
 )
 
-type InformerFactory interface {
-	ClusterAgentInformer(token string) cluster.AgentInformer
+type Factory interface {
+	ClusterAgentInformer(token string) Informer
 }
 
 type informerFactory struct {
-	config                *config.ListWatcherConfig
-	clusterAgentInformers map[string]cluster.AgentInformer
+	config *config.ListWatcherConfig
 }
 
-func NewInformerFactory(config *config.ListWatcherConfig) InformerFactory {
+func NewInformerFactory(config *config.ListWatcherConfig) Factory {
 	return &informerFactory{
 		config: config,
 	}
 }
 
-func (s *informerFactory) ClusterAgentInformer(token string) cluster.AgentInformer {
-	c, ok := s.clusterAgentInformers[token]
-	if ok {
-		return c
-	}
-	agentListWatcher := listwatcher_cluster.NewAgentListWatcher(token, s.config)
-	c = cluster.NewAgentInformer(token, agentListWatcher)
-	s.clusterAgentInformers[token] = c
-	return c
+func (s *informerFactory) ClusterAgentInformer(token string) Informer {
+	agentListWatcher := cluster.NewAgentListWatcher(token, s.config)
+	return NewInformer(agentListWatcher)
 }

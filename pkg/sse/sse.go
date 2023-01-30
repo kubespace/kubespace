@@ -6,7 +6,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"time"
 )
 

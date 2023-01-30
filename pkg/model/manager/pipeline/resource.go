@@ -4,7 +4,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/model/manager"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"gorm.io/gorm"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"time"
 )
 

@@ -7,7 +7,7 @@ import (
 	"gorm.io/gorm"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"io/ioutil"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"os"
 	"path/filepath"
 	"time"

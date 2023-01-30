@@ -43,7 +43,9 @@ export default {
     this.initTerm()
   },
   beforeDestroy() {
-    if (this.socket) {
+    console.log(this.socket)
+    console.log(WebSocket.OPEN)
+    if (this.socket && this.socket.readyState == WebSocket.OPEN) {
       this.socket.send("\r\nexit\r")
       this.socket.close()
     }
@@ -54,7 +56,6 @@ export default {
   methods: {
     initTerm() {
       let rows = Math.floor((window.innerHeight - 100) / 20)
-      console.log(rows)
       const term = new Terminal({
         fontSize: 14,
         cursorBlink: true,
@@ -84,7 +85,7 @@ export default {
         return
       }
       var protocal = window.location.protocol == 'http:' ? 'ws':'wss'
-      let wsUrl = `${protocal}://${window.location.host}/ws/exec/${this.cluster}/${this.namespace}/${this.pod}`
+      let wsUrl = `${protocal}://${window.location.host}/api/v1/cluster/${this.cluster}/pod/exec/${this.namespace}/${this.pod}`
       this.socket = new WebSocket(wsUrl + `?container=${this.container}&cols=${width}&rows=${height}`);
       this.socketOnClose();
       this.socketOnOpen();
