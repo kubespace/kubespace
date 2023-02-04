@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/kubeagent/config"
 	"github.com/kubespace/kubespace/pkg/kubernetes"
+	kubeconfig "github.com/kubespace/kubespace/pkg/kubernetes/config"
 	"github.com/kubespace/kubespace/pkg/kubernetes/resource"
 	kubetypes "github.com/kubespace/kubespace/pkg/kubernetes/types"
 	"github.com/kubespace/kubespace/pkg/utils"
@@ -16,15 +17,19 @@ import (
 
 type Agent struct {
 	config         *config.AgentConfig
+	kubeConfig     *kubeconfig.KubeConfig
 	tunnel         Tunnel
 	kubeFactory    kubernetes.KubeFactory
 	sessionWriters sync.Map
+	serverCli      *utils.HttpClient
 }
 
 func NewAgent(config *config.AgentConfig) *Agent {
 	a := &Agent{
 		config:      config,
+		kubeConfig:  config.KubeConfig,
 		kubeFactory: kubernetes.NewKubeFactory(config.KubeConfig),
+		serverCli:   config.ServerClient,
 	}
 	a.tunnel = NewTunnel(config.Token, config.ServerHost, a)
 	return a
@@ -43,7 +48,6 @@ func (a *Agent) Run(stopCh <-chan struct{}) {
 }
 
 func (a *Agent) Handle(receiveBytes []byte) {
-	//klog.Infof(string(receiveBytes))
 	var req kubetypes.Request
 	var resp *utils.Response
 	if err := json.Unmarshal(receiveBytes, &req); err != nil {
@@ -106,8 +110,32 @@ func (a *Agent) handle(req *kubetypes.Request) (resp *utils.Response) {
 	return
 }
 
+// OnSuccess agent在每个集群中独立运行，当重新连接tunnel后，server有可能更新到最新版本，
+// agent从server下载当前版本匹配的yaml，并更新；
 func (a *Agent) OnSuccess() {
-
+	if a.kubeConfig.Client.RestConfig().BearerToken == "" {
+		// 没有bearerToken表示agent未运行在集群pod中，不更新agent
+		return
+	}
+	resBytes, err := a.serverCli.Get("/agent/yaml", nil)
+	if err != nil {
+		klog.Errorf("get server agent yaml error: %s", err.Error())
+		return
+	}
+	resHandler, err := a.kubeFactory.GetResource(kubetypes.ClusterType)
+	if err != nil {
+		klog.Errorf("get kubernetes cluster resource error: " + err.Error())
+		return
+	}
+	klog.Infof("start apply agent yaml: %s", string(resBytes))
+	resp := resHandler.Handle(kubetypes.ApplyAction, resource.ApplyParams{
+		YamlStr: string(resBytes),
+	})
+	if resp.IsSuccess() {
+		klog.Infof("apply agent yaml success")
+	} else {
+		klog.Errorf("apply agent yaml error: %+v", resp)
+	}
 }
 
 type sessionWriter struct {

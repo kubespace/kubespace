@@ -45,10 +45,6 @@ func NewRouter(conf *config.ServerConfig) (*Router, error) {
 		c.HTML(http.StatusOK, "/index.html", nil)
 	})
 
-	//kubeMessage := kube_resource.NewMiddleMessage(redisOptions)
-	//kubeResources := kube_resource.NewKubeResources(kubeMessage)
-	//sse.Stream = sse.NewStream(redisOptions, kubeResources)
-
 	// 统一认证的api接口
 	apiGroup := engine.Group("/api/v1")
 	viewsets := NewViewSets(conf)
@@ -59,39 +55,18 @@ func NewRouter(conf *config.ServerConfig) (*Router, error) {
 		}
 	}
 
-	//pipelineCallbackView := pipeline_views.NewPipelineCallback(models, kubeResources)
-	//apiGroup.POST("/pipeline/callback", pipelineCallbackView.Callback)
-	//
-	//clusterAgent := views.NewClusterAgent(models)
-	//engine.GET("/v1/import/:token", clusterAgent.AgentYaml)
-	//
 	// 登录登出接口
 	loginView := user.NewLogin(models)
 	apiGroup.POST("/login", loginView.Login)
 	apiGroup.GET("/has_admin", loginView.HasAdmin)
 	apiGroup.POST("/admin", loginView.CreateAdmin)
 	apiGroup.POST("/logout", loginView.Logout)
-	//
-	// 连接k8s agent的websocket接口
+
+	// kube-agent访问接口
 	agentView := cluster.NewAgentViews(conf)
 	apiGroup.GET("/agent/connect", agentView.Connect)
 	apiGroup.GET("/agent/response", agentView.Response)
-	//
-	//// 连接api websocket接口
-	//apiWs := ws_views.NewApiWs(redisOptions, models, kubeResources)
-	//engine.GET("/ws/web/connect", apiWs.Connect)
-	//
-	//// 连接exec websocket接口
-	//execWs := ws_views.NewExecWs(redisOptions, models, kubeResources)
-	//engine.GET("/ws/exec/:cluster/:namespace/:pod", execWs.Connect)
-	//
-	//// 连接log websocket接口
-	//logWs := ws_views.NewLogWs(redisOptions, models, kubeResources)
-	//engine.GET("/ws/log/:cluster/:namespace/:pod", logWs.Connect)
-	//
-	//helmView := kube_views.NewHelm(kubeResources, models)
-	//engine.GET("/app/charts/*path", helmView.GetAppChart)
-
+	apiGroup.GET("/agent/yaml", agentView.AgentYaml)
 	return &Router{
 		Engine: engine,
 	}, nil

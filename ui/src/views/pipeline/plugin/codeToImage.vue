@@ -145,7 +145,7 @@ export default {
     },
     addBuildInfo() {
       // let infos = this.params.image_build_infos
-      this.params.image_build_infos.push({
+      this.params.image_builds.push({
         'dockerfile': '',
         'image_name': ''
       })
@@ -156,7 +156,6 @@ export default {
       //   'image_name': ''
       // })
       // this.image_builds.splice(len)
-      console.log(this.job)
     }
   }
 }

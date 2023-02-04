@@ -8,10 +8,10 @@ fullnameOverride: ""
 global:
   localpathEnable: true
 
-kubespace:
+server:
   replicaCount: 1
   image:
-    repository: registry.cn-hangzhou.aliyuncs.com/kubespace/kubespace
+    repository: registry.cn-hangzhou.aliyuncs.com/kubespace/kubespace-server
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
     tag: "1650377618"
@@ -24,6 +24,8 @@ kubespace:
   extraEnvs:
     - name: INSECURE_PORT
       value: 80
+    - name: AGENT_REPOSITORY
+      value: "registry.cn-hangzhou.aliyuncs.com/kubespace/kubespace-agent"
     - name: AGENT_VERSION
       value: "1.0.1"
 
@@ -59,10 +61,10 @@ kubespace:
   tolerations: []
   affinity: {}
 
-pipeline_plugin:
+controller_manager:
   replicaCount: 1
   image:
-    repository: registry.cn-hangzhou.aliyuncs.com/kubespace/pipeline-plugin
+    repository: registry.cn-hangzhou.aliyuncs.com/kubespace/controller-manager
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
     tag: "1650378162"
@@ -74,6 +76,23 @@ pipeline_plugin:
   extraEnvs:
     - name: DATA_DIR
       value: /data
+  extraVolumeMounts:
+    - name: docker-bin
+      mountPath: /usr/bin/docker
+    - name: docker-sock
+      mountPath: /var/run/docker.sock
+    - name: data-dir
+      mountPath: /data
+  extraVolumes:
+    - name: docker-bin
+      hostPath:
+        path: /usr/bin/docker
+    - name: docker-sock
+      hostPath:
+        path: /var/run/docker.sock
+    - name: data-dir
+      hostPath:
+        path: /data/kubespace
   resources: {}
     # We usually recommend not to specify default resources and to leave this as a conscious
     # choice for the user. This also increases chances charts run on environments with little
@@ -89,42 +108,13 @@ pipeline_plugin:
   nodeSelector: {}
   tolerations: []
   affinity: {}
-
-agent:
-  image:
-    repository: kubespace/agent
-    pullPolicy: IfNotPresent
-    # Overrides the image tag whose default is the chart appVersion.
-    tag: "1.0.1"
-  imagePullSecrets: []
-  extraArgs:
-  extraEnvs:
-    - name: TOKEN
-      value: "local"
-
-  resources: {}
-    # We usually recommend not to specify default resources and to leave this as a conscious
-    # choice for the user. This also increases chances charts run on environments with little
-    # resources, such as Minikube. If you do want to specify resources, uncomment the following
-    # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-    # limits:
-    #   cpu: 100m
-    #   memory: 128Mi
-    # requests:
-    #   cpu: 100m
-  #   memory: 128Mi
-
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  serviceAccount: {}
 
 mysql:
   ## @param architecture MySQL architecture (`standalone` or `replication`)
   ##
   architecture: standalone
   image:
-    registry: docker.io
+    registry: registry.cn-hangzhou.aliyuncs.com
     repository: kubespace/mysql
     tag: 8.0.28
   auth:
@@ -136,13 +126,33 @@ mysql:
     ## ref: https://github.com/bitnami/bitnami-docker-mysql/blob/master/README.md#creating-a-database-on-first-run
     ##
     database: kubespace
+  primary:
+    persistence:
+      enabled: true
+      storageClass: "kubespace-local-path"
+      accessModes:
+        - ReadWriteOnce
+      size: 8Gi
+    extraEnvVars:
+      - name: TZ
+        value: "Asia/Shanghai"
+    secondary:
+      persistence:
+        enabled: true
+        storageClass: "kubespace-local-path"
+        accessModes:
+          - ReadWriteOnce
+        size: 8Gi
+      extraEnvVars:
+        - name: TZ
+          value: "Asia/Shanghai"
 
 redis:
   ## @param architecture Redis&trade; architecture. Allowed values: `standalone` or `replication`
   ##
   architecture: standalone
   image:
-    registry: docker.io
+    registry: registry.cn-hangzhou.aliyuncs.com
     repository: kubespace/redis
     tag: 6.2.6
   auth:
@@ -161,8 +171,55 @@ redis:
     persistence:
       enabled: true
       path: /data
-      storageClass: "local-path"
+      storageClass: "kubespace-local-path"
       accessModes:
         - ReadWriteOnce
       size: 8Gi
+    extraEnvVars:
+      - name: TZ
+        value: "Asia/Shanghai"
+
+    replica:
+      persistence:
+        enabled: true
+        path: /data
+        storageClass: "kubespace-local-path"
+        accessModes:
+          - ReadWriteOnce
+        size: 8Gi
+      extraEnvVars:
+        - name: TZ
+          value: "Asia/Shanghai"
+
+local-path-provisioner:
+  image:
+    repository: registry.cn-hangzhou.aliyuncs.com/kubespace/local-path-provisioner
+    tag: master-head
+    pullPolicy: IfNotPresent
+
+  helperImage:
+    repository: registry.cn-hangzhou.aliyuncs.com/kubespace/busybox
+    tag: v1.34.1
+
+  storageClass:
+    create: true
+
+    ## Set a provisioner name. If unset, a name will be generated.
+    # provisionerName: rancher.io/local-path
+
+    ## Set StorageClass as the default StorageClass
+    ## Ignored if storageClass.create is false
+    defaultClass: true
+
+    ## Set a StorageClass name
+    ## Ignored if storageClass.create is false
+    name: kubespace-local-path
+
+    ## ReclaimPolicy field of the class, which can be either Delete or Retain
+    reclaimPolicy: Delete
+
+  nodePathMap:
+    - node: DEFAULT_PATH_FOR_NON_LISTED_NODES
+      paths:
+        - /data/local-path-provisioner
 

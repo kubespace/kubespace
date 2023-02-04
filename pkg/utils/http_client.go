@@ -29,7 +29,7 @@ func NewHttpClient(baseUrl string) (*HttpClient, error) {
 	httpClient := HttpClient{client: &http.Client{Transport: tr}}
 	u, err := url.Parse(baseUrl)
 	if err != nil {
-		klog.Error("http request url parse error: httpUrl=%s. error=%v", baseUrl, err)
+		klog.Errorf("http request url parse error: httpUrl=%s. error=%v", baseUrl, err)
 		return nil, err
 	}
 	httpClient.baseUrl = u.String()

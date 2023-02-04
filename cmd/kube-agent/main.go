@@ -11,7 +11,7 @@ import (
 var (
 	kubeConfigFile = flag.String("kubeconfig", "", "Path to kubeconfig file with authorization and master location information.")
 	agentToken     = flag.String("token", utils.LookupEnvOrString("TOKEN", "local"), "Agent token to connect to server.")
-	serverHost     = flag.String("server_host", utils.LookupEnvOrString("SERVER_HOST", "kubespace"), "Server host:port agent to connect.")
+	serverHost     = flag.String("server-host", utils.LookupEnvOrString("SERVER_HOST", "kubespace"), "Server host:port agent to connect.")
 )
 
 func buildAgent() (*kubeagent.Agent, error) {

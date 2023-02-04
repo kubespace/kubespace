@@ -1,7 +1,41 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "kubespace.fullname" . }}-server
+  namespace: {{ .Release.Namespace }}
+  labels:
+    kubespace-app: kubespace-server
+    {{- include "kubespace.labels" . | nindent 4 }}
+  {{- with .Values.agent.serviceAccount.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+---
+
+kind: ClusterRoleBinding
+  {{- if semverCompare "<1.22.0-0" .Capabilities.KubeVersion.GitVersion }}
+apiVersion: rbac.authorization.k8s.io/v1beta1
+  {{- else }}
+apiVersion: rbac.authorization.k8s.io/v1
+  {{- end }}
+metadata:
+  name: {{ include "kubespace.fullname" . }}-server
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "kubespace.fullname" . }}-server
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "kubespace.fullname" . }}
+  name: {{ include "kubespace.fullname" . }}-server
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "kubespace.labels" . | nindent 4 }}
@@ -25,8 +59,9 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      serviceAccountName: {{ include "kubespace.fullname" . }}-server
       containers:
-        - name: kubespace
+        - name: kubespace-server
           image: "{{ .Values.kubespace.image.repository }}:{{ .Values.kubespace.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.kubespace.image.pullPolicy }}
           {{- if .Values.extraArgs }}
@@ -44,8 +79,6 @@ spec:
               value: {{ .Values.mysql.auth.rootPassword }}
             - name: MYSQL_DBNAME
               value: {{ .Values.mysql.auth.database }}
-            - name: PIPELINE_PLUGIN_URL
-              value: "http://{{ include "kubespace.fullname" . }}-pipeline-plugin:{{ .Values.pipeline_plugin.service.port }}"
           {{- if .Values.extraEnvs }}
 {{ toYaml .Values.extraEnvs | indent 12 }}
           {{- end }}

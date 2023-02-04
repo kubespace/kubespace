@@ -76,7 +76,7 @@ spec:
         - "/agent"
         args:
         - --token=%s
-        - --server-url=%s
+        - --server-host=%s
         env:
         - name: TZ
           value: Asia/Shanghai

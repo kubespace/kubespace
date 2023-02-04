@@ -6,7 +6,7 @@ export GOPROXY=https://goproxy.cn,direct
 
 build-binary-amd64: asset-build
 	rm -rf bin/amd64
-	$(ENVVAR) GOOS=$(GOOS) go build -o bin/amd64/kubespace ./cmd/server
+	$(ENVVAR) GOOS=$(GOOS) go build -o bin/amd64/kubespace-server ./cmd/server
 	$(ENVVAR) GOOS=$(GOOS) go build -o bin/amd64/controller-manager ./cmd/controller-manager
 	$(ENVVAR) GOOS=$(GOOS) go build -o bin/amd64/kube-agent ./cmd/kube-agent
 

@@ -1,7 +1,9 @@
 package config
 
 import (
+	"fmt"
 	"github.com/kubespace/kubespace/pkg/kubernetes/config"
+	"github.com/kubespace/kubespace/pkg/utils"
 )
 
 type AgentOptions struct {
@@ -11,9 +13,10 @@ type AgentOptions struct {
 }
 
 type AgentConfig struct {
-	Token      string
-	KubeConfig *config.KubeConfig
-	ServerHost string
+	Token        string
+	KubeConfig   *config.KubeConfig
+	ServerHost   string
+	ServerClient *utils.HttpClient
 }
 
 func NewAgentConfig(options *AgentOptions) (a *AgentConfig, err error) {
@@ -28,6 +31,9 @@ func NewAgentConfig(options *AgentOptions) (a *AgentConfig, err error) {
 		kubeOptions.InCluster = true
 	}
 	if a.KubeConfig, err = config.NewKubeConfig(kubeOptions); err != nil {
+		return nil, err
+	}
+	if a.ServerClient, err = utils.NewHttpClient(fmt.Sprintf("http://%s/api/v1")); err != nil {
 		return nil, err
 	}
 	return

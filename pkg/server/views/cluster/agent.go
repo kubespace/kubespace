@@ -47,7 +47,6 @@ func NewAgentViews(conf *config.ServerConfig) *AgentViews {
 func (a *AgentViews) AgentYaml(c *gin.Context) {
 	token := c.Param("token")
 	serverUrl := resolveHost(c.Request)
-	klog.Info("server url: ", serverUrl)
 	agentYaml := fmt.Sprintf(clusterAgentYaml, a.AgentRepository, a.AgentVersion, token, serverUrl)
 	c.String(200, agentYaml)
 }

@@ -1,8 +1,8 @@
 ARG BASEIMAGE=registry.cn-hangzhou.aliyuncs.com/kubespace/distroless-static:latest
 FROM $BASEIMAGE
 
-COPY bin/amd64/kubespace /
+COPY bin/amd64/kubespace-server /
 COPY apps /apps
 COPY ui/dist/favicon.ico /favicon.ico
 
-CMD ["/kubespace"]
+CMD ["/kubespace-server"]
