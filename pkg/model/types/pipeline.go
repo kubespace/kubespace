@@ -197,12 +197,23 @@ type PipelinePluginParams struct {
 }
 
 const (
-	PluginParamsFromEnv              = "env"
-	PluginParamsFromJob              = "job"
-	PluginParamsFromCodeSecret       = "code_secret"
-	PluginParamsFromImageRegistry    = "image_registry"
+	// PluginParamsFromEnv 从当前执行的环境变量中获取参数
+	PluginParamsFromEnv = "env"
+
+	// PluginParamsFromJob 从当前任务中的运行时变量获取执行参数
+	PluginParamsFromJob = "job"
+
+	// PluginParamsFromCodeSecret 当前流水线空间的代码密钥
+	PluginParamsFromCodeSecret = "code_secret"
+
+	// PluginParamsFromImageRegistry 平台配置中的镜像仓库配置
+	PluginParamsFromImageRegistry = "image_registry"
+
+	// PluginParamsFromPipelineResource 流水线中的资源数据，如镜像以及主机
 	PluginParamsFromPipelineResource = "pipeline_resource"
-	PluginParamsFromPipelineEnv      = "pipeline_env"
+
+	// PluginParamsFromPipelineEnv 流水线执行到当前的所有参数
+	PluginParamsFromPipelineEnv = "pipeline_env"
 )
 
 type PipelinePluginParamsSpec struct {

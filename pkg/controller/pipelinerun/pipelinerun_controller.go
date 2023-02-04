@@ -167,6 +167,138 @@ func (p *PipelineRunController) executeStage(stageRun *types.PipelineRunStage) (
 	return
 }
 
+func (p *PipelineRunController) executeJob(stageRun *types.PipelineRunStage, runJob *types.PipelineRunJob) (resp *utils.Response) {
+	plugin, err := p.models.PipelinePluginManager.GetByKey(runJob.PluginKey)
+	if err != nil {
+		klog.Errorf("get plugin key=%s error: %v", runJob.PluginKey, err)
+		return &utils.Response{Code: code.DBError, Msg: fmt.Sprintf("获取执行插件错误:%v", err)}
+	}
+	executeParams := map[string]interface{}{
+		"job_id": runJob.ID,
+	}
+	for _, pluginParam := range plugin.Params.Params {
+		if pluginParam.ParamName == "" {
+			continue
+		}
+		executeParams[pluginParam.ParamName], err = p.getJobExecParam(stageRun.Env, runJob.Params, pluginParam)
+		if err != nil {
+			return &utils.Response{Code: code.ParamsError, Msg: fmt.Sprintf("获取执行参数异常：%s", err.Error())}
+		}
+	}
+	pluginParams := &plugins.PluginParams{
+		JobId:     runJob.ID,
+		PluginKey: plugin.Key,
+		Params:    executeParams,
+		DataDir:   p.dataDir,
+	}
+	return p.jobPlugins.Execute(pluginParams)
+}
+
+func (p *PipelineRunController) getJobExecParam(
+	envs map[string]interface{},
+	jobParams map[string]interface{},
+	pluginParam *types.PipelinePluginParamsSpec) (interface{}, error) {
+	if pluginParam == nil {
+		return nil, nil
+	}
+	res := pluginParam.Default
+	switch pluginParam.From {
+	case types.PluginParamsFromPipelineEnv:
+		res = envs
+	case types.PluginParamsFromEnv:
+		if pp, ok := envs[pluginParam.FromName]; ok {
+			res = pp
+		}
+	case types.PluginParamsFromJob:
+		if jp, ok := jobParams[pluginParam.FromName]; ok {
+			res = jp
+		}
+	case types.PluginParamsFromCodeSecret:
+		res = nil
+		workspaceId, err := strconv.Atoi(fmt.Sprintf("%v", envs["PIPELINE_WORKSPACE_ID"]))
+		if err != nil {
+			return nil, fmt.Errorf("获取流水线空间参数错误：" + err.Error())
+		}
+		workspace, err := p.models.PipelineWorkspaceManager.Get(uint(workspaceId))
+		if err != nil {
+			return nil, fmt.Errorf("获取流水线空间「id=%d」失败：%s", workspaceId, err.Error())
+		}
+		if workspace.CodeSecretId == 0 {
+			return nil, nil
+		}
+		secret, _ := p.models.SettingsSecretManager.Get(workspace.CodeSecretId)
+		if secret != nil {
+			res = map[string]interface{}{
+				"type":         secret.Type,
+				"user":         secret.User,
+				"password":     secret.Password,
+				"private_key":  secret.PrivateKey,
+				"access_token": secret.AccessToken,
+			}
+		}
+	case types.PluginParamsFromImageRegistry:
+		res = nil
+		var imageRegistry interface{}
+		var ok bool
+		if pluginParam.FromName == "" {
+			imageRegistry, ok = envs["CODE_BUILD_REGISTRY_ID"]
+		} else {
+			imageRegistry, ok = jobParams[pluginParam.FromName]
+		}
+		var regId string
+		if regId, ok = imageRegistry.(string); ok {
+			imageRegistry = strings.Split(regId, ",")[0]
+		}
+		if imageRegistry == nil {
+			klog.Errorf("not found image registry job params")
+			return nil, nil
+		}
+		registryId, err := strconv.ParseUint(fmt.Sprintf("%v", imageRegistry), 10, 64)
+		if err != nil {
+			klog.Errorf("parse registry to int error: %s", err.Error())
+			return nil, nil
+		}
+		registry, err := p.models.ImageRegistryManager.Get(uint(registryId))
+		if err != nil {
+			klog.Errorf("get image registry error: %s", err.Error())
+			return nil, nil
+		}
+		res = map[string]interface{}{
+			"registry": registry.Registry,
+			"user":     registry.User,
+			"password": registry.Password,
+		}
+	case types.PluginParamsFromPipelineResource:
+		resourceParam, ok := jobParams[pluginParam.FromName]
+		if !ok {
+			return nil, nil
+		}
+		resourceId, err := strconv.ParseUint(fmt.Sprintf("%v", resourceParam), 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("获取流水线资源参数错误：%s", err.Error())
+		}
+		resource, err := p.models.PipelineResourceManager.Get(uint(resourceId))
+		if err != nil {
+			return nil, fmt.Errorf("获取流水线资源id=%d失败：%s", resourceId, err.Error())
+		}
+		resMap := map[string]interface{}{
+			"type":  resource.Type,
+			"value": resource.Value,
+		}
+		if resource.Secret != nil {
+			resMap["secret"] = map[string]string{
+				"type":         resource.Secret.Type,
+				"user":         resource.Secret.User,
+				"password":     resource.Secret.Password,
+				"private_key":  resource.Secret.PrivateKey,
+				"access_token": resource.Secret.AccessToken,
+			}
+		}
+		res = resMap
+	}
+	return res, nil
+}
+
 func (p *PipelineRunController) getJobRunResultEnvs(jobRun *types.PipelineRunJob) map[string]interface{} {
 	if jobRun == nil {
 		return nil
@@ -220,123 +352,4 @@ func (p *PipelineRunController) getJobRunResultEnvs(jobRun *types.PipelineRunJob
 		}
 	}
 	return envs
-}
-
-func (p *PipelineRunController) executeJob(stageRun *types.PipelineRunStage, runJob *types.PipelineRunJob) (resp *utils.Response) {
-	plugin, err := p.models.PipelinePluginManager.GetByKey(runJob.PluginKey)
-	if err != nil {
-		klog.Errorf("get plugin key=%s error: %v", runJob.PluginKey, err)
-		return &utils.Response{Code: code.DBError, Msg: fmt.Sprintf("获取执行插件错误:%v", err)}
-	}
-	executeParams := map[string]interface{}{
-		"job_id": runJob.ID,
-	}
-	for _, pluginParam := range plugin.Params.Params {
-		if pluginParam.ParamName == "" {
-			continue
-		}
-		executeParams[pluginParam.ParamName] = p.getJobExecParam(stageRun.Env, runJob.Params, pluginParam)
-	}
-	pluginParams := &plugins.PluginParams{
-		JobId:     runJob.ID,
-		PluginKey: plugin.Key,
-		Params:    executeParams,
-		DataDir:   p.dataDir,
-	}
-	return p.jobPlugins.Execute(pluginParams)
-}
-
-func (p *PipelineRunController) getJobExecParam(envs map[string]interface{}, jobParams map[string]interface{}, pluginParam *types.PipelinePluginParamsSpec) interface{} {
-	if pluginParam == nil {
-		return nil
-	}
-	res := pluginParam.Default
-	if pluginParam.From == types.PluginParamsFromPipelineEnv {
-		return envs
-	} else if pluginParam.From == types.PluginParamsFromEnv {
-		if _, ok := envs[pluginParam.FromName]; ok {
-			return envs[pluginParam.FromName]
-		}
-	} else if pluginParam.From == types.PluginParamsFromJob {
-		if _, ok := jobParams[pluginParam.FromName]; ok {
-			return jobParams[pluginParam.FromName]
-		}
-	} else if pluginParam.From == types.PluginParamsFromCodeSecret {
-		res = nil
-		workspaceId, err := strconv.ParseUint(fmt.Sprintf("%v", envs["PIPELINE_WORKSPACE_ID"]), 10, 64)
-		if err != nil {
-			return &utils.Response{Code: code.RequestError, Msg: "获取流水线空间失败：" + err.Error()}
-		}
-		workspace, _ := p.models.PipelineWorkspaceManager.Get(uint(workspaceId))
-		if workspace != nil && workspace.CodeSecretId != 0 {
-			secret, _ := p.models.SettingsSecretManager.Get(workspace.CodeSecretId)
-			if secret != nil {
-				return map[string]interface{}{
-					"type":         secret.Type,
-					"user":         secret.User,
-					"password":     secret.Password,
-					"private_key":  secret.PrivateKey,
-					"access_token": secret.AccessToken,
-				}
-			}
-		}
-	} else if pluginParam.From == types.PluginParamsFromImageRegistry {
-		res = nil
-		var imageRegistry interface{}
-		var ok bool
-		if pluginParam.FromName == "" {
-			imageRegistry, ok = envs["CODE_BUILD_REGISTRY_ID"]
-		} else {
-			imageRegistry, ok = jobParams[pluginParam.FromName]
-		}
-		var regId string
-		if regId, ok = imageRegistry.(string); ok {
-			imageRegistry = strings.Split(regId, ",")[0]
-		}
-		if imageRegistry == nil {
-			klog.Errorf("not found image registry job params")
-			return nil
-		}
-		registryId, err := strconv.ParseUint(fmt.Sprintf("%v", imageRegistry), 10, 64)
-		if err != nil {
-			klog.Errorf("parse registry to int error: %s", err.Error())
-			return nil
-		}
-		registry, err := p.models.ImageRegistryManager.Get(uint(registryId))
-		if err != nil {
-			klog.Errorf("get image registry error: %s", err.Error())
-			return nil
-		}
-		return map[string]interface{}{
-			"registry": registry.Registry,
-			"user":     registry.User,
-			"password": registry.Password,
-		}
-
-	} else if pluginParam.From == types.PluginParamsFromPipelineResource {
-		res = nil
-		if resourceParam, ok := jobParams[pluginParam.FromName]; ok {
-			resourceId, err := strconv.ParseUint(fmt.Sprintf("%v", resourceParam), 10, 64)
-			if err == nil {
-				resource, _ := p.models.PipelineResourceManager.Get(uint(resourceId))
-				if resource != nil {
-					res := map[string]interface{}{
-						"type":  resource.Type,
-						"value": resource.Value,
-					}
-					if resource.Secret != nil {
-						res["secret"] = map[string]string{
-							"type":         resource.Secret.Type,
-							"user":         resource.Secret.User,
-							"password":     resource.Secret.Password,
-							"private_key":  resource.Secret.PrivateKey,
-							"access_token": resource.Secret.AccessToken,
-						}
-					}
-					return res
-				}
-			}
-		}
-	}
-	return res
 }

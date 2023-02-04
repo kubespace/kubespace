@@ -16,6 +16,7 @@ asset-build: vue-build
 
 vue-build:
 	cd ui &&\
+	npm install &&\
  	npm config set registry 'https://registry.npm.taobao.org' &&\
  	npm run build &&\
  	cp dist/index.html dist/static/index.html &&\

@@ -217,8 +217,7 @@ func (b *codeBuilderPlugin) buildCode() error {
 		codeBuildFile = b.Params.CodeBuildFile
 	}
 	if codeBuildFile == "" {
-		b.Log("代码构建脚本文件为空")
-		return nil
+		codeBuildFile = "build.sh"
 	}
 	shExec := b.Params.CodeBuildExec
 	if shExec == "" {
