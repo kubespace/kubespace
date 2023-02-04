@@ -181,7 +181,6 @@ func (p *PipelineRun) logStream(c *views.Context) *utils.Response {
 	//c.Stream()
 	tick := time.NewTicker(5 * time.Second)
 	for {
-		klog.Infof("select for log channel")
 		select {
 		case <-clientGone:
 			klog.Info("log client gone")

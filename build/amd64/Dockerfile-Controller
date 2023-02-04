@@ -1,6 +1,0 @@
-ARG BASEIMAGE=registry.cn-hangzhou.aliyuncs.com/kubespace/distroless-static:latest
-FROM $BASEIMAGE
-
-COPY bin/amd64/controller-manager /
-
-CMD ["/controller-manager"]
