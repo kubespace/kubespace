@@ -32,6 +32,7 @@ func NewPipelineRunController(config *controller.Config) *PipelineRunController 
 		models: config.Models,
 		pipelineInformer: config.InformerFactory.PipelineRunInformer(&pipelinelistwatcher.PipelineRunWatchCondition{
 			StatusIn: []string{types.PipelineStatusWait, types.PipelineStatusDoing},
+			WithList: true,
 		}),
 		lock:       lock.NewMemLock(),
 		jobPlugins: plugins.NewPlugins(config.Models, config.ServiceFactory.Cluster.KubeClient),
@@ -117,16 +118,16 @@ func (p *PipelineRunController) executeStage(stageRun *types.PipelineRunStage) (
 		}
 		return err
 	}
+	envs, _ := p.models.PipelineRunManager.GetEnvBeforeStageRun(stageRun)
+	stageRun.Env = envs
 	if stageRun.Status == types.PipelineStatusWait {
-		envs, _ := p.models.PipelineRunManager.GetEnvBeforeStageRun(stageRun)
-		stageRun.Env = envs
 		stageRun.ExecTime = time.Now()
 		stageRun.Status = types.PipelineStatusDoing
-		err = p.models.PipelineRunManager.UpdateStageRun(stageRun)
-		if err != nil {
-			klog.Errorf("update stage id=%d exec time error: %v", stageRun.ID, err)
-			return
-		}
+	}
+	err = p.models.PipelineRunManager.UpdateStageRun(stageRun)
+	if err != nil {
+		klog.Errorf("update stage id=%d exec time error: %v", stageRun.ID, err)
+		return
 	}
 	runJobs := stageRun.Jobs
 	wg := sync.WaitGroup{}
@@ -147,6 +148,8 @@ func (p *PipelineRunController) executeStage(stageRun *types.PipelineRunStage) (
 			runJob.Result = resp
 			if !resp.IsSuccess() {
 				runJob.Status = types.PipelineStatusError
+			} else {
+				runJob.Status = types.PipelineStatusOK
 			}
 			jobEnvs := p.getJobRunResultEnvs(runJob)
 			if jobEnvs != nil {
@@ -205,15 +208,15 @@ func (p *PipelineRunController) getJobRunResultEnvs(jobRun *types.PipelineRunJob
 		if len(plugin.ResultEnv.EnvPath) == 0 {
 			return nil
 		}
-		resData, ok := jobRun.Result.Data.(map[string]interface{})
-		if ok {
-			for _, envPath := range plugin.ResultEnv.EnvPath {
-				if v, ok := resData[envPath.ResultName]; ok {
-					envs[envPath.EnvName] = v
-				}
-			}
-		} else {
+		resMap := make(map[string]interface{})
+		if err = utils.ConvertTypeByJson(jobRun.Result.Data, &resMap); err != nil {
 			klog.Errorf("get job run id=%d result data error, data=%+v", jobRun.ID, jobRun.Result)
+			return envs
+		}
+		for _, envPath := range plugin.ResultEnv.EnvPath {
+			if v, ok := resMap[envPath.ResultName]; ok {
+				envs[envPath.EnvName] = v
+			}
 		}
 	}
 	return envs

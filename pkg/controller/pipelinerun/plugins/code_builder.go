@@ -27,7 +27,7 @@ const (
 type CodeBuilderPlugin struct{}
 
 func (b CodeBuilderPlugin) Execute(params *PluginParams) (interface{}, error) {
-	buildCodePlugin, err := NewCodeBuilderPlugin(params)
+	buildCodePlugin, err := newCodeBuilderPlugin(params)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ type CodeBuilderPluginResult struct {
 	ImageRegistryId int    `json:"image_registry_id"`
 }
 
-func NewCodeBuilderPlugin(params *PluginParams) (*codeBuilderPlugin, error) {
+func newCodeBuilderPlugin(params *PluginParams) (*codeBuilderPlugin, error) {
 	var buildParams codeBuilderParams
 	if err := utils.ConvertTypeByJson(params.Params, &buildParams); err != nil {
 		return nil, err

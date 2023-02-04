@@ -1,7 +1,5 @@
 package types
 
-import "k8s.io/klog/v2"
-
 const (
 	OpGet    = "get"
 	OpCreate = "create"
@@ -197,17 +195,16 @@ var (
 	}
 )
 
-func init() {
-	for _, p := range AllPermissions {
-		if p.Scope == "cluster" {
-			EditRole.Permissions = append(EditRole.Permissions, p)
-			ViewRole.Permissions = append(ViewRole.Permissions, Permission{
-				Name:       p.Name,
-				Scope:      p.Scope,
-				Object:     p.Object,
-				Operations: []string{OpGet},
-			})
-		}
-	}
-	klog.Info("permission init")
-}
+//func init() {
+//	for _, p := range AllPermissions {
+//		if p.Scope == "cluster" {
+//			EditRole.Permissions = append(EditRole.Permissions, p)
+//			ViewRole.Permissions = append(ViewRole.Permissions, Permission{
+//				Name:       p.Name,
+//				Scope:      p.Scope,
+//				Object:     p.Object,
+//				Operations: []string{OpGet},
+//			})
+//		}
+//	}
+//}

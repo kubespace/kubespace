@@ -22,24 +22,33 @@
         </el-select>
       </el-form-item>
       <el-form-item label="Yaml" prop="">
-        <el-input type="textarea" :rows="17" v-model="params.yaml" placeholder="请输入Kubernetes Yaml内容" size="small"></el-input>
+        <!-- <el-input type="textarea" :rows="17" v-model="params.yaml" placeholder="请输入Kubernetes Yaml内容" size="small"></el-input> -->
+        <div>
+          <yaml v-model="params.yaml" :loading="yamlLoading" :height="300"></yaml>
+        </div>
       </el-form-item>
+      
     </el-form>
   </div>
 </template>
 
 <script>
+import { Yaml } from '@/views/components'
 import { listCluster } from '@/api/cluster'
-import { listNamespace } from '@/api/namespace'
+import { ResType, listResource } from '@/api/cluster/resource'
 
 export default {
   name: 'DeployK8s',
+  components: {
+    Yaml,
+  },
   data() {
     return {
       loading: false,
       resources: [],
       namespaces: [],
       clusters: [],
+      yamlLoading: false
     }
   },
   props: ['params'],
@@ -64,7 +73,7 @@ export default {
       this.namespaces = []
       const cluster = this.params.cluster
       if (cluster) {
-        listNamespace(cluster).then(response => {
+        listResource(cluster, ResType.Namespace).then(response => {
           this.namespaces = response.data
           this.namespaces.sort((a, b) => {return a.name > b.name ? 1 : -1})
         }).catch((err) => {

@@ -16,6 +16,14 @@ export function createCluster(data) {
   })
 }
 
+export function updateCluster(id, data) {
+  return request({
+    url: '/cluster/' + id,
+    method: 'put',
+    data,
+  })
+}
+
 export function clusterMembers(data) {
   return request({
     url: '/cluster/members',

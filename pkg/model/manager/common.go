@@ -198,23 +198,3 @@ func (cm *CommonManager) AddSets(name string) error {
 	}
 	return nil
 }
-
-type EventObj struct {
-	Event    string      `json:"event"`
-	Obj      string      `json:"obj"`
-	Resource interface{} `json:"resource"`
-}
-
-const (
-	AddEvent    = "add"
-	UpdateEvent = "update"
-	DeleteEvent = "delete"
-)
-
-func NewEventObj(event, objKey string, obj interface{}) *EventObj {
-	return &EventObj{
-		Event:    event,
-		Obj:      objKey,
-		Resource: obj,
-	}
-}

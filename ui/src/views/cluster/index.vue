@@ -55,7 +55,7 @@
           <template slot-scope="scope">
             <div class="tableOperate">
               <el-link :disabled="!$editorRole()" :underline="false" type="primary" style="margin-right: 15px;" 
-                @click="clusterConnectToken=scope.row.token; clusterConnectDialog = true" 
+                @click="cluster=scope.row; clusterConnectToken=scope.row.token; clusterConnectDialog = true" 
                 v-if="scope.row.status === 'Pending'">
                 导入集群
               </el-link>
@@ -103,16 +103,6 @@
           <el-form-item label="集群名称">
             <el-input v-model="form.name" :disabled="inviteForm" autocomplete="off" placeholder="请输入集群名称"></el-input>
           </el-form-item>
-          <!-- <el-form-item label="邀请">
-            <el-select v-model="form.members" style="width: 100%" multiple filterable placeholder="请选择要邀请的用户">
-              <el-option
-                v-for="item in users"
-                :key="item.name"
-                :label="item.name"
-                :value="item.name">
-              </el-option>
-            </el-select>
-          </el-form-item> -->
         </el-form>
         <div slot="footer" class="dialog-footer">
           <el-button @click="createClusterFormVisible = false; form={'name': '', 'members': []}; inviteForm=false;">取 消</el-button>
@@ -122,38 +112,50 @@
     </div>
 
     <el-dialog title="集群导入" :visible.sync="clusterConnectDialog" :close-on-click-modal="false">
-      <div style="font-size: 15px;">请在现有Kubernetes集群上运行下面的kubeclt命令，以连接KubeSpace平台：</div>
-      <div style="margin-top: 15px;">
-        <el-tag type="info" style="font-size: 14px; border-radius: 4px;">
-          {{ copyCluster }}
-        </el-tag>
-        <!-- <el-tag type="" style="font-size: 14px; border-radius: 0px 4px 4px 0px;">复制</el-tag> -->
-        <!-- <el-button plain size="small" slot="append" 
-            style="height: 32px; border-radius: 0px 4px 4px 0px; padding: 10px 8px;"
-            v-clipboard:copy="copyCluster" v-clipboard:success="onCopy" v-clipboard:error="onError">
-            复制
-        </el-button> -->
-      </div>
-      <div style="font-size: 13px; margin-top: 8px; color: #e6a23c;">
-        *注意：请将上述访问地址「{{this.locationAddr}}」换为Kubernetes集群可以访问的地址。
-      </div>
+      
+      <el-tabs v-model="activeName" type="border-card" >
+        <el-tab-pane label="KubeConfig" name="KubeConfig">
+          <!-- <el-input type="textarea" :rows="2" placeholder="请输入内容" v-model="kubeconfig"></el-input> -->
+          <yaml v-model="kubeconfig" :loading="yamlLoading" :height="200"></yaml>
+        </el-tab-pane>
+        <el-tab-pane label="Agent" name="Agent" style="padding: 0px 0px;">
+          <div style="font-size: 15px;">请在Kubernetes集群master节点运行下面的kubeclt命令，以连接KubeSpace平台：</div>
+            <div style="margin-top: 15px;">
+              <el-tag type="info" style="font-size: 14px; border-radius: 4px 0px 0px 4px;  border-right: 0px">
+                {{ copyCluster }}
+              </el-tag>
+              <!-- <el-tag type="" style="font-size: 14px; border-radius: 0px 4px 4px 0px;">复制</el-tag> -->
+              <el-button plain size="small" slot="append" 
+                  style="height: 32px; border-radius: 0px 4px 4px 0px; padding: 10px 8px;"
+                  v-clipboard:copy="copyCluster" v-clipboard:success="onCopy" v-clipboard:error="onError">
+                  复制
+              </el-button>
+            </div>
+            <div style="font-size: 13px; margin-top: 8px; color: #e6a23c;">
+              *注意：请将上述访问地址「{{this.locationAddr}}」换为Kubernetes集群可以访问的地址。
+            </div>
+        </el-tab-pane>
+      </el-tabs>
+
+      
       <div slot="footer" class="dialogFooter" style="text-align: right">
-        <el-button type="primary" @click="clusterConnectDialog = false">确 定</el-button>
+        <el-button type="primary" @click="clusterConnect">确 定</el-button>
       </div>
     </el-dialog>
   </div>
 </template>
 
 <script>
-import { Clusterbar } from '@/views/components'
-import { listCluster, createCluster, deleteCluster, clusterMembers } from '@/api/cluster'
+import { Clusterbar, Yaml } from '@/views/components'
+import { listCluster, createCluster, updateCluster, deleteCluster, clusterMembers } from '@/api/cluster'
 import { getUser } from "@/api/user";
 import { Message } from 'element-ui'
 
 export default {
   name: 'SettingsCluster',
   components: {
-    Clusterbar
+    Clusterbar,
+    Yaml,
   },
   data() {
     return {
@@ -173,6 +175,10 @@ export default {
         members: [],
       },
       locationAddr: window.location.origin,
+      kubeconfig: "",
+      yamlLoading: false,
+      activeName: "KubeConfig",
+      cluster: {}
     }
   },
   created() {
@@ -190,32 +196,11 @@ export default {
     }
   },
   watch: {
-    // clusterWatch: function (newObj) {
-    //   if (newObj) {
-    //     let newName = newObj.resource.name
-    //     if (newObj.event === 'add') {
-    //       this.clusters.push(newObj.resource)
-    //     } else if (newObj.event === 'update') {
-    //       for (let i in this.clusters) {
-    //         let d = this.clusters[i]
-    //         if (d.name === newName) {
-    //           this.$set(this.clusters, i, newObj.resource)
-    //           break
-    //         }
-    //       }
-    //     } else if (newObj.event === 'delete') {
-    //       this.clusters = this.clusters.filter(( { name } ) => name !== newName)
-    //     }
-    //   }
-    // }
   },
   computed: {
     copyCluster() {
       return `curl -sk ${ this.locationAddr }/v1/import/${ this.clusterConnectToken } | kubectl apply -f -`;
     },
-    // clusterWatch: function() {
-    //   return this.$store.getters["ws/globalClusterWatch"]
-    // }
   },
   methods: {
     fetchData() {
@@ -297,6 +282,17 @@ export default {
     },
     onError(e) {
 
+    },
+    clusterConnect() {
+      if(this.kubeconfig!="") {
+        updateCluster(this.cluster.id, {"kubeconfig": this.kubeconfig}).then((response) => {
+            this.fetchData()
+        }).catch((e) => {
+          console.log(e)
+        })
+      }
+      this.kubeconfig = ""
+      this.clusterConnectDialog = false
     }
   },
 }

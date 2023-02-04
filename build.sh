@@ -1,10 +1,2 @@
-cd ui
-npm config set registry https://registry.npm.taobao.org
-npm install
-npm run build
-cp dist/index.html dist/static/index.html
-cd ..
-export GOPROXY=https://goproxy.cn,direct
-go get github.com/jessevdk/go-assets-builder
-go-assets-builder -s /ui/dist/static ui/dist -o pkg/router/assets.go -p router
-make build-binary
+# use registry.cn-hangzhou.aliyuncs.com/kubespace/golang-npm:1.16 image to build
+make build-binary-amd64

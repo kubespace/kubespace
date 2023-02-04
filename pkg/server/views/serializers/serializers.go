@@ -20,6 +20,10 @@ type ClusterCreateSerializers struct {
 	Members []string `json:"members"`
 }
 
+type ClusterUpdateSerializers struct {
+	KubeConfig string `json:"kubeconfig"`
+}
+
 type DeleteClusterSerializers struct {
 	Id string `json:"name"`
 }

@@ -18,7 +18,7 @@ window.jsyaml = require('js-yaml') // 引入js-yaml为codemirror提高语法检�
 export default {
   name: 'YamlEditor',
   // eslint-disable-next-line vue/require-prop-types
-  props: ['value', 'loading', 'updateValue', 'readOnly'],
+  props: ['value', 'loading', 'updateValue', 'readOnly', 'height'],
   data() {
     return {
       yamlEditor: false,
@@ -26,6 +26,12 @@ export default {
   },
   computed: {
     yamlHeight() {
+      if(this.height) {
+        try{
+          let h = parseInt(this.height)
+          return h
+        }catch(err) {}
+      }
       return window.innerHeight - 300
     }
   },
@@ -70,6 +76,7 @@ export default {
 .yaml-editor >>> .CodeMirror {
   height: var(--yamlHeight);
   font-size: 13px;
+  line-height: 1.15;
 }
 .yaml-editor >>> .CodeMirror-scroll{
   height: var(--yamlHeight);

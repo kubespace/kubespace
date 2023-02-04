@@ -27,7 +27,7 @@ type ReleaserPlugin struct {
 }
 
 func (b ReleaserPlugin) Execute(params *PluginParams) (interface{}, error) {
-	releasePlugin, err := NewReleaserPlugin(params, b.Models)
+	releasePlugin, err := newReleaserPlugin(params, b.Models)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ type releaserPlugin struct {
 	Images  []string
 }
 
-func NewReleaserPlugin(pluginParams *PluginParams, models *model.Models) (*releaserPlugin, error) {
+func newReleaserPlugin(pluginParams *PluginParams, models *model.Models) (*releaserPlugin, error) {
 	var params releaseParams
 	if err := utils.ConvertTypeByJson(pluginParams.Params, &params); err != nil {
 		return nil, err

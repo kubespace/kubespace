@@ -21,7 +21,7 @@ const (
 type ExecShellPlugin struct{}
 
 func (b ExecShellPlugin) Execute(params *PluginParams) (interface{}, error) {
-	shellPlugin, err := NewExecShellPlugin(params)
+	shellPlugin, err := newExecShellPlugin(params)
 	if err != nil {
 		return nil, err
 	}
@@ -46,21 +46,21 @@ type execShellPlugin struct {
 	rootDir string
 }
 
-func NewExecShellPlugin(params *PluginParams) (*execShellPlugin, error) {
+func newExecShellPlugin(params *PluginParams) (*execShellPlugin, error) {
 	var shellParams ExecShellParams
 	if err := utils.ConvertTypeByJson(params.Params, &shellParams); err != nil {
-		return nil, err
-	}
-	rootDir := filepath.Join("/data/pipeline", strconv.Itoa(int(params.JobId)))
-	if err := os.MkdirAll(rootDir, 0755); err != nil {
 		return nil, err
 	}
 	execPlugin := &execShellPlugin{
 		Params:       &shellParams,
 		PluginLogger: params.Logger,
 		Result:       make(map[string]interface{}),
-		rootDir:      rootDir,
 	}
+	rootDir := filepath.Join(params.DataDir, "pipeline", strconv.Itoa(int(params.JobId)))
+	if err := os.MkdirAll(rootDir, 0755); err != nil {
+		return nil, err
+	}
+	execPlugin.rootDir, _ = filepath.Abs(rootDir)
 
 	return execPlugin, nil
 }

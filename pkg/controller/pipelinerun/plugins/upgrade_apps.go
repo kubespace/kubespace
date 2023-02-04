@@ -19,7 +19,7 @@ type UpgradeAppPlugin struct {
 }
 
 func (p UpgradeAppPlugin) Execute(params *PluginParams) (interface{}, error) {
-	upgrade, err := NewUpgradeApp(params, p.Models, p.KubeClient)
+	upgrade, err := newUpgradeApp(params, p.Models, p.KubeClient)
 	if err != nil {
 		return nil, err
 	}
@@ -50,15 +50,14 @@ type upgradeAppResult struct {
 type upgradeApp struct {
 	models     *model.Models
 	kubeClient *cluster.KubeClient
-	//kubeResources *kube_resource.KubeResources
-	params  *upgradeAppParams
-	images  []string
-	result  *upgradeAppResult
-	project *types.Project
+	params     *upgradeAppParams
+	images     []string
+	result     *upgradeAppResult
+	project    *types.Project
 	*PluginLogger
 }
 
-func NewUpgradeApp(params *PluginParams, models *model.Models, kubeClient *cluster.KubeClient) (*upgradeApp, error) {
+func newUpgradeApp(params *PluginParams, models *model.Models, kubeClient *cluster.KubeClient) (*upgradeApp, error) {
 	var upgradeParams upgradeAppParams
 	if err := utils.ConvertTypeByJson(params.Params, &upgradeParams); err != nil {
 		params.Logger.Log("插件参数：%v", params.Params)

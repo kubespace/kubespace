@@ -58,6 +58,10 @@ func (clu *ClusterManager) Update(cluster *types.Cluster) error {
 	return nil
 }
 
+func (clu *ClusterManager) UpdateByObject(id uint, cluster *types.Cluster) error {
+	return clu.DB.Where("id=?", id).Updates(cluster).Error
+}
+
 func (clu *ClusterManager) Get(id uint) (*types.Cluster, error) {
 	cluster := &types.Cluster{}
 	if err := clu.DB.First(cluster, "id = ?", id).Error; err != nil {

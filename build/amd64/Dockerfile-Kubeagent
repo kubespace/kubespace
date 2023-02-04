@@ -1,0 +1,6 @@
+ARG BASEIMAGE=registry.cn-hangzhou.aliyuncs.com/kubespace/distroless-static:latest
+FROM $BASEIMAGE
+
+COPY bin/amd64/kube-agent /
+
+CMD ["/kube-agent"]

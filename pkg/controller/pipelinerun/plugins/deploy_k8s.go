@@ -24,7 +24,7 @@ type DeployK8sPlugin struct {
 }
 
 func (p DeployK8sPlugin) Execute(params *PluginParams) (interface{}, error) {
-	deploy, err := NewDeployK8s(params, p.Models, p.KubeClient)
+	deploy, err := newDeployK8s(params, p.Models, p.KubeClient)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ type deployK8s struct {
 	*PluginLogger
 }
 
-func NewDeployK8s(params *PluginParams, models *model.Models, kubeClient *cluster.KubeClient) (*deployK8s, error) {
+func newDeployK8s(params *PluginParams, models *model.Models, kubeClient *cluster.KubeClient) (*deployK8s, error) {
 	var deployParams deployK8sParams
 	if err := utils.ConvertTypeByJson(params.Params, &deployParams); err != nil {
 		params.Logger.Log("插件参数：%v", params.Params)

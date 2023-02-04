@@ -31,6 +31,7 @@ func NewCluster(config *config.ServerConfig) *Cluster {
 	clu.Views = []*views.View{
 		views.NewView(http.MethodGet, "", clu.list),
 		views.NewView(http.MethodPost, "", clu.create),
+		views.NewView(http.MethodPut, "/:cluster", clu.update),
 		views.NewView(http.MethodPost, "/members", clu.members),
 		views.NewView(http.MethodPost, "/delete", clu.delete),
 	}
@@ -89,7 +90,7 @@ func (clu *Cluster) create(c *views.Context) *utils.Response {
 	}
 	clusterObj := &types.Cluster{
 		Name1:      ser.Name,
-		Token:      utils.CreateUUID(),
+		Token:      utils.ShortUUID(),
 		Status:     types.ClusterPending,
 		CreatedBy:  c.User.Name,
 		Members:    ser.Members,
@@ -111,6 +112,30 @@ func (clu *Cluster) create(c *views.Context) *utils.Response {
 		"update_time": clusterObj.UpdateTime,
 	}
 	resp.Data = d
+	return resp
+}
+
+func (clu *Cluster) update(c *views.Context) *utils.Response {
+	var ser serializers.ClusterUpdateSerializers
+	resp := &utils.Response{Code: code.Success}
+
+	if err := c.ShouldBind(&ser); err != nil {
+		resp.Code = code.ParamsError
+		resp.Msg = err.Error()
+		return resp
+	}
+	clusterId, err := strconv.Atoi(c.Param("cluster"))
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	_, err = clu.models.ClusterManager.Get(uint(clusterId))
+	if err != nil {
+		return &utils.Response{Code: code.DataNotExists, Msg: fmt.Sprintf("not found cluster id=%d", clusterId)}
+	}
+	if err = clu.models.ClusterManager.UpdateByObject(
+		uint(clusterId), &types.Cluster{KubeConfig: ser.KubeConfig}); err != nil {
+		return &utils.Response{Code: code.UpdateError, Msg: err.Error()}
+	}
 	return resp
 }
 

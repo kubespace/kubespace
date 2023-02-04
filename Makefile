@@ -2,25 +2,30 @@ ENVVAR=CGO_ENABLED=0 LD_FLAGS=-s
 GOOS?=linux
 REGISTRY?=kubespace
 TAG?=dev
+export GOPROXY=https://goproxy.cn,direct
 
+build-binary-amd64: asset-build
+	rm -rf bin/amd64
+	$(ENVVAR) GOOS=$(GOOS) go build -o bin/amd64/kubespace ./cmd/server
+	$(ENVVAR) GOOS=$(GOOS) go build -o bin/amd64/controller-manager ./cmd/controller-manager
+	$(ENVVAR) GOOS=$(GOOS) go build -o bin/amd64/kube-agent ./cmd/kube-agent
 
-build-binary: clean
-	$(ENVVAR) GOOS=$(GOOS) go build -o kubespace
+asset-build: vue-build
+	go install github.com/jessevdk/go-assets-builder
+	go-assets-builder -s /ui/dist/static ui/dist -o pkg/server/router/assets.go -p router
 
-clean:
-	rm -f kubespace
+vue-build:
+	cd ui &&\
+ 	npm config set registry 'https://registry.npm.taobao.org' &&\
+ 	npm run build &&\
+ 	cp dist/index.html dist/static/index.html &&\
+ 	cd ..
 
 docker-builder:
 	docker images | grep ospserver-builder || docker build -t ospserver-builder ./builder
 
-vue-build:
-	cd ui && npm run build && cp dist/index.html dist/static/index.html
-
-asset-build:
-	go-assets-builder -s /ui/dist/static ui/dist -o pkg/router/assets.go -p router
-
-build-in-docker: clean docker-builder
-	docker run --rm -v `pwd`:/gopath/src/github.com/openspacee/osp/ ospserver-builder:latest bash -c 'cd /gopath/src/github.com/openspacee/osp && make build-binary'
+build-in-docker: docker-builder
+	docker run --rm -v `pwd`:/gopath/src/github.com/kubespace/kubespace ospserver-builder:latest bash -c 'cd /gopath/src/github.com/kubespace/kubespace && make build-binary-amd64'
 
 make-base-image:
 	docker images | grep openspacee/ospserver-base || docker build -t openspacee/ospserver-base ./base-image

@@ -1,8 +1,7 @@
 ARG BASEIMAGE=registry.cn-hangzhou.aliyuncs.com/kubespace/distroless-static:latest
 FROM $BASEIMAGE
 
-COPY kubespace /
-COPY entrypoint.sh /
+COPY bin/amd64/kubespace /
 COPY apps /apps
 COPY ui/dist/favicon.ico /favicon.ico
 
