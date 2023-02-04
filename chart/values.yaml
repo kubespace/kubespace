@@ -25,7 +25,7 @@ server:
     - name: INSECURE_PORT
       value: "80"
     - name: AGENT_REPOSITORY
-      value: "registry.cn-hangzhou.aliyuncs.com/kubespace/kubespace-agent"
+      value: "registry.cn-hangzhou.aliyuncs.com/kubespace/kube-agent"
     - name: AGENT_VERSION
       value: "1675520403"
 

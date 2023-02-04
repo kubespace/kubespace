@@ -94,7 +94,9 @@ func (r *RedisStorage) watch() {
 		obj, err := r.dataType.Unmarshal([]byte(data.Payload))
 		if err != nil {
 			klog.Errorf("unmarshal receive message to data type error: %s, datatye=%v, message=%s", err.Error(), r.dataType, data.Payload)
-		} else if r.filterFunc(obj) {
+		} else if r.filterFunc == nil {
+			r.resultChan <- obj
+		} else if r.filterFunc != nil && r.filterFunc(obj) {
 			r.resultChan <- obj
 		}
 	}
