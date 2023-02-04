@@ -122,6 +122,7 @@ func newCodeBuilderPlugin(params *PluginParams) (*codeBuilderPlugin, error) {
 		return nil, err
 	}
 	buildCodePlugin.CodeDir, _ = filepath.Abs(filepath.Join(rootDir, codeDir))
+	buildCodePlugin.rootDir = rootDir
 
 	return buildCodePlugin, nil
 }
