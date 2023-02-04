@@ -199,7 +199,7 @@ export default {
   },
   computed: {
     copyCluster() {
-      return `curl -sk ${ this.locationAddr }/v1/import/${ this.clusterConnectToken } | kubectl apply -f -`;
+      return `curl -sk ${ this.locationAddr }/import/agent/${ this.clusterConnectToken } | kubectl apply -f -`;
     },
   },
   methods: {
