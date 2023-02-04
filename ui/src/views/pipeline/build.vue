@@ -482,7 +482,7 @@ export default {
         // console.log(res)
         if(res && res != "\n") {
           let data = JSON.parse(res)
-          if(data) {
+          if(data.pipeline_run) {
             for(let i in this.builds){
               let build = this.builds[i]
               if(build.pipeline_run.id == data.pipeline_run.id) {

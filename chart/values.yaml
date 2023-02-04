@@ -14,7 +14,7 @@ server:
     repository: registry.cn-hangzhou.aliyuncs.com/kubespace/kubespace-server
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: "1675520403"
+    tag: "1675526275"
   imagePullSecrets: []
   service:
     type: NodePort
@@ -27,7 +27,7 @@ server:
     - name: AGENT_REPOSITORY
       value: "registry.cn-hangzhou.aliyuncs.com/kubespace/kube-agent"
     - name: AGENT_VERSION
-      value: "1675520403"
+      value: "1675525182"
 
   ingress:
     enabled: false
@@ -68,22 +68,18 @@ controller_manager:
     repository: registry.cn-hangzhou.aliyuncs.com/kubespace/controller-manager
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: "1675520403"
+    tag: "1675529421"
   imagePullSecrets: []
   service:
     type: ClusterIP
     port: 80
   extraArgs: []
-  extraEnvs:
-    - name: DATA_DIR
-      value: /data
+  dataDir: /data/kubespace
   extraVolumeMounts:
     - name: docker-bin
       mountPath: /usr/bin/docker
     - name: docker-sock
       mountPath: /var/run/docker.sock
-    - name: data-dir
-      mountPath: /data
   extraVolumes:
     - name: docker-bin
       hostPath:
@@ -91,9 +87,6 @@ controller_manager:
     - name: docker-sock
       hostPath:
         path: /var/run/docker.sock
-    - name: data-dir
-      hostPath:
-        path: /data/kubespace
   resources: {}
     # We usually recommend not to specify default resources and to leave this as a conscious
     # choice for the user. This also increases chances charts run on environments with little

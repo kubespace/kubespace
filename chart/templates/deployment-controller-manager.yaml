@@ -46,16 +46,23 @@ spec:
               value: {{ .Values.mysql.auth.rootPassword }}
             - name: MYSQL_DBNAME
               value: {{ .Values.mysql.auth.database }}
+            - name: DATA_DIR
+              value: {{ .Values.controller_manager.dataDir }}
           {{- if .Values.controller_manager.extraEnvs }}
 {{ toYaml .Values.controller_manager.extraEnvs | indent 12 }}
           {{- end }}
           volumeMounts:
+            - name: data-dir
+              mountPath: {{ .Values.controller_manager.dataDir }}
           {{- if .Values.controller_manager.extraVolumeMounts }}
 {{ toYaml .Values.controller_manager.extraVolumeMounts | indent 12 }}
           {{- end }}
           resources:
             {{- toYaml .Values.controller_manager.resources | nindent 12 }}
       volumes:
+        - name: data-dir
+          hostPath:
+            path: {{ .Values.controller_manager.dataDir }}
       {{- if .Values.controller_manager.extraVolumes }}
 {{ toYaml .Values.controller_manager.extraVolumes | indent 8 }}
       {{- end }}
