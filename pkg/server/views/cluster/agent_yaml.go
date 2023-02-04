@@ -73,7 +73,7 @@ spec:
       - name: kubespace-agent
         image: %s:%s
         command:
-        - "/agent"
+        - "/kube-agent"
         args:
         - --token=%s
         - --server-host=%s

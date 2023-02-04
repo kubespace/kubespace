@@ -117,7 +117,7 @@ func (a *Agent) OnSuccess() {
 		// 没有bearerToken表示agent未运行在集群pod中，不更新agent
 		return
 	}
-	resBytes, err := a.serverCli.Get("/agent/yaml", nil)
+	resBytes, err := a.serverCli.Get("/import/agent/"+a.config.Token, nil)
 	if err != nil {
 		klog.Errorf("get server agent yaml error: %s", err.Error())
 		return

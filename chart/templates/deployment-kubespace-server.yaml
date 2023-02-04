@@ -6,7 +6,7 @@ metadata:
   labels:
     kubespace-app: kubespace-server
     {{- include "kubespace.labels" . | nindent 4 }}
-  {{- with .Values.agent.serviceAccount.annotations }}
+  {{- with .Values.server.serviceAccount.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -40,33 +40,33 @@ metadata:
   labels:
     {{- include "kubespace.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.kubespace.replicaCount }}
+  replicas: {{ .Values.server.replicaCount }}
   selector:
     matchLabels:
-      kubespace-app: kubespace
+      kubespace-app: kubespace-server
       {{- include "kubespace.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.kubespace.podAnnotations }}
+      {{- with .Values.server.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        kubespace-app: kubespace
+        kubespace-app: kubespace-server
         {{- include "kubespace.selectorLabels" . | nindent 8 }}
     spec:
-      {{- with .Values.kubespace.imagePullSecrets }}
+      {{- with .Values.server.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "kubespace.fullname" . }}-server
       containers:
         - name: kubespace-server
-          image: "{{ .Values.kubespace.image.repository }}:{{ .Values.kubespace.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.kubespace.image.pullPolicy }}
-          {{- if .Values.extraArgs }}
+          image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.server.image.pullPolicy }}
+          {{- if .Values.server.extraArgs }}
           args:
-{{ toYaml .Values.extraArgs | indent 12 }}
+{{ toYaml .Values.server.extraArgs | indent 12 }}
           {{- end }}
           env:
             - name: REDIS_ADDRESS
@@ -79,12 +79,12 @@ spec:
               value: {{ .Values.mysql.auth.rootPassword }}
             - name: MYSQL_DBNAME
               value: {{ .Values.mysql.auth.database }}
-          {{- if .Values.extraEnvs }}
-{{ toYaml .Values.extraEnvs | indent 12 }}
+          {{- if .Values.server.extraEnvs }}
+{{ toYaml .Values.server.extraEnvs | indent 12 }}
           {{- end }}
-          {{- if .Values.extraVolumeMounts }}
+          {{- if .Values.server.extraVolumeMounts }}
           volumeMounts:
-{{ toYaml .Values.extraVolumeMounts | indent 12 }}
+{{ toYaml .Values.server.extraVolumeMounts | indent 12 }}
           {{- end }}
           ports:
             - name: http
@@ -102,20 +102,20 @@ spec:
 #              path: /
 #              port: http
           resources:
-            {{- toYaml .Values.kubespace.resources | nindent 12 }}
-      {{- if .Values.extraVolumes }}
+            {{- toYaml .Values.server.resources | nindent 12 }}
+      {{- if .Values.server.extraVolumes }}
       volumes:
-{{ toYaml .Values.extraVolumes | indent 8 }}
+{{ toYaml .Values.server.extraVolumes | indent 8 }}
       {{- end }}
-      {{- with .Values.kubespace.nodeSelector }}
+      {{- with .Values.server.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.kubespace.affinity }}
+      {{- with .Values.server.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.kubespace.tolerations }}
+      {{- with .Values.server.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -130,27 +130,27 @@ metadata:
   labels:
     {{- include "kubespace.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.kubespace.service.type }}
+  type: {{ .Values.server.service.type }}
   ports:
-    - port: {{ .Values.kubespace.service.port }}
+    - port: {{ .Values.server.service.port }}
       targetPort: http
       protocol: TCP
       name: http
-{{ if (and (eq .Values.kubespace.service.type "NodePort") (not (empty .Values.kubespace.service.nodePort))) }}
-      nodePort: {{ .Values.kubespace.service.nodePort }}
+{{ if (and (eq .Values.server.service.type "NodePort") (not (empty .Values.server.service.nodePort))) }}
+      nodePort: {{ .Values.server.service.nodePort }}
 {{ end }}
   selector:
-    kubespace-app: kubespace
+    kubespace-app: kubespace-server
     {{- include "kubespace.selectorLabels" . | nindent 4 }}
     
 ---
 
-{{- if .Values.kubespace.ingress.enabled -}}
+{{- if .Values.server.ingress.enabled -}}
 {{- $fullName := include "kubespace.fullname" . -}}
-{{- $svcPort := .Values.kubespace.service.port -}}
-{{- if and .Values.kubespace.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
-  {{- if not (hasKey .Values.kubespace.ingress.annotations "kubernetes.io/ingress.class") }}
-  {{- $_ := set .Values.kubespace.ingress.annotations "kubernetes.io/ingress.class" .Values.kubespace.ingress.className}}
+{{- $svcPort := .Values.server.service.port -}}
+{{- if and .Values.server.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
+  {{- if not (hasKey .Values.server.ingress.annotations "kubernetes.io/ingress.class") }}
+  {{- $_ := set .Values.server.ingress.annotations "kubernetes.io/ingress.class" .Values.server.ingress.className}}
   {{- end }}
 {{- end }}
 {{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion -}}
@@ -166,17 +166,17 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "kubespace.labels" . | nindent 4 }}
-  {{- with .Values.kubespace.ingress.annotations }}
+  {{- with .Values.server.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if and .Values.kubespace.ingress.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
-  ingressClassName: {{ .Values.kubespace.ingress.className }}
+  {{- if and .Values.server.ingress.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
+  ingressClassName: {{ .Values.server.ingress.className }}
   {{- end }}
-  {{- if .Values.kubespace.ingress.tls }}
+  {{- if .Values.server.ingress.tls }}
   tls:
-    {{- range .Values.kubespace.ingress.tls }}
+    {{- range .Values.server.ingress.tls }}
     - hosts:
         {{- range .hosts }}
         - {{ . | quote }}
@@ -185,7 +185,7 @@ spec:
     {{- end }}
   {{- end }}
   rules:
-    {{- range .Values.kubespace.ingress.hosts }}
+    {{- range .Values.server.ingress.hosts }}
     - host: {{ .host | quote }}
       http:
         paths:

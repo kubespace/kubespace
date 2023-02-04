@@ -39,7 +39,7 @@ spec:
             - name: REDIS_ADDRESS
               value: "{{ include "kubespace.fullname" . }}-redis-master:6379"
             - name: REDIS_PASSWORD
-              value: { { .Values.redis.auth.password } }
+              value: {{ .Values.redis.auth.password }}
             - name: MYSQL_HOST
               value: "{{ include "kubespace.fullname" . }}-mysql"
             - name: MYSQL_PASSWORD

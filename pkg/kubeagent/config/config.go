@@ -33,7 +33,7 @@ func NewAgentConfig(options *AgentOptions) (a *AgentConfig, err error) {
 	if a.KubeConfig, err = config.NewKubeConfig(kubeOptions); err != nil {
 		return nil, err
 	}
-	if a.ServerClient, err = utils.NewHttpClient(fmt.Sprintf("http://%s/api/v1")); err != nil {
+	if a.ServerClient, err = utils.NewHttpClient(fmt.Sprintf("http://%s", a.ServerHost)); err != nil {
 		return nil, err
 	}
 	return

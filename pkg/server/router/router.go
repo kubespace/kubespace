@@ -66,7 +66,7 @@ func NewRouter(conf *config.ServerConfig) (*Router, error) {
 	agentView := cluster.NewAgentViews(conf)
 	apiGroup.GET("/agent/connect", agentView.Connect)
 	apiGroup.GET("/agent/response", agentView.Response)
-	apiGroup.GET("/agent/yaml", agentView.AgentYaml)
+	engine.GET("/import/agent/:token", agentView.AgentYaml)
 	return &Router{
 		Engine: engine,
 	}, nil
