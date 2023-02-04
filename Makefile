@@ -11,16 +11,16 @@ build-binary-amd64: asset-build
 	$(ENVVAR) GOOS=$(GOOS) go build -o bin/amd64/kube-agent ./cmd/kube-agent
 
 asset-build: vue-build
-	go install github.com/jessevdk/go-assets-builder
+	go get github.com/jessevdk/go-assets-builder
 	go-assets-builder -s /ui/dist/static ui/dist -o pkg/server/router/assets.go -p router
 
 vue-build:
-	cd ui &&\
- 	npm config set registry 'https://registry.npm.taobao.org' &&\
-	npm install &&\
- 	npm run build &&\
- 	cp dist/index.html dist/static/index.html &&\
- 	cd ..
+	cd ui
+	npm config set registry 'https://registry.npm.taobao.org'
+	npm install
+	npm run build
+	cp dist/index.html dist/static/index.html
+	cd ..
 
 docker-builder:
 	docker images | grep ospserver-builder || docker build -t ospserver-builder ./builder
