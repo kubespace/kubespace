@@ -81,10 +81,16 @@ func (k *kubeFactory) getResource(resType string) (ResourceHandler, error) {
 		return resource.NewSecret(k.config), nil
 	case types.ServiceType:
 		return resource.NewService(k.config), nil
+	case types.IngressType:
+		return resource.NewIngress(k.config), nil
+	case types.NetworkPolicyType:
+		return resource.NewNetworkPolicy(k.config), nil
 	case types.RoleType:
 		return resource.NewRole(k.config), nil
 	case types.ClusterRoleType:
 		return resource.NewClusterRole(k.config), nil
+	case types.ServiceAccountType:
+		return resource.NewServiceAccount(k.config), nil
 	case types.RoleBindingType:
 		return resource.NewRoleBinding(k.config), nil
 	case types.ClusterRoleBindingType:
@@ -93,6 +99,10 @@ func (k *kubeFactory) getResource(resType string) (ResourceHandler, error) {
 		return resource.NewNode(k.config), nil
 	case types.PersistentVolumeType:
 		return resource.NewPersistentVolume(k.config), nil
+	case types.PersistentVolumeClaimType:
+		return resource.NewPersistentVolumeClaim(k.config), nil
+	case types.StorageClassType:
+		return resource.NewStorageClass(k.config), nil
 	case types.HpaType:
 		return resource.NewHorizontalPodAutoscaler(k.config), nil
 	case types.EndpointType:

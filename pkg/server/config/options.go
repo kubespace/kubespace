@@ -13,4 +13,6 @@ type ServerOptions struct {
 	MysqlPassword        string
 	MysqlDbName          string
 	ListWatcherResyncSec int
+	AgentVersion         string
+	AgentRepository      string
 }

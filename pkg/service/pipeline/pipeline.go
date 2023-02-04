@@ -58,7 +58,7 @@ func (p *ServicePipeline) Create(pipelineSer *serializers.PipelineSerializer, us
 		}
 		stages = append(stages, stage)
 	}
-	pipeline, err = p.models.ManagerPipeline.CreatePipeline(pipeline, stages)
+	pipeline, err = p.models.PipelineManager.CreatePipeline(pipeline, stages)
 	if err != nil {
 		return &utils.Response{
 			Code: code.DBError,
@@ -110,7 +110,7 @@ func (p *ServicePipeline) Update(pipelineSer *serializers.PipelineSerializer, us
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
-	pipeline, err := p.models.ManagerPipeline.Get(pipelineSer.ID)
+	pipeline, err := p.models.PipelineManager.Get(pipelineSer.ID)
 	if err != nil {
 		return &utils.Response{
 			Code: code.DBError,
@@ -140,7 +140,7 @@ func (p *ServicePipeline) Update(pipelineSer *serializers.PipelineSerializer, us
 		}
 		stages = append(stages, stage)
 	}
-	pipeline, err = p.models.ManagerPipeline.UpdatePipeline(pipeline, stages)
+	pipeline, err = p.models.PipelineManager.UpdatePipeline(pipeline, stages)
 	if err != nil {
 		return &utils.Response{
 			Code: code.DBError,
@@ -154,7 +154,7 @@ func (p *ServicePipeline) Update(pipelineSer *serializers.PipelineSerializer, us
 }
 
 func (p *ServicePipeline) GetPipeline(pipelineId uint) *utils.Response {
-	pipeline, err := p.models.ManagerPipeline.Get(pipelineId)
+	pipeline, err := p.models.PipelineManager.Get(pipelineId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
@@ -162,7 +162,7 @@ func (p *ServicePipeline) GetPipeline(pipelineId uint) *utils.Response {
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
-	stages, err := p.models.ManagerPipeline.Stages(pipelineId)
+	stages, err := p.models.PipelineManager.Stages(pipelineId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
@@ -180,7 +180,7 @@ func (p *ServicePipeline) GetPipeline(pipelineId uint) *utils.Response {
 				} else {
 					pipeline.Triggers[i].WorkspaceName = w.Name
 				}
-				p, err := p.models.ManagerPipeline.Get(t.Pipeline)
+				p, err := p.models.PipelineManager.Get(t.Pipeline)
 				if err != nil {
 					if !errors.Is(err, gorm.ErrRecordNotFound) {
 						return &utils.Response{Code: code.DBError, Msg: err.Error()}
@@ -209,13 +209,13 @@ func (p *ServicePipeline) GetPipeline(pipelineId uint) *utils.Response {
 }
 
 func (p *ServicePipeline) ListPipeline(workspaceId uint) *utils.Response {
-	pipelines, err := p.models.ManagerPipeline.List(workspaceId)
+	pipelines, err := p.models.PipelineManager.List(workspaceId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: fmt.Sprintf("获取流水线列表错误: %v", err)}
 	}
 	var retData []map[string]interface{}
 	for _, pipeline := range pipelines {
-		lastPipelineRun, err := p.models.ManagerPipelineRun.GetLastPipelineRun(pipeline.ID)
+		lastPipelineRun, err := p.models.PipelineRunManager.GetLastPipelineRun(pipeline.ID)
 		if err != nil {
 			return &utils.Response{Code: code.DBError, Msg: fmt.Sprintf("获取流水线构建列表错误: %v", err)}
 		}

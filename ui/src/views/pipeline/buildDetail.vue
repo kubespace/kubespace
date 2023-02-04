@@ -149,7 +149,6 @@ export default {
         error: '#DC143C',
         doing: '#E6A23C'
       },
-      pipelines: [{name: "PIPELINE_CODE_COMMIT_ID", value: "https://github.com/openspacee/osp"}],
       mainContent: {
         type: "",
         mainStage: {},
@@ -238,13 +237,9 @@ export default {
       let url = `/api/v1/pipeline/build/${this.buildId}/sse`
       this.buildSSE = new EventSource(url);
       this.buildSSE.addEventListener('message', event => {
-          // console.log(event.data);
           if(event.data && event.data != "\n") {
-            let data = JSON.parse(event.data)
-            // console.log(data)
-            if(data.object) {
-              let obj = data.object
-              // console.log(obj)
+            let obj = JSON.parse(event.data)
+            if(obj) {
               if(obj.pipeline_run) {
                 this.$set(this.build, 'pipeline_run', obj.pipeline_run)
               }

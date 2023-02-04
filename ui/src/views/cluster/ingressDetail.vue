@@ -132,10 +132,7 @@
 
 <script>
 import { Clusterbar, Yaml } from '@/views/components'
-import { getIngress, deleteIngresses, updateIngress } from '@/api/ingress'
-// import { listEndpoints } from '@/api/endpoints'
-// import { listEvents, buildEvent } from '@/api/event'
-// import { listPods, containerClass, buildPods, podMatch, deletePods } from '@/api/pods'
+import { ResType, getResource, delResource, updateResource } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
 
 export default {
@@ -159,18 +156,18 @@ export default {
     this.fetchData()
   },
   watch: {
-    ingressWatch: function (newObj) {
-      if (newObj && this.originIngress) {
-        let newUid = newObj.resource.metadata.uid
-        if (newUid !== this.ingress.uid) {
-          return
-        }
-        let newRv = newObj.resource.metadata.resourceVersion
-        if (this.ingress.resource_version < newRv) {
-          this.originIngress = newObj.resource
-        }
-      }
-    },
+    // ingressWatch: function (newObj) {
+    //   if (newObj && this.originIngress) {
+    //     let newUid = newObj.resource.metadata.uid
+    //     if (newUid !== this.ingress.uid) {
+    //       return
+    //     }
+    //     let newRv = newObj.resource.metadata.resourceVersion
+    //     if (this.ingress.resource_version < newRv) {
+    //       this.originIngress = newObj.resource
+    //     }
+    //   }
+    // },
   },
   computed: {
     titleName: function() {
@@ -189,9 +186,9 @@ export default {
     cluster: function() {
       return this.$store.state.cluster
     },
-    ingressWatch: function() {
-      return this.$store.getters["ws/ingressesWatch"]
-    },
+    // ingressWatch: function() {
+    //   return this.$store.getters["ws/ingressesWatch"]
+    // },
   },
   methods: {
     fetchData: function() {
@@ -214,7 +211,7 @@ export default {
         this.loading = false
         return
       }
-      getIngress(cluster, this.namespace, this.ingressName).then(response => {
+      getResource(cluster, ResType.Ingress, this.namespace, this.ingressName).then(response => {
         // this.loading = false
         this.originIngress = response.data
         this.loading = false
@@ -255,7 +252,7 @@ export default {
       let params = {
         resources: ingresses
       }
-      deleteIngresses(cluster, params).then(() => {
+      delResource(cluster, ResType.Ingress, params).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)
@@ -274,7 +271,7 @@ export default {
       this.yamlValue = ""
       this.yamlDialog = true
       this.yamlLoading = true
-      getIngress(cluster, this.ingress.namespace, this.ingress.name, "yaml").then(response => {
+      getResource(cluster, ResType.Ingress, this.ingress.namespace, this.ingress.name, "yaml").then(response => {
         this.yamlLoading = false
         this.yamlValue = response.data
       }).catch(() => {
@@ -291,8 +288,7 @@ export default {
         Message.error("获取集群参数异常，请刷新重试")
         return
       }
-      console.log(this.yamlValue)
-      updateIngress(cluster, this.ingress.namespace, this.ingress.name, this.yamlValue).then(() => {
+      updateResource(cluster, ResType.Ingress, this.ingress.namespace, this.ingress.name, this.yamlValue).then(() => {
         Message.success("更新成功")
       }).catch(() => {
         // console.log(e) 

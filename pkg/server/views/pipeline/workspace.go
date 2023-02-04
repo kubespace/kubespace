@@ -3,6 +3,7 @@ package pipeline
 import (
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
+	"github.com/kubespace/kubespace/pkg/server/config"
 	"github.com/kubespace/kubespace/pkg/server/views"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	"github.com/kubespace/kubespace/pkg/service/pipeline"
@@ -19,10 +20,10 @@ type PipelineWorkspace struct {
 	workspaceService *pipeline.WorkspaceService
 }
 
-func NewPipelineWorkspace(models *model.Models) *PipelineWorkspace {
+func NewPipelineWorkspace(config *config.ServerConfig) *PipelineWorkspace {
 	pipelineWs := &PipelineWorkspace{
-		models:           models,
-		workspaceService: pipeline.NewWorkspaceService(models),
+		models:           config.Models,
+		workspaceService: config.ServiceFactory.Pipeline.WorkspaceService,
 	}
 	vs := []*views.View{
 		views.NewView(http.MethodGet, "", pipelineWs.list),
@@ -96,7 +97,7 @@ func (p *PipelineWorkspace) list(c *views.Context) *utils.Response {
 			continue
 		}
 		if ser.WithPipeline {
-			workspaces[i].Pipelines, err = p.models.ManagerPipeline.List(w.ID)
+			workspaces[i].Pipelines, err = p.models.PipelineManager.List(w.ID)
 			if err != nil {
 				return &utils.Response{Code: code.DBError, Msg: err.Error()}
 			}

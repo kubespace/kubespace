@@ -1,20 +1,26 @@
 package service
 
 import (
+	"github.com/kubespace/kubespace/pkg/informer"
+	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/service/cluster"
-	"github.com/kubespace/kubespace/pkg/service/config"
 	"github.com/kubespace/kubespace/pkg/service/pipeline"
 	"github.com/kubespace/kubespace/pkg/service/project"
 )
 
+type Config struct {
+	Models          *model.Models
+	InformerFactory informer.Factory
+}
+
 type Factory struct {
-	config   *config.ServiceConfig
+	config   *Config
 	Cluster  *ClusterFactory
 	Project  *ProjectFactory
 	Pipeline *PipelineFactory
 }
 
-func NewServiceFactory(config *config.ServiceConfig) *Factory {
+func NewServiceFactory(config *Config) *Factory {
 	kubeClient := cluster.NewKubeClient(config.Models)
 	appBase := project.NewAppBaseService(config.Models)
 	appService := project.NewAppService(kubeClient, appBase)
@@ -32,7 +38,7 @@ func NewServiceFactory(config *config.ServiceConfig) *Factory {
 		Pipeline: &PipelineFactory{
 			WorkspaceService:   pipeline.NewWorkspaceService(config.Models),
 			PipelineService:    pipeline.NewPipelineService(config.Models),
-			PipelineRunService: pipeline.NewPipelineRunService(config.Models, kubeClient),
+			PipelineRunService: pipeline.NewPipelineRunService(config.Models),
 		},
 	}
 }

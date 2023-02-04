@@ -175,6 +175,11 @@ export default {
       })()
     }
   },
+  watch: {
+    cluster: function() {
+      this.fetchData()
+    }
+  },
   computed: {
     pods: function() {
       let plist = []

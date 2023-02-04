@@ -85,7 +85,7 @@ export default {
       search_name: '',
       users: [],
       cellStyle: {border: 0},
-      maxHeight: window.innerHeight - 150,
+      maxHeight: window.innerHeight - this.$contentHeight,
       loading: true,
       pipelines: [],
       createClusterFormVisible: false,
@@ -106,7 +106,7 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150
+        let heightStyle = window.innerHeight - this.$contentHeight
         console.log(heightStyle)
         that.maxHeight = heightStyle
       })()

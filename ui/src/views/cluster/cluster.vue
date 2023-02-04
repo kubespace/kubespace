@@ -203,6 +203,11 @@ export default {
   created() {
     this.fetchData()
   },
+  watch: {
+    cluster: function() {
+      this.fetchData()
+    }
+  },
   computed: {
     events: function() {
       let dlist = []
@@ -214,6 +219,9 @@ export default {
       })
       return dlist
     },
+    cluster() {
+      return this.$store.state.cluster
+    }
   },
   methods: {
     fetchData: function() {

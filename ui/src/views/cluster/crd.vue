@@ -54,7 +54,7 @@
             <el-dropdown size="medium" >
               <el-link :underline="false"><svg-icon style="width: 1.3em; height: 1.3em;" icon-class="operate" /></el-link>
               <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item @click.native.prevent="nameClick(scope.row.name)">
+                <el-dropdown-item @click.native.prevent="nameClick(scope.row)">
                   <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="detail" />
                   <span style="margin-left: 5px;">详情</span>
                 </el-dropdown-item>
@@ -84,7 +84,7 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { listCrds, getCrd } from '@/api/crd'
+import { ResType, listResource, getResource } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
 
@@ -102,7 +102,7 @@ export default {
         yamlLoading: true,
         cellStyle: {border: 0},
         titleName: ["CRD"],
-        maxHeight: window.innerHeight - 150,
+        maxHeight: window.innerHeight - this.$contentHeight,
         loading: true,
         originCrds: [],
         search_ns: [],
@@ -118,13 +118,16 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150
+        let heightStyle = window.innerHeight - this.$contentHeight
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
     }
   },
   watch: {
+    cluster: function() {
+      this.fetchData()
+    }
   },
   computed: {
     crds: function() {
@@ -136,6 +139,9 @@ export default {
       }
       return dlist
     },
+    cluster() {
+      return this.$store.state.cluster
+    }
   },
   methods: {
     fetchData: function() {
@@ -143,7 +149,7 @@ export default {
       this.originCrds = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listCrds(cluster).then(response => {
+        listResource(cluster, ResType.CRD).then(response => {
           this.loading = false
           this.originCrds = response.data
         }).catch(() => {
@@ -174,7 +180,7 @@ export default {
       this.yamlValue = ""
       this.yamlDialog = true
       this.yamlLoading = true
-      getCrd(cluster, name, "yaml").then(response => {
+      getResource(cluster, ResType.CRD, "", name, "yaml").then(response => {
         this.yamlLoading = false
         this.yamlValue = response.data
         this.yamlName = name

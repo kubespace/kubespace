@@ -11,7 +11,7 @@ import (
 )
 
 var NetworkPolicyGVR = &schema.GroupVersionResource{
-	Group:    "networking",
+	Group:    "networking.k8s.io",
 	Version:  "v1",
 	Resource: "networkpolicies",
 }

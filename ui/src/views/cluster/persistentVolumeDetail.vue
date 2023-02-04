@@ -161,8 +161,7 @@
 
 <script>
 import { Clusterbar, Yaml } from '@/views/components'
-import { getPersistentVolume, updatePersistentVolume } from '@/api/persistent_volume'
-import { listEvents } from '@/api/event'
+import { ResType, listResource, getResource, updateResource } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
 
 export default {
@@ -202,7 +201,6 @@ export default {
       return this.$store.state.cluster
     },
     persistentVolume: function() {
-      console.log(this.originPersistentVolume)
       return this.originPersistentVolume
     },
   },
@@ -226,10 +224,10 @@ export default {
         this.eventLoading = false
         return
       }
-      getPersistentVolume(cluster, this.persistentVolumeName).then(response => {
+      getResource(cluster, ResType.PersistentVolume, "", this.persistentVolumeName).then(response => {
         this.loading = false
         this.originPersistentVolume = response.data
-        listEvents(cluster, this.originPersistentVolume.metadata.uid).then(response => {
+        listResource(cluster, ResType.Event, {kind: "PersistentVolume", name: this.persistentVolumeName}).then(response => {
           this.eventLoading = false
           if (response.data) {
             this.persistentVolumeEvents = response.data.length > 0 ? response.data : []
@@ -254,7 +252,7 @@ export default {
       this.yamlValue = ''
       this.yamlDialog = true
       this.yamlLoading = true
-      getPersistentVolume(cluster, this.persistentVolume.metadata.name, 'yaml')
+      getResource(cluster, ResType.PersistentVolume, "", this.persistentVolume.metadata.name, 'yaml')
         .then((response) => {
           this.yamlLoading = false
           this.yamlValue = response.data
@@ -273,7 +271,7 @@ export default {
         Message.error("获取集群参数异常，请刷新重试")
         return
       }
-      updatePersistentVolume(cluster, this.persistentVolumeName, this.yamlValue).then(() => {
+      updateResource(cluster, ResType.PersistentVolume, "", this.persistentVolumeName, this.yamlValue).then(() => {
         Message.success("更新成功")
       }).catch(() => {
         // console.log(e) 

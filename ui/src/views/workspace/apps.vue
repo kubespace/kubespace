@@ -565,7 +565,7 @@ export default {
             for(let i in this.originApps) {
               let app = this.originApps[i]
               if(app.name in mapStatus) {
-                this.$set(app, 'status', mapStatus[app.name].status)
+                this.$set(app, 'status', mapStatus[app.name].runtime_status)
                 // app.status = mapStatus[app.name].status
                 this.$set(this.originApps, i, app)
               }

@@ -161,7 +161,7 @@ export default {
       search_name: '',
       users: [],
       cellStyle: {border: 0},
-      maxHeight: window.innerHeight - 150,
+      maxHeight: window.innerHeight - this.$contentHeight,
       loading: true,
       clusters: [],
       createClusterFormVisible: false,
@@ -183,39 +183,39 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150
+        let heightStyle = window.innerHeight - this.$contentHeight
         console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
     }
   },
   watch: {
-    clusterWatch: function (newObj) {
-      if (newObj) {
-        let newName = newObj.resource.name
-        if (newObj.event === 'add') {
-          this.clusters.push(newObj.resource)
-        } else if (newObj.event === 'update') {
-          for (let i in this.clusters) {
-            let d = this.clusters[i]
-            if (d.name === newName) {
-              this.$set(this.clusters, i, newObj.resource)
-              break
-            }
-          }
-        } else if (newObj.event === 'delete') {
-          this.clusters = this.clusters.filter(( { name } ) => name !== newName)
-        }
-      }
-    }
+    // clusterWatch: function (newObj) {
+    //   if (newObj) {
+    //     let newName = newObj.resource.name
+    //     if (newObj.event === 'add') {
+    //       this.clusters.push(newObj.resource)
+    //     } else if (newObj.event === 'update') {
+    //       for (let i in this.clusters) {
+    //         let d = this.clusters[i]
+    //         if (d.name === newName) {
+    //           this.$set(this.clusters, i, newObj.resource)
+    //           break
+    //         }
+    //       }
+    //     } else if (newObj.event === 'delete') {
+    //       this.clusters = this.clusters.filter(( { name } ) => name !== newName)
+    //     }
+    //   }
+    // }
   },
   computed: {
     copyCluster() {
       return `curl -sk ${ this.locationAddr }/v1/import/${ this.clusterConnectToken } | kubectl apply -f -`;
     },
-    clusterWatch: function() {
-      return this.$store.getters["ws/globalClusterWatch"]
-    }
+    // clusterWatch: function() {
+    //   return this.$store.getters["ws/globalClusterWatch"]
+    // }
   },
   methods: {
     fetchData() {

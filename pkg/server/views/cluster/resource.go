@@ -3,6 +3,7 @@ package cluster
 import (
 	"github.com/gorilla/websocket"
 	"github.com/kubespace/kubespace/pkg/kubernetes/resource"
+	kubetypes "github.com/kubespace/kubespace/pkg/kubernetes/types"
 	"github.com/kubespace/kubespace/pkg/server/config"
 	"github.com/kubespace/kubespace/pkg/server/views"
 	"github.com/kubespace/kubespace/pkg/service/cluster"
@@ -38,11 +39,16 @@ func NewKubeResource(config *config.ServerConfig) *KubeResource {
 }
 
 func (p *KubeResource) list(c *views.Context) *utils.Response {
-	var ser resource.QueryParams
-	if err := c.ShouldBind(&ser); err != nil {
+	var params interface{}
+	if c.Param("resType") == kubetypes.CustomResourceType {
+		params = &resource.CustomResourceQueryParams{}
+	} else {
+		params = &resource.QueryParams{}
+	}
+	if err := c.ShouldBind(params); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	return p.client.List(c.Param("cluster"), c.Param("resType"), &ser)
+	return p.client.List(c.Param("cluster"), c.Param("resType"), params)
 }
 
 func (p *KubeResource) podExec(c *views.Context) *utils.Response {
@@ -92,16 +98,22 @@ func (p *KubeResource) podLog(c *views.Context) *utils.Response {
 }
 
 func (p *KubeResource) get(c *views.Context) *utils.Response {
-	var ser resource.QueryParams
-	if err := c.ShouldBindQuery(&ser); err != nil {
+	var params interface{}
+	if c.Param("resType") == kubetypes.CustomResourceType {
+		params = &resource.CustomResourceQueryParams{
+			Name:      c.Param("name"),
+			Namespace: c.Param("namespace"),
+		}
+	} else {
+		params = &resource.QueryParams{
+			Name:      c.Param("name"),
+			Namespace: c.Param("namespace"),
+		}
+	}
+	if err := c.ShouldBindQuery(params); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	reqParams := map[string]interface{}{
-		"name":      c.Param("name"),
-		"namespace": c.Param("namespace"),
-		"output":    ser.Output,
-	}
-	return p.client.Get(c.Param("cluster"), c.Param("resType"), reqParams)
+	return p.client.Get(c.Param("cluster"), c.Param("resType"), params)
 }
 
 func (p *KubeResource) watch(c *views.Context) *utils.Response {

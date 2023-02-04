@@ -13,15 +13,21 @@ export default {
     ScopeRole
   },
   data() {
-    let clusterId = parseInt(this.$store.state.cluster)
     return {
       scope: "cluster",
-      scopeId: clusterId,
-      maxHeight: window.innerHeight - 135,
+      maxHeight: window.innerHeight - this.$contentHeight,
 
     };
   },
+  watch: {
+    scopeId: function() {
+      this.fetchData()
+    }
+  },
   computed: {
+    scopeId() {
+      return parseInt(this.$store.state.cluster)
+    }
   },
   methods: {
     

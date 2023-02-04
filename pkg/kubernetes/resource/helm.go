@@ -18,6 +18,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	yamlutil "k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/yaml"
 	"strings"
@@ -27,13 +29,11 @@ import (
 
 type Helm struct {
 	*Resource
-	helmConfig *config.HelmConfig
 }
 
 func NewHelm(conf *config.KubeConfig) *Helm {
 	p := &Helm{
-		Resource:   NewResource(conf, "", nil, nil),
-		helmConfig: config.NewHelmConfig(conf),
+		Resource: NewResource(conf, "", nil, nil),
 	}
 	p.actions = map[string]ActionHandle{
 		types.ListAction:   p.List,
@@ -46,8 +46,18 @@ func NewHelm(conf *config.KubeConfig) *Helm {
 }
 
 func (h *Helm) actionConfig(namespace string) (*action.Configuration, error) {
+	insecure := true
+	configFlags := &genericclioptions.ConfigFlags{
+		Insecure:    &insecure,
+		Namespace:   &namespace,
+		APIServer:   utils.StringPtr(h.client.RestConfig().Host),
+		BearerToken: utils.StringPtr(h.client.RestConfig().BearerToken),
+		WrapConfigFn: func(rc *rest.Config) *rest.Config {
+			return h.client.RestConfig()
+		},
+	}
 	actionConfig := new(action.Configuration)
-	if err := actionConfig.Init(h.helmConfig, namespace, "", klog.Infof); err != nil {
+	if err := actionConfig.Init(configFlags, namespace, "", klog.Infof); err != nil {
 		return nil, err
 	}
 	return actionConfig, nil
@@ -138,15 +148,16 @@ func (h *Helm) Get(params interface{}) *utils.Response {
 		klog.Errorf("get release runtime namespace=%s name=%s error: %s", queryParams.Namespace, queryParams.Name, err.Error())
 	}
 	data = map[string]interface{}{
-		"objects":       state.Resources,
-		"name":          releaseDetail.Name,
-		"namespace":     releaseDetail.Namespace,
-		"version":       releaseDetail.Version,
-		"status":        state.Status,
-		"chart_name":    releaseDetail.Chart.Name() + "-" + releaseDetail.Chart.Metadata.Version,
-		"chart_version": releaseDetail.Chart.Metadata.Version,
-		"app_version":   releaseDetail.Chart.AppVersion(),
-		"last_deployed": releaseDetail.Info.LastDeployed,
+		"objects":        state.Resources,
+		"name":           releaseDetail.Name,
+		"namespace":      releaseDetail.Namespace,
+		"version":        releaseDetail.Version,
+		"status":         releaseDetail.Info.Status,
+		"runtime_status": state.Status,
+		"chart_name":     releaseDetail.Chart.Name() + "-" + releaseDetail.Chart.Metadata.Version,
+		"chart_version":  releaseDetail.Chart.Metadata.Version,
+		"app_version":    releaseDetail.Chart.AppVersion(),
+		"last_deployed":  releaseDetail.Info.LastDeployed,
 	}
 
 	return &utils.Response{Code: code.Success, Msg: "Success", Data: data}
@@ -195,14 +206,16 @@ func (h *Helm) GetReleaseRuntimeState(rel *release.Release, withResource bool) (
 	state := &ReleaseRuntimeState{
 		Name:      rel.Name,
 		Namespace: rel.Namespace,
-		Status:    ReleaseStatusRunningFault,
+		Status:    ReleaseStatusNotReady,
 	}
 	objects := h.GetReleaseObjects(rel)
 	for i, object := range objects {
 		switch object.GetKind() {
 		case "Deployment", "StatefulSet", "DaemonSet", "Job":
-			if err := h.addWorkloadObject(resources, object, rel.Namespace, withResource); err != nil {
+			if wr, err := h.addWorkloadObject(object, rel.Namespace, withResource); err != nil {
 				return state, err
+			} else {
+				resources = append(resources, wr...)
 			}
 		case "Pod":
 			if pod, err := h.client.Dynamic().Resource(*PodGVR).Namespace(rel.Namespace).Get(
@@ -272,34 +285,33 @@ func (h *Helm) isPodReady(pod *corev1.Pod) bool {
 }
 
 func (h *Helm) addWorkloadObject(
-	resources []*unstructured.Unstructured,
 	object *unstructured.Unstructured,
 	namespace string,
-	withResource bool) error {
+	withResource bool) (resources []*unstructured.Unstructured, err error) {
 	obj, err := h.client.Dynamic().Resource(*WorkloadGVRMap[object.GetKind()]).Namespace(namespace).Get(
 		context.Background(), object.GetName(), metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("get namespace %s workload %s/%s error: %s", namespace, object.GetKind(), object.GetName(), err.Error())
+		return nil, fmt.Errorf("get namespace %s workload %s/%s error: %s", namespace, object.GetKind(), object.GetName(), err.Error())
 	}
 	if withResource {
 		resources = append(resources, obj)
 	}
 	podLabels, ok, err := unstructured.NestedStringMap(obj.Object, "spec", "selector", "matchLabels")
 	if err != nil {
-		return fmt.Errorf("get namespace %s workload %s/%s labels error: %s", namespace, object.GetKind(), object.GetName(), err.Error())
+		return nil, fmt.Errorf("get namespace %s workload %s/%s labels error: %s", namespace, object.GetKind(), object.GetName(), err.Error())
 	}
 	if !ok {
-		return fmt.Errorf("get namespace %s workload %s/%s labels error", namespace, object.GetKind(), object.GetName())
+		return nil, fmt.Errorf("get namespace %s workload %s/%s labels error", namespace, object.GetKind(), object.GetName())
 	}
 	pods, err := h.client.Dynamic().Resource(*PodGVR).Namespace(namespace).List(
 		context.Background(), metav1.ListOptions{LabelSelector: labels.Set(podLabels).AsSelector().String()})
 	if err != nil {
-		return fmt.Errorf("get namespace %s workload %s/%s pods error: %s", namespace, object.GetKind(), object.GetName(), err.Error())
+		return nil, fmt.Errorf("get namespace %s workload %s/%s pods error: %s", namespace, object.GetKind(), object.GetName(), err.Error())
 	}
 	for idx := range pods.Items {
 		resources = append(resources, &pods.Items[idx])
 	}
-	return nil
+	return resources, nil
 }
 
 type HelmObjectParams struct {

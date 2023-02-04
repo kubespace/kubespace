@@ -22,18 +22,20 @@ type RedisStorage struct {
 	watchErrCh chan error
 	resyncSec  int
 	listFunc   ListFunc
+	filterFunc FilterFunc
 	stopCh     chan struct{}
 	stopped    bool
 	dataType   datatype.DataType
 }
 
-func NewRedisStorage(redisClient *redis.Client, watchKey string, listFunc ListFunc, resyncSec int, dataType datatype.DataType) Storage {
+func NewRedisStorage(redisClient *redis.Client, watchKey string, listFunc ListFunc, filterFunc FilterFunc, resyncSec int, dataType datatype.DataType) Storage {
 	return &RedisStorage{
 		client:     redisClient,
 		watchKey:   watchKey,
 		resultChan: make(chan interface{}),
 		watchErrCh: make(chan error),
 		listFunc:   listFunc,
+		filterFunc: filterFunc,
 		resyncSec:  resyncSec,
 		stopCh:     make(chan struct{}),
 		dataType:   dataType,
@@ -85,14 +87,14 @@ func (r *RedisStorage) watch() {
 			if r.stopped {
 				break
 			}
-			// 这里还需要再思考下，watch失败不退出，让list还能维持工作
+			// 这里还需要再考虑下，watch失败不退出，让list还能维持工作
 			r.watchErrCh <- err
 			return
 		}
 		obj, err := r.dataType.Unmarshal([]byte(data.Payload))
 		if err != nil {
 			klog.Errorf("unmarshal receive message to data type error: %s, datatye=%v, message=%s", err.Error(), r.dataType, data.Payload)
-		} else {
+		} else if r.filterFunc(obj) {
 			r.resultChan <- obj
 		}
 	}

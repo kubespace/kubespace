@@ -222,9 +222,6 @@
 <script>
 import { Clusterbar } from '@/views/components'
 import { ResType, listResource, getResource, delResource, updateResource, createResource } from '@/api/cluster/resource'
-import { listServices, getService, deleteServices, updateService } from '@/api/service'
-import { createYaml } from '@/api/cluster'
-import { listNamespace } from '@/api/namespace'
 import { projectLabels } from '@/api/project/project'
 import { Message } from 'element-ui'
 import yaml from 'js-yaml'
@@ -283,31 +280,9 @@ export default {
     }
   },
   watch: {
-    // servicesWatch: function (newObj) {
-    //   if (newObj) {
-    //     let newUid = newObj.resource.metadata.uid
-    //     let newRv = newObj.resource.metadata.resourceVersion
-    //     if (newObj.event === 'add') {
-    //       this.originServices.push(this.buildServices(newObj.resource))
-    //     } else if (newObj.event === 'update') {
-    //       for (let i in this.originServices) {
-    //         let d = this.originServices[i]
-    //         if (d.uid === newUid) {
-    //           if (d.resource_version < newRv){
-    //             let newDp = this.buildServices(newObj.resource)
-    //             this.$set(this.originServices, i, newDp)
-    //           }
-    //           break
-    //         }
-    //       }
-    //     } else if (newObj.event === 'delete') {
-    //       this.originServices = this.originServices.filter(( { uid } ) => uid !== newUid)
-    //     }
-    //   }
-    // },
-    // cluster: function() {
-    //   this.fetchData()
-    // }
+    cluster: function() {
+      this.fetchData()
+    }
   },
   computed: {
     services: function() {
@@ -338,7 +313,7 @@ export default {
       this.loading = true
       const cluster = this.$store.state.cluster
       let params = {namespace: this.namespace}
-      if(this.projectId) params['labels'] = projectLabels()
+      if(this.projectId) params['label_selector'] = {"matchLabels": projectLabels()}
       if (cluster) {
         listResource(cluster, ResType.Service, params).then(response => {
           this.loading = false

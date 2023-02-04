@@ -2,7 +2,6 @@ package pipeline
 
 import (
 	"errors"
-	"github.com/kubespace/kubespace/pkg/core/conf"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"gorm.io/gorm"
 	"k8s.io/klog/v2"
@@ -40,7 +39,7 @@ var BuiltinPlugins = []types.PipelinePlugin{
 		Name:    "构建代码镜像",
 		Key:     types.BuiltinPluginBuildCodeToImage,
 		Version: "1.0",
-		Url:     conf.AppConfig.PipelinePluginUrl + "/" + types.BuiltinPluginBuildCodeToImage,
+		Url:     types.PipelinePluginBuiltinUrl,
 		Params: types.PipelinePluginParams{
 			Params: []*types.PipelinePluginParamsSpec{
 				{
@@ -144,7 +143,7 @@ var BuiltinPlugins = []types.PipelinePlugin{
 		Name:    "执行shell脚本",
 		Key:     types.BuiltinPluginExecuteShell,
 		Version: "1.0",
-		Url:     conf.AppConfig.PipelinePluginUrl + "/" + types.BuiltinPluginExecuteShell,
+		Url:     types.PipelinePluginBuiltinUrl,
 		Params: types.PipelinePluginParams{
 			Params: []*types.PipelinePluginParamsSpec{
 				{
@@ -218,7 +217,7 @@ var BuiltinPlugins = []types.PipelinePlugin{
 		Name:    "版本发布",
 		Key:     types.BuiltinPluginRelease,
 		Version: "1.0",
-		Url:     conf.AppConfig.PipelinePluginUrl + "/" + types.BuiltinPluginRelease,
+		Url:     types.PipelinePluginBuiltinUrl,
 		Params: types.PipelinePluginParams{
 			Params: []*types.PipelinePluginParamsSpec{
 				{
@@ -330,12 +329,7 @@ func (p *ManagerPipelinePlugin) Init() {
 				return
 			}
 		}
-		url := plugin.Url
-		if url != types.PipelinePluginBuiltinUrl {
-			url = conf.AppConfig.PipelinePluginUrl + "/" + plugin.Key
-		}
-		if dbPlugin.ID == 0 || dbPlugin.Version != plugin.Version || dbPlugin.Url != url {
-			plugin.Url = url
+		if dbPlugin.ID == 0 || dbPlugin.Version != plugin.Version {
 			plugin.UpdateTime = now
 			if dbPlugin.ID == 0 {
 				plugin.CreateTime = now

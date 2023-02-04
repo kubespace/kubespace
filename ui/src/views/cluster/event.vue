@@ -12,7 +12,6 @@
         v-loading="loading"
         :cell-style="cellStyle"
         :default-sort = "{prop: 'event_time', order: 'descending'}"
-        @selection-change="handleSelectionChange"
         row-key="uid"
         >
         <!-- <el-table-column
@@ -119,6 +118,7 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
+import { ResType, listResource, watchResource } from '@/api/cluster/resource'
 import { listEvents, buildEvent } from '@/api/event'
 import { Message } from 'element-ui'
 // import { Yaml } from '@/views/components'
@@ -138,50 +138,35 @@ export default {
         // yamlLoading: true,
         cellStyle: {border: 0},
         titleName: ["Events"],
-        maxHeight: window.innerHeight - 150,
+        maxHeight: window.innerHeight - this.$contentHeight,
         loading: true,
         originEvents: [],
         search_ns: [],
         search_name: '',
         delFunc: undefined,
         delEvents: [],
+        clusterSSE: undefined
       }
   },
   created() {
     this.fetchData()
   },
+  beforeDestroy() {
+    if(this.clusterSSE) this.clusterSSE.disconnect()
+  },
   mounted() {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150
+        let heightStyle = window.innerHeight - this.$contentHeight
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
     }
   },
   watch: {
-    eventsWatch: function (newObj) {
-      if (newObj) {
-        let newUid = newObj.resource.metadata.uid
-        let newRv = newObj.resource.metadata.resourceVersion
-        if (newObj.event === 'add') {
-          this.originEvents.push(buildEvent(newObj.resource))
-        } else if (newObj.event === 'update') {
-          for (let i in this.originEvents) {
-            let d = this.originEvents[i]
-            if (d.uid === newUid) {
-              if (d.resource_version < newRv){
-                let newDp = buildEvent(newObj.resource)
-                this.$set(this.originEvents, i, newDp)
-              }
-              break
-            }
-          }
-        } else if (newObj.event === 'delete') {
-          this.originEvents = this.originEvents.filter(( { uid } ) => uid !== newUid)
-        }
-      }
+    cluster: function() {
+      this.fetchData()
     }
   },
   computed: {
@@ -195,8 +180,8 @@ export default {
       }
       return dlist
     },
-    eventsWatch: function() {
-      return this.$store.getters["ws/eventsWatch"]
+    cluster() {
+      return this.$store.state.cluster
     }
   },
   methods: {
@@ -205,15 +190,48 @@ export default {
       this.originEvents = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listEvents(cluster).then(response => {
+        listResource(cluster, ResType.Event).then(response => {
           this.loading = false
           this.originEvents = response.data ? response.data : []
+          this.fetchSSE()
         }).catch(() => {
           this.loading = false
         })
       } else {
         this.loading = false
         Message.error("获取集群异常，请刷新重试")
+      }
+    },
+    fetchSSE() {
+      if(!this.clusterSSE) {
+        this.clusterSSE = watchResource(this.$sse, this.cluster, ResType.Event, this.sseWatch, {process: true})
+      }
+    },
+    sseWatch(newObj) {
+      if (newObj) {
+        console.log(newObj)
+        let newUid = newObj.resource.uid
+        let newRv = newObj.resource.resource_version
+        if (newObj.event === 'add') {
+          for(let i in this.originEvents) {
+            let d = this.originEvents[i]
+            if (d.uid === newUid) return
+          }
+          this.originEvents.push(newObj.resource)
+        } else if (newObj.event === 'update') {
+          for (let i in this.originEvents) {
+            let d = this.originEvents[i]
+            if (d.uid === newUid) {
+              if (d.resource_version < newRv){
+                let newDp = newObj.resource
+                this.$set(this.originEvents, i, newDp)
+              }
+              break
+            }
+          }
+        } else if (newObj.event === 'delete') {
+          this.originEvents = this.originEvents.filter(( { uid } ) => uid !== newUid)
+        }
       }
     },
     nsSearch: function(vals) {

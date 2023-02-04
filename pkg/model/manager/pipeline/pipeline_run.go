@@ -2,10 +2,10 @@ package pipeline
 
 import (
 	"errors"
-	"fmt"
-	"github.com/kubespace/kubespace/pkg/kube_resource"
+	"github.com/kubespace/kubespace/pkg/informer/listwatcher"
+	listwatcherconfig "github.com/kubespace/kubespace/pkg/informer/listwatcher/config"
+	"github.com/kubespace/kubespace/pkg/informer/listwatcher/pipeline"
 	"github.com/kubespace/kubespace/pkg/model/types"
-	"github.com/kubespace/kubespace/pkg/sse"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"gorm.io/gorm"
 	"k8s.io/klog/v2"
@@ -14,13 +14,17 @@ import (
 )
 
 type ManagerPipelineRun struct {
-	DB            *gorm.DB
-	PluginManager *ManagerPipelinePlugin
-	middleMessage *kube_resource.MiddleMessage
+	DB                     *gorm.DB
+	PluginManager          *ManagerPipelinePlugin
+	pipelineRunListWatcher listwatcher.Interface
 }
 
-func NewPipelineRunManager(db *gorm.DB, pluginManager *ManagerPipelinePlugin, middleMessage *kube_resource.MiddleMessage) *ManagerPipelineRun {
-	return &ManagerPipelineRun{DB: db, PluginManager: pluginManager, middleMessage: middleMessage}
+func NewPipelineRunManager(db *gorm.DB, pluginManager *ManagerPipelinePlugin, listwatcherConfig *listwatcherconfig.ListWatcherConfig) *ManagerPipelineRun {
+	return &ManagerPipelineRun{
+		DB:                     db,
+		PluginManager:          pluginManager,
+		pipelineRunListWatcher: pipeline.NewPipelineRunListWatcher(listwatcherConfig, nil),
+	}
 }
 
 func (p *ManagerPipelineRun) ListPipelineRun(pipelineId uint, lastBuildNumber int, status string, limit int) ([]types.PipelineRun, error) {
@@ -95,6 +99,9 @@ func (p *ManagerPipelineRun) CreatePipelineRun(pipelineRun *types.PipelineRun, s
 	if err != nil {
 		return nil, err
 	}
+	if notifyErr := p.pipelineRunListWatcher.Notify(pipelineRun); notifyErr != nil {
+		klog.Errorf("notify pipelineRun object error: %s", notifyErr.Error())
+	}
 	return pipelineRun, nil
 }
 
@@ -104,7 +111,7 @@ func (p *ManagerPipelineRun) GetStageRunJobs(stageRunId uint) (types.PipelineRun
 		return nil, err
 	}
 	var stageRunJobs types.PipelineRunJobs
-	for i, _ := range runJobs {
+	for i := range runJobs {
 		stageRunJobs = append(stageRunJobs, &runJobs[i])
 	}
 	return stageRunJobs, nil
@@ -199,7 +206,7 @@ func (p *ManagerPipelineRun) UpdateStageRun(stageRun *types.PipelineRunStage) er
 	if err = p.DB.First(&pipelineRun, stageRun.PipelineRunId).Error; err != nil {
 		return err
 	}
-	p.StreamPipelineRun(&pipelineRun)
+	//p.StreamPipelineRun(&pipelineRun)
 	return err
 }
 
@@ -208,7 +215,7 @@ func (p *ManagerPipelineRun) UpdateStageJobRunParams(stageRun *types.PipelineRun
 		if err := p.DB.Select("custom_params").Save(stageRun).Error; err != nil {
 			return err
 		}
-		for i, _ := range jobRuns {
+		for i := range jobRuns {
 			if err := p.DB.Select("params").Save(jobRuns[i]).Error; err != nil {
 				return err
 			}
@@ -261,6 +268,7 @@ func (p *ManagerPipelineRun) GetStageRunEnv(stageRun *types.PipelineRunStage) ty
 type UpdateStageObj struct {
 	StageRunId     uint
 	StageRunStatus string
+	StageExecTime  *time.Time
 	StageRunJobs   types.PipelineRunJobs
 }
 
@@ -289,6 +297,9 @@ func (p *ManagerPipelineRun) UpdatePipelineStageRun(updateStageObj *UpdateStageO
 				}
 			}
 		}
+		if updateStageObj.StageExecTime != nil {
+			stageRun.ExecTime = *updateStageObj.StageExecTime
+		}
 
 		if updateStageObj.StageRunStatus != "" {
 			stageRun.Status = updateStageObj.StageRunStatus
@@ -298,7 +309,7 @@ func (p *ManagerPipelineRun) UpdatePipelineStageRun(updateStageObj *UpdateStageO
 				return err
 			}
 			stageRun.Jobs = types.PipelineRunJobs{}
-			for i, _ := range runJobs {
+			for i := range runJobs {
 				stageRun.Jobs = append(stageRun.Jobs, &runJobs[i])
 			}
 			stageRun.Status = p.GetStageRunStatus(&stageRun)
@@ -312,7 +323,7 @@ func (p *ManagerPipelineRun) UpdatePipelineStageRun(updateStageObj *UpdateStageO
 		}
 		if stageRun.Status == types.PipelineStatusError {
 			pipelineRun.Status = types.PipelineStatusError
-		} else if stageRun.Status == types.PipelineStatusDoing {
+		} else if stageRun.Status == types.PipelineStatusDoing || stageRun.Status == types.PipelineStatusWait {
 			pipelineRun.Status = types.PipelineStatusDoing
 		} else if stageRun.Status == types.PipelineStatusOK {
 			pipelineRun.Status = types.PipelineStatusDoing
@@ -333,7 +344,9 @@ func (p *ManagerPipelineRun) UpdatePipelineStageRun(updateStageObj *UpdateStageO
 	if err != nil {
 		return nil, nil, err
 	}
-	p.StreamPipelineRun(&pipelineRun)
+	if notifyErr := p.pipelineRunListWatcher.Notify(pipelineRun); notifyErr != nil {
+		klog.Warningf("notify pipeline run error: %s", notifyErr.Error())
+	}
 	return &pipelineRun, &stageRun, nil
 }
 
@@ -342,24 +355,10 @@ func (p *ManagerPipelineRun) UpdatePipelineRun(pipelineRun *types.PipelineRun) e
 	if err := p.DB.Save(pipelineRun).Error; err != nil {
 		return err
 	}
-	p.StreamPipelineRun(pipelineRun)
-	return nil
-}
-
-func (p *ManagerPipelineRun) StreamPipelineRun(pipelineRun *types.PipelineRun) {
-	stageRuns, _ := p.StagesRun(pipelineRun.ID)
-	event := sse.Event{
-		Labels: map[string]string{
-			sse.EventLabelType:       sse.EventTypePipelineRun,
-			sse.EventTypePipelineRun: fmt.Sprintf("%d", pipelineRun.ID),
-			sse.EventTypePipeline:    fmt.Sprintf("%d", pipelineRun.PipelineId),
-		},
-		Object: map[string]interface{}{
-			"pipeline_run": pipelineRun,
-			"stages_run":   stageRuns,
-		},
+	if notifyErr := p.pipelineRunListWatcher.Notify(pipelineRun); notifyErr != nil {
+		klog.Warningf("notify pipeline run error: %s", notifyErr.Error())
 	}
-	p.middleMessage.SendGlobalWatch(event)
+	return nil
 }
 
 func (p *ManagerPipelineRun) GetEnvBeforeStageRun(stageRun *types.PipelineRunStage) (envs map[string]interface{}, err error) {

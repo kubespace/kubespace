@@ -2,6 +2,7 @@ package project
 
 import (
 	"github.com/kubespace/kubespace/pkg/model"
+	"github.com/kubespace/kubespace/pkg/server/config"
 	"github.com/kubespace/kubespace/pkg/server/views"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	"github.com/kubespace/kubespace/pkg/service/project"
@@ -19,10 +20,10 @@ type ProjectApp struct {
 	models     *model.Models
 }
 
-func NewProjectApp(models *model.Models, appService *project.AppService) *ProjectApp {
+func NewProjectApp(config *config.ServerConfig) *ProjectApp {
 	app := &ProjectApp{
-		AppService: appService,
-		models:     models,
+		AppService: config.ServiceFactory.Project.AppService,
+		models:     config.Models,
 	}
 	vs := []*views.View{
 		views.NewView(http.MethodGet, "", app.listApps),

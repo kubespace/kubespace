@@ -179,8 +179,7 @@ func (c *Cluster) Get(params interface{}) *utils.Response {
 	return &utils.Response{Code: code.Success, Msg: "Success", Data: bc}
 }
 
-func (c *Cluster) WorkspaceOverview(query *ClusterQueryParams) *utils.Response {
-	queryParams := &ClusterQueryParams{}
+func (c *Cluster) WorkspaceOverview(queryParams *ClusterQueryParams) *utils.Response {
 	if queryParams.Namespace == "" {
 		return &utils.Response{Code: code.ParamsError, Msg: "参数namespace为空"}
 	}

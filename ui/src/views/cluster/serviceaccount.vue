@@ -26,9 +26,7 @@
           min-width="25"
           show-overflow-tooltip>
           <template slot-scope="scope">
-            <span class="name-class" v-on:click="nameClick(scope.row.namespace, scope.row.name)">
               {{ scope.row.name }}
-            </span>
           </template>
         </el-table-column>
         <el-table-column
@@ -65,10 +63,10 @@
             <el-dropdown size="medium" >
               <el-link :underline="false"><svg-icon style="width: 1.3em; height: 1.3em;" icon-class="operate" /></el-link>
               <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item @click.native.prevent="nameClick(scope.row.namespace, scope.row.name)">
+                <!-- <el-dropdown-item @click.native.prevent="nameClick(scope.row.namespace, scope.row.name)">
                   <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="detail" />
                   <span style="margin-left: 5px;">详情</span>
-                </el-dropdown-item>
+                </el-dropdown-item> -->
                 <el-dropdown-item v-if="$editorRole()" @click.native.prevent="getServiceAccountYaml(scope.row.namespace, scope.row.name)">
                   <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="edit" />
                   <span style="margin-left: 5px;">修改</span>
@@ -95,7 +93,7 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { listServiceAccounts, getServiceAccount, deleteServiceAccounts, updateServiceAccount } from '@/api/serviceaccount'
+import { ResType, listResource, getResource, delResource, updateResource } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
 
@@ -113,8 +111,8 @@ export default {
         yamlValue: "",
         yamlLoading: true,
         cellStyle: {border: 0},
-        titleName: ["Service Accounts"],
-        maxHeight: window.innerHeight - 150,
+        titleName: ["ServiceAccounts"],
+        maxHeight: window.innerHeight - this.$contentHeight,
         loading: true,
         originServiceAccounts: [],
         search_ns: [],
@@ -126,38 +124,19 @@ export default {
   created() {
     this.fetchData()
   },
+  watch: {
+    cluster: function() {
+      this.fetchData()
+    }
+  },
   mounted() {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150
+        let heightStyle = window.innerHeight - this.$contentHeight
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
-    }
-  },
-  watch: {
-    serviceaccountsWatch: function (newObj) {
-      if (newObj) {
-        let newUid = newObj.resource.metadata.uid
-        let newRv = newObj.resource.metadata.resourceVersion
-        if (newObj.event === 'add') {
-          this.originServiceAccounts.push(this.buildServiceAccounts(newObj.resource))
-        } else if (newObj.event === 'update') {
-          for (let i in this.originServiceAccounts) {
-            let d = this.originServiceAccounts[i]
-            if (d.uid === newUid) {
-              if (d.resource_version < newRv){
-                let newDp = this.buildServiceAccounts(newObj.resource)
-                this.$set(this.originServiceAccounts, i, newDp)
-              }
-              break
-            }
-          }
-        } else if (newObj.event === 'delete') {
-          this.originServiceAccounts = this.originServiceAccounts.filter(( { uid } ) => uid !== newUid)
-        }
-      }
     }
   },
   computed: {
@@ -171,8 +150,8 @@ export default {
       }
       return dlist
     },
-    serviceaccountsWatch: function() {
-      return this.$store.getters["ws/serviceaccountsWatch"]
+    cluster() {
+      return this.$store.state.cluster
     }
   },
   methods: {
@@ -181,7 +160,7 @@ export default {
       this.originServiceAccounts = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listServiceAccounts(cluster).then(response => {
+        listResource(cluster, ResType.ServiceAccount).then(response => {
           this.loading = false
           this.originServiceAccounts = response.data
         }).catch(() => {
@@ -235,7 +214,7 @@ export default {
       this.yamlValue = ""
       this.yamlDialog = true
       this.yamlLoading = true
-      getServiceAccount(cluster, namespace, name, "yaml").then(response => {
+      getResource(cluster, ResType.ServiceAccount, namespace, name, "yaml").then(response => {
         this.yamlLoading = false
         this.yamlValue = response.data
         this.yamlNamespace = namespace
@@ -257,7 +236,7 @@ export default {
       let params = {
         resources: serviceaccounts
       }
-      deleteServiceAccounts(cluster, params).then(() => {
+      delResource(cluster, ResType.ServiceAccount, params).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)
@@ -277,8 +256,7 @@ export default {
         Message.error("获取ServiceAccount参数异常，请刷新重试")
         return
       }
-      console.log(this.yamlValue)
-      updateServiceAccount(cluster, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
+      updateResource(cluster, ResType.ServiceAccount, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
         Message.success("更新成功")
       }).catch(() => {
         // console.log(e) 

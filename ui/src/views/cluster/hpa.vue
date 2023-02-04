@@ -174,6 +174,11 @@ export default {
   created() {
     this.fetchData()
   },
+  watch: {
+    cluster: function() {
+      this.fetchData()
+    }
+  },
   mounted() {
     const that = this
     window.onresize = () => {
@@ -195,6 +200,9 @@ export default {
       }
       return dlist
     },
+    cluster() {
+      return this.$store.state.cluster
+    }
   },
   methods: {
     nameClick: function(namespace, name) {
@@ -228,34 +236,6 @@ export default {
         Message.error("获取集群异常，请刷新重试")
       }
     },
-    // getHpaYaml: function(namespace, name) {
-    //   const cluster = this.$store.state.cluster
-    //   console.log('xxxxxxx', namespace, name)
-    //   if (!cluster) {
-    //     Message.error('获取集群参数异常，请刷新重试')
-    //     return
-    //   }
-    //   if (!namespace) {
-    //     Message.error('获取命名空间参数异常，请刷新重试')
-    //     return
-    //   }
-    //   if (!name) {
-    //     Message.error('获取Hpa名称参数异常，请刷新重试')
-    //     return
-    //   }
-    //   this.yamlLoading = true
-    //   this.yamlDialog = true
-    //   getHpa(cluster, namespace, name, 'yaml')
-    //     .then((response) => {
-    //       this.yamlLoading = false
-    //       this.yamlValue = response.data
-    //       this.yamlNamespace = namespace
-    //       this.yamlName = name
-    //     })
-    //     .catch(() => {
-    //       this.yamlLoading = false
-    //     })
-    // },
   }
 }
 </script>

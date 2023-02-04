@@ -6,9 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	runtimeYaml "k8s.io/apimachinery/pkg/runtime/serializer/yaml"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/discovery/cached/memory"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 )
 
@@ -43,27 +41,4 @@ func NewKubeConfig(options *Options) (c *KubeConfig, err error) {
 		DecUnstructured: runtimeYaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme),
 		RestMapper:      restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(client.Discovery())),
 	}, nil
-}
-
-type HelmConfig struct {
-	*genericclioptions.ConfigFlags
-	client kubeclient.Client
-}
-
-func NewHelmConfig(c *KubeConfig) *HelmConfig {
-	h := &HelmConfig{
-		client:      c.Client,
-		ConfigFlags: genericclioptions.NewConfigFlags(false),
-	}
-	insecure := true
-	h.Insecure = &insecure
-	return h
-}
-
-func (f *HelmConfig) ToRESTConfig() (*rest.Config, error) {
-	c := f.client.RestConfig()
-	if f.WrapConfigFn != nil {
-		return f.WrapConfigFn(c), nil
-	}
-	return c, nil
 }

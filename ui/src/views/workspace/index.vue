@@ -103,7 +103,7 @@
 import { Clusterbar } from "@/views/components";
 import { createProject, cloneProject, listProjects, updateProject, deleteProject } from "@/api/project/project";
 import { listCluster } from '@/api/cluster'
-import { listNamespace } from '@/api/namespace'
+import { ResType, listResource } from '@/api/cluster/resource'
 import { Message } from "element-ui";
 
 export default {
@@ -317,7 +317,7 @@ export default {
       this.namespaces = []
       const cluster = this.form.cluster_id
       if (cluster) {
-        listNamespace(cluster).then(response => {
+        listResource(cluster, ResType.Namespace).then(response => {
           this.namespaces = response.data
           this.namespaces.sort((a, b) => {return a.name > b.name ? 1 : -1})
         }).catch((err) => {

@@ -1,5 +1,5 @@
 <template>
-  <div class="yaml-editor" :style="'--yamlHeight: ' + yamlHeight + 'px'" >
+  <div v-loading="loading" class="yaml-editor" :style="'--yamlHeight: ' + yamlHeight + 'px'" >
     <textarea ref="textarea" />
   </div>
 </template>

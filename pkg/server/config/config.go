@@ -6,7 +6,6 @@ import (
 	listwatcherconfig "github.com/kubespace/kubespace/pkg/informer/listwatcher/config"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/service"
-	"github.com/kubespace/kubespace/pkg/service/config"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"time"
 )
@@ -16,6 +15,8 @@ type ServerConfig struct {
 	Port            int
 	CertFilePath    string
 	KeyFilePath     string
+	AgentVersion    string
+	AgentRepository string
 	DB              *db.DB
 	Models          *model.Models
 	InformerFactory informer.Factory
@@ -57,18 +58,20 @@ func NewServerConfig(op *ServerOptions) (*ServerConfig, error) {
 	}
 	listWatcherConfig := listwatcherconfig.NewListWatcherConfig(dB, op.ListWatcherResyncSec)
 	models, err := model.NewModels(&model.Config{
-		Db:                dB,
+		DB:                dB,
 		ListWatcherConfig: listWatcherConfig,
 	})
 	if err != nil {
 		return nil, err
 	}
 	informerFactory := informer.NewInformerFactory(models.ListWatcherConfig)
-	serviceFactory := service.NewServiceFactory(&config.ServiceConfig{
+	serviceFactory := service.NewServiceFactory(&service.Config{
 		Models:          models,
 		InformerFactory: informerFactory,
 	})
 	return &ServerConfig{
+		AgentVersion:    op.AgentVersion,
+		AgentRepository: op.AgentRepository,
 		DB:              dB,
 		InsecurePort:    op.InsecurePort,
 		Port:            op.Port,

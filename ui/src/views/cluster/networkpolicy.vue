@@ -90,9 +90,10 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { listNetworkPolicies, getNetworkPolicy, deleteNetworkPolicies, updateNetworkPolicy } from '@/api/networkpolicy'
+import { ResType, getResource, delResource, updateResource } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
+import { listResource } from '../../api/cluster/resource'
 
 export default {
   name: 'NetworkPolicy',
@@ -132,27 +133,8 @@ export default {
     }
   },
   watch: {
-    networkpoliciesWatch: function (newObj) {
-      if (newObj) {
-        let newUid = newObj.resource.metadata.uid
-        let newRv = newObj.resource.metadata.resourceVersion
-        if (newObj.event === 'add') {
-          this.originNetworkPolicies.push(this.buildNetworkPolicies(newObj.resource))
-        } else if (newObj.event === 'update') {
-          for (let i in this.originNetworkPolicies) {
-            let d = this.originNetworkPolicies[i]
-            if (d.uid === newUid) {
-              if (d.resource_version < newRv){
-                let newDp = this.buildNetworkPolicies(newObj.resource)
-                this.$set(this.originNetworkPolicies, i, newDp)
-              }
-              break
-            }
-          }
-        } else if (newObj.event === 'delete') {
-          this.originNetworkPolicies = this.originNetworkPolicies.filter(( { uid } ) => uid !== newUid)
-        }
-      }
+    cluster: function() {
+      this.fetchData()
     }
   },
   computed: {
@@ -170,8 +152,8 @@ export default {
       }
       return dlist
     },
-    networkpoliciesWatch: function() {
-      return this.$store.getters["ws/networkpoliciesWatch"]
+    cluster() {
+      return this.$store.state.cluster
     }
   },
   methods: {
@@ -180,7 +162,7 @@ export default {
       this.originNetworkPolicies = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listNetworkPolicies(cluster).then(response => {
+        listResource(cluster, ResType.NetworkPolicy).then(response => {
           this.loading = false
           this.originNetworkPolicies = response.data ? response.data : []
         }).catch(() => {
@@ -234,7 +216,7 @@ export default {
       this.yamlValue = ""
       this.yamlDialog = true
       this.yamlLoading = true
-      getNetworkPolicy(cluster, namespace, name, "yaml").then(response => {
+      getResource(cluster, ResType.NetworkPolicy, namespace, name, "yaml").then(response => {
         this.yamlLoading = false
         this.yamlValue = response.data
         this.yamlNamespace = namespace
@@ -256,7 +238,7 @@ export default {
       let params = {
         resources: networkpolicies
       }
-      deleteNetworkPolicies(cluster, params).then(() => {
+      delResource(cluster, ResType.NetworkPolicy, params).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)
@@ -277,7 +259,7 @@ export default {
         return
       }
       // console.log(this.yamlValue)
-      updateNetworkPolicy(cluster, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
+      updateResource(cluster, ResType.NetworkPolicy, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
         Message.success("更新成功")
       }).catch(() => {
         // console.log(e) 

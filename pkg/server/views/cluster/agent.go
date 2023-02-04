@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/kubespace/kubespace/pkg/core/conf"
 	"github.com/kubespace/kubespace/pkg/informer"
 	"github.com/kubespace/kubespace/pkg/informer/listwatcher/cluster"
 	kubetypes "github.com/kubespace/kubespace/pkg/kubernetes/types"
@@ -32,12 +31,16 @@ func resolveHost(r *http.Request) (host string) {
 type AgentViews struct {
 	models          *model.Models
 	informerFactory informer.Factory
+	AgentVersion    string
+	AgentRepository string
 }
 
 func NewAgentViews(conf *config.ServerConfig) *AgentViews {
 	return &AgentViews{
 		models:          conf.Models,
 		informerFactory: conf.InformerFactory,
+		AgentVersion:    conf.AgentVersion,
+		AgentRepository: conf.AgentRepository,
 	}
 }
 
@@ -45,7 +48,7 @@ func (a *AgentViews) AgentYaml(c *gin.Context) {
 	token := c.Param("token")
 	serverUrl := resolveHost(c.Request)
 	klog.Info("server url: ", serverUrl)
-	agentYaml := fmt.Sprintf(clusterAgentYaml, conf.AppConfig.AgentRepository, conf.AppConfig.AgentVersion, token, serverUrl)
+	agentYaml := fmt.Sprintf(clusterAgentYaml, a.AgentRepository, a.AgentVersion, token, serverUrl)
 	c.String(200, agentYaml)
 }
 

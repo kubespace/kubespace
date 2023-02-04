@@ -3,6 +3,7 @@ package pipeline
 import (
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
+	"github.com/kubespace/kubespace/pkg/server/config"
 	"github.com/kubespace/kubespace/pkg/server/views"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	"github.com/kubespace/kubespace/pkg/utils"
@@ -17,9 +18,9 @@ type PipelineResource struct {
 	models *model.Models
 }
 
-func NewPipelineResource(models *model.Models) *PipelineResource {
+func NewPipelineResource(config *config.ServerConfig) *PipelineResource {
 	pipelineWs := &PipelineResource{
-		models: models,
+		models: config.Models,
 	}
 	vs := []*views.View{
 		views.NewView(http.MethodGet, "/:workspaceId", pipelineWs.list),

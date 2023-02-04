@@ -158,6 +158,11 @@ export default {
   beforeDestroy() {
     if(this.clusterSSE) this.clusterSSE.disconnect()
   },
+  watch: {
+    cluster: function() {
+      this.fetchData()
+    }
+  },
   mounted() {
     const that = this
     window.onresize = () => {

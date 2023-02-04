@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
+	"github.com/kubespace/kubespace/pkg/server/config"
 	"github.com/kubespace/kubespace/pkg/server/views"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	projectservice "github.com/kubespace/kubespace/pkg/service/project"
@@ -21,10 +22,10 @@ type Project struct {
 	projectService *projectservice.ProjectService
 }
 
-func NewProject(models *model.Models, projectService *projectservice.ProjectService) *Project {
+func NewProject(config *config.ServerConfig) *Project {
 	projectWs := &Project{
-		models:         models,
-		projectService: projectService,
+		models:         config.Models,
+		projectService: config.ServiceFactory.Project.ProjectService,
 	}
 	projectWs.Views = []*views.View{
 		views.NewView(http.MethodGet, "", projectWs.list),

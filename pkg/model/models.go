@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/core/db"
 	"github.com/kubespace/kubespace/pkg/informer/listwatcher/config"
-	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"github.com/kubespace/kubespace/pkg/model/manager"
 	"github.com/kubespace/kubespace/pkg/model/manager/cluster"
 	"github.com/kubespace/kubespace/pkg/model/manager/pipeline"
@@ -14,7 +13,7 @@ import (
 )
 
 type Config struct {
-	Db                *db.DB
+	DB                *db.DB
 	ListWatcherConfig *config.ListWatcherConfig
 }
 
@@ -22,69 +21,68 @@ type Models struct {
 	db                *gorm.DB
 	ListWatcherConfig *config.ListWatcherConfig
 
-	*cluster.ClusterManager
-	*manager.UserManager
-	*manager.UserRoleManager
-	*manager.TokenManager
-	*manager.RoleManager
-	*manager.AppManager
-	*pipeline.ManagerPipeline
-	*pipeline.ManagerPipelineRun
+	ClusterManager *cluster.ClusterManager
+
+	UserManager     *manager.UserManager
+	UserRoleManager *manager.UserRoleManager
+	TokenManager    *manager.TokenManager
+	RoleManager     *manager.RoleManager
+
+	PipelineManager          *pipeline.ManagerPipeline
+	PipelineRunManager       *pipeline.ManagerPipelineRun
 	PipelineWorkspaceManager *pipeline.WorkspaceManager
 	PipelinePluginManager    *pipeline.ManagerPipelinePlugin
 	PipelineResourceManager  *pipeline.ResourceManager
 	PipelineJobLogManager    *pipeline.JobLog
 	PipelineReleaseManager   *pipeline.Release
 
-	*manager.SettingsSecretManager
-	*manager.ImageRegistryManager
 	ProjectAppManager        *project.AppManager
 	ProjectAppVersionManager *project.AppVersionManager
 	ProjectManager           *project.ManagerProject
 	AppStoreManager          *project.AppStoreManager
+
+	SettingsSecretManager *manager.SettingsSecretManager
+	ImageRegistryManager  *manager.ImageRegistryManager
 }
 
 func NewModels(c *Config) (*Models, error) {
-	if err := DbMigrate(c.Db.Instance); err != nil {
+	if err := DbMigrate(c.DB.Instance); err != nil {
 		return nil, fmt.Errorf("migrate db error: %s", err.Error())
 	}
 
-	middleMessage := kube_resource.NewMiddleMessageWithClient(nil, c.Db.RedisInstance)
-	role := manager.NewRoleManager(c.Db.RedisInstance)
-	tk := manager.NewTokenManager(c.Db.RedisInstance)
-	app := manager.NewAppManager(c.Db.RedisInstance)
+	role := manager.NewRoleManager(c.DB.RedisInstance)
+	tk := manager.NewTokenManager(c.DB.RedisInstance)
 
-	user := manager.NewUserManager(c.Db.Instance)
-	userRole := manager.NewUserRoleManager(c.Db.Instance, user)
-	pipelinePluginMgr := pipeline.NewPipelinePluginManager(c.Db.Instance)
-	pipelineMgr := pipeline.NewPipelineManager(c.Db.Instance)
-	pipelineWorkspaceMgr := pipeline.NewWorkspaceManager(c.Db.Instance, pipelineMgr)
-	pipelineRunMgr := pipeline.NewPipelineRunManager(c.Db.Instance, pipelinePluginMgr, middleMessage)
-	pipelineResourceMgr := pipeline.NewResourceManager(c.Db.Instance)
-	jobLogMgr := pipeline.NewJobLogManager(c.Db.Instance)
-	pipelineReleaseMgr := pipeline.NewReleaseManager(c.Db.Instance)
+	user := manager.NewUserManager(c.DB.Instance)
+	userRole := manager.NewUserRoleManager(c.DB.Instance, user)
+	pipelinePluginMgr := pipeline.NewPipelinePluginManager(c.DB.Instance)
+	pipelineMgr := pipeline.NewPipelineManager(c.DB.Instance)
+	pipelineWorkspaceMgr := pipeline.NewWorkspaceManager(c.DB.Instance, pipelineMgr)
+	pipelineRunMgr := pipeline.NewPipelineRunManager(c.DB.Instance, pipelinePluginMgr, c.ListWatcherConfig)
+	pipelineResourceMgr := pipeline.NewResourceManager(c.DB.Instance)
+	jobLogMgr := pipeline.NewJobLogManager(c.DB.Instance)
+	pipelineReleaseMgr := pipeline.NewReleaseManager(c.DB.Instance)
 
-	secrets := manager.NewSettingsSecretManager(c.Db.Instance)
-	imageRegistry := manager.NewSettingsImageRegistryManager(c.Db.Instance)
+	secrets := manager.NewSettingsSecretManager(c.DB.Instance)
+	imageRegistry := manager.NewSettingsImageRegistryManager(c.DB.Instance)
 
-	appVersionMgr := project.NewAppVersionManager(c.Db.Instance)
-	projectAppMgr := project.NewAppManager(appVersionMgr, c.Db.Instance)
-	appStoreMgr := project.NewAppStoreManager(appVersionMgr, c.Db.Instance)
-	projectMgr := project.NewManagerProject(c.Db.Instance, projectAppMgr)
+	appVersionMgr := project.NewAppVersionManager(c.DB.Instance)
+	projectAppMgr := project.NewAppManager(appVersionMgr, c.DB.Instance)
+	appStoreMgr := project.NewAppStoreManager(appVersionMgr, c.DB.Instance)
+	projectMgr := project.NewManagerProject(c.DB.Instance, projectAppMgr)
 
-	cm := cluster.NewClusterManager(c.Db.Instance, c.ListWatcherConfig, projectAppMgr)
+	cm := cluster.NewClusterManager(c.DB.Instance, c.ListWatcherConfig, projectAppMgr)
 
 	return &Models{
-		db:                       c.Db.Instance,
+		db:                       c.DB.Instance,
 		ListWatcherConfig:        c.ListWatcherConfig,
 		ClusterManager:           cm,
 		UserManager:              user,
 		UserRoleManager:          userRole,
 		TokenManager:             tk,
 		RoleManager:              role,
-		AppManager:               app,
-		ManagerPipeline:          pipelineMgr,
-		ManagerPipelineRun:       pipelineRunMgr,
+		PipelineManager:          pipelineMgr,
+		PipelineRunManager:       pipelineRunMgr,
 		PipelineWorkspaceManager: pipelineWorkspaceMgr,
 		PipelinePluginManager:    pipelinePluginMgr,
 		PipelineResourceManager:  pipelineResourceMgr,

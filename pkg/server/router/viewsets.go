@@ -4,6 +4,9 @@ import (
 	"github.com/kubespace/kubespace/pkg/server/config"
 	"github.com/kubespace/kubespace/pkg/server/views"
 	"github.com/kubespace/kubespace/pkg/server/views/cluster"
+	"github.com/kubespace/kubespace/pkg/server/views/pipeline"
+	"github.com/kubespace/kubespace/pkg/server/views/project"
+	"github.com/kubespace/kubespace/pkg/server/views/settings"
 	"github.com/kubespace/kubespace/pkg/server/views/user"
 )
 
@@ -11,31 +14,30 @@ type ViewSets map[string][]*views.View
 
 func NewViewSets(conf *config.ServerConfig) *ViewSets {
 	models := conf.Models
+
+	// 集群相关操作
 	clusterViews := cluster.NewCluster(conf)
+	kubeResource := cluster.NewKubeResource(conf)
+
+	// 用户角色
 	userViews := user.NewUser(models)
 	userRole := user.NewUserRole(models)
 	settingsRole := user.NewRole(models)
 
-	kubeResource := cluster.NewKubeResource(conf)
+	// 流水线
+	pipelineWorkspace := pipeline.NewPipelineWorkspace(conf)
+	pipelineViews := pipeline.NewPipeline(conf)
+	pipelineRun := pipeline.NewPipelineRun(conf)
+	pipelineResource := pipeline.NewPipelineResource(conf)
 
-	//pipelineRunService := pipeline.NewPipelineRunService(models, kr)
-	//
-	//pipelineWorkspace := pipeline_views.NewPipelineWorkspace(models)
-	//pipelineViews := pipeline_views.NewPipeline(models, pipelineRunService)
-	//pipelineRun := pipeline_views.NewPipelineRun(models, pipelineRunService)
-	//pipelineResource := pipeline_views.NewPipelineResource(models)
-	//
-	//settingsSecret := settings_views.NewSettingsSecret(models)
-	//imageRegistry := settings_views.NewImageRegistry(models)
-	//
-	//appBaseService := project2.NewAppBaseService(models)
-	//projectAppService := project2.NewAppService(kr, appBaseService)
-	//appStoreService := project2.NewAppStoreService(appBaseService)
-	//projectService := project2.NewProjectService(models, kr, projectAppService)
-	//
-	//projectWorkspace := project_views.NewProject(models, projectService)
-	//projectApps := project_views.NewProjectApp(models, projectAppService)
-	//appStore := project_views.NewAppStore(models, appStoreService)
+	// 配置
+	settingsSecret := settings.NewSettingsSecret(models)
+	imageRegistry := settings.NewImageRegistry(models)
+
+	// 工作空间以及应用商店
+	projectWorkspace := project.NewProject(conf)
+	projectApps := project.NewProjectApp(conf)
+	appStore := project.NewAppStore(conf)
 
 	viewsets := &ViewSets{
 		"cluster":          clusterViews.Views,
@@ -44,17 +46,17 @@ func NewViewSets(conf *config.ServerConfig) *ViewSets {
 		"settings_role":    settingsRole.Views,
 		"cluster/:cluster": kubeResource.Views,
 
-		//"pipeline/workspace": pipelineWorkspace.Views,
-		//"pipeline/pipeline":  pipelineViews.Views,
-		//"pipeline/build":     pipelineRun.Views,
-		//"pipeline/resource":  pipelineResource.Views,
-		//
-		//"settings/secret":         settingsSecret.Views,
-		//"settings/image_registry": imageRegistry.Views,
-		//
-		//"project/workspace": projectWorkspace.Views,
-		//"project/apps":      projectApps.Views,
-		//"appstore":          appStore.Views,
+		"pipeline/workspace": pipelineWorkspace.Views,
+		"pipeline/pipeline":  pipelineViews.Views,
+		"pipeline/build":     pipelineRun.Views,
+		"pipeline/resource":  pipelineResource.Views,
+
+		"settings/secret":         settingsSecret.Views,
+		"settings/image_registry": imageRegistry.Views,
+
+		"project/workspace": projectWorkspace.Views,
+		"project/apps":      projectApps.Views,
+		"appstore":          appStore.Views,
 	}
 
 	return viewsets

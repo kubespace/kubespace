@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	kubetypes "github.com/kubespace/kubespace/pkg/kubernetes/types"
@@ -131,11 +132,21 @@ func (u *upgradeApp) upgrade(appId uint, withInstall bool) error {
 		}
 		u.Log("更新应用「%s」values成功", app.Name)
 		if withInstall {
+			appChart, err := u.models.ProjectAppVersionManager.GetAppVersionChart(app.AppVersion.ChartPath)
+			if err != nil {
+				u.Log("not found chart path=%s", app.AppVersion.ChartPath)
+				return err
+			}
+			chartBytes, err := base64.StdEncoding.DecodeString(string(appChart.Content))
+			if err != nil {
+				u.Log("decode chart error: %s", err.Error())
+				return err
+			}
 			installParams := map[string]interface{}{
-				"name":       app.Name,
-				"namespace":  u.project.Namespace,
-				"chart_path": app.AppVersion.ChartPath,
-				"values":     upgradeValues,
+				"name":        app.Name,
+				"namespace":   u.project.Namespace,
+				"chart_bytes": chartBytes,
+				"values":      upgradeValues,
 			}
 			var resp *utils.Response
 			if app.Status != types.AppStatusUninstall {

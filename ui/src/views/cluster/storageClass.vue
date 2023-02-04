@@ -25,9 +25,7 @@
           min-width="40"
           show-overflow-tooltip>
           <template slot-scope="scope">
-            <span class="name-class" v-on:click="nameClick(scope.row.namespace, scope.row.name)">
               {{ scope.row.name }}
-            </span>
           </template>
         </el-table-column>
         <el-table-column
@@ -65,10 +63,10 @@
             <el-dropdown size="medium" >
               <el-link :underline="false"><svg-icon style="width: 1.3em; height: 1.3em;" icon-class="operate" /></el-link>
               <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item @click.native.prevent="nameClick(scope.row.name)">
+                <!-- <el-dropdown-item @click.native.prevent="nameClick(scope.row.name)">
                   <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="detail" />
                   <span style="margin-left: 5px;">详情</span>
-                </el-dropdown-item>
+                </el-dropdown-item> -->
                 <el-dropdown-item v-if="$editorRole()" @click.native.prevent="getStorageClassYaml(scope.row.name)">
                   <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="edit" />
                   <span style="margin-left: 5px;">修改</span>
@@ -96,6 +94,7 @@
 <script>
 import { Clusterbar, Yaml } from '@/views/components'
 import { Message } from 'element-ui'
+import { ResType, listResource, getResource, delResource, updateResource, createResource } from '@/api/cluster/resource'
 import { listStorageClass, getStorageClass, updateStorageClass,
 deleteStorageClasses, buildSc } from '@/api/storage_class'
 
@@ -112,7 +111,7 @@ export default {
       search_name: "",
       search_ns: [],
       cellStyle: {border: 0},
-      maxHeight: window.innerHeight - 150,
+      maxHeight: window.innerHeight - this.$contentHeight,
       loading: true,
       yamlDialog: false,
       yamlName: "",
@@ -126,27 +125,8 @@ export default {
     this.fetchData()
   },
   watch: {
-    scsWatch: function (newObj) {
-      if (newObj) {
-        let newUid = newObj.resource.metadata.uid
-        let newRv = newObj.resource.metadata.resourceVersion
-        if (newObj.event === 'add') {
-          this.originStorageClass.push(buildSc(newObj.resource))
-        } else if (newObj.event === 'update') {
-          for (let i in this.originStorageClass) {
-            let d = this.originStorageClass[i]
-            if (d.uid === newUid) {
-              if (d.resource_version < newRv){
-                let newDp = buildSc(newObj.resource)
-                this.$set(this.originStorageClass, i, newDp)
-              }
-              break
-            }
-          }
-        } else if (newObj.event === 'delete') {
-          this.originStorageClass = this.originStorageClass.filter(( { uid } ) => uid !== newUid)
-        }
-      }
+    cluster: function() {
+      this.fetchData()
     }
   },
   computed: {
@@ -159,8 +139,8 @@ export default {
       }
       return data
     },
-    scsWatch: function() {
-      return this.$store.getters["ws/scsWatch"]
+    cluster() {
+      return this.$store.state.cluster
     }
   },
   methods: {
@@ -178,9 +158,10 @@ export default {
     },
     fetchData: function() {
         this.loading = true
+        this.originStorageClass = []
         const cluster = this.$store.state.cluster
         if (cluster) {
-          listStorageClass(cluster).then(response => {
+          listResource(cluster, ResType.StorageClass).then(response => {
                 this.loading = false
                 this.originStorageClass = response.data ? response.data : []
             }).catch(() => {
@@ -193,7 +174,6 @@ export default {
     },
     getStorageClassYaml: function(name) {
       const cluster = this.$store.state.cluster
-      console.log("xxxxxxx", name)
       if (!cluster) {
         Message.error("获取集群参数异常，请刷新重试")
         return
@@ -204,7 +184,7 @@ export default {
       }
       this.yamlLoading = true
       this.yamlDialog = true
-      getStorageClass(cluster, name, "yaml").then(response => {
+      getResource(cluster, ResType.StorageClass, "", name, "yaml").then(response => {
         this.yamlLoading = false
         this.yamlValue = response.data
         this.yamlName = name
@@ -222,10 +202,15 @@ export default {
         Message.error("获取存储卷参数异常，请刷新重试")
         return
       }
-      updateStorageClass(cluster, this.yamlName, this.yamlValue).then(() => {
+      this.yamlLoading = true
+      updateResource(cluster, ResType.StorageClass, "", this.yamlName, this.yamlValue).then(() => {
         Message.success("更新成功")
+        this.yamlLoading = false
+        this.yamlDialog = false
+        this.fetchData()
       }).catch(() => {
         // console.log(e)
+        this.yamlLoading = false
       })
     },
     deleteScs: function(scs) {
@@ -241,8 +226,9 @@ export default {
       let params = {
         resources: scs
       }
-      deleteStorageClasses(cluster, params).then(() => {
+      delResource(cluster, ResType.StorageClass, params).then(() => {
         Message.success("删除成功")
+        this.fetchData()
       }).catch(() => {
         // console.log(e)
       })

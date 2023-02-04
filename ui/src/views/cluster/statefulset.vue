@@ -195,6 +195,11 @@ export default {
   beforeDestroy() {
     if(this.clusterSSE) this.clusterSSE.disconnect()
   },
+  watch: {
+    cluster: function(obj) {
+      this.fetchData()
+    }
+  },
   computed: {
     statefulsets: function() {
       let dlist = []

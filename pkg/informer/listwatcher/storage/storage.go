@@ -13,3 +13,4 @@ type Storage interface {
 }
 
 type ListFunc func() ([]interface{}, error)
+type FilterFunc func(interface{}) bool

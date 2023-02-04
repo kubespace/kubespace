@@ -2,7 +2,6 @@ package project
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	kubetypes "github.com/kubespace/kubespace/pkg/kubernetes/types"
 	"github.com/kubespace/kubespace/pkg/model/types"
@@ -151,11 +150,19 @@ func (a *AppService) InstallApp(user *types.User, serializer serializers.Project
 		clusterId = fmt.Sprintf("%d", projectApp.ScopeId)
 		namespace = projectApp.Namespace
 	}
+	appChart, err := a.models.ProjectAppVersionManager.GetAppVersionChart(versionApp.ChartPath)
+	if err != nil {
+		return &utils.Response{Code: code.GetError, Msg: "not found chart path=" + versionApp.ChartPath}
+	}
+	//chartBytes, err := base64.StdEncoding.DecodeString(string(appChart.Content))
+	//if err != nil {
+	//	return &utils.Response{Code: code.GetError, Msg: err.Error()}
+	//}
 	installParams := map[string]interface{}{
-		"name":       projectApp.Name,
-		"namespace":  namespace,
-		"chart_path": versionApp.ChartPath,
-		"values":     serializer.Values,
+		"name":        projectApp.Name,
+		"namespace":   namespace,
+		"chart_bytes": appChart.Content,
+		"values":      serializer.Values,
 	}
 	var resp *utils.Response
 	if serializer.Upgrade {
@@ -217,9 +224,9 @@ func (a *AppService) DestroyApp(user *types.User, serializer serializers.Project
 }
 
 type AppRuntimeStatus struct {
-	Name      string                       `json:"name"`
-	Status    string                       `json:"status"`
-	Workloads []*unstructured.Unstructured `json:"workloads"`
+	Name          string                       `json:"name"`
+	RuntimeStatus string                       `json:"runtime_status"`
+	Objects       []*unstructured.Unstructured `json:"objects"`
 }
 
 func (a *AppService) updateAppStatus(scope string, scopeId uint, projectApps []*types.ProjectApp) (map[string]*AppRuntimeStatus, error) {
@@ -244,15 +251,14 @@ func (a *AppService) updateAppStatus(scope string, scopeId uint, projectApps []*
 	nameStatusMap := map[string]*AppRuntimeStatus{}
 	for namespace, appNames := range namespaceApps {
 		statusParams := map[string]interface{}{
-			"namespace": namespace,
-			"names":     appNames,
+			"namespace":   namespace,
+			"names":       appNames,
+			"with_status": true,
 		}
 		res := a.kubeClient.List(clusterId, kubetypes.HelmType, statusParams)
 		if res.IsSuccess() {
 			var appStatuses []*AppRuntimeStatus
-			dataBytes, _ := json.Marshal(res.Data)
-			err := json.Unmarshal(dataBytes, &appStatuses)
-			if err != nil {
+			if err := utils.ConvertTypeByJson(res.Data, &appStatuses); err != nil {
 				klog.Error("unmarshal app status error: ", err.Error())
 			}
 			for _, status := range appStatuses {
@@ -278,7 +284,7 @@ func (a *AppService) ListApp(scope string, scopeId uint) ([]*types.ProjectApp, e
 	if nameStatusMap != nil {
 		for idx, app := range projectApps {
 			if _, ok := nameStatusMap[app.Name]; ok {
-				projectApps[idx].Status = nameStatusMap[app.Name].Status
+				projectApps[idx].Status = nameStatusMap[app.Name].RuntimeStatus
 			} else {
 				projectApps[idx].Status = types.AppStatusUninstall
 			}
@@ -363,21 +369,18 @@ func (a *AppService) GetApp(appId uint) *utils.Response {
 		}
 	} else {
 		statusParams := map[string]interface{}{
-			"namespace":      namespace,
-			"name":           projectApp.Name,
-			"with_workloads": true,
+			"namespace":     namespace,
+			"name":          projectApp.Name,
+			"with_resource": true,
 		}
 		//nameStatusMap := map[string]*AppRuntimeStatus{}
 		res := a.kubeClient.Get(clusterId, kubetypes.HelmType, statusParams)
 		if res.IsSuccess() {
 			var appStatuses AppRuntimeStatus
-			dataBytes, _ := json.Marshal(res.Data)
-			err = json.Unmarshal(dataBytes, &appStatuses)
-			if err != nil {
+			if err := utils.ConvertTypeByJson(res.Data, &appStatuses); err != nil {
 				klog.Error("unmarshal app status error: ", err.Error())
-				klog.Infof("unmarshal app data: %s", string(dataBytes))
 			} else {
-				data["status"] = appStatuses.Status
+				data["status"] = appStatuses.RuntimeStatus
 			}
 		} else {
 			klog.Error("get app status error: ", res.Msg)
@@ -429,7 +432,7 @@ func (a *AppService) ListAppStatus(serializer serializers.ProjectAppListSerializ
 		for _, app := range projectApps {
 			status := ""
 			if _, ok := nameStatusMap[app.Name]; ok {
-				status = nameStatusMap[app.Name].Status
+				status = nameStatusMap[app.Name].RuntimeStatus
 			} else {
 				status = types.AppStatusUninstall
 			}

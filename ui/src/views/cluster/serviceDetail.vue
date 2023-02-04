@@ -9,7 +9,7 @@
             <span>{{ service.name }}</span>
           </el-form-item>
           <el-form-item label="创建时间">
-            <span>{{ service.created }}</span>
+            <span>{{ $dateFormat(service.created) }}</span>
           </el-form-item>
           <el-form-item label="命名空间">
             <span>{{ service.namespace }}</span>
@@ -205,10 +205,9 @@
 
 <script>
 import { Clusterbar, Yaml } from '@/views/components'
-import { getService, deleteServices, updateService } from '@/api/service'
-import { listEndpoints } from '@/api/endpoints'
-// import { listEvents, buildEvent } from '@/api/event'
-import { listPods, containerClass, buildPods, podMatch, deletePods } from '@/api/pods'
+import { ResType, listResource, getResource, delResource, watchResource, updateResource,
+         containerClass, podMatch } from '@/api/cluster/resource'
+// import { listPods, containerClass, buildPods, podMatch, deletePods } from '@/api/pods'
 import { Message } from 'element-ui'
 import { Terminal } from '@/views/components'
 import { Log } from '@/views/components'
@@ -240,27 +239,14 @@ export default {
       containerClass: containerClass,
       selectContainer: '',
       selectPodName: '',
+      podSSE: undefined
     }
   },
   created() {
     this.fetchData()
   },
-  watch: {
-    serviceWatch: function (newObj) {
-      if (newObj && this.originService) {
-        let newUid = newObj.resource.metadata.uid
-        if (newUid !== this.service.uid) {
-          return
-        }
-        let newRv = newObj.resource.metadata.resourceVersion
-        if (this.service.resource_version < newRv) {
-          this.originService = newObj.resource
-        }
-      }
-    },
-    cluster: function() {
-      this.fetchData()
-    }
+  beforeDestroy() {
+    if(this.podSSE) this.podSSE.disconnect()
   },
   computed: {
     titleName: function() {
@@ -278,9 +264,6 @@ export default {
     },
     cluster: function() {
       return this.$store.state.cluster
-    },
-    serviceWatch: function() {
-      return this.$store.getters["ws/servicesWatch"]
     },
     projectId() {
       return this.$route.params.workspaceId
@@ -308,26 +291,35 @@ export default {
         this.loading = false
         return
       }
-      getService(cluster, this.namespace, this.serviceName).then(response => {
+      getResource(cluster, ResType.Service, this.namespace, this.serviceName).then(response => {
         // this.loading = false
         this.originService = response.data
-        listEndpoints(cluster, this.namespace, this.serviceName).then(response => {
+        getResource(cluster, ResType.Endpoint, this.namespace, this.serviceName).then(response => {
           // this.loading = false
-          this.endpoints = response.data ? response.data : []
+          this.endpoints = response.data ? [response.data] : []
           let pod_names = []
           for(let p of this.endpoints) {
             for(let e of p.subsets) {
-              for(let a of e.addresses) {
-                if(a.targetRef && a.targetRef.kind === 'Pod') {
-                  pod_names.push(a.targetRef.name)
+              if(e.addresses){
+                for(let a of e.addresses) {
+                  if(a.targetRef && a.targetRef.kind === 'Pod') {
+                    pod_names.push(a.targetRef.name)
+                  }
                 }
               }
             }
           }
           if(pod_names.length > 0) {
-            listPods(cluster, null, pod_names).then(response => {
+            let params = {
+              namespace: this.namespace,
+              label_selector: {
+                matchLabels: this.originService.spec.selector
+              }
+            }
+            listResource(cluster, ResType.Pod, params).then(response => {
               this.loading = false
               this.pods = response.data
+              this.fetchPodSSE()
             }).catch(() => {
               this.loading = false
             })
@@ -341,6 +333,43 @@ export default {
       }).catch(() => {
         this.loading = false
       })
+    },
+    fetchPodSSE() {
+      let params = {
+        namespace: this.namespace,
+        label_selector: {
+          matchLabels: this.originService.spec.selector
+        },
+        process: true,
+      }
+      this.podSSE = watchResource(this.$sse, this.cluster, ResType.Pod, this.podsWatchFunc, params)
+    },
+    podsWatchFunc: function (newObj) {
+      if (newObj && this.originService) {
+        let isPodMatch = podMatch(this.originService.spec.selector, newObj.resource.labels)
+        if (isPodMatch) {
+          let newUid = newObj.resource.uid
+          let newRv = newObj.resource.resource_version
+          if (newObj.event === 'add') {
+            for (let i in this.pods) {
+              let p = this.pods[i]
+              if (p.uid === newUid) return
+            }
+            this.pods.push(newObj.resource)
+          } else if (newObj.event === 'update') {
+            for (let i in this.pods) {
+              let p = this.pods[i]
+              if (p.uid === newUid && p.resource_version < newRv) {
+                let newPod = newObj.resource
+                this.$set(this.pods, i, newPod)
+                break
+              }
+            }
+          } else if (newObj.event === 'delete') {
+            this.pods = this.pods.filter(( { uid } ) => uid !== newUid)
+          }
+        }
+      }
     },
     buildService: function(service) {
       if (!service) return {}
@@ -381,7 +410,7 @@ export default {
       let params = {
         resources: services
       }
-      deleteServices(cluster, params).then(() => {
+      delResource(cluster, ResType.Service, params).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)
@@ -400,7 +429,7 @@ export default {
       this.yamlValue = ""
       this.yamlDialog = true
       this.yamlLoading = true
-      getService(cluster, this.service.namespace, this.service.name, "yaml").then(response => {
+      getResource(cluster, ResType.Service, this.service.namespace, this.service.name, "yaml").then(response => {
         this.yamlLoading = false
         this.yamlValue = response.data
       }).catch(() => {
@@ -417,8 +446,7 @@ export default {
         Message.error("获取集群参数异常，请刷新重试")
         return
       }
-      console.log(this.yamlValue)
-      updateService(cluster, this.service.namespace, this.service.name, this.yamlValue).then(() => {
+      updateResource(cluster, ResType.Service, this.service.namespace, this.service.name, this.yamlValue).then(() => {
         Message.success("更新成功")
       }).catch(() => {
         // console.log(e) 
@@ -441,13 +469,15 @@ export default {
       if (!subsets) return ''
       let as = []
       for(let s of subsets) {
-        for(let a of s.addresses) {
-          if(s.ports) {
-            for(let e of s.ports) {
-              as.push(a.ip + ':' + e.port)
+        if(s.addresses) {
+          for(let a of s.addresses) {
+            if(s.ports) {
+              for(let e of s.ports) {
+                as.push(a.ip + ':' + e.port)
+              }
+            } else {
+              as.push(a.ip)
             }
-          } else {
-            as.push(a.ip)
           }
         }
       }
@@ -466,7 +496,7 @@ export default {
       let params = {
         resources: pods
       }
-      deletePods(cluster, params).then(() => {
+      delResource(cluster, ResType.Pod, params).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)

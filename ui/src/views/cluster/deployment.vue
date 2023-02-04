@@ -183,6 +183,11 @@ export default {
   created() {
     this.fetchData()
   },
+  watch: {
+    cluster: function() {
+      this.fetchData()
+    }
+  },
   mounted() {
     const that = this
     window.onresize = () => {

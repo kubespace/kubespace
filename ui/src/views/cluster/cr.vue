@@ -78,10 +78,12 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
+import { ResType, listResource, getResource } from '@/api/cluster/resource'
 import { listCrs, getCr, deleteCr } from '@/api/crd'
 import { updateGvr } from '@/api/cluster'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
+import { delResource } from '../../api/cluster/resource'
 
 export default {
   name: 'CR',
@@ -100,7 +102,7 @@ export default {
         yamlLoading: true,
         cellStyle: {border: 0},
         titleName: ["CRD", cr],
-        maxHeight: window.innerHeight - 150,
+        maxHeight: window.innerHeight - this.$contentHeight,
         loading: true,
         originCrds: [],
         search_ns: [],
@@ -116,13 +118,16 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150
+        let heightStyle = window.innerHeight - this.$contentHeight
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
     }
   },
   watch: {
+    cluster: function() {
+      this.fetchData()
+    }
   },
   computed: {
     crds: function() {
@@ -142,6 +147,9 @@ export default {
     },
     resource() {
       return this.$route.params ? this.$route.params.resource : ''
+    },
+    cluster() {
+      return this.$store.state.cluster
     }
   },
   methods: {
@@ -155,9 +163,9 @@ export default {
           version: this.version,
           resource: this.resource,
         }
-        listCrs(cluster, params).then(response => {
+        listResource(cluster, ResType.CR, params).then(response => {
           this.loading = false
-          this.originCrds = response.data
+          this.originCrds = response.data || []
         }).catch(() => {
           this.loading = false
         })
@@ -187,15 +195,15 @@ export default {
       this.yamlDialog = true
       this.yamlLoading = true
       let params = {
-          group: this.group,
-          version: this.version,
-          resource: this.resource,
-          output: "yaml",
-          namespace
-        }
-      getCr(cluster, name, params).then(response => {
+        group: this.group,
+        version: this.version,
+        resource: this.resource,
+        output: "yaml",
+        namespace
+      }
+      getResource(cluster, ResType.CR, namespace, name, "yaml", params).then(response => {
         this.yamlLoading = false
-        this.yamlValue = atob(response.data)
+        this.yamlValue = response.data
         this.yamlName = name
       }).catch(() => {
         this.yamlLoading = false
@@ -236,7 +244,7 @@ export default {
         resource: this.resource,
         namespace
       }
-      deleteCr(cluster, name, params).then(() => {
+      delResource(cluster, ResType.CR, namespace, name, params).then(() => {
         Message.success("删除成功")
         this.fetchData()
       }).catch(() => {

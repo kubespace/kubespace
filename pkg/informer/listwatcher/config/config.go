@@ -4,7 +4,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/kubespace/kubespace/pkg/core/datatype"
 	"github.com/kubespace/kubespace/pkg/core/db"
-	storage2 "github.com/kubespace/kubespace/pkg/informer/listwatcher/storage"
+	"github.com/kubespace/kubespace/pkg/informer/listwatcher/storage"
 	"gorm.io/gorm"
 )
 
@@ -27,12 +27,13 @@ func NewListWatcherConfig(db *db.DB, resyncSec int) *ListWatcherConfig {
 
 func (c *ListWatcherConfig) NewStorage(
 	watchKey string,
-	listFunc storage2.ListFunc,
+	listFunc storage.ListFunc,
+	filterFunc storage.FilterFunc,
 	pResyncSec *int,
-	dataType datatype.DataType) storage2.Storage {
+	dataType datatype.DataType) storage.Storage {
 	resyncSec := c.ResyncSec
 	if pResyncSec != nil {
 		resyncSec = *pResyncSec
 	}
-	return storage2.NewRedisStorage(c.RedisClient, watchKey, listFunc, resyncSec, dataType)
+	return storage.NewRedisStorage(c.RedisClient, watchKey, listFunc, filterFunc, resyncSec, dataType)
 }

@@ -193,6 +193,7 @@ export default {
   },
   watch: {
     cluster: function() {
+      this.originConfigMaps = []
       this.fetchData()
     }
   },
@@ -248,7 +249,7 @@ export default {
       this.loading = true
       const cluster = this.$store.state.cluster
       let params = {namespace: this.namespace}
-      if(this.projectId) params['labels'] = projectLabels()
+      if(this.projectId) params['label_selector'] = {"matchLabels": projectLabels()}
       if (cluster) {
         listResource(cluster, ResType.ConfigMap, params)
           .then((response) => {

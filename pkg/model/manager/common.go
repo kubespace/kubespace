@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-redis/redis/v8"
-	"github.com/kubespace/kubespace/pkg/kube_resource"
 	"gorm.io/gorm"
 	"k8s.io/klog/v2"
 	"time"
@@ -19,19 +18,16 @@ type CommonManager struct {
 	modelKey string
 
 	context.Context
-	*kube_resource.MiddleMessage
 	watch bool
 }
 
 func NewCommonManager(redisClient *redis.Client, db *gorm.DB, key string, watch bool) *CommonManager {
-	middleMessage := kube_resource.NewMiddleMessageWithClient(nil, redisClient)
 	return &CommonManager{
-		client:        redisClient,
-		DB:            db,
-		modelKey:      key,
-		Context:       context.Background(),
-		MiddleMessage: middleMessage,
-		watch:         watch,
+		client:   redisClient,
+		DB:       db,
+		modelKey: key,
+		Context:  context.Background(),
+		watch:    watch,
 	}
 }
 
@@ -88,8 +84,8 @@ func (cm *CommonManager) Save(key string, keyObj interface{}, expire time.Durati
 	}
 	if cm.watch {
 
-		eventObj := NewEventObj(AddEvent, cm.modelKey, keyObj)
-		cm.MiddleMessage.SendGlobalWatch(eventObj)
+		//eventObj := NewEventObj(AddEvent, cm.modelKey, keyObj)
+		//cm.MiddleMessage.SendGlobalWatch(eventObj)
 	}
 
 	return nil
@@ -129,8 +125,8 @@ func (cm *CommonManager) Update(key string, keyObj interface{}, expire time.Dura
 		obj := make(map[string]interface{})
 		cm.Get(key, &obj)
 
-		eventObj := NewEventObj(UpdateEvent, cm.modelKey, obj)
-		cm.MiddleMessage.SendGlobalWatch(eventObj)
+		//eventObj := NewEventObj(UpdateEvent, cm.modelKey, obj)
+		//cm.MiddleMessage.SendGlobalWatch(eventObj)
 	}
 
 	return nil
@@ -146,8 +142,8 @@ func (cm *CommonManager) Delete(key string) error {
 	}
 
 	if cm.watch {
-		eventObj := NewEventObj(DeleteEvent, cm.modelKey, map[string]interface{}{"name": key})
-		cm.MiddleMessage.SendGlobalWatch(eventObj)
+		//eventObj := NewEventObj(DeleteEvent, cm.modelKey, map[string]interface{}{"name": key})
+		//cm.MiddleMessage.SendGlobalWatch(eventObj)
 	}
 	return nil
 }

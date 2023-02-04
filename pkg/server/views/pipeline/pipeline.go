@@ -1,18 +1,18 @@
 package pipeline
 
 import (
+	"github.com/kubespace/kubespace/pkg/informer"
+	"github.com/kubespace/kubespace/pkg/informer/listwatcher/pipeline"
 	"github.com/kubespace/kubespace/pkg/model"
+	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/config"
 	"github.com/kubespace/kubespace/pkg/server/views"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	pipelineservice "github.com/kubespace/kubespace/pkg/service/pipeline"
-	"github.com/kubespace/kubespace/pkg/sse"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
-	"k8s.io/klog/v2"
 	"net/http"
 	"strconv"
-	"time"
 )
 
 type Pipeline struct {
@@ -20,6 +20,7 @@ type Pipeline struct {
 	models             *model.Models
 	pipelineService    *pipelineservice.ServicePipeline
 	pipelineRunService *pipelineservice.ServicePipelineRun
+	informerFactory    informer.Factory
 }
 
 func NewPipeline(config *config.ServerConfig) *Pipeline {
@@ -27,11 +28,12 @@ func NewPipeline(config *config.ServerConfig) *Pipeline {
 		models:             config.Models,
 		pipelineService:    config.ServiceFactory.Pipeline.PipelineService,
 		pipelineRunService: config.ServiceFactory.Pipeline.PipelineRunService,
+		informerFactory:    config.InformerFactory,
 	}
 	vs := []*views.View{
 		views.NewView(http.MethodGet, "", pw.list),
 		views.NewView(http.MethodGet, "/:pipelineId", pw.get),
-		views.NewView(http.MethodGet, "/:pipelineId/sse", pw.sse),
+		views.NewView(http.MethodGet, "/:pipelineId/sse", pw.watch),
 		views.NewView(http.MethodPost, "", pw.create),
 		views.NewView(http.MethodPut, "", pw.update),
 		views.NewView(http.MethodDelete, "/:pipelineId", pw.delete),
@@ -48,9 +50,14 @@ func (p *Pipeline) get(c *views.Context) *utils.Response {
 	return p.pipelineService.GetPipeline(uint(pipelineId))
 }
 
-func (p *Pipeline) sse(c *views.Context) *utils.Response {
+func (p *Pipeline) watch(c *views.Context) *utils.Response {
 	if c.Param("pipelineId") == "" {
 		return &utils.Response{Code: code.ParamsError, Msg: "get param pipeline run id error"}
+	}
+
+	pipelineId, err := strconv.Atoi(c.Param("pipelineId"))
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: "get param pipeline run id error: " + err.Error()}
 	}
 
 	c.Writer.Header().Set("Content-Type", "text/event-stream")
@@ -58,36 +65,74 @@ func (p *Pipeline) sse(c *views.Context) *utils.Response {
 	c.Writer.Header().Set("Connection", "keep-alive")
 	//c.Writer.Header().Set("Transfer-Encoding", "chunked")
 
-	streamClient := sse.StreamClient{
-		ClientId: utils.CreateUUID(),
-		Catalog:  sse.CatalogDatabase,
-		WatchSelector: map[string]string{
-			sse.EventTypePipeline: c.Param("pipelineId"),
-		},
-		ClientChan: make(chan sse.Event),
-	}
-	sse.Stream.AddClient(streamClient)
-	defer sse.Stream.RemoveClient(streamClient)
 	c.SSEvent("message", "{}")
 	c.Writer.Flush()
 
-	tick := time.NewTicker(30 * time.Second)
-
-	for {
-		klog.Infof("select for channel")
-		select {
-		case <-c.Writer.CloseNotify():
-			klog.Info("client gone")
+	pipelineRunInformer := p.informerFactory.PipelineRunInformer(&pipeline.PipelineRunWatchCondition{
+		PipelineId: uint(pipelineId),
+		WithList:   false,
+	})
+	stopCh := make(chan struct{})
+	pipelineRunInformer.AddHandler(&informer.CommonHandler{HandleFunc: func(obj interface{}) error {
+		pipelineRun, ok := obj.(types.PipelineRun)
+		if !ok {
 			return nil
-		case event := <-streamClient.ClientChan:
-			c.SSEvent("message", event)
-			c.Writer.Flush()
-		case <-tick.C:
-			c.SSEvent("message", "{}")
-			c.Writer.Flush()
 		}
-	}
+		stageRuns, _ := p.models.PipelineRunManager.StagesRun(pipelineRun.ID)
+		c.SSEvent("message", map[string]interface{}{
+			"pipeline_run": pipelineRun,
+			"stages_run":   stageRuns,
+		})
+		c.Writer.Flush()
+		return nil
+	}})
+	go pipelineRunInformer.Run(stopCh)
+
+	<-c.Writer.CloseNotify()
+	close(stopCh)
+	return nil
 }
+
+//func (p *Pipeline) sse(c *views.Context) *utils.Response {
+//	if c.Param("pipelineId") == "" {
+//		return &utils.Response{Code: code.ParamsError, Msg: "get param pipeline run id error"}
+//	}
+//
+//	c.Writer.Header().Set("Content-Type", "text/event-stream")
+//	c.Writer.Header().Set("Cache-Control", "no-cache")
+//	c.Writer.Header().Set("Connection", "keep-alive")
+//	//c.Writer.Header().Set("Transfer-Encoding", "chunked")
+//
+//	streamClient := sse.StreamClient{
+//		ClientId: utils.CreateUUID(),
+//		Catalog:  sse.CatalogDatabase,
+//		WatchSelector: map[string]string{
+//			sse.EventTypePipeline: c.Param("pipelineId"),
+//		},
+//		ClientChan: make(chan sse.Event),
+//	}
+//	sse.Stream.AddClient(streamClient)
+//	defer sse.Stream.RemoveClient(streamClient)
+//	c.SSEvent("message", "{}")
+//	c.Writer.Flush()
+//
+//	tick := time.NewTicker(30 * time.Second)
+//
+//	for {
+//		klog.Infof("select for channel")
+//		select {
+//		case <-c.Writer.CloseNotify():
+//			klog.Info("client gone")
+//			return nil
+//		case event := <-streamClient.ClientChan:
+//			c.SSEvent("message", event)
+//			c.Writer.Flush()
+//		case <-tick.C:
+//			c.SSEvent("message", "{}")
+//			c.Writer.Flush()
+//		}
+//	}
+//}
 
 func (p *Pipeline) list(c *views.Context) *utils.Response {
 	var ser serializers.PipelineListSerializer
@@ -125,7 +170,7 @@ func (p *Pipeline) delete(c *views.Context) *utils.Response {
 	if err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	err = p.models.ManagerPipeline.Delete(uint(id))
+	err = p.models.PipelineManager.Delete(uint(id))
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: "删除流水线失败：" + err.Error()}
 	}

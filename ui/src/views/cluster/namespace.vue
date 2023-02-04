@@ -117,11 +117,12 @@
 <script>
 import { Clusterbar } from '@/views/components'
 import { listNamespace, getNamespace, deleteNamespaces, updateNamespace } from '@/api/namespace'
-import { listResource } from '@/api/cluster/resource'
+import { ResType, listResource, getResource, delResource, updateResource } from '@/api/cluster/resource'
 import { createYaml } from '@/api/cluster'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
 import yaml from 'js-yaml'
+import { createResource } from '../../api/cluster/resource'
 
 export default {
   name: 'Namespace',
@@ -138,7 +139,7 @@ export default {
       yamlLoading: true,
       cellStyle: {border: 0},
       titleName: ["Namespaces"],
-      maxHeight: window.innerHeight - 150,
+      maxHeight: window.innerHeight - this.$contentHeight,
       loading: true,
       originNamespaces: [],
       search_ns: [],
@@ -162,34 +163,15 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150
+        let heightStyle = window.innerHeight - this.$contentHeight
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
     }
   },
   watch: {
-    namespacesWatch: function (newObj) {
-      if (newObj) {
-        let newUid = newObj.resource.metadata.uid
-        let newRv = newObj.resource.metadata.resourceVersion
-        if (newObj.event === 'add') {
-          this.originNamespaces.push(this.buildNamespaces(newObj.resource))
-        } else if (newObj.event === 'update') {
-          for (let i in this.originNamespaces) {
-            let d = this.originNamespaces[i]
-            if (d.uid === newUid) {
-              if (d.resource_version < newRv){
-                let newDp = this.buildNamespaces(newObj.resource)
-                this.$set(this.originNamespaces, i, newDp)
-              }
-              break
-            }
-          }
-        } else if (newObj.event === 'delete') {
-          this.originNamespaces = this.originNamespaces.filter(( { uid } ) => uid !== newUid)
-        }
-      }
+    cluster: function() {
+      this.fetchData()
     }
   },
   computed: {
@@ -207,9 +189,6 @@ export default {
       }
       return dlist
     },
-    namespacesWatch: function() {
-      return this.$store.getters["ws/namespacesWatch"]
-    },
     cluster: function() {
       return this.$store.state.cluster
     },
@@ -220,7 +199,7 @@ export default {
       this.originNamespaces = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listResource(cluster, "namespace").then(response => {
+        listResource(cluster, ResType.Namespace).then(response => {
           this.loading = false
           this.originNamespaces = response.data
         }).catch(() => {
@@ -264,7 +243,7 @@ export default {
       this.yamlValue = ""
       this.yamlDialog = true
       this.yamlLoading = true
-      getNamespace(cluster, name, "yaml").then(response => {
+      getResource(cluster, ResType.Namespace, "", name, "yaml").then(response => {
         this.yamlLoading = false
         this.yamlValue = response.data
         this.yamlName = name
@@ -296,7 +275,7 @@ export default {
         type: 'warning'
       }).then(() => {
         this.loading = true
-        deleteNamespaces(this.cluster, params).then(() => {
+        delResource(this.cluster, ResType.Namespace, params).then(() => {
           Message.success("删除命名空间成功")
           this.loading = false
           this.fetchData()
@@ -316,7 +295,7 @@ export default {
         Message.error("获取Namespace参数异常，请刷新重试")
         return
       }
-      updateNamespace(cluster, this.yamlName, this.yamlValue).then(() => {
+      updateResource(cluster, ResType.Namespace, "", this.yamlName, this.yamlValue).then(() => {
         Message.success("更新成功")
       }).catch(() => {
         // console.log(e) 
@@ -346,7 +325,7 @@ export default {
       }
       let yamlStr = yaml.dump(this.form)
       this.dialogLoading = true
-      createYaml(this.cluster, yamlStr).then((response) => {
+      createResource(this.cluster, yamlStr).then((response) => {
         this.dialogLoading = false
         this.createFormVisible = false
         Message.success("创建命名空间成功")

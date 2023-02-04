@@ -1,10 +1,10 @@
 package resource
 
 import (
-	"fmt"
 	"github.com/kubespace/kubespace/pkg/kubernetes/config"
 	"github.com/kubespace/kubespace/pkg/kubernetes/types"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -37,7 +37,7 @@ type BuildConfigMap struct {
 	NameSpace  string            `json:"namespace"`
 	Keys       []string          `json:"keys"`
 	Labels     map[string]string `json:"labels"`
-	CreateTime string            `json:"create_time"`
+	CreateTime metav1.Time       `json:"create_time"`
 	Data       map[string]string `json:"data"`
 }
 
@@ -50,7 +50,7 @@ func (c *Configmap) ToBuildConfigMap(cm *corev1.ConfigMap) *BuildConfigMap {
 		Name:       cm.Name,
 		NameSpace:  cm.Namespace,
 		Labels:     cm.Labels,
-		CreateTime: fmt.Sprint(cm.CreationTimestamp),
+		CreateTime: cm.CreationTimestamp,
 		Data:       cm.Data,
 	}
 

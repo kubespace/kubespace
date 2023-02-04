@@ -20,6 +20,19 @@ export const ResType = {
     Secret: "secret",
     Hpa: "horizontalPodAutoscaler",
     Service: "service",
+    Ingress: "ingress",
+    Endpoint: "endpoints",
+    NetworkPolicy: "networkpolicy",
+    PersistentVolume: "persistentVolume",
+    PersistentVolumeClaim: "persistentVolumeClaim",
+    StorageClass: "storageclass",
+    ServiceAccount: "serviceaccount",
+    CRD: "crd",
+    CR: "cr",
+    Role: "role",
+    ClusterRole: "clusterrole",
+    RoleBinding: "rolebinding",
+    ClusterRoleBinding: "clusterrolebinding",
 }
 
 export function listResource(cluster, resType, params) {
@@ -30,11 +43,16 @@ export function listResource(cluster, resType, params) {
   })
 }
 
-export function getResource(cluster, resType, namespace, name, output='') {
+export function getResource(cluster, resType, namespace, name, output='', params) {
+  if(params) {
+    params['output'] = output
+  } else {
+    params = {output}
+  }
   return request({
     url: `cluster/${cluster}/${resType}/${namespace?"namespace/"+namespace+"/":""}${name}`,
     method: 'get',
-    params: { output }
+    params
   })
 }
 

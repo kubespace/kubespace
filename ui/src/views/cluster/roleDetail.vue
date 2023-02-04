@@ -111,6 +111,7 @@
 
 <script>
 import { Clusterbar, Yaml } from '@/views/components'
+import { ResType, listResource, getResource, delResource, updateResource } from '@/api/cluster/resource'
 import { getRole, deleteRoles, updateRole } from '@/api/role'
 import { Message } from 'element-ui'
 
@@ -134,18 +135,6 @@ export default {
     this.fetchData()
   },
   watch: {
-    roleWatch: function (newObj) {
-      if (newObj && this.originRole) {
-        let newUid = newObj.resource.metadata.uid
-        if (newUid !== this.role.uid) {
-          return
-        }
-        let newRv = newObj.resource.metadata.resourceVersion
-        if (this.role.resource_version < newRv) {
-          this.originRole = newObj.resource
-        }
-      }
-    },
   },
   computed: {
     titleName: function() {
@@ -158,8 +147,8 @@ export default {
       return this.$route.params ? this.$route.params.namespace : ''
     },
     kind: function() {
-      if (this.namespace) return 'Role';
-      return 'ClusterRole'
+      if (this.namespace) return 'role';
+      return 'clusterrole'
     },
     role: function() {
       let p = this.buildRole(this.originRole)
@@ -167,9 +156,6 @@ export default {
     },
     cluster: function() {
       return this.$store.state.cluster
-    },
-    roleWatch: function() {
-      return this.$store.getters["ws/rolesWatch"]
     },
   },
   methods: {
@@ -188,13 +174,13 @@ export default {
         return
       }
       var namespace = this.namespace;
-      if (this.kind === 'ClusterRole') namespace = 'n';
+      if (this.kind === 'ClusterRole') namespace = '';
       if (!this.roleName) {
         Message.error("获取Role名称参数异常，请刷新重试")
         this.loading = false
         return
       }
-      getRole(cluster, namespace, this.roleName, this.kind).then(response => {
+      getResource(cluster, this.kind, namespace, this.roleName).then(response => {
         this.loading = false
         this.originRole = response.data
 
@@ -236,7 +222,7 @@ export default {
       let params = {
         resources: roles
       }
-      deleteRoles(cluster, params).then(() => {
+      delResource(cluster, this.kind, params).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)
@@ -253,11 +239,11 @@ export default {
         return
       }
       var namespace = this.namespace
-      if (this.kind === 'ClusterRole') namespace = 'n'
+      if (this.kind === 'clusterrole') namespace = ''
       this.yamlValue = ""
       this.yamlDialog = true
       this.yamlLoading = true
-      getRole(cluster, namespace, this.role.name, this.kind, "yaml").then(response => {
+      getResource(cluster, this.kind, namespace, this.role.name, "yaml").then(response => {
         this.yamlLoading = false
         this.yamlValue = response.data
       }).catch(() => {
@@ -269,13 +255,11 @@ export default {
         Message.error("获取Role参数异常，请刷新重试")
         return
       }
-      const cluster = this.$store.state.cluster
-      if (!cluster) {
+      if (!this.cluster) {
         Message.error("获取集群参数异常，请刷新重试")
         return
       }
-      console.log(this.yamlValue)
-      updateRole(cluster, this.role.namespace, this.role.name, this.yamlValue).then(() => {
+      updateResource(this.cluster, this.kind, this.namespace, this.role.name, this.yamlValue).then(() => {
         Message.success("更新成功")
       }).catch(() => {
         // console.log(e) 

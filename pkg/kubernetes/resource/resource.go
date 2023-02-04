@@ -262,7 +262,9 @@ func (r *Resource) Update(params interface{}) *utils.Response {
 		return &utils.Response{Code: code.ParamsError, Msg: fmt.Sprintf("Parse yaml error: %s", err.Error())}
 	}
 	obj := &unstructured.Unstructured{Object: mapObj}
-	obj.SetResourceVersion("")
+	if obj.GetKind() != "Service" {
+		obj.SetResourceVersion("")
+	}
 	var err error
 	if updateParams.Namespace != "" {
 		_, err = r.client.Dynamic().Resource(*r.gvr).Namespace(updateParams.Namespace).Update(context.Background(), obj, metav1.UpdateOptions{})

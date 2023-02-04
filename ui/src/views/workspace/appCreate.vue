@@ -97,9 +97,8 @@
 <script>
 import { Clusterbar } from "@/views/components";
 import { createApp, getAppVersion } from "@/api/project/apps";
-import { listConfigMaps } from '@/api/config_map'
 import { Message } from "element-ui";
-import { projectLabels, getProjectResources } from '@/api/project/project'
+import { getProjectResources } from '@/api/project/project'
 import { Workload, kindTemplate, Service, ConfigMap, Secret, pvc, transferTemplate, resolveToTemplate } from '@/views/workspace/kinds'
 import yaml from 'js-yaml'
 
@@ -359,9 +358,10 @@ export default {
     },
     getProjectResources: function() {
       getProjectResources({project_id: this.projectId}).then((response) => {
-        // this.loading = false
-        // let originConfigMaps = response.data || []
-        console.log(response.data)
+        let data = response.data || {}
+        for(let i in data) {
+          if(!data[i]) data[i] = []
+        }
         this.$set(this, 'projectResources', response.data)
       }).catch(() => {
         // this.loading = false

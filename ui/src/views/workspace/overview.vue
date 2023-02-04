@@ -194,7 +194,7 @@ export default {
       titleName: ["项目空间"],
       search_name: '',
       cellStyle: {border: 0},
-      maxHeight: window.innerHeight - 150,
+      maxHeight: window.innerHeight - this.$contentHeight,
       loading: true,
       project: {},
       originApps: []
@@ -208,7 +208,7 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150
+        let heightStyle = window.innerHeight - this.$contentHeight
         console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
@@ -240,10 +240,9 @@ export default {
       this.loading = true
       getProject(this.projectId,).then((resp) => {
         this.project = resp.data ? resp.data : {}
-        // this.loading = false
+        this.loading = false
       }).catch((err) => {
-        console.log(err)
-        // this.loading = false
+        this.loading = false
       })
     },
     fetchApps() {
@@ -251,7 +250,7 @@ export default {
       listApps({scope_id: this.projectId, scope: "project_app"}).then((resp) => {
         let originApps = resp.data ? resp.data : []
         this.originApps = originApps
-        this.loading = false
+        // this.loading = false
       }).catch((err) => {
         this.loading = false
       })

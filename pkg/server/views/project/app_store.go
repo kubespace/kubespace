@@ -2,6 +2,7 @@ package project
 
 import (
 	"github.com/kubespace/kubespace/pkg/model"
+	"github.com/kubespace/kubespace/pkg/server/config"
 	"github.com/kubespace/kubespace/pkg/server/views"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	"github.com/kubespace/kubespace/pkg/service/project"
@@ -19,10 +20,10 @@ type AppStore struct {
 	models          *model.Models
 }
 
-func NewAppStore(models *model.Models, appStoreService *project.AppStoreService) *AppStore {
+func NewAppStore(config *config.ServerConfig) *AppStore {
 	app := &AppStore{
-		AppStoreService: appStoreService,
-		models:          models,
+		AppStoreService: config.ServiceFactory.Project.AppStoreService,
+		models:          config.Models,
 	}
 	vs := []*views.View{
 		views.NewView(http.MethodGet, "", app.list),

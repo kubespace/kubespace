@@ -298,6 +298,14 @@ type PipelineRun struct {
 	UpdateTime  time.Time `gorm:"not null;autoUpdateTime" json:"update_time"`
 }
 
+func (p *PipelineRun) Unmarshal(bytes []byte) (interface{}, error) {
+	var pipelineRun PipelineRun
+	if err := json.Unmarshal(bytes, &pipelineRun); err != nil {
+		return nil, err
+	}
+	return pipelineRun, nil
+}
+
 type PipelineRunStage struct {
 	ID             uint            `gorm:"primaryKey" json:"id"`
 	Name           string          `gorm:"name;size:255;not null" json:"name"`

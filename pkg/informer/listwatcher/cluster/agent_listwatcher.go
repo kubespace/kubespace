@@ -34,7 +34,7 @@ func NewAgentListWatcher(token string, config *config.ListWatcherConfig) AgentLi
 		config: config,
 	}
 	resyncSec := 0
-	a.Storage = config.NewStorage(watchKey, nil, &resyncSec, &kubetypes.Request{})
+	a.Storage = config.NewStorage(watchKey, nil, nil, &resyncSec, &kubetypes.Request{})
 	return a
 }
 

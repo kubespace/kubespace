@@ -295,7 +295,7 @@ export default {
       // this.originSecrets = []
       const cluster = this.$store.state.cluster
       let params = {namespace: this.namespace}
-      if(this.projectId) params['labels'] = projectLabels()
+      if(this.projectId) params['label_selector'] = {"matchLabels": projectLabels()}
       if (cluster) {
         listResource(cluster, ResType.Secret, params).then(response => {
           this.loading = false

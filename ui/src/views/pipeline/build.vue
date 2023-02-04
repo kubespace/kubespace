@@ -482,13 +482,11 @@ export default {
         // console.log(res)
         if(res && res != "\n") {
           let data = JSON.parse(res)
-          // console.log(data)
-          if(data.object) {
-            let obj = data.object
+          if(data) {
             for(let i in this.builds){
               let build = this.builds[i]
-              if(build.pipeline_run.id == obj.pipeline_run.id) {
-                this.$set(this.builds, i, obj)
+              if(build.pipeline_run.id == data.pipeline_run.id) {
+                this.$set(this.builds, i, data)
                 this.processExecTime()
                 break
               }
@@ -642,7 +640,6 @@ export default {
     
     clickBuildDetail(build, type, stage) {
       var clickDetail = build.clickDetail
-      console.log(clickDetail)
       if(clickDetail){
         if(type == 'source' && clickDetail.type == type) {
           this.$set(build, 'clickDetail', undefined)
@@ -665,7 +662,6 @@ export default {
         } else {
           this.$set(build, 'clickDetail', {type: type, builds: build.pipeline_run.params.build_ids})
         }
-        console.log(build.clickDetail)
       } else {
         this.$set(build, 'clickDetail', {type: type, stage: stage})
       }

@@ -153,6 +153,11 @@ export default {
       })()
     }
   },
+  watch: {
+    cluster: function() {
+      this.fetchData()
+    }
+  },
   beforeDestroy() {
     if(this.clusterSSE) this.clusterSSE.disconnect()
   },

@@ -50,8 +50,8 @@ export default {
   },
   created() {
     if (this.hasTopSelector && this.topSelectorType == 'cluster') {
-      this.$store.dispatch('watchNamespace', '')
       this.$store.dispatch('watchCluster', this.$route.params.clusterId)
+      this.$store.dispatch('watchNamespace', '')
     }
     this.fetchTopSelectors()
   },
@@ -59,12 +59,6 @@ export default {
   watch: {
     topSelectorType: function () {
       this.fetchTopSelectors()
-    },
-    topSelectorValue: function(newObj, oldObj) {
-      if(this.topSelectorType == 'cluster') {
-        this.$store.dispatch('watchNamespace', '')
-        this.$store.dispatch('watchCluster', newObj)
-      }
     }
   },
   computed: {
@@ -163,10 +157,13 @@ export default {
       if (this.topSelectorType == 'cluster') {
         // this.$router.push({name: 'cluster', params: {'name': this.topSelectorValue}})
         let changeRoute = this.$route.name
+        console.log("top selector change ", changeRoute)
         if(this.$route.meta.sideName) {
           changeRoute = this.$route.meta.sideName
         }
-        this.$router.push({name: changeRoute, params: {'name': this.topSelectorValue}})
+        this.$store.dispatch('watchCluster', this.topSelectorValue)
+        this.$store.dispatch('watchNamespace', '')
+        this.$router.push({name: changeRoute, params: {'clusterId': this.topSelectorValue}})
       } else if (this.topSelectorType == 'pipeline') {
         this.$router.push({name: 'pipeline', params: {'workspaceId': this.topSelectorValue}})
       } else if (this.topSelectorType == 'workspace') {

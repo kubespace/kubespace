@@ -18,7 +18,7 @@
             <span>{{ originApp.from == 'space' ? originApp.package_version : originApp.package_version + " / " + originApp.app_version }}</span>
           </el-form-item>
           <el-form-item label="更新时间">
-            <span>{{ $dateFormat(originApp.update_time) }}</span>
+            <span>{{ originApp.update_time ? $dateFormat(originApp.update_time) : '' }}</span>
           </el-form-item>
           <el-form-item label="命名空间">
             <span>{{ originApp.namespace }}</span>
@@ -405,7 +405,7 @@
 <script>
 import { Clusterbar, Log, Terminal } from '@/views/components'
 import { getApp } from '@/api/project/apps'
-import { containerClass, buildPods, deletePods } from '@/api/pods'
+import { ResType, containerClass, buildPods, delResource } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
 
 export default {
@@ -552,7 +552,7 @@ export default {
       let params = {
         resources: pods
       }
-      deletePods(this.originApp.cluster_id, params).then(() => {
+      delResource(this.originApp.cluster_id, ResType.Pod, params).then(() => {
         Message.success("删除成功")
         this.fetchData()
       }).catch(() => {

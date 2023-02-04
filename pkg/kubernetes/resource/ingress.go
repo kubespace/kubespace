@@ -3,6 +3,8 @@ package resource
 import (
 	"github.com/kubespace/kubespace/pkg/kubernetes/config"
 	"github.com/kubespace/kubespace/pkg/kubernetes/types"
+	"github.com/kubespace/kubespace/pkg/utils"
+	"github.com/kubespace/kubespace/pkg/utils/code"
 	extv1betav1 "k8s.io/api/extensions/v1beta1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,7 +15,7 @@ import (
 
 var (
 	NetworkIngressGVR = &schema.GroupVersionResource{
-		Group:    "networking",
+		Group:    "networking.k8s.io",
 		Version:  "v1",
 		Resource: "ingresses",
 	}
@@ -32,7 +34,7 @@ type Ingress struct {
 func NewIngress(config *config.KubeConfig) *Ingress {
 	p := &Ingress{}
 	gvr := ExtensionIngressGVR
-	if config.Client.VersionGreaterThan(types.ServerVersion14) {
+	if config.Client.VersionGreaterThan(types.ServerVersion19) {
 		gvr = NetworkIngressGVR
 	}
 	p.Resource = NewResource(config, types.IngressType, gvr, p.listObjectProcess)
@@ -117,4 +119,16 @@ func (i *Ingress) listObjectProcess(query *QueryParams, obj *unstructured.Unstru
 		}
 		return i.ToBuildIngress(ing), nil
 	}
+}
+
+func (i *Ingress) List(params interface{}) *utils.Response {
+	resp := i.Resource.List(params)
+	if !resp.IsSuccess() {
+		return resp
+	}
+	data := map[string]interface{}{
+		"ingresses": resp.Data,
+		"group":     i.gvr.Group,
+	}
+	return &utils.Response{Code: code.Success, Msg: "Success", Data: data}
 }

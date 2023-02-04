@@ -118,13 +118,7 @@
 <script>
 import { Clusterbar, Yaml } from "@/views/components";
 import { Message } from "element-ui";
-import {
-  listPersistentVolume,
-  getPersistentVolume,
-  updatePersistentVolume,
-  deletePersistentVolumes,
-  buildPv,
-} from "@/api/persistent_volume";
+import { ResType, listResource, getResource, delResource, updateResource, createResource } from '@/api/cluster/resource'
 
 export default {
   name: "PersistentVolume",
@@ -139,7 +133,7 @@ export default {
       search_name: "",
       search_ns: [],
       cellStyle: { border: 0 },
-      maxHeight: window.innerHeight - 150,
+      maxHeight: window.innerHeight - this.$contentHeight,
       loading: true,
       yamlDialog: false,
       yamlName: "",
@@ -153,27 +147,8 @@ export default {
     this.fetchData();
   },
   watch: {
-    pvsWatch: function (newObj) {
-      if (newObj) {
-        let newUid = newObj.resource.metadata.uid
-        let newRv = newObj.resource.metadata.resourceVersion
-        if (newObj.event === 'add') {
-          this.originPersistentVolumes.push(buildPv(newObj.resource))
-        } else if (newObj.event === 'update') {
-          for (let i in this.originPersistentVolumes) {
-            let d = this.originPersistentVolumes[i]
-            if (d.uid === newUid) {
-              if (d.resource_version < newRv){
-                let newDp = buildPv(newObj.resource)
-                this.$set(this.originPersistentVolumes, i, newDp)
-              }
-              break
-            }
-          }
-        } else if (newObj.event === 'delete') {
-          this.originPersistentVolumes = this.originPersistentVolumes.filter(( { uid } ) => uid !== newUid)
-        }
-      }
+    cluster: function() {
+      this.fetchData()
     }
   },
   computed: {
@@ -186,8 +161,8 @@ export default {
       }
       return data;
     },
-    pvsWatch: function() {
-      return this.$store.getters["ws/pvsWatch"]
+    cluster() {
+      return this.$store.state.cluster
     }
   },
   methods: {
@@ -211,7 +186,7 @@ export default {
       this.originConfigMaps = [];
       const cluster = this.$store.state.cluster;
       if (cluster) {
-        listPersistentVolume(cluster)
+        listResource(cluster, ResType.PersistentVolume)
           .then((response) => {
             this.loading = false;
             this.originPersistentVolumes = response.data ? response.data : []
@@ -236,7 +211,7 @@ export default {
       }
       this.yamlLoading = true;
       this.yamlDialog = true;
-      getPersistentVolume(cluster, name, "yaml")
+      getResource(cluster, ResType.PersistentVolume, name, "yaml")
         .then((response) => {
           this.yamlLoading = false;
           this.yamlValue = response.data;
@@ -256,7 +231,7 @@ export default {
         Message.error("获取存储卷参数异常，请刷新重试")
         return
       }
-      updatePersistentVolume(cluster, this.yamlName, this.yamlValue).then(() => {
+      updateResource(cluster, ResType.PersistentVolume, this.yamlName, this.yamlValue).then(() => {
         Message.success("更新成功")
       }).catch(() => {
         // console.log(e)
@@ -275,7 +250,7 @@ export default {
       let params = {
         resources: pvs
       }
-      deletePersistentVolumes(cluster, params).then(() => {
+      delResource(cluster, ResType.PersistentVolume, params).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)

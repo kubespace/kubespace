@@ -262,6 +262,9 @@ export default {
     }
   },
   watch: {
+    clusterId: function() {
+      this.fetchData()
+    }
   },
   computed: {
     releases: function() {

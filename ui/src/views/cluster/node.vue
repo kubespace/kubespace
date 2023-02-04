@@ -134,6 +134,12 @@ export default {
   created() {
     this.fetchData()
   },
+  watch: {
+    cluster: function(obj) {
+      console.log("watch new cluster ", obj)
+      this.fetchData()
+    }
+  },
   mounted() {
     const that = this
     window.onresize = () => {
@@ -155,16 +161,21 @@ export default {
       }
       return dlist
     },
+    cluster() {
+      return this.$store.state.cluster
+    }
   },
   methods: {
     fetchData: function() {
       this.loading = true
       this.originNodes = []
-      const cluster = this.$store.state.cluster
-      if (cluster) {
-        listResource(cluster, ResType.Node).then(response => {
+      // const cluster = this.$store.state.cluster
+      console.log("fetch data cluster ", this.cluster)
+      if (this.cluster) {
+        listResource(this.cluster, ResType.Node).then(response => {
           this.loading = false
           this.originNodes = response.data
+          console.log(this.originNodes)
         }).catch(() => {
           this.loading = false
         })

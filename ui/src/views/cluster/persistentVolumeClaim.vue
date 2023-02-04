@@ -140,11 +140,8 @@
 <script>
 import { Clusterbar, } from '@/views/components'
 import { Message } from 'element-ui'
-import { listPersistentVolumeClaim, getPersistentVolumeClaim, deletePersistentVolumeClaims, 
-updatePersistentVolumeClaim, buildPvc } from '@/api/persistent_volume_claim'
-import { createYaml } from '@/api/cluster'
+import { ResType, listResource, getResource, delResource, updateResource, createResource } from '@/api/cluster/resource'
 import { projectLabels } from '@/api/project/project'
-import { listNamespace } from '@/api/namespace'
 import yaml from 'js-yaml'
 
 export default {
@@ -159,7 +156,7 @@ export default {
       search_name: "",
       search_ns: [],
       cellStyle: {border: 0},
-      maxHeight: window.innerHeight - 150,
+      maxHeight: window.innerHeight - this.$contentHeight,
       loading: true,
       yamlDialog: false,
       yamlName: "",
@@ -189,28 +186,6 @@ export default {
     this.fetchData()
   },
   watch: {
-    pvcsWatch: function (newObj) {
-      if (newObj) {
-        let newUid = newObj.resource.metadata.uid
-        let newRv = newObj.resource.metadata.resourceVersion
-        if (newObj.event === 'add') {
-          this.originPersistentVolumeClaims.push(buildPvc(newObj.resource))
-        } else if (newObj.event === 'update') {
-          for (let i in this.originPersistentVolumeClaims) {
-            let d = this.originPersistentVolumeClaims[i]
-            if (d.uid === newUid) {
-              if (d.resource_version < newRv){
-                let newDp = buildPvc(newObj.resource)
-                this.$set(this.originPersistentVolumeClaims, i, newDp)
-              }
-              break
-            }
-          }
-        } else if (newObj.event === 'delete') {
-          this.originPersistentVolumeClaims = this.originPersistentVolumeClaims.filter(( { uid } ) => uid !== newUid)
-        }
-      }
-    },
     cluster: function() {
       this.fetchData()
     }
@@ -224,9 +199,6 @@ export default {
         data.push(c)
       }
       return data
-    },
-    pvcsWatch: function() {
-      return this.$store.getters["ws/pvcsWatch"]
     },
     projectId() {
       return this.$route.params.workspaceId
@@ -259,9 +231,9 @@ export default {
       this.loading = true
       const cluster = this.$store.state.cluster
       let params = {namespace: this.namespace}
-      if(this.projectId) params['labels'] = projectLabels()
+      if(this.projectId) params['label_selector'] = {"matchLabels": projectLabels()}
       if (cluster) {
-        listPersistentVolumeClaim(cluster, params).then(response => {
+        listResource(cluster, ResType.PersistentVolumeClaim, params).then(response => {
           this.loading = false
           this.$set(this, 'originPersistentVolumeClaims', response.data ? response.data : [])
         }).catch(() => {
@@ -274,7 +246,7 @@ export default {
     },
     getPersistentVolumeClaim: function(namespace, name) {
       this.dialogLoading = true
-      getPersistentVolumeClaim(this.cluster, namespace, name, ).then(response => {
+      getResource(this.cluster, ResType.PersistentVolumeClaim, namespace, name, ).then(response => {
         this.pvc = response.data
         this.dialogLoading = false
       }).catch(() => {
@@ -290,7 +262,7 @@ export default {
       let pvc = JSON.parse(JSON.stringify(this.pvc))
       let yamlStr = yaml.dump(pvc)
       this.dialogLoading = true
-      updatePersistentVolumeClaim(cluster, pvc.metadata.namespace, pvc.metadata.name, yamlStr).then(() => {
+      updateResource(cluster, ResType.PersistentVolumeClaim, pvc.metadata.namespace, pvc.metadata.name, yamlStr).then(() => {
         Message.success("更新PVC成功")
         this.dialogLoading = false
         this.fetchData()
@@ -311,7 +283,7 @@ export default {
         type: 'warning'
       }).then(() => {
         this.loading = true
-        deletePersistentVolumeClaims(this.cluster, {resources: pvcs}).then(() => {
+        delResource(this.cluster, ResType.PersistentVolumeClaim, {resources: pvcs}).then(() => {
           Message.success("删除PVC成功")
           this.loading = false
           this.fetchData()
@@ -342,7 +314,7 @@ export default {
       this.namespaces = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listNamespace(cluster).then(response => {
+        listResource(cluster, ResType.Namespace).then(response => {
           this.namespaces = response.data
           this.namespaces.sort((a, b) => {return a.name > b.name ? 1 : -1})
         }).catch((err) => {
@@ -376,7 +348,7 @@ export default {
       }
       let yamlStr = yaml.dump(pvc)
       this.dialogLoading = true
-      createYaml(this.cluster, yamlStr).then((response) => {
+      createResource(this.cluster, yamlStr).then((response) => {
         this.dialogLoading = false
         this.createFormVisible = false
         Message.success("创建PVC成功")

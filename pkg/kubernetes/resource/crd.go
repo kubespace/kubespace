@@ -20,13 +20,13 @@ import (
 var CustomResourceDefinitionGVR = &schema.GroupVersionResource{
 	Group:    "apiextensions.k8s.io",
 	Version:  "v1",
-	Resource: "customresourcedefinition",
+	Resource: "customresourcedefinitions",
 }
 
 var CustomResourceDefinitionV1beta1GVR = &schema.GroupVersionResource{
 	Group:    "apiextensions.k8s.io",
 	Version:  "v1beta1",
-	Resource: "customresourcedefinition",
+	Resource: "customresourcedefinitions",
 }
 
 type CustomResourceDefinition struct {
@@ -64,6 +64,7 @@ func (s *CustomResourceDefinition) listObjectProcess(query *QueryParams, obj *un
 		}
 		return map[string]interface{}{
 			"name":        crd.Name,
+			"resource":    crd.Spec.Names.Plural,
 			"scope":       crd.Spec.Scope,
 			"version":     version,
 			"group":       crd.Spec.Group,
@@ -83,6 +84,7 @@ func (s *CustomResourceDefinition) listObjectProcess(query *QueryParams, obj *un
 		}
 		return map[string]interface{}{
 			"name":        crd.Name,
+			"resource":    crd.Spec.Names.Plural,
 			"scope":       crd.Spec.Scope,
 			"version":     version,
 			"group":       crd.Spec.Group,

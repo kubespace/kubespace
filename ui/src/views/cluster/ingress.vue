@@ -237,11 +237,8 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { listIngresses, getIngress, deleteIngresses, updateIngress } from '@/api/ingress'
-import { createYaml } from '@/api/cluster'
-import { listServices } from '@/api/service'
+import { ResType, listResource, getResource, delResource, updateResource, createResource } from '@/api/cluster/resource'
 import { projectLabels } from '@/api/project/project'
-import { listNamespace } from '@/api/namespace'
 import { Message } from 'element-ui'
 import yaml from 'js-yaml'
 
@@ -259,7 +256,7 @@ export default {
       yamlLoading: true,
       cellStyle: {border: 0},
       titleName: ["Ingresses"],
-      maxHeight: window.innerHeight - 135,
+      maxHeight: window.innerHeight - this.$contentHeight,
       loading: true,
       originIngresses: [],
       search_ns: [],
@@ -295,35 +292,13 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 135
+        let heightStyle = window.innerHeight - this.$contentHeight
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
     }
   },
   watch: {
-    ingressesWatch: function (newObj) {
-      if (newObj) {
-        let newUid = newObj.resource.metadata.uid
-        let newRv = newObj.resource.metadata.resourceVersion
-        if (newObj.event === 'add') {
-          this.originIngresses.push(this.buildIngresses(newObj.resource))
-        } else if (newObj.event === 'update') {
-          for (let i in this.originIngresses) {
-            let d = this.originIngresses[i]
-            if (d.uid === newUid) {
-              if (d.resource_version < newRv){
-                let newDp = this.buildIngresses(newObj.resource)
-                this.$set(this.originIngresses, i, newDp)
-              }
-              break
-            }
-          }
-        } else if (newObj.event === 'delete') {
-          this.originIngresses = this.originIngresses.filter(( { uid } ) => uid !== newUid)
-        }
-      }
-    },
     cluster: function() {
       this.fetchData()
     }
@@ -342,9 +317,6 @@ export default {
         dlist.push(p)
       }
       return dlist
-    },
-    ingressesWatch: function() {
-      return this.$store.getters["ws/ingressesWatch"]
     },
     projectId() {
       return this.$route.params.workspaceId
@@ -369,11 +341,12 @@ export default {
   methods: {
     fetchData: function() {
       this.loading = true
+      this.originIngresses = []
       const cluster = this.$store.state.cluster
       let params = {namespace: this.namespace}
-      if(this.projectId) params['labels'] = projectLabels()
+      if(this.projectId) params['label_selector'] = {"matchLabels": projectLabels()}
       if (cluster) {
-        listIngresses(cluster, params).then(response => {
+        listResource(cluster, ResType.Ingress, params).then(response => {
           this.loading = false
           let originIngresses = response.data.ingresses ? response.data.ingresses : []
           this.$set(this, 'originIngresses', originIngresses)
@@ -427,7 +400,7 @@ export default {
         return
       }
       this.dialogLoading = true
-      getIngress(cluster, namespace, name, ).then(response => {
+      getResource(cluster, ResType.Ingress, namespace, name, ).then(response => {
         let ingress = response.data
         // let rules = []
         for(let r of ingress.spec.rules) {
@@ -470,7 +443,7 @@ export default {
         type: 'warning'
       }).then(() => {
         this.loading = true
-        deleteIngresses(this.cluster, {resources: ingresses}).then(() => {
+        delResource(this.cluster, ResType.Ingress, {resources: ingresses}).then(() => {
           Message.success("删除Ingress成功")
           this.fetchData()
         }).catch(() => {
@@ -493,13 +466,14 @@ export default {
       }
       let yamlStr = yaml.dump(ingress)
       this.dialogLoading = true
-      updateIngress(cluster, ingress.metadata.namespace, ingress.metadata.name, yamlStr).then(() => {
+      updateResource(cluster, ResType.Ingress, ingress.metadata.namespace, ingress.metadata.name, yamlStr).then(() => {
         Message.success("更新Ingress成功")
         this.dialogLoading = false
         this.createFormVisible = false
         this.fetchData()
       }).catch(() => {
         // console.log(e) 
+        this.dialogLoading = false
       })
     },
     _delIngressesFunc: function() {
@@ -593,13 +567,14 @@ export default {
         Message.error(err)
         return
       }
-      if(this.ingressGroup == 'networking') {
+      console.log(this.ingressGroup)
+      if(this.ingressGroup == 'networking.k8s.io') {
         ingress.apiVersion = 'networking.k8s.io/v1'
       }
       
       let yamlStr = yaml.dump(ingress)
       this.dialogLoading = true
-      createYaml(cluster, yamlStr).then(() => {
+      createResource(cluster, yamlStr).then(() => {
         Message.success("创建Ingress成功")
         this.dialogLoading = false
         this.createFormVisible = false
@@ -611,7 +586,7 @@ export default {
     fetchServices: function() {
       let params = {namespace: this.namespace}
       if (this.cluster) {
-        listServices(this.cluster, params).then(response => {
+        listResource(this.cluster, ResType.Service, params).then(response => {
           this.services = response.data || []
         }).catch(() => {
         })
@@ -623,7 +598,7 @@ export default {
       this.namespaces = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listNamespace(cluster).then(response => {
+        listResource(cluster, ResType.Namespace).then(response => {
           this.namespaces = response.data
           this.namespaces.sort((a, b) => {return a.name > b.name ? 1 : -1})
         }).catch((err) => {

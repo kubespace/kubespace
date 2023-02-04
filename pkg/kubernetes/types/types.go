@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 )
 
-const ServerVersion14 = "v1.14.0"
 const ServerVersion16 = "v1.16.0"
 const ServerVersion17 = "v1.17.0"
 const ServerVersion19 = "v1.19.0"

@@ -25,9 +25,7 @@
           min-width="40"
           show-overflow-tooltip>
           <template slot-scope="scope">
-            <span class="name-class" v-on:click="nameClick(scope.row.namespace, scope.row.name)">
               {{ scope.row.name }}
-            </span>
           </template>
         </el-table-column>
         <el-table-column
@@ -49,8 +47,8 @@
           show-overflow-tooltip>
           <template slot-scope="scope">
             <template v-if="scope.row.subjects && scope.row.subjects.length > 0">
-              <span v-for="s of scope.row.subjects" :key="s.name" class="back-class">
-                {{ s.kind + '/' + s.name }} 
+              <span v-for="(i,j) in scope.row.subjects" :key="scope.row.uid+i.name+j" class="back-class">
+                {{ i.kind + '/' + i.name }} 
               </span>
             </template>
           </template>
@@ -83,10 +81,6 @@
             <el-dropdown size="medium" >
               <el-link :underline="false"><svg-icon style="width: 1.3em; height: 1.3em;" icon-class="operate" /></el-link>
               <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item @click.native.prevent="nameClick(scope.row.namespace, scope.row.name)">
-                  <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="detail" />
-                  <span style="margin-left: 5px;">详情</span>
-                </el-dropdown-item>
                 <el-dropdown-item v-if="$editorRole()" @click.native.prevent="getRoleBindingYaml(scope.row.namespace, scope.row.name, scope.row.kind)">
                   <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="edit" />
                   <span style="margin-left: 5px;">修改</span>
@@ -113,7 +107,7 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { listRoleBindings, getRoleBinding, deleteRoleBindings, updateRoleBinding } from '@/api/rolebinding'
+import { ResType, listResource, getResource, delResource, updateResource } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
 
@@ -133,7 +127,7 @@ export default {
         yamlLoading: true,
         cellStyle: {border: 0},
         titleName: ["Role Bindings"],
-        maxHeight: window.innerHeight - 150,
+        maxHeight: window.innerHeight - this.$contentHeight,
         loading: true,
         originRoleBindings: [],
         search_ns: [],
@@ -149,34 +143,15 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150
+        let heightStyle = window.innerHeight - this.$contentHeight
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
     }
   },
   watch: {
-    rolebindingsWatch: function (newObj) {
-      if (newObj) {
-        let newUid = newObj.resource.metadata.uid
-        let newRv = newObj.resource.metadata.resourceVersion
-        if (newObj.event === 'add') {
-          this.originRoleBindings.push(this.buildRoleBindings(newObj.resource))
-        } else if (newObj.event === 'update') {
-          for (let i in this.originRoleBindings) {
-            let d = this.originRoleBindings[i]
-            if (d.uid === newUid) {
-              if (d.resource_version < newRv){
-                let newDp = this.buildRoleBindings(newObj.resource)
-                this.$set(this.originRoleBindings, i, newDp)
-              }
-              break
-            }
-          }
-        } else if (newObj.event === 'delete') {
-          this.originRoleBindings = this.originRoleBindings.filter(( { uid } ) => uid !== newUid)
-        }
-      }
+    cluster: function() {
+      this.fetchData()
     }
   },
   computed: {
@@ -194,19 +169,29 @@ export default {
       })
       return dlist
     },
-    rolebindingsWatch: function() {
-      return this.$store.getters["ws/rolebindingsWatch"]
+    cluster() {
+      return this.$store.state.cluster
     }
   },
   methods: {
     fetchData: function() {
       this.loading = true
       this.originRoleBindings = []
+      let originRoleBindings = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listRoleBindings(cluster).then(response => {
-          this.loading = false
-          this.originRoleBindings = response.data
+        listResource(cluster, ResType.RoleBinding).then(response => {
+          originRoleBindings = response.data || []
+          listResource(cluster, ResType.ClusterRoleBinding).then(response => {
+            this.loading = false
+            let clusterRoleBindings = response.data || []
+            for(let r of clusterRoleBindings) {
+              originRoleBindings.push(r)
+            }
+            this.originRoleBindings = originRoleBindings
+          }).catch(() => {
+            this.loading = false
+          })
         }).catch(() => {
           this.loading = false
         })
@@ -256,11 +241,15 @@ export default {
         Message.error("获取RoleBinding参数异常，请刷新重试")
         return
       }
+      let resType = ResType.RoleBinding
       if (kind === 'RoleBinding' && !namespace) {
         Message.error("获取命名空间参数异常，请刷新重试")
         return
       }
-      if (kind === 'ClusterRoleBinding') namespace = 'n'
+      if (kind === 'ClusterRoleBinding') {
+        namespace = ''
+        resType = ResType.ClusterRoleBinding
+      }
       if (!name) {
         Message.error("获取RoleBinding名称参数异常，请刷新重试")
         return
@@ -268,7 +257,7 @@ export default {
       this.yamlValue = ""
       this.yamlDialog = true
       this.yamlLoading = true
-      getRoleBinding(cluster, namespace, name, kind, "yaml").then(response => {
+      getResource(cluster, resType, namespace, name, "yaml").then(response => {
         this.yamlLoading = false
         this.yamlValue = response.data
         this.yamlNamespace = namespace
@@ -291,7 +280,7 @@ export default {
       let params = {
         resources: rolebindings
       }
-      deleteRoleBindings(cluster, params).then(() => {
+      delResource(cluster, ResType.RoleBinding, params).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)
@@ -307,17 +296,24 @@ export default {
         Message.error("获取RoleBinding参数异常，请刷新重试")
         return
       }
+      let resType = ResType.RoleBinding
       if (this.yamlKind === 'RoleBinding' && !this.yamlNamespace) {
         Message.error("获取命名空间参数异常，请刷新重试")
         return
       }
-      if (this.yamlKind === 'ClusterRoleBinding') this.yamlNamespace = 'n'
+      if (this.yamlKind === 'ClusterRoleBinding') {
+        this.yamlNamespace = ''
+        resType = ResType.ClusterRoleBinding
+      }
       if (!this.yamlName) {
         Message.error("获取RoleBinding参数异常，请刷新重试")
         return
       }
-      updateRoleBinding(cluster, this.yamlNamespace, this.yamlName, this.yamlKind, this.yamlValue).then(() => {
+      this.yamlLoading = true
+      updateResource(cluster, resType, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
         Message.success("更新成功")
+        this.yamlLoading = false
+        this.yamlDialog = false
       }).catch(() => {
         // console.log(e) 
       })

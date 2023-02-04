@@ -13,6 +13,18 @@ type Handler interface {
 	Handle(interface{}) error
 }
 
+type CommonHandler struct {
+	HandleFunc func(interface{}) error
+}
+
+func (h *CommonHandler) Check(obj interface{}) bool {
+	return true
+}
+
+func (h *CommonHandler) Handle(obj interface{}) error {
+	return h.HandleFunc(obj)
+}
+
 type Informer interface {
 	Run(stopCh <-chan struct{})
 	AddHandler(Handler)

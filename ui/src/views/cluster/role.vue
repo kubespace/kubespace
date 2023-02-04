@@ -113,7 +113,7 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { listRoles, getRole, deleteRoles, updateRole } from '@/api/role'
+import { ResType, listResource, getResource, delResource, updateResource } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
 
@@ -133,7 +133,7 @@ export default {
         yamlLoading: true,
         cellStyle: {border: 0},
         titleName: ["Roles"],
-        maxHeight: window.innerHeight - 150,
+        maxHeight: window.innerHeight - this.$contentHeight,
         loading: true,
         originRoles: [],
         search_ns: [],
@@ -149,34 +149,15 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150
+        let heightStyle = window.innerHeight - this.$contentHeight
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
     }
   },
   watch: {
-    rolesWatch: function (newObj) {
-      if (newObj) {
-        let newUid = newObj.resource.metadata.uid
-        let newRv = newObj.resource.metadata.resourceVersion
-        if (newObj.event === 'add') {
-          this.originRoles.push(this.buildRoles(newObj.resource))
-        } else if (newObj.event === 'update') {
-          for (let i in this.originRoles) {
-            let d = this.originRoles[i]
-            if (d.uid === newUid) {
-              if (d.resource_version < newRv){
-                let newDp = this.buildRoles(newObj.resource)
-                this.$set(this.originRoles, i, newDp)
-              }
-              break
-            }
-          }
-        } else if (newObj.event === 'delete') {
-          this.originRoles = this.originRoles.filter(( { uid } ) => uid !== newUid)
-        }
-      }
+    cluster: function() {
+      this.fetchData()
     }
   },
   computed: {
@@ -194,19 +175,29 @@ export default {
       })
       return dlist
     },
-    rolesWatch: function() {
-      return this.$store.getters["ws/rolesWatch"]
+    cluster() {
+      return this.$store.state.cluster
     }
   },
   methods: {
     fetchData: function() {
       this.loading = true
       this.originRoles = []
+      let originRoles = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listRoles(cluster).then(response => {
-          this.loading = false
-          this.originRoles = response.data
+        listResource(cluster, ResType.Role).then(response => {
+          originRoles = response.data || []
+          listResource(cluster, ResType.ClusterRole).then(response => {
+            this.loading = false
+            let clusterRoles = response.data || []
+            for(let r of clusterRoles) {
+              originRoles.push(r)
+            }
+            this.originRoles = originRoles
+          }).catch(() => {
+            this.loading = false
+          })
         }).catch(() => {
           this.loading = false
         })
@@ -236,11 +227,7 @@ export default {
       return p
     },
     nameClick: function(namespace, name) {
-      if(namespace) {
-        this.$router.push({name: 'roleDetail', params: {namespace: namespace, roleName: name}})
-      } else {
-        this.$router.push({name: 'clusterroleDetail', params: {roleName: name}})
-      }
+      this.$router.push({name: 'roleDetail', params: {namespace: namespace, roleName: name}})
     },
     getRoleYaml: function(namespace, name, kind) {
       this.yamlNamespace = ""
@@ -250,11 +237,15 @@ export default {
         Message.error("获取集群参数异常，请刷新重试")
         return
       }
+      let resType = ResType.Role
       if (kind === 'Role' && !namespace) {
         Message.error("获取命名空间参数异常，请刷新重试")
         return
       }
-      if (kind === 'ClusterRole') namespace = 'n'
+      if (kind === 'ClusterRole') {
+        namespace = ''
+        resType = ResType.ClusterRole
+      }
       
       if (!name) {
         Message.error("获取Role名称参数异常，请刷新重试")
@@ -263,7 +254,7 @@ export default {
       this.yamlValue = ""
       this.yamlDialog = true
       this.yamlLoading = true
-      getRole(cluster, namespace, name, kind, "yaml").then(response => {
+      getResource(cluster, resType, namespace, name, "yaml").then(response => {
         this.yamlLoading = false
         this.yamlValue = response.data
         this.yamlNamespace = namespace
@@ -286,7 +277,7 @@ export default {
       let params = {
         resources: roles
       }
-      deleteRoles(cluster, params).then(() => {
+      delResource(cluster, ResType.Role, params).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)
@@ -302,18 +293,24 @@ export default {
         Message.error("获取Role参数异常，请刷新重试")
         return
       }
+      let resType = ResType.Role
       if (this.yamlKind === 'Role' && !this.yamlNamespace) {
         Message.error("获取命名空间参数异常，请刷新重试")
         return
       }
-      if (this.yamlKind === 'ClusterRole') this.yamlNamespace = 'n'
+      if (this.yamlKind === 'ClusterRole') {
+        this.yamlNamespace = ''
+        resType = ResType.ClusterRole
+      }
       if (!this.yamlName) {
         Message.error("获取Role参数异常，请刷新重试")
         return
       }
-      console.log(this.yamlValue)
-      updateRole(cluster, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
+      this.yamlLoading = true
+      updateResource(cluster, resType, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
         Message.success("更新成功")
+        this.yamlLoading = false
+        this.yamlDialog = false
       }).catch(() => {
         // console.log(e) 
       })
