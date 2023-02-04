@@ -15,11 +15,11 @@ asset-build: vue-build
 	go-assets-builder -s /ui/dist/static ui/dist -o pkg/server/router/assets.go -p router
 
 vue-build:
-	cd ui
-	npm config set registry 'https://registry.npm.taobao.org'
+	cd ui &&\
+	npm config set registry 'https://registry.npm.taobao.org' &&\
 	npm install &&\
-	npm run build
-	cp dist/index.html dist/static/index.html
+	npm run build &&\
+	cp dist/index.html dist/static/index.html &&\
 	cd ..
 
 docker-builder:
