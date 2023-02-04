@@ -127,6 +127,11 @@ func newCodeBuilderPlugin(params *PluginParams) (*codeBuilderPlugin, error) {
 }
 
 func (b *codeBuilderPlugin) execute() (interface{}, error) {
+	defer func() {
+		if err := os.RemoveAll(b.rootDir); err != nil {
+			b.Log("remove job root dir %s error: %s", b.rootDir, err.Error())
+		}
+	}()
 	if err := b.clone(); err != nil {
 		return nil, err
 	}
