@@ -99,9 +99,9 @@ func (e *Event) List(params interface{}) *utils.Response {
 		return &utils.Response{Code: code.RequestError, Msg: err.Error()}
 	}
 	var nsRes []*BuildEvent
-	for _, obj := range objs.Items {
+	for i, obj := range objs.Items {
 		if query.Name == "" || strings.Contains(obj.ObjectMeta.Name, query.Name) {
-			nsRes = append(nsRes, e.ToBuildEvent(&obj))
+			nsRes = append(nsRes, e.ToBuildEvent(&objs.Items[i]))
 		}
 	}
 	return &utils.Response{Code: code.Success, Msg: "Success", Data: nsRes}
