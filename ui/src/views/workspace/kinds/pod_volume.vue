@@ -322,6 +322,7 @@ export default {
     },
     nsConfigmaps() {
       let c = {}
+      console.log(this.projectResources)
       for(let r of this.appResources) {
         if(r.kind == 'ConfigMap' && r.metadata.name) {
           c[r.metadata.name] = r

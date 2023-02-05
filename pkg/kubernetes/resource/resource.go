@@ -129,10 +129,14 @@ func (r *Resource) List(params interface{}) *utils.Response {
 				continue
 			}
 		}
-		if obj, err := r.listObjectProcess(query, &objects.Items[i]); err != nil {
-			return &utils.Response{Code: code.RequestError, Msg: err.Error()}
-		} else if obj != nil {
-			data = append(data, obj)
+		if query.Process {
+			if obj, err := r.listObjectProcess(query, &objects.Items[i]); err != nil {
+				return &utils.Response{Code: code.RequestError, Msg: err.Error()}
+			} else if obj != nil {
+				data = append(data, obj)
+			}
+		} else {
+			data = append(data, objects.Items[i].Object)
 		}
 	}
 	return &utils.Response{Code: code.Success, Msg: "Success", Data: data}

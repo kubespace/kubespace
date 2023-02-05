@@ -364,6 +364,7 @@ func (p *ProjectService) GetProjectNamespaceResources(ser *serializers.ProjectRe
 		}
 		res := p.kubeClient.List(oriProject.ClusterId, resType, map[string]interface{}{
 			"namespace":      oriProject.Namespace,
+			"process":        false,
 			"label_selector": map[string]interface{}{"matchLabels": map[string]string{"kubespace.cn/belong-to": "project"}},
 		})
 		if !res.IsSuccess() {
