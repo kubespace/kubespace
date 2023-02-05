@@ -58,6 +58,9 @@ export default {
     if(!this.params.namespace) {
       this.$set(this.params, 'namespace', 'default')
     }
+    if(!this.params.yaml) {
+      this.$set(this.params, 'yaml', "")
+    }
     this.fetchClusters()
   },
   methods: {

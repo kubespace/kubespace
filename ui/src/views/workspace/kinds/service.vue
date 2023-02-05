@@ -121,7 +121,6 @@ export default {
           ports.push(p)
         }
       }
-      console.log(ports)
       return ports
     }
   },

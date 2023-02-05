@@ -62,6 +62,7 @@ type releaserPlugin struct {
 	CodeDir string
 	Result  *ReleaserPluginResult
 	Images  []string
+	rootDir string
 }
 
 func newReleaserPlugin(pluginParams *PluginParams, models *model.Models) (*releaserPlugin, error) {
@@ -91,11 +92,17 @@ func newReleaserPlugin(pluginParams *PluginParams, models *model.Models) (*relea
 		return nil, err
 	}
 	plugin.CodeDir, _ = filepath.Abs(filepath.Join(rootDir, codeDir))
+	plugin.rootDir = rootDir
 
 	return plugin, nil
 }
 
 func (r *releaserPlugin) execute() (interface{}, error) {
+	defer func() {
+		if err := os.RemoveAll(r.rootDir); err != nil {
+			r.Log("remove job root dir %s error: %s", r.rootDir, err.Error())
+		}
+	}()
 	err := r.models.PipelineReleaseManager.Add(r.Params.WorkspaceId, r.Params.Version, r.Params.JobId)
 	if err != nil {
 		return nil, err

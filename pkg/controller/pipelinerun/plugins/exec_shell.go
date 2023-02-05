@@ -66,6 +66,11 @@ func newExecShellPlugin(params *PluginParams) (*execShellPlugin, error) {
 }
 
 func (b *execShellPlugin) execute() (interface{}, error) {
+	defer func() {
+		if err := os.RemoveAll(b.rootDir); err != nil {
+			b.Log("remove job root dir %s error: %s", b.rootDir, err.Error())
+		}
+	}()
 	if b.Params.Resource.Value == "" {
 		return nil, fmt.Errorf("执行脚本目标资源参数为空，请检查流水线配置")
 	}

@@ -45,20 +45,6 @@ func (p *ManagerPipeline) UpdatePipeline(pipeline *types.Pipeline, stages []*typ
 		if err != nil {
 			return err
 		}
-		for _, stage := range stages {
-			stage.PipelineId = pipeline.ID
-			stage.PrevStageId = prevStageId
-			if stage.ID == 0 {
-				if err = tx.Create(stage).Error; err != nil {
-					return err
-				}
-			} else {
-				if err = tx.Save(stage).Error; err != nil {
-					return err
-				}
-			}
-			prevStageId = stage.ID
-		}
 		// 删掉原阶段不存在的
 		for _, stage := range oriStages {
 			hasNew := false
@@ -73,6 +59,20 @@ func (p *ManagerPipeline) UpdatePipeline(pipeline *types.Pipeline, stages []*typ
 					return err
 				}
 			}
+		}
+		for _, stage := range stages {
+			stage.PipelineId = pipeline.ID
+			stage.PrevStageId = prevStageId
+			if stage.ID == 0 {
+				if err = tx.Create(stage).Error; err != nil {
+					return err
+				}
+			} else {
+				if err = tx.Save(stage).Error; err != nil {
+					return err
+				}
+			}
+			prevStageId = stage.ID
 		}
 		return nil
 	})

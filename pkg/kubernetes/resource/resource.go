@@ -80,7 +80,7 @@ type QueryParams struct {
 	ResourceVersion    string                `json:"resourceVersion" form:"resource_version"`
 	OwnerReferenceKind string                `json:"owner_reference_kind" form:"owner_reference_kind"`
 	OwnerReferenceName string                `json:"owner_reference_name" form:"owner_reference_name"`
-	Process            bool                  `json:"process" form:"process"` // 是否对查询结果进行处理
+	Process            *bool                 `json:"process" form:"process"` // 是否对查询结果进行处理
 }
 
 func (r *Resource) listOptionsFromQuery(query *QueryParams) (options *metav1.ListOptions, err error) {
@@ -129,7 +129,7 @@ func (r *Resource) List(params interface{}) *utils.Response {
 				continue
 			}
 		}
-		if query.Process {
+		if query.Process == nil || *query.Process {
 			if obj, err := r.listObjectProcess(query, &objects.Items[i]); err != nil {
 				return &utils.Response{Code: code.RequestError, Msg: err.Error()}
 			} else if obj != nil {
@@ -198,7 +198,7 @@ func (r *Resource) Watch(params interface{}, writer OutWriter) *utils.Response {
 					klog.Infof("watcher stopped")
 					return
 				}
-				if query.Process {
+				if query.Process != nil && *query.Process {
 					if object, err := runtime.DefaultUnstructuredConverter.ToUnstructured(res.Object); err != nil {
 						klog.Errorf("watch result to unstructured error: %s", err.Error())
 						continue

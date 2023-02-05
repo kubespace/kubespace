@@ -1,7 +1,6 @@
 package plugins
 
 import (
-	"encoding/base64"
 	"fmt"
 	kubetypes "github.com/kubespace/kubespace/pkg/kubernetes/types"
 	"github.com/kubespace/kubespace/pkg/model"
@@ -128,15 +127,10 @@ func (u *upgradeApp) upgrade(appId uint, withInstall bool) error {
 				u.Log("not found chart path=%s", app.AppVersion.ChartPath)
 				return err
 			}
-			chartBytes, err := base64.StdEncoding.DecodeString(string(appChart.Content))
-			if err != nil {
-				u.Log("decode chart error: %s", err.Error())
-				return err
-			}
 			installParams := map[string]interface{}{
 				"name":        app.Name,
 				"namespace":   u.project.Namespace,
-				"chart_bytes": chartBytes,
+				"chart_bytes": appChart.Content,
 				"values":      upgradeValues,
 			}
 			var resp *utils.Response

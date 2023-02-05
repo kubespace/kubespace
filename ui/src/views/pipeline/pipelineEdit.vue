@@ -331,7 +331,6 @@ export default {
     window.onresize = () => {
       return (() => {
         let heightStyle = window.innerHeight - 145
-        console.log(heightStyle)  
         that.maxHeight = heightStyle
       })()
     }

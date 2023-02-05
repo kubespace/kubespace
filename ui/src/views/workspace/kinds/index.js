@@ -465,7 +465,7 @@ function resolvePodVolume(tpl) {
       vol.configMap = v.configMap
     } else if(v.secret) {
       vol.type = 'secret'
-      vol.secret = {name: v.secret.secretName}
+      vol.secret = {secretName: v.secret.secretName}
       if(v.secret.items) vol.secret.items = v.secret.items
       if(v.secret.defaultMode) vol.secret.defaultMode = v.secret.defaultMode
     } else {
@@ -775,8 +775,8 @@ export function newPodVolume() {
     persistentVolumeClaim: {},
     glusterfs: {},
     nfs: {},
-    secret: {items: [], name: ''},
-    configMap: {items: [], secretName: ''},
+    secret: {items: [], secretName: ''},
+    configMap: {items: [], name: ''},
     emptyDir: {},
     hostPath: {},
     volumeClaimTemplates: {accessModes: ['ReadWriteOnce']}
