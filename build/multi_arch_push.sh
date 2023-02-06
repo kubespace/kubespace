@@ -10,5 +10,5 @@ amd64_image=$2
 arm64_image=$3
 
 docker manifest create $multi_arch_image $amd64_image $arm64_image --amend
-docker manifest annotation $multi_arch_image $arm64_image --arch arm64
+docker manifest annotate $multi_arch_image $arm64_image --arch arm64
 docker manifest push $multi_arch_image
