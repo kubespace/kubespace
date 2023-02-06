@@ -10,14 +10,6 @@ KubeSpace平台当前包括如下功能：
 4. 应用商店：内置丰富的中间件（mysql、redis等），以及支持导入发布自定义应用；
 5. 平台配置：密钥、镜像仓库管理，以及不同模块的权限管理。
 
-### Demo环境
-
-```
-访问地址：http://101.251.219.154:31381
-用户：demo
-密码：demo@123
-```
-
 ### 安装
 
 通过[helm](https://helm.sh/docs/intro/install/)安装kubespace，执行如下命令：
@@ -109,9 +101,9 @@ KubeSpace平台内置了丰富的中间件，可以快速导入到工作空间�
 
 如果您在使用过程中，有任何问题、建议或功能需求，可以随时在[issues](https://github.com/kubespace/kubespace/issues)中提交请求，我们会及时跟进。
 
-欢迎随时跟我们交流，可以使用QQ扫描下面二维码，加入我们的QQ交流群。
+欢迎随时跟我们交流，可以使用微信扫描下面二维码添加朋友，邀请您加入我们的微信交流群。
 
-![image-20220417234523342](docs/images/qq-qrcode-1.png)
+![image-20220417234523342](docs/images/wechat-qrcode.png)
 
 ### License
 Copyright 2020 KubeSpace.
