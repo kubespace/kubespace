@@ -1,7 +1,7 @@
 ARG BASEIMAGE=registry.cn-hangzhou.aliyuncs.com/kubespace/alpine:3.17.1
-FROM $BASEIMAGE
+FROM --platform=linux/arm64 $BASEIMAGE
 
-COPY bin/amd64/kubespace-server /
+COPY bin/arm64/kubespace-server /
 COPY apps /apps
 COPY ui/dist/favicon.ico /favicon.ico
 

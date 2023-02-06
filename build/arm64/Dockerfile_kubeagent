@@ -1,6 +1,6 @@
 ARG BASEIMAGE=registry.cn-hangzhou.aliyuncs.com/kubespace/alpine:3.17.1
-FROM $BASEIMAGE
+FROM --platform=linux/arm64 $BASEIMAGE
 
-COPY bin/amd64/kube-agent /
+COPY bin/arm64/kube-agent /
 
 CMD ["/kube-agent"]

@@ -10,6 +10,12 @@ build-binary-amd64: asset-build
 	$(ENVVAR) GOOS=$(GOOS) go build -o bin/amd64/controller-manager ./cmd/controller-manager
 	$(ENVVAR) GOOS=$(GOOS) go build -o bin/amd64/kube-agent ./cmd/kube-agent
 
+build-binary-arm64: asset-build
+	rm -rf bin/arm64
+	$(ENVVAR) GOOS=$(GOOS) GOARCH=arm64 go build -o bin/arm64/kubespace-server ./cmd/server
+	$(ENVVAR) GOOS=$(GOOS) GOARCH=arm64 go build -o bin/arm64/controller-manager ./cmd/controller-manager
+	$(ENVVAR) GOOS=$(GOOS) GOARCH=arm64 go build -o bin/arm64/kube-agent ./cmd/kube-agent
+
 asset-build: vue-build
 	go get github.com/jessevdk/go-assets-builder
 	go-assets-builder -s /ui/dist/static ui/dist -o pkg/server/router/assets.go -p router
