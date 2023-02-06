@@ -4,17 +4,18 @@ REGISTRY?=kubespace
 TAG?=dev
 export GOPROXY=https://goproxy.cn,direct
 
-build-binary-amd64: asset-build
+build-binary: asset-build
 	rm -rf bin/amd64
 	$(ENVVAR) GOOS=$(GOOS) go build -o bin/amd64/kubespace-server ./cmd/server
 	$(ENVVAR) GOOS=$(GOOS) go build -o bin/amd64/controller-manager ./cmd/controller-manager
 	$(ENVVAR) GOOS=$(GOOS) go build -o bin/amd64/kube-agent ./cmd/kube-agent
 
-build-binary-arm64: asset-build
-	rm -rf bin/arm64
-	$(ENVVAR) GOOS=$(GOOS) GOARCH=arm64 go build -o bin/arm64/kubespace-server ./cmd/server
-	$(ENVVAR) GOOS=$(GOOS) GOARCH=arm64 go build -o bin/arm64/controller-manager ./cmd/controller-manager
-	$(ENVVAR) GOOS=$(GOOS) GOARCH=arm64 go build -o bin/arm64/kube-agent ./cmd/kube-agent
+	ifdef BUILD_ARM64
+		rm -rf bin/arm64
+		$(ENVVAR) GOOS=$(GOOS) GOARCH=arm64 go build -o bin/arm64/kubespace-server ./cmd/server
+		$(ENVVAR) GOOS=$(GOOS) GOARCH=arm64 go build -o bin/arm64/controller-manager ./cmd/controller-manager
+		$(ENVVAR) GOOS=$(GOOS) GOARCH=arm64 go build -o bin/arm64/kube-agent ./cmd/kube-agent
+	endif
 
 asset-build: vue-build
 	go get github.com/jessevdk/go-assets-builder
