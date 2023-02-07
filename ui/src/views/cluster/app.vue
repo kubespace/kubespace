@@ -175,6 +175,7 @@ import { Clusterbar } from '@/views/components'
 import { listApps, listAppStatus, listAppVersions, installApp, destroyApp, deleteApp, importStoreApp } from "@/api/project/apps";
 import { Message } from 'element-ui'
 import { listStoreApps } from '@/api/project/appStore'
+import { ResType, listResource } from '@/api/cluster/resource'
 import { listNamespace } from '@/api/namespace'
 import { Yaml } from '@/views/components'
 import yaml from 'js-yaml'
@@ -194,7 +195,7 @@ export default {
       dialogLoading: false,
       cellStyle: {border: 0},
       titleName: ["Components"],
-      maxHeight: window.innerHeight - 150,
+      maxHeight: window.innerHeight - this.$contentHeight,
       loading: true,
       originApps: [],
       appVersions: [],
@@ -255,7 +256,7 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150
+        let heightStyle = window.innerHeight - this.$contentHeight
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
@@ -304,7 +305,7 @@ export default {
     fetchNamespace: function() {
       this.namespaces = []
       if (this.$store.state.cluster) {
-        listNamespace(this.$store.state.cluster).then(response => {
+        listResource(this.$store.state.cluster, ResType.Namespace).then(response => {
           this.namespaces = response.data
           this.namespaces.sort((a, b) => {return a.name > b.name ? 1 : -1})
         }).catch((err) => {
