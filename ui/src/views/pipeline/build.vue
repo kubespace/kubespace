@@ -682,7 +682,6 @@ export default {
       this.$set(this.manualStage, 'job_params', job_params)
       this.$set(this.manualStage, 'custom_params', custom_params)
       this.$set(this.manualStage, 'stage', stage)
-      console.log(this.manualStage)
       this.manualDialogVisible = true
     },
     async manualExec() {
