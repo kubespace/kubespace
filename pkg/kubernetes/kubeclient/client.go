@@ -10,6 +10,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
+	"time"
 )
 
 type Client interface {
@@ -64,6 +65,7 @@ func NewClientByInCluster() (Client, error) {
 }
 
 func NewClientWithRestConfig(restConfig *rest.Config) (Client, error) {
+	restConfig.Timeout = time.Second * 5
 	clientSet, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, err

@@ -56,19 +56,41 @@
                   <el-radio label="custom">自定义空间</el-radio>
                 </el-radio-group>
               </el-form-item>
-              <el-form-item label="代码类型" prop="codeType" v-if="form.type == 'code'" @change="codeTypeChange">
+              <el-form-item label="代码托管" prop="codeType" v-if="form.type == 'code'" @change="codeTypeChange">
                 <!-- <span v-if="updateFormVisible">{{ codeTypeMap[form.codeType] }}</span> -->
                 <el-radio-group v-model="form.codeType" @change="codeTypeChange" :disabled="updateFormVisible">
                   <el-radio label="https">HTTPS</el-radio>
                   <el-radio label="git">GIT</el-radio>
+                  <el-radio label="github">GitHub</el-radio>
                 </el-radio-group>
               </el-form-item>
-              <el-form-item label="代码地址" prop="codeUrl" v-if="form.type == 'code'">
+              <el-form-item label="AccessToken" prop="codeSecretId" v-if="form.type=='code'">
+                <el-select v-model="form.codeSecretId" placeholder="请选择代码访问密钥" size="small" style="width: 100%"
+                  @change="codeSecretChange">
+                  <el-option
+                    v-for="secret in secretAccessTokens"
+                    :key="secret.id"
+                    :label="secret.name"
+                    :value="secret.id">
+                  </el-option>
+                </el-select>
+              </el-form-item>
+              <el-form-item label="代码仓库" prop="codeRepo" v-if="form.type=='code'">
+                <el-select v-model="form.codeRepo" placeholder="请选择代码仓库" size="small" style="width: 100%" :loading="codeRepoLoading">
+                  <el-option
+                    v-for="repo in codeRepos"
+                    :key="repo.clone_url"
+                    :label="repo.full_name"
+                    :value="repo.full_name">
+                  </el-option>
+                </el-select>
+              </el-form-item>
+              <!-- <el-form-item label="代码地址" prop="codeUrl" v-if="form.type == 'code'">
                 <el-input v-model="form.codeUrl" autocomplete="off" :disabled="updateFormVisible"
                   :placeholder="form.codeType == 'https' ? '请输入代码地址，如: https://github.com/kubespace/kubespace.git' : '请输入代码地址，如: git@github.com:kubespace/kubespace.git'" 
                   size="small"></el-input>
-              </el-form-item>
-              <el-form-item label="访问密钥" prop="codeSecretId" v-if="form.type=='code'">
+              </el-form-item> -->
+              <!-- <el-form-item label="访问密钥" prop="codeSecretId" v-if="form.type=='code'">
                 <el-select v-model="form.codeSecretId" placeholder="请选择代码访问密钥" size="small" style="width: 100%">
                   <el-option
                     v-for="secret in form.codeType == 'https' ? codePasswordSecrets : codeKeySecrets"
@@ -77,7 +99,7 @@
                     :value="secret.id">
                   </el-option>
                 </el-select>
-              </el-form-item>
+              </el-form-item> -->
               <el-form-item v-if="form.type == 'custom'" label="名称" prop="name">
                 <el-input v-model="form.name" autocomplete="off" placeholder="请输入空间名称" size="small"></el-input>
               </el-form-item>
@@ -98,7 +120,7 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { listWorkspaces, createWorkspace, deleteWorkspace, updateWorkspace } from '@/api/pipeline/workspace'
+import { listWorkspaces, createWorkspace, deleteWorkspace, updateWorkspace, listGitRepos } from '@/api/pipeline/workspace'
 import { listSecret } from "@/api/settings/secret";
 import { Message } from 'element-ui'
 
@@ -113,19 +135,23 @@ export default {
       search_name: '',
       users: [],
       cellStyle: {border: 0},
-      maxHeight: window.innerHeight - 150,
+      maxHeight: window.innerHeight - this.$contentHeight,
       loading: true,
       dialogLoading: false,
       workspaces: [],
       secrets: [],
       createFormVisible: false,
       updateFormVisible: false,
+      codeRepos: [],
+      codeRepoLoading: false,
       form: {
         name: '',
         type: 'code',
         codeType: "https",
         codeUrl: "",
-        codeSecretId: ""
+        codeSecretId: "",
+        apiUrl: "",
+        codeRepo: ""
       },
       workspaceTypeMap: {
         code: "代码空间",
@@ -138,9 +164,6 @@ export default {
       rules: {
         name: [{ required: true, message: '请输入空间名称', trigger: 'blur' },],
         type: [{ required: true, message: '请选择空间类型', trigger: 'blur' },],
-        codeType: [{ required: true, message: '', trigger: 'blur' },],
-        codeUrl: [{ required: true, message: ' ', trigger: 'blur' },],
-        codeSecretId: [{ required: true, message: ' ', trigger: 'blur' },],
       },
     }
   },
@@ -151,9 +174,7 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150
-        console.log(heightStyle)
-        that.maxHeight = heightStyle
+        that.maxHeight = window.innerHeight - this.$contentHeight
       })()
     }
   },
@@ -169,6 +190,13 @@ export default {
       let secrets = [];
       for(let s of this.secrets) {
         if(s.type=='key') secrets.push(s)
+      }
+      return secrets
+    },
+    secretAccessTokens() {
+      let secrets = [];
+      for(let s of this.secrets) {
+        if(s.type=="token") secrets.push(s)
       }
       return secrets
     }
@@ -287,9 +315,10 @@ export default {
       this.form = {
         name: '',
         type: 'code',
-        codeType: "https",
         codeUrl: "",
-        codeSecretId: ""
+        codeType: "github",
+        codeSecretId: "",
+        codeRepo: "",
       }
       this.createFormVisible = true;
       this.fetchSecrets()
@@ -312,8 +341,28 @@ export default {
       this.createFormVisible = false;
     },
     codeTypeChange() {
-      this.form.codeUrl = ''
+      // this.form.codeUrl = ''1
       this.form.codeSecretId = ''
+      this.codeSecretChange()
+    },
+    codeSecretChange() {
+      this.codeRepos = []
+      this.form.codeRepo = ''
+      if (this.form.codeSecretId) {
+        let params = {
+          git_type: this.form.codeType,
+          secret_id: this.form.codeSecretId,
+          api_url: this.form.apiUrl,
+        }
+        this.codeRepoLoading = true
+        listGitRepos(params).then((res) => {
+          this.codeRepos = res.data || []
+          this.codeRepoLoading = false
+        }).catch((err) => {
+          console.log(err)
+          this.codeRepoLoading = false
+        });
+      }
     }
   },
 }

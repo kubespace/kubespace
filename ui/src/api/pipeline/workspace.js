@@ -46,6 +46,14 @@ export function getLatestRelease(params) {
   })
 }
 
+export function listGitRepos(params) {
+  return request({
+    url: `pipeline/workspace/list_git_repos`,
+    method: 'get',
+    params
+  })
+}
+
 export async function existsRelease(params) {
   let data = {}
   await request({
