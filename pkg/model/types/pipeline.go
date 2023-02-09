@@ -15,8 +15,11 @@ const (
 )
 
 const (
-	WorkspaceCodeTypeHttps = "https"
-	WorkspaceCodeTypeGit   = "git"
+	WorkspaceCodeTypeHttps  = "https"
+	WorkspaceCodeTypeGit    = "git"
+	WorkspaceCodeTypeGitHub = "github"
+	WorkspaceCodeTypeGitLab = "gitlab"
+	WorkspaceCodeTypeGitee  = "gitee"
 )
 
 const (

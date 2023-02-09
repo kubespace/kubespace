@@ -7,6 +7,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/server/views"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	"github.com/kubespace/kubespace/pkg/service/pipeline"
+	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"net/http"
@@ -33,6 +34,7 @@ func NewPipelineWorkspace(config *config.ServerConfig) *PipelineWorkspace {
 		views.NewView(http.MethodPost, "", pipelineWs.create),
 		views.NewView(http.MethodPut, "/:id", pipelineWs.update),
 		views.NewView(http.MethodDelete, "/:id", pipelineWs.delete),
+		views.NewView(http.MethodGet, "/list_git_repos", pipelineWs.listGitRepos),
 	}
 	pipelineWs.Views = vs
 	return pipelineWs
@@ -163,4 +165,12 @@ func (p *PipelineWorkspace) existsReleaseVersion(c *views.Context) *utils.Respon
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
 	return &utils.Response{Code: code.Success, Data: map[string]interface{}{"exists": exists}}
+}
+
+func (p *PipelineWorkspace) listGitRepos(c *views.Context) *utils.Response {
+	var params schemas.ListGitReposParams
+	if err := c.ShouldBind(&params); err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	return p.workspaceService.ListGitRepos(&params)
 }

@@ -14,6 +14,7 @@ import (
 	"k8s.io/klog/v2"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -49,27 +50,33 @@ func (clu *Cluster) list(c *views.Context) *utils.Response {
 	}
 	var data []map[string]interface{}
 
+	var wg sync.WaitGroup
 	for _, du := range clus {
 		if !clu.models.UserRoleManager.HasScopeRole(c.User, types.RoleScopeCluster, du.ID, types.RoleTypeViewer) {
 			continue
 		}
-		status := types.ClusterPending
-		res := clu.kubeClient.Get(du.Name, kubetypes.ClusterType, map[string]interface{}{"only_version": true})
-		if res.IsSuccess() {
-			status = types.ClusterConnect
-		}
-		data = append(data, map[string]interface{}{
-			"id":          du.ID,
-			"name":        du.Name,
-			"name1":       du.Name1,
-			"token":       du.Token,
-			"status":      status,
-			"created_by":  du.CreatedBy,
-			"members":     du.Members,
-			"create_time": du.CreateTime,
-			"update_time": du.UpdateTime,
-		})
+		wg.Add(1)
+		go func(du types.Cluster) {
+			defer wg.Done()
+			status := types.ClusterPending
+			res := clu.kubeClient.Get(du.Name, kubetypes.ClusterType, map[string]interface{}{"only_version": true})
+			if res.IsSuccess() {
+				status = types.ClusterConnect
+			}
+			data = append(data, map[string]interface{}{
+				"id":          du.ID,
+				"name":        du.Name,
+				"name1":       du.Name1,
+				"token":       du.Token,
+				"status":      status,
+				"created_by":  du.CreatedBy,
+				"members":     du.Members,
+				"create_time": du.CreateTime,
+				"update_time": du.UpdateTime,
+			})
+		}(du)
 	}
+	wg.Wait()
 	resp.Data = data
 	return resp
 }
