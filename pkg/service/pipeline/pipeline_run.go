@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/go-git/go-git/v5"
@@ -16,12 +17,12 @@ import (
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
+	utilgit "github.com/kubespace/kubespace/pkg/utils/git"
 	"golang.org/x/crypto/ssh"
 	"k8s.io/klog/v2"
 	"os"
 	"regexp"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -80,6 +81,10 @@ func (r *ServicePipelineRun) GetPipelineRun(pipelineRunId uint) *utils.Response 
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
+	cloneUrl := ""
+	if workspace.Code != nil {
+		cloneUrl = workspace.Code.CloneUrl
+	}
 	data := map[string]interface{}{
 		"pipeline":     pipelineObj,
 		"pipeline_run": pipelineRun,
@@ -88,7 +93,7 @@ func (r *ServicePipelineRun) GetPipelineRun(pipelineRunId uint) *utils.Response 
 			"id":       workspace.ID,
 			"name":     workspace.Name,
 			"type":     workspace.Type,
-			"code_url": workspace.CodeUrl,
+			"code_url": cloneUrl,
 		},
 	}
 	return &utils.Response{Code: code.Success, Data: data}
@@ -299,46 +304,43 @@ func (r *ServicePipelineRun) InitialEnvs(pipeline *types.Pipeline, workspace *ty
 }
 
 func (r *ServicePipelineRun) InitialCodeEnvs(pipeline *types.Pipeline, workspace *types.PipelineWorkspace, params, envs map[string]interface{}) error {
-	envs["PIPELINE_CODE_URL"] = workspace.CodeUrl
-	branch, ok := params["branch"]
+	if workspace.Code == nil {
+		return fmt.Errorf("未获取到流水线空间代码信息")
+	}
+	envs["PIPELINE_CODE_URL"] = workspace.Code.CloneUrl
+	paramBranch, ok := params["branch"]
 	if ok {
-		envs["PIPELINE_CODE_BRANCH"] = branch
+		envs["PIPELINE_CODE_BRANCH"] = paramBranch
 	} else {
 		return fmt.Errorf("未获取到代码分支参数")
 	}
-	if !r.MatchTriggerBranch(pipeline.Triggers, branch.(string)) {
+	branch, ok := paramBranch.(string)
+	if !ok {
+		return fmt.Errorf("获取分支参数类型错误")
+	}
+	if !r.MatchTriggerBranch(pipeline.Triggers, branch) {
 		return fmt.Errorf("代码分支未匹配到该流水线")
 	}
-	//gitcli := utilgit.NewClient(workspace.CodeType, "", "")
-	var err error
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		_, branchErr := r.getCodeBranchCommitId(workspace.CodeUrl, branch.(string), workspace.CodeSecretId)
-		if err == nil {
-			err = branchErr
-		}
-	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		b := branch.(string)
-		commit, commitErr := r.getCodeBranchCommit(workspace.CodeUrl, b, workspace.CodeSecretId)
-		if commitErr != nil {
-			klog.Errorf("get code %s commit error: %v", workspace.CodeUrl, err)
-			if err == nil {
-				err = commitErr
-			}
-			return
-		}
-		envs["PIPELINE_CODE_COMMIT_ID"] = commit.CommitId
-		envs["PIPELINE_CODE_COMMIT_AUTHOR"] = commit.Author
-		envs["PIPELINE_CODE_COMMIT_MESSAGE"] = commit.Message
-		envs["PIPELINE_CODE_COMMIT_TIME"] = commit.CommitTime
-	}()
-	wg.Wait()
-	return err
+	secret, err := r.models.SettingsSecretManager.Get(workspace.Code.SecretId)
+	if err != nil {
+		return fmt.Errorf("获取代码密钥失败：" + err.Error())
+	}
+	gitcli, err := utilgit.NewClient(workspace.Code.Type, "", &utilgit.Secret{
+		Type:        secret.Type,
+		User:        secret.User,
+		Password:    secret.Password,
+		PrivateKey:  secret.PrivateKey,
+		AccessToken: secret.AccessToken,
+	})
+	commit, err := gitcli.GetBranchLatestCommit(context.Background(), workspace.Code.CloneUrl, branch)
+	if err != nil {
+		return fmt.Errorf("获取远程分支%s失败：%s", branch, err.Error())
+	}
+	envs["PIPELINE_CODE_COMMIT_ID"] = commit.CommitId
+	envs["PIPELINE_CODE_COMMIT_AUTHOR"] = commit.Author
+	envs["PIPELINE_CODE_COMMIT_MESSAGE"] = commit.Message
+	envs["PIPELINE_CODE_COMMIT_TIME"] = commit.CommitTime
+	return nil
 }
 
 func (r *ServicePipelineRun) Build(buildSer *serializers.PipelineBuildSerializer, user *types.User) *utils.Response {

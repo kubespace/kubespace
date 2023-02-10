@@ -2,7 +2,6 @@ package pipeline
 
 import (
 	"context"
-	"fmt"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
@@ -139,7 +138,7 @@ func (w *WorkspaceService) Create(workspaceSer *serializers.WorkspaceSerializer,
 		Description:  workspaceSer.Description,
 		Type:         workspaceSer.Type,
 		CodeType:     workspaceSer.CodeType,
-		CodeUrl:      workspaceSer.CodeUrl,
+		CodeCloneUrl: workspaceSer.CodeUrl,
 		CodeSecretId: workspaceSer.CodeSecretId,
 		CreateUser:   user.Name,
 		UpdateUser:   user.Name,
@@ -169,12 +168,15 @@ func (w *WorkspaceService) ListGitRepos(params *schemas.ListGitReposParams) *uti
 	if err != nil {
 		return &utils.Response{Code: code.GetError, Msg: err.Error()}
 	}
-	if secret.Type != types.SettingsSecretTypeToken {
-		return &utils.Response{Code: code.ParamsError, Msg: fmt.Sprintf("请选择token密钥")}
-	}
-	gitcli := git.NewClient(params.GitTye, params.ApiUrl, secret.AccessToken)
-	if gitcli == nil {
-		return &utils.Response{Code: code.ParamsError, Msg: "代码仓库托管类型错误"}
+	gitcli, err := git.NewClient(params.GitType, params.ApiUrl, &git.Secret{
+		Type:        secret.Type,
+		User:        secret.User,
+		Password:    secret.Password,
+		PrivateKey:  secret.PrivateKey,
+		AccessToken: secret.AccessToken,
+	})
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
 	repos, err := gitcli.ListRepositories(context.Background())
 	if err != nil {
