@@ -4,11 +4,18 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/transport"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
+	sshgit "github.com/go-git/go-git/v5/plumbing/transport/ssh"
+	"github.com/go-git/go-git/v5/storage/memory"
+	"github.com/kubespace/kubespace/pkg/model/types"
+	"github.com/kubespace/kubespace/pkg/utils"
+	"golang.org/x/crypto/ssh"
+	"k8s.io/klog/v2"
+	"os"
 	"time"
-)
-
-const (
-	GithubType = "github"
 )
 
 type Secret struct {
@@ -23,14 +30,16 @@ type Client interface {
 	ListRepositories(ctx context.Context) ([]*Repository, error)
 	ListRepoBranches(ctx context.Context, codeUrl string) ([]*Reference, error)
 	GetBranchLatestCommit(ctx context.Context, codeUrl, branch string) (*Commit, error)
-	Clone(repoDir string, isBare bool, options *git.CloneOptions) (*git.Repository, error)
+	Clone(ctx context.Context, repoDir string, isBare bool, options *git.CloneOptions) (*git.Repository, error)
 	CreateTag(ctx context.Context, codeUrl, commitId, tagName string) error
 }
 
-func NewClient(gitType string, cloneUrl string, secret *Secret) (Client, error) {
+func NewClient(gitType string, apiUrl string, secret *Secret) (Client, error) {
 	switch gitType {
-	case GithubType:
+	case types.WorkspaceCodeTypeGitHub:
 		return NewGitHub(secret.AccessToken)
+	case types.WorkspaceCodeTypeHttps, types.WorkspaceCodeTypeGit:
+		return NewGit(secret), nil
 	}
 	return nil, fmt.Errorf("git类型错误")
 }
@@ -64,4 +73,114 @@ type PullRequest struct {
 }
 
 type Git struct {
+	secret *Secret
+}
+
+func NewGit(secret *Secret) *Git {
+	return &Git{secret: secret}
+}
+
+func (g *Git) ListRepositories(ctx context.Context) ([]*Repository, error) {
+	return nil, fmt.Errorf("not implement list git repositories")
+}
+
+func (g *Git) getCodeAuth() (transport.AuthMethod, error) {
+	var auth transport.AuthMethod
+	switch g.secret.Type {
+	case types.SettingsSecretTypeKey:
+		if g.secret.PrivateKey == "" {
+			return nil, fmt.Errorf("代码私钥为空")
+		}
+		privateKey, err := sshgit.NewPublicKeys("git", []byte(g.secret.PrivateKey), "")
+		if err != nil {
+			return nil, fmt.Errorf("生成代码密钥失败：" + err.Error())
+		}
+		privateKey.HostKeyCallbackHelper = sshgit.HostKeyCallbackHelper{
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		}
+		auth = privateKey
+	case types.SettingsSecretTypePassword:
+		auth = &http.BasicAuth{
+			Username: g.secret.User,
+			Password: g.secret.Password,
+		}
+	}
+	return auth, nil
+}
+
+func (g *Git) ListRepoBranches(ctx context.Context, codeUrl string) ([]*Reference, error) {
+	auth, err := g.getCodeAuth()
+	if err != nil {
+		return nil, err
+	}
+	rem := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
+		Name: "origin",
+		URLs: []string{codeUrl},
+	})
+	remoteRefs, err := rem.ListContext(ctx, &git.ListOptions{Auth: auth, InsecureSkipTLS: true})
+	if err != nil {
+		return nil, fmt.Errorf("获取代码远程分支失败：" + err.Error())
+	}
+	var refs []*Reference
+	for _, ref := range remoteRefs {
+		refs = append(refs, &Reference{
+			Name: ref.Name().String(),
+			Ref:  ref.Name().Short(),
+		})
+	}
+	return refs, nil
+}
+
+func (g *Git) GetBranchLatestCommit(ctx context.Context, codeUrl, branch string) (*Commit, error) {
+	auth, err := g.getCodeAuth()
+	if err != nil {
+		return nil, err
+	}
+	uuid := utils.CreateUUID()
+	refName := "refs/heads/" + branch
+	ref, err := git.PlainCloneContext(ctx, "/tmp/"+uuid, true, &git.CloneOptions{
+		Auth:            auth,
+		URL:             codeUrl,
+		Progress:        os.Stdout,
+		ReferenceName:   plumbing.ReferenceName(refName),
+		SingleBranch:    true,
+		Depth:           1,
+		NoCheckout:      true,
+		InsecureSkipTLS: true,
+	})
+	if err != nil {
+		klog.Errorf("git clone %s error: %v", codeUrl, err)
+		return nil, err
+	}
+	defer os.RemoveAll("/tmp/" + uuid)
+	commits, err := ref.Log(&git.LogOptions{})
+	if err != nil {
+		klog.Errorf("git log %s error: %v", codeUrl, err)
+		return nil, err
+	}
+	commit, err := commits.Next()
+	if err != nil {
+		klog.Errorf("git log %s error: %v", codeUrl, err)
+		return nil, err
+	}
+	return &Commit{
+		CommitId:   commit.Hash.String(),
+		Author:     commit.Author.Name,
+		Message:    commit.Message,
+		CommitTime: commit.Author.When,
+	}, nil
+}
+
+func (g *Git) Clone(ctx context.Context, repoDir string, isBare bool, options *git.CloneOptions) (*git.Repository, error) {
+	auth, err := g.getCodeAuth()
+	if err != nil {
+		return nil, err
+	}
+	options.InsecureSkipTLS = true
+	options.Auth = auth
+	return git.PlainCloneContext(ctx, repoDir, isBare, options)
+}
+
+func (g *Git) CreateTag(ctx context.Context, codeUrl, commitId, tagName string) error {
+	return nil
 }

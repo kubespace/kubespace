@@ -148,12 +148,12 @@ func (g *Github) GetBranchLatestCommit(ctx context.Context, codeUrl, branch stri
 	return commit, nil
 }
 
-func (g *Github) Clone(repoDir string, isBare bool, options *git.CloneOptions) (*git.Repository, error) {
+func (g *Github) Clone(ctx context.Context, repoDir string, isBare bool, options *git.CloneOptions) (*git.Repository, error) {
 	auth := &http.BasicAuth{
 		Username: "user",
 		Password: g.accessToken,
 	}
 	options.InsecureSkipTLS = true
 	options.Auth = auth
-	return git.PlainClone(repoDir, isBare, options)
+	return git.PlainCloneContext(ctx, repoDir, isBare, options)
 }

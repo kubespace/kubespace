@@ -202,7 +202,7 @@ func (p *ServicePipeline) GetPipeline(pipelineId uint) *utils.Response {
 			"id":       workspace.ID,
 			"name":     workspace.Name,
 			"type":     workspace.Type,
-			"code_url": workspace.CodeUrl,
+			"code_url": workspace.CodeCloneUrl,
 		},
 	}
 	return &utils.Response{Code: code.Success, Data: data}

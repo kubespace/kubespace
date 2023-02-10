@@ -1,6 +1,9 @@
 package db
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/go-redis/redis/v8"
 	"gorm.io/driver/mysql"
@@ -61,4 +64,25 @@ func NewRedisClient(c *RedisConfig) *redis.Client {
 		Password: c.Password,
 		DB:       c.DB,
 	})
+}
+
+func Scan(value interface{}, objPtr interface{}) error {
+	bytes, ok := value.([]byte)
+	if !ok {
+		return errors.New(fmt.Sprint("Failed to convert to bytes:", value))
+	}
+	err := json.Unmarshal(bytes, objPtr)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal bytes: %s", string(bytes))
+	}
+	return nil
+}
+
+// Value return json value, implement driver.Valuer interface
+func Value(object interface{}) (driver.Value, error) {
+	bytes, err := json.Marshal(object)
+	if err != nil {
+		return nil, err
+	}
+	return string(bytes), nil
 }
