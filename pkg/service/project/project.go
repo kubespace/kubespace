@@ -234,67 +234,68 @@ func (p *ProjectService) cloneK8sResource(oriProject, destProject *types.Project
 		if res.Data != nil {
 			var resList interface{}
 			if kind == "Ingress" {
-				if data, ok := res.Data.(map[string]interface{}); ok {
-					group, ok := data["group"]
-					if ok {
-						if group == "extensions" {
-							apiVersion = "extensions/v1beta1"
-						} else {
-							apiVersion = "networking.k8s.io/v1"
-						}
-					} else {
-						return fmt.Errorf("get ingress group error\n")
-					}
-					resList = data["ingresses"]
-				} else {
+				data := make(map[string]interface{})
+				if err := utils.ConvertTypeByJson(res.Data, &data); err != nil {
 					return fmt.Errorf("get %s data error\n", kind)
 				}
+				group, ok := data["group"]
+				if ok {
+					if group == "extensions" {
+						apiVersion = "extensions/v1beta1"
+					} else {
+						apiVersion = "networking.k8s.io/v1"
+					}
+				} else {
+					return fmt.Errorf("get ingress group error\n")
+				}
+				resList = data["ingresses"]
+
 			} else {
 				resList = res.Data
 			}
-			if data, ok := resList.([]interface{}); ok {
-				for _, do := range data {
-					d := do.(map[string]interface{})
-					if name, ok := d["name"]; ok {
-						resObj := p.kubeClient.Get(oriProject.ClusterId, resType, map[string]interface{}{
-							"name":      name,
-							"namespace": oriProject.Namespace,
-						})
-						if !resObj.IsSuccess() {
-							errs += fmt.Sprintf("get %s/%s error: %s\n", kind, name, resObj.Msg)
-							continue
+			data := make([]map[string]interface{}, 0)
+			if err := utils.ConvertTypeByJson(resList, &data); err != nil {
+				return fmt.Errorf("get %s data error", kind)
+			}
+			for _, do := range data {
+				d := do
+				if name, ok := d["name"]; ok {
+					resObj := p.kubeClient.Get(oriProject.ClusterId, resType, map[string]interface{}{
+						"name":      name,
+						"namespace": oriProject.Namespace,
+					})
+					if !resObj.IsSuccess() {
+						errs += fmt.Sprintf("get %s/%s error: %s\n", kind, name, resObj.Msg)
+						continue
+					}
+					if obj, ok := resObj.Data.(map[string]interface{}); ok {
+						unstructuredObj := unstructured.Unstructured{Object: obj}
+						unstructuredObj.SetNamespace(destProject.Namespace)
+						unstructuredObj.SetKind(kind)
+						unstructuredObj.SetAPIVersion(apiVersion)
+						unstructuredObj.SetManagedFields(nil)
+						unstructuredObj.SetUID("")
+						unstructuredObj.SetResourceVersion("")
+						unstructuredObj.SetCreationTimestamp(metav1.Time{})
+						if kind == "Service" {
+							if err := p.processServiceObj(&unstructuredObj, kind, name.(string)); err != nil {
+								errs += fmt.Sprintf("process object %s/%s error: %s\n", kind, name, err.Error())
+							}
 						}
-						if obj, ok := resObj.Data.(map[string]interface{}); ok {
-							unstructuredObj := unstructured.Unstructured{Object: obj}
-							unstructuredObj.SetNamespace(destProject.Namespace)
-							unstructuredObj.SetKind(kind)
-							unstructuredObj.SetAPIVersion(apiVersion)
-							unstructuredObj.SetManagedFields(nil)
-							unstructuredObj.SetUID("")
-							unstructuredObj.SetResourceVersion("")
-							unstructuredObj.SetCreationTimestamp(metav1.Time{})
-							if kind == "Service" {
-								if err := p.processServiceObj(&unstructuredObj, kind, name.(string)); err != nil {
-									errs += fmt.Sprintf("process object %s/%s error: %s\n", kind, name, err.Error())
-								}
-							}
-							yamlStr, _ := yaml.Marshal(unstructuredObj.Object)
-							klog.Info(string(yamlStr))
-							applyRes := p.kubeClient.Apply(destProject.ClusterId, map[string]interface{}{
-								"yaml": string(yamlStr),
-							})
-							if !applyRes.IsSuccess() {
-								errs += fmt.Sprintf("create object %s/%s error: %s\n", kind, name, applyRes.Msg)
-							}
-						} else {
-							errs += fmt.Sprintf("get %s/%s data error\n", kind, name)
+						yamlStr, _ := yaml.Marshal(unstructuredObj.Object)
+						klog.Info(string(yamlStr))
+						applyRes := p.kubeClient.Apply(destProject.ClusterId, map[string]interface{}{
+							"yaml": string(yamlStr),
+						})
+						if !applyRes.IsSuccess() {
+							errs += fmt.Sprintf("create object %s/%s error: %s\n", kind, name, applyRes.Msg)
 						}
 					} else {
-						errs += fmt.Sprintf("not found %s object name field\n", kind)
+						errs += fmt.Sprintf("get %s/%s data error\n", kind, name)
 					}
+				} else {
+					errs += fmt.Sprintf("not found %s object name field\n", kind)
 				}
-			} else {
-				return fmt.Errorf("get %s data error\n", kind)
 			}
 		}
 	} else {

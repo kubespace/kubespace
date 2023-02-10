@@ -80,6 +80,8 @@ controller_manager:
       mountPath: /usr/bin/docker
     - name: docker-sock
       mountPath: /var/run/docker.sock
+    - name: lib64
+      mountPath: /lib64
   extraVolumes:
     - name: docker-bin
       hostPath:
@@ -87,6 +89,9 @@ controller_manager:
     - name: docker-sock
       hostPath:
         path: /var/run/docker.sock
+    - name: lib64
+      hostPath:
+        path: /lib64
   resources: {}
     # We usually recommend not to specify default resources and to leave this as a conscious
     # choice for the user. This also increases chances charts run on environments with little
