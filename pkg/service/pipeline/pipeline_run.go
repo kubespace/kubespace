@@ -309,6 +309,7 @@ func (r *ServicePipelineRun) InitialCodeEnvs(pipeline *types.Pipeline, workspace
 	if !r.MatchTriggerBranch(pipeline.Triggers, branch.(string)) {
 		return fmt.Errorf("代码分支未匹配到该流水线")
 	}
+	//gitcli := utilgit.NewClient(workspace.CodeType, "", "")
 	var err error
 	var wg sync.WaitGroup
 	wg.Add(1)
