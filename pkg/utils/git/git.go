@@ -14,7 +14,9 @@ import (
 	"github.com/kubespace/kubespace/pkg/utils"
 	"golang.org/x/crypto/ssh"
 	"k8s.io/klog/v2"
+	"net/url"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -42,6 +44,29 @@ func NewClient(gitType string, apiUrl string, secret *Secret) (Client, error) {
 		return NewGit(secret), nil
 	}
 	return nil, fmt.Errorf("git类型错误")
+}
+
+// GetCodeOwnerRepo 获取代码库的owner以及repo
+// 如：https://github.com/test/testrepo.git -> test，testrepo
+// git@github.com/test/testrepo.git -> test，testrepo
+func GetCodeOwnerRepo(codeUrl string) (string, string, error) {
+	if codeUrl[0:4] == "git@" {
+		codeUrl = "https://" + codeUrl[4:]
+	}
+	u, err := url.Parse(codeUrl)
+	if err != nil {
+		return "", "", err
+	}
+	path := u.Path
+	if path[0:1] == "/" {
+		path = path[1:]
+	}
+	pathSplit := strings.SplitN(path, "/", 2)
+	if len(pathSplit) != 2 {
+		return "", "", fmt.Errorf("clone url=%s get owner and repo error: not found repo", codeUrl)
+	}
+	repoSplit := strings.Split(pathSplit[1], ".")
+	return pathSplit[0], repoSplit[0], nil
 }
 
 type Repository struct {

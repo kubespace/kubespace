@@ -7,8 +7,6 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/google/go-github/v50/github"
 	"github.com/kubespace/kubespace/pkg/utils"
-	"net/url"
-	"strings"
 )
 
 type Github struct {
@@ -43,7 +41,7 @@ func (g *Github) ListRepositories(ctx context.Context) ([]*Repository, error) {
 }
 
 func (g *Github) ListRepoRefs(ctx context.Context, codeUrl, matchRef string) ([]*Reference, error) {
-	owner, repo, err := g.GetCodeOwnerRepo(codeUrl)
+	owner, repo, err := GetCodeOwnerRepo(codeUrl)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +63,7 @@ func (g *Github) ListRepoBranches(ctx context.Context, codeUrl string) ([]*Refer
 }
 
 func (g *Github) ListRepoPullRequests(ctx context.Context, codeUrl string) ([]*PullRequest, error) {
-	owner, repo, err := g.GetCodeOwnerRepo(codeUrl)
+	owner, repo, err := GetCodeOwnerRepo(codeUrl)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +86,7 @@ func (g *Github) ListRepoPullRequests(ctx context.Context, codeUrl string) ([]*P
 }
 
 func (g *Github) CreateTag(ctx context.Context, codeUrl, commitId, tagName string) error {
-	owner, repo, err := g.GetCodeOwnerRepo(codeUrl)
+	owner, repo, err := GetCodeOwnerRepo(codeUrl)
 	if err != nil {
 		return err
 	}
@@ -102,31 +100,8 @@ func (g *Github) CreateTag(ctx context.Context, codeUrl, commitId, tagName strin
 	return err
 }
 
-// GetCodeOwnerRepo 获取代码库的owner以及repo
-// 如：https://github.com/test/testrepo.git -> test，testrepo
-// git@github.com/test/testrepo.git -> test，testrepo
-func (g *Github) GetCodeOwnerRepo(codeUrl string) (string, string, error) {
-	if codeUrl[0:4] == "git@" {
-		codeUrl = "https://" + codeUrl[4:]
-	}
-	u, err := url.Parse(codeUrl)
-	if err != nil {
-		return "", "", err
-	}
-	path := u.Path
-	if path[0:1] == "/" {
-		path = path[1:]
-	}
-	pathSplit := strings.SplitN(path, "/", 2)
-	if len(pathSplit) != 2 {
-		return "", "", fmt.Errorf("clone url=%s get owner and repo error: not found repo", codeUrl)
-	}
-	repoSplit := strings.Split(pathSplit[1], ".")
-	return pathSplit[0], repoSplit[0], nil
-}
-
 func (g *Github) GetBranchLatestCommit(ctx context.Context, codeUrl, branch string) (*Commit, error) {
-	owner, repo, err := g.GetCodeOwnerRepo(codeUrl)
+	owner, repo, err := GetCodeOwnerRepo(codeUrl)
 	if err != nil {
 		return nil, err
 	}
