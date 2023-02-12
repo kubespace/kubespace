@@ -15,11 +15,11 @@ export function getProject(id, params) {
   })
 }
 
-export function getProjectResources(data) {
+export function getProjectResources(projectId) {
   return request({
     url: `project/workspace/resources`,
-    method: 'post',
-    data
+    method: 'get',
+    params: {project_id: projectId}
   })
 }
 

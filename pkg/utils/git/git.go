@@ -136,7 +136,7 @@ func (g *Git) GetBranchLatestCommit(ctx context.Context, codeUrl, branch string)
 	if err != nil {
 		return nil, err
 	}
-	uuid := utils.CreateUUID()
+	uuid := utils.ShortUUID()
 	refName := "refs/heads/" + branch
 	ref, err := git.PlainCloneContext(ctx, "/tmp/"+uuid, true, &git.CloneOptions{
 		Auth:            auth,

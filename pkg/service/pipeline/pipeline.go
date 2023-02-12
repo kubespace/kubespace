@@ -195,6 +195,10 @@ func (p *ServicePipeline) GetPipeline(pipelineId uint) *utils.Response {
 		}
 		pipeline.Triggers = triggers
 	}
+	codeUrl := ""
+	if workspace.Code != nil {
+		codeUrl = workspace.Code.CloneUrl
+	}
 	data := map[string]interface{}{
 		"pipeline": pipeline,
 		"stages":   stages,
@@ -202,7 +206,7 @@ func (p *ServicePipeline) GetPipeline(pipelineId uint) *utils.Response {
 			"id":       workspace.ID,
 			"name":     workspace.Name,
 			"type":     workspace.Type,
-			"code_url": workspace.CodeCloneUrl,
+			"code_url": codeUrl,
 		},
 	}
 	return &utils.Response{Code: code.Success, Data: data}

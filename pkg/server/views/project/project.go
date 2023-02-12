@@ -29,7 +29,7 @@ func NewProject(config *config.ServerConfig) *Project {
 	}
 	projectWs.Views = []*views.View{
 		views.NewView(http.MethodGet, "", projectWs.list),
-		views.NewView(http.MethodPost, "/resources", projectWs.getProjectResources),
+		views.NewView(http.MethodGet, "/resources", projectWs.getProjectResources),
 		views.NewView(http.MethodGet, "/:id", projectWs.get),
 		views.NewView(http.MethodPost, "", projectWs.create),
 		views.NewView(http.MethodPost, "/clone", projectWs.clone),

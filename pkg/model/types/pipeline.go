@@ -3,8 +3,7 @@ package types
 import (
 	"database/sql/driver"
 	"encoding/json"
-	"errors"
-	"fmt"
+	"github.com/kubespace/kubespace/pkg/core/db"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"time"
 )
@@ -73,6 +72,14 @@ type PipelineWorkspaceCode struct {
 	SecretId uint   `json:"secret_id"`
 }
 
+func (c *PipelineWorkspaceCode) Scan(value interface{}) error {
+	return db.Scan(value, c)
+}
+
+func (c PipelineWorkspaceCode) Value() (driver.Value, error) {
+	return db.Value(c)
+}
+
 type PipelineWorkspaceRelease struct {
 	ID             uint      `gorm:"primaryKey" json:"id"`
 	WorkspaceId    uint      `gorm:"not null;uniqueIndex:idx_workspace_version" json:"workspace_id"`
@@ -97,24 +104,11 @@ type Pipeline struct {
 type PipelineTriggers []*PipelineTrigger
 
 func (pt *PipelineTriggers) Scan(value interface{}) error {
-	bytes, ok := value.([]byte)
-	if !ok {
-		return errors.New(fmt.Sprint("Failed to convert to bytes:", value))
-	}
-	err := json.Unmarshal(bytes, pt)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal bytes: %s", string(bytes))
-	}
-	return nil
+	return db.Scan(value, pt)
 }
 
-// Value return json value, implement driver.Valuer interface
 func (pt PipelineTriggers) Value() (driver.Value, error) {
-	bytes, err := json.Marshal(pt)
-	if err != nil {
-		return nil, err
-	}
-	return string(bytes), nil
+	return db.Value(pt)
 }
 
 const (
@@ -146,24 +140,12 @@ type PipelineStage struct {
 }
 
 func (pj *PipelineJobs) Scan(value interface{}) error {
-	bytes, ok := value.([]byte)
-	if !ok {
-		return errors.New(fmt.Sprint("Failed to convert to bytes:", value))
-	}
-	err := json.Unmarshal(bytes, pj)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal bytes: %s", string(bytes))
-	}
-	return nil
+	return db.Scan(value, pj)
 }
 
 // Value return json value, implement driver.Valuer interface
 func (pj PipelineJobs) Value() (driver.Value, error) {
-	bytes, err := json.Marshal(pj)
-	if err != nil {
-		return nil, err
-	}
-	return string(bytes), nil
+	return db.Value(pj)
 }
 
 type PipelineJobs []*PipelineJob
@@ -232,24 +214,12 @@ type PipelinePluginParamsSpec struct {
 }
 
 func (p *PipelinePluginParams) Scan(value interface{}) error {
-	bytes, ok := value.([]byte)
-	if !ok {
-		return errors.New(fmt.Sprint("Failed to convert to bytes:", value))
-	}
-	err := json.Unmarshal(bytes, p)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal bytes: %s", string(bytes))
-	}
-	return nil
+	return db.Scan(value, p)
 }
 
 // Value return json value, implement driver.Valuer interface
 func (p PipelinePluginParams) Value() (driver.Value, error) {
-	bytes, err := json.Marshal(p)
-	if err != nil {
-		return nil, err
-	}
-	return string(bytes), nil
+	return db.Value(p)
 }
 
 type PipelinePluginResultEnv struct {
@@ -262,47 +232,23 @@ type PipelinePluginResultEnvPath struct {
 }
 
 func (p *PipelinePluginResultEnv) Scan(value interface{}) error {
-	bytes, ok := value.([]byte)
-	if !ok {
-		return errors.New(fmt.Sprint("Failed to convert to bytes:", value))
-	}
-	err := json.Unmarshal(bytes, p)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal bytes: %s", string(bytes))
-	}
-	return nil
+	return db.Scan(value, p)
 }
 
 // Value return json value, implement driver.Valuer interface
 func (p PipelinePluginResultEnv) Value() (driver.Value, error) {
-	bytes, err := json.Marshal(p)
-	if err != nil {
-		return nil, err
-	}
-	return string(bytes), nil
+	return db.Value(p)
 }
 
 type Map map[string]interface{}
 
 func (m *Map) Scan(value interface{}) error {
-	bytes, ok := value.([]byte)
-	if !ok {
-		return errors.New(fmt.Sprint("Failed to convert to bytes:", value))
-	}
-	err := json.Unmarshal(bytes, m)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal bytes: %s", string(bytes))
-	}
-	return nil
+	return db.Scan(value, m)
 }
 
 // Value return json value, implement driver.Valuer interface
 func (m Map) Value() (driver.Value, error) {
-	bytes, err := json.Marshal(m)
-	if err != nil {
-		return nil, err
-	}
-	return string(bytes), nil
+	return db.Value(m)
 }
 
 type PipelineRun struct {
