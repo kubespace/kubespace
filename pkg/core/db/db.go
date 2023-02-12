@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
@@ -39,10 +40,14 @@ func NewDb(c *Config) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
+	redisInstance, err := NewRedisClient(c.Redis)
+	if err != nil {
+		return nil, err
+	}
 	return &DB{
 		config:        c,
 		Instance:      mysqlInstance,
-		RedisInstance: NewRedisClient(c.Redis),
+		RedisInstance: redisInstance,
 	}, nil
 }
 
@@ -58,12 +63,17 @@ func NewMysqlDb(c *MysqlConfig) (db *gorm.DB, err error) {
 	return db, err
 }
 
-func NewRedisClient(c *RedisConfig) *redis.Client {
-	return redis.NewClient(&redis.Options{
+func NewRedisClient(c *RedisConfig) (*redis.Client, error) {
+	cli := redis.NewClient(&redis.Options{
 		Addr:     c.Addr,
 		Password: c.Password,
 		DB:       c.DB,
 	})
+	cmd := cli.ClusterInfo(context.Background())
+	if cmd.Err() != nil {
+		return nil, cmd.Err()
+	}
+	return cli, nil
 }
 
 func Scan(value interface{}, objPtr interface{}) error {

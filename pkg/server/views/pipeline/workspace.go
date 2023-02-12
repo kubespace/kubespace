@@ -64,8 +64,8 @@ func (p *PipelineWorkspace) update(c *views.Context) *utils.Response {
 	if err = c.ShouldBind(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	if ser.CodeSecretId != 0 {
-		workspace.CodeSecretId = ser.CodeSecretId
+	if ser.CodeSecretId != 0 && workspace.Code != nil {
+		workspace.Code.SecretId = ser.CodeSecretId
 	}
 	if ser.Description != "" {
 		workspace.Description = ser.Description

@@ -9,6 +9,7 @@ type WorkspaceSerializer struct {
 	Name         string `json:"name" form:"name"`
 	Type         string `json:"type" form:"type"`
 	Description  string `json:"description" form:"description"`
+	ApiUrl       string `json:"api_url" form:"api_url"`
 	CodeUrl      string `json:"code_url" form:"code_url"`
 	CodeType     string `json:"code_type" form:"code_type"`
 	CodeSecretId uint   `json:"code_secret_id" form:"code_secret_id"`

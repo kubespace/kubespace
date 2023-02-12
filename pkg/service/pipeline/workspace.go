@@ -134,16 +134,19 @@ func (w *WorkspaceService) Create(workspaceSer *serializers.WorkspaceSerializer,
 		return &utils.Response{Code: code.ParamsError, Msg: "解析代码地址失败，未获取到代码库名称"}
 	}
 	workspace := &types.PipelineWorkspace{
-		Name:         workspaceSer.Name,
-		Description:  workspaceSer.Description,
-		Type:         workspaceSer.Type,
-		CodeType:     workspaceSer.CodeType,
-		CodeCloneUrl: workspaceSer.CodeUrl,
-		CodeSecretId: workspaceSer.CodeSecretId,
-		CreateUser:   user.Name,
-		UpdateUser:   user.Name,
-		CreateTime:   time.Now(),
-		UpdateTime:   time.Now(),
+		Name:        workspaceSer.Name,
+		Description: workspaceSer.Description,
+		Type:        workspaceSer.Type,
+		Code: &types.PipelineWorkspaceCode{
+			Type:     workspaceSer.CodeType,
+			ApiUrl:   workspaceSer.ApiUrl,
+			CloneUrl: workspaceSer.CodeUrl,
+			SecretId: workspaceSer.CodeSecretId,
+		},
+		CreateUser: user.Name,
+		UpdateUser: user.Name,
+		CreateTime: time.Now(),
+		UpdateTime: time.Now(),
 	}
 	resp := &utils.Response{Code: code.Success}
 	var defaultPipeline []*types.Pipeline

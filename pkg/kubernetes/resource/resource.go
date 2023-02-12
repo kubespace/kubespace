@@ -230,7 +230,9 @@ type DeleteParamResource struct {
 }
 
 type DeleteParams struct {
-	Resources []*DeleteParamResource `json:"resources"`
+	Namespace     string                 `json:"namespace"`
+	Resources     []*DeleteParamResource `json:"resources"`
+	LabelSelector *metav1.LabelSelector  `json:"label_selector" form:"label_selector"`
 }
 
 func (r *Resource) Delete(params interface{}) *utils.Response {
@@ -244,6 +246,20 @@ func (r *Resource) Delete(params interface{}) *utils.Response {
 		if err != nil {
 			klog.Errorf("delete group %v namespace %s name %s error: %v", r.gvr, res.Namespace, res.Name, err)
 			return &utils.Response{Code: code.DeleteError, Msg: fmt.Sprintf("delete %s error: %s", res.Name, err.Error())}
+		}
+	}
+	if delParams.LabelSelector != nil {
+		options := metav1.ListOptions{}
+		labelSelector, err := metav1.LabelSelectorAsSelector(delParams.LabelSelector)
+		if err != nil {
+			return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+		}
+		options.LabelSelector = labelSelector.String()
+		if options.LabelSelector != "" {
+			if err = r.client.Dynamic().Resource(*r.gvr).Namespace(delParams.Namespace).DeleteCollection(
+				context.Background(), metav1.DeleteOptions{}, options); err != nil {
+				return &utils.Response{Code: code.RequestError, Msg: "delete resource error: " + err.Error()}
+			}
 		}
 	}
 	return &utils.Response{Code: code.Success}

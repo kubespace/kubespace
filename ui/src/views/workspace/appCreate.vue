@@ -357,7 +357,7 @@ export default {
       this.resourceTabVal = (this.form.templates.length - 1) + ''
     },
     getProjectResources: function() {
-      getProjectResources({project_id: this.projectId}).then((response) => {
+      getProjectResources(this.projectId).then((response) => {
         let data = response.data || {}
         for(let i in data) {
           if(!data[i]) data[i] = []
