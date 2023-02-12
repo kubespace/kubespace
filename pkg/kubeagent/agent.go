@@ -1,6 +1,7 @@
 package kubeagent
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/kubeagent/config"
@@ -117,7 +118,8 @@ func (a *Agent) OnSuccess() {
 		// 没有bearerToken表示agent未运行在集群pod中，不更新agent
 		return
 	}
-	resBytes, err := a.serverCli.Get("/import/agent/"+a.config.Token, nil)
+	bytesBuf := new(bytes.Buffer)
+	_, err := a.serverCli.Get("/import/agent/"+a.config.Token, nil, bytesBuf)
 	if err != nil {
 		klog.Errorf("get server agent yaml error: %s", err.Error())
 		return
@@ -127,9 +129,9 @@ func (a *Agent) OnSuccess() {
 		klog.Errorf("get kubernetes cluster resource error: " + err.Error())
 		return
 	}
-	klog.Infof("start apply agent yaml: %s", string(resBytes))
+	klog.Infof("start apply agent yaml: %s", bytesBuf.String())
 	resp := resHandler.Handle(kubetypes.ApplyAction, resource.ApplyParams{
-		YamlStr: string(resBytes),
+		YamlStr: bytesBuf.String(),
 	})
 	if resp.IsSuccess() {
 		klog.Infof("apply agent yaml success")

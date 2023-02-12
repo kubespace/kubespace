@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
+	"github.com/google/go-querystring/query"
 	"io"
 	"io/ioutil"
 	"k8s.io/klog/v2"
@@ -17,91 +19,142 @@ import (
 
 type HttpClient struct {
 	client  *http.Client
-	baseUrl string
-	ctx     context.Context
-	headers http.Header
+	baseUrl *url.URL
 }
 
 func NewHttpClient(baseUrl string) (*HttpClient, error) {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-	httpClient := HttpClient{client: &http.Client{Transport: tr}}
 	u, err := url.Parse(baseUrl)
 	if err != nil {
 		klog.Errorf("http request url parse error: httpUrl=%s. error=%v", baseUrl, err)
 		return nil, err
 	}
-	httpClient.baseUrl = u.String()
-	httpClient.headers = http.Header{}
-	httpClient.headers.Set("Content-Type", "application/json")
-	httpClient.headers.Set("Accept", "application/json")
-	httpClient.ctx = context.Background()
-	return &httpClient, nil
+	return &HttpClient{
+		client:  &http.Client{Transport: tr},
+		baseUrl: u,
+	}, nil
 }
 
-func (c *HttpClient) Get(getPath string, params map[string]string) ([]byte, error) {
-	getUrl := c.addParamsToPath(getPath, params)
-	return c.doRequest(getUrl, "GET", nil)
+type RequestOptions struct {
+	Header  http.Header
+	Context context.Context
 }
 
-func (c *HttpClient) Delete(deletePath string, params map[string]string) ([]byte, error) {
-	getUrl := c.addParamsToPath(deletePath, params)
-	return c.doRequest(getUrl, "DELETE", nil)
+func (o *RequestOptions) WithContext(ctx context.Context) {
+	o.Context = ctx
 }
 
-func (c *HttpClient) Post(postPath string, params map[string]string, body []byte) ([]byte, error) {
-	postUrl := c.addParamsToPath(postPath, params)
-	return c.doRequest(postUrl, "POST", bytes.NewBuffer(body))
+func (o *RequestOptions) WithHeader(name, value string) {
+	o.Header.Set(name, value)
 }
 
-func (c *HttpClient) doRequest(url string, method string, buf io.Reader) ([]byte, error) {
-	req, err := http.NewRequest(method, url, buf)
+func (o *RequestOptions) WithHeaders(headers map[string]string) {
+	for k, v := range headers {
+		o.Header.Set(k, v)
+	}
+}
+
+func (c *HttpClient) Get(path string, query interface{}, v interface{}, options RequestOptions) (*http.Response, error) {
+	req, err := c.NewRequest(http.MethodGet, path, query, options)
 	if err != nil {
-		klog.Errorf("get http request error: error=%v, url=%s, method=%s", err, url, method)
 		return nil, err
 	}
-	req.Header = c.headers
-	req = req.WithContext(c.ctx)
-	resp, err := c.client.Do(req)
+	return c.Do(req, v)
+}
+
+func (c *HttpClient) Delete(path string, body interface{}, v interface{}, options RequestOptions) (*http.Response, error) {
+	req, err := c.NewRequest(http.MethodDelete, path, body, options)
 	if err != nil {
-		klog.Errorf("send http req error: error=%s", err)
 		return nil, err
-	} else {
-		data, errReadBody := ioutil.ReadAll(resp.Body)
-		resp.Body.Close()
-		if errReadBody != nil {
-			klog.Error("read received http resp body error: error=", err)
+	}
+	return c.Do(req, v)
+}
+
+func (c *HttpClient) Post(path string, body interface{}, v interface{}, options RequestOptions) (*http.Response, error) {
+	req, err := c.NewRequest(http.MethodPost, path, body, options)
+	if err != nil {
+		return nil, err
+	}
+	return c.Do(req, v)
+}
+
+func (c *HttpClient) NewRequest(method, reqPath string, params interface{}, options RequestOptions) (*http.Request, error) {
+	u := *c.baseUrl
+	unescaped, err := url.PathUnescape(reqPath)
+	if err != nil {
+		return nil, err
+	}
+	// 替换url路径
+	u.RawPath = path.Join(c.baseUrl.Path, unescaped)
+	u.Path = path.Join(c.baseUrl.Path, reqPath)
+
+	headers := make(http.Header)
+	// 设置默认接收类型
+	headers.Set("Accept", "application/json")
+	var body io.Reader
+	switch {
+	case method == http.MethodPost || method == http.MethodPut:
+		headers.Set("Content-Type", "application/json")
+
+		if params != nil {
+			paramBytes, err := json.Marshal(params)
+			if err != nil {
+				return nil, err
+			}
+			body = bytes.NewBuffer(paramBytes)
+		}
+	case params != nil:
+		q, err := query.Values(params)
+		if err != nil {
 			return nil, err
 		}
-		klog.Infof("doRequest get response: url=%s, method=%s, status=%s", url, method, resp.StatusCode)
-		if resp.StatusCode != http.StatusOK {
-			klog.Errorf("receive http code not 200: httpcode=%d", resp.StatusCode)
-			return data, fmt.Errorf("status code %v", resp.StatusCode)
-		} else {
-			return data, nil
-		}
+		u.RawQuery = q.Encode()
 	}
+	req, err := http.NewRequestWithContext(options.Context, method, u.String(), body)
+	if err != nil {
+		klog.Errorf("get http request error: error=%v, url=%s, method=%s", err, u.String(), method)
+		return nil, err
+	}
+	// 覆盖Header
+	for k, v := range options.Header {
+		headers[k] = v
+	}
+	req.Header = headers
+	return req, nil
 }
 
-func (c *HttpClient) addParamsToPath(oriPath string, params map[string]string) string {
-	oriUrl, _ := url.Parse(c.baseUrl)
-	oriUrl.Path = path.Join(oriUrl.Path, oriPath)
-	if params != nil && len(params) != 0 {
-		urlParam := url.Values{}
-		for k, v := range params {
-			urlParam.Set(k, v)
-		}
-		oriUrl.RawQuery = urlParam.Encode()
+func (c *HttpClient) Do(req *http.Request, v interface{}) (*http.Response, error) {
+	r, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
 	}
-	return oriUrl.String()
+	defer r.Body.Close()
+
+	switch r.StatusCode {
+	case 200, 201, 202, 204, 304:
+		if v != nil {
+			if w, ok := v.(io.Writer); ok {
+				_, err = io.Copy(w, r.Body)
+			} else {
+				err = json.NewDecoder(r.Body).Decode(v)
+			}
+		}
+		return r, err
+	}
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return nil, err
+	}
+	return r, fmt.Errorf("request %s error: status_code=%d, %s", req.URL.String(), r.StatusCode, string(body))
+
 }
 
 func PostFile(url, filename, filepath string) ([]byte, error) {
 	bodyBuf := &bytes.Buffer{}
 	bodyWriter := multipart.NewWriter(bodyBuf)
 
-	// 关键的一步操作
 	fileWriter, err := bodyWriter.CreateFormFile(filename, filepath)
 	if err != nil {
 		fmt.Println("error writing to buffer")
