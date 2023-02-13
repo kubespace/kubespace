@@ -37,6 +37,7 @@ func NewPipeline(config *config.ServerConfig) *Pipeline {
 		views.NewView(http.MethodPost, "", pw.create),
 		views.NewView(http.MethodPut, "", pw.update),
 		views.NewView(http.MethodDelete, "/:pipelineId", pw.delete),
+		views.NewView(http.MethodGet, "/:pipelineId/list_repo_branch", pw.listRepoBranch),
 	}
 	pw.Views = vs
 	return pw
@@ -93,47 +94,6 @@ func (p *Pipeline) watch(c *views.Context) *utils.Response {
 	return nil
 }
 
-//func (p *Pipeline) sse(c *views.Context) *utils.Response {
-//	if c.Param("pipelineId") == "" {
-//		return &utils.Response{Code: code.ParamsError, Msg: "get param pipeline run id error"}
-//	}
-//
-//	c.Writer.Header().Set("Content-Type", "text/event-stream")
-//	c.Writer.Header().Set("Cache-Control", "no-cache")
-//	c.Writer.Header().Set("Connection", "keep-alive")
-//	//c.Writer.Header().Set("Transfer-Encoding", "chunked")
-//
-//	streamClient := sse.StreamClient{
-//		ClientId: utils.CreateUUID(),
-//		Catalog:  sse.CatalogDatabase,
-//		WatchSelector: map[string]string{
-//			sse.EventTypePipeline: c.Param("pipelineId"),
-//		},
-//		ClientChan: make(chan sse.Event),
-//	}
-//	sse.Stream.AddClient(streamClient)
-//	defer sse.Stream.RemoveClient(streamClient)
-//	c.SSEvent("message", "{}")
-//	c.Writer.Flush()
-//
-//	tick := time.NewTicker(30 * time.Second)
-//
-//	for {
-//		klog.Infof("select for channel")
-//		select {
-//		case <-c.Writer.CloseNotify():
-//			klog.Info("client gone")
-//			return nil
-//		case event := <-streamClient.ClientChan:
-//			c.SSEvent("message", event)
-//			c.Writer.Flush()
-//		case <-tick.C:
-//			c.SSEvent("message", "{}")
-//			c.Writer.Flush()
-//		}
-//	}
-//}
-
 func (p *Pipeline) list(c *views.Context) *utils.Response {
 	var ser serializers.PipelineListSerializer
 	if err := c.ShouldBindQuery(&ser); err != nil {
@@ -175,4 +135,17 @@ func (p *Pipeline) delete(c *views.Context) *utils.Response {
 		return &utils.Response{Code: code.DBError, Msg: "删除流水线失败：" + err.Error()}
 	}
 	return resp
+}
+
+func (p *Pipeline) listRepoBranch(c *views.Context) *utils.Response {
+	if c.Param("pipelineId") == "" {
+		return &utils.Response{Code: code.ParamsError, Msg: "get param pipeline run id error"}
+	}
+
+	pipelineId, err := strconv.Atoi(c.Param("pipelineId"))
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: "get param pipeline id error: " + err.Error()}
+	}
+
+	return p.pipelineService.ListRepoBranches(uint(pipelineId))
 }

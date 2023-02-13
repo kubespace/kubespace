@@ -37,3 +37,10 @@ export function deletePipeline(id) {
     method: 'delete',
   })
 }
+
+export function listRepoBranches(id) {
+  return request({
+    url: `pipeline/pipeline/${id}/list_repo_branch`,
+    method: 'get',
+  })
+}

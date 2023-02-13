@@ -22,7 +22,7 @@
         </el-table-column>
         <el-table-column prop="description" label="描述" show-overflow-tooltip min-width="40">
           <template slot-scope="scope">
-            {{ scope.row.type == 'code' ? scope.row.code_url : scope.row.description }}
+            {{ scope.row.type == 'code' ? scope.row.code ? scope.row.code.clone_url : '' : scope.row.description }}
           </template>
         </el-table-column>
         <el-table-column prop="update_user" label="操作人" min-width="20" show-overflow-tooltip>
@@ -57,49 +57,40 @@
                 </el-radio-group>
               </el-form-item>
               <el-form-item label="代码托管" prop="codeType" v-if="form.type == 'code'" @change="codeTypeChange">
-                <!-- <span v-if="updateFormVisible">{{ codeTypeMap[form.codeType] }}</span> -->
                 <el-radio-group v-model="form.codeType" @change="codeTypeChange" :disabled="updateFormVisible">
-                  <el-radio label="https">HTTPS</el-radio>
-                  <el-radio label="git">GIT</el-radio>
                   <el-radio label="github">GitHub</el-radio>
+                  <el-radio label="gitlab">GitLab</el-radio>
+                  <el-radio label="gitee">Gitee</el-radio>
+                  <el-radio label="other">其他</el-radio>
                 </el-radio-group>
               </el-form-item>
-              <el-form-item label="AccessToken" prop="codeSecretId" v-if="form.type=='code'">
+              <el-form-item label="GitLab地址" prop="apiUrl" v-if="form.codeType == 'gitlab'">
+                <el-input v-model="form.apiUrl" autocomplete="off" :disabled="updateFormVisible"
+                  placeholder="请输入Gitlab访问地址，如: https://gitlab.com" 
+                  size="small"></el-input>
+              </el-form-item>
+              <el-form-item label="代码地址" prop="codeUrl" v-if="updateFormVisible || form.codeType == 'other'">
+                <el-input v-model="otherCodeUrl" autocomplete="off" :disabled="updateFormVisible"
+                  placeholder="请输入代码地址，如: git@github.com:kubespace/kubespace.git" 
+                  size="small"></el-input>
+              </el-form-item>
+              <el-form-item :label="form.codeType=='other'?'访问密钥':'AccessToken'" prop="codeSecretId" v-if="form.type=='code'">
                 <el-select v-model="form.codeSecretId" placeholder="请选择代码访问密钥" size="small" style="width: 100%"
                   @change="codeSecretChange">
-                  <el-option
-                    v-for="secret in secretAccessTokens"
-                    :key="secret.id"
-                    :label="secret.name"
-                    :value="secret.id">
+                  <el-option v-for="secret in codeSecrets" :key="secret.id" :label="secret.name" :value="secret.id">
                   </el-option>
                 </el-select>
               </el-form-item>
-              <el-form-item label="代码仓库" prop="codeRepo" v-if="form.type=='code'">
-                <el-select v-model="form.codeRepo" placeholder="请选择代码仓库" size="small" style="width: 100%" :loading="codeRepoLoading">
+              <el-form-item label="代码仓库" prop="codeUrl" v-if="!updateFormVisible && form.type=='code' && form.codeType!='other'">
+                <el-select v-model="form.codeUrl" placeholder="请选择代码仓库" size="small" style="width: 100%" :loading="codeRepoLoading">
                   <el-option
                     v-for="repo in codeRepos"
                     :key="repo.clone_url"
                     :label="repo.full_name"
-                    :value="repo.full_name">
+                    :value="repo.clone_url">
                   </el-option>
                 </el-select>
               </el-form-item>
-              <!-- <el-form-item label="代码地址" prop="codeUrl" v-if="form.type == 'code'">
-                <el-input v-model="form.codeUrl" autocomplete="off" :disabled="updateFormVisible"
-                  :placeholder="form.codeType == 'https' ? '请输入代码地址，如: https://github.com/kubespace/kubespace.git' : '请输入代码地址，如: git@github.com:kubespace/kubespace.git'" 
-                  size="small"></el-input>
-              </el-form-item> -->
-              <!-- <el-form-item label="访问密钥" prop="codeSecretId" v-if="form.type=='code'">
-                <el-select v-model="form.codeSecretId" placeholder="请选择代码访问密钥" size="small" style="width: 100%">
-                  <el-option
-                    v-for="secret in form.codeType == 'https' ? codePasswordSecrets : codeKeySecrets"
-                    :key="secret.id"
-                    :label="secret.name"
-                    :value="secret.id">
-                  </el-option>
-                </el-select>
-              </el-form-item> -->
               <el-form-item v-if="form.type == 'custom'" label="名称" prop="name">
                 <el-input v-model="form.name" autocomplete="off" placeholder="请输入空间名称" size="small"></el-input>
               </el-form-item>
@@ -144,14 +135,16 @@ export default {
       updateFormVisible: false,
       codeRepos: [],
       codeRepoLoading: false,
+      otherCodeType: "",
+      otherCodeUrl: "",
       form: {
         name: '',
         type: 'code',
-        codeType: "https",
+        codeType: "github",
         codeUrl: "",
         codeSecretId: "",
-        apiUrl: "",
-        codeRepo: ""
+        apiUrl: "https://gitlab.com",
+        description: "",
       },
       workspaceTypeMap: {
         code: "代码空间",
@@ -164,6 +157,10 @@ export default {
       rules: {
         name: [{ required: true, message: '请输入空间名称', trigger: 'blur' },],
         type: [{ required: true, message: '请选择空间类型', trigger: 'blur' },],
+        codeType: [{ required: true, message: '请选择代码仓库类型', trigger: 'blur' },],
+        apiUrl: [{ required: true, message: '请输入Gitlab访问地址', trigger: 'blur' },],
+        codeSecretId: [{ required: true, message: '请选择仓库密钥', trigger: 'blur' },],
+        codeUrl: [{ required: true, message: '请输入仓库地址', trigger: 'blur' },],
       },
     }
   },
@@ -178,7 +175,27 @@ export default {
       })()
     }
   },
+  watch: {
+    otherCodeUrl(n) {
+      if(this.updateFormVisible) return
+      this.form.codeUrl = n
+      if(n.length >= 5 && n.substr(0, 5) == "https") {this.otherCodeType ="https"; return}
+      if(n.length >= 4 && n.substr(0, 4) == "http") {this.otherCodeType ="https"; return}
+      if(n.length >= 3 && n.substr(0, 3) =="git") {this.otherCodeType = "git"; return}
+      this.otherCodeType = ''
+    },
+    otherCodeType() {
+      if(this.updateFormVisible) return
+      this.form.codeSecretId = '' 
+    }
+  },
   computed: {
+    codeSecrets() {
+      if(this.form.codeType != 'other') return this.secretAccessTokens;
+      if(this.otherCodeType == "https") return this.codePasswordSecrets;
+      if(this.otherCodeType == "git") return this.codeKeySecrets;
+      return []
+    },
     codePasswordSecrets() {
       let secrets = [];
       for(let s of this.secrets) {
@@ -231,15 +248,37 @@ export default {
         Message.error("请选择流水线空间类型");
         return
       }
+      console.log(this.form)
       let workspace = {type: this.form.type}
       if(this.form.type == 'code') {
-        if(!this.form.codeUrl) {
-          Message.error("代码地址不能为空");
+        if (this.form.codeType == "") {
+          Message.error("请选择代码托管类型")
           return
         }
-        workspace['code_url'] = this.form.codeUrl
-        workspace['code_type'] = this.form.codeType
+        if(this.form.codeType =="other") {
+          workspace['code_url'] = this.otherCodeUrl
+          workspace['code_type'] = this.otherCodeType
+        } else {
+          workspace['code_url'] = this.form.codeUrl
+          workspace['code_type'] = this.form.codeType
+        }
         workspace['code_secret_id'] = this.form.codeSecretId
+        if (this.form.codeType == "gitlab") {
+          workspace['api_url'] = this.form.apiUrl
+        }
+        if(!workspace['code_url']) {
+          Message.error("代码仓库不能为空");
+          return
+        }
+        if (!workspace['code_secret_id']) {
+          Message.error("请选择代码仓库密钥")
+          return
+        }
+        if (workspace['code_type'] == "gitlab" && workspace['api_url'] == "") {
+          Message.error("请输入gitlab访问地址")
+          return
+        }
+
       } else {
         if(!this.form.name) {
           Message.error("流水线空间名称不能为空");
@@ -259,7 +298,7 @@ export default {
         console.log(err)
       });
     },
-    handelUpdateWorkspace() {
+    handleUpdateWorkspace() {
       if(!this.form.id) {
         Message.error("获取流水线空间id参数错误，请刷新重试");
         return
@@ -318,9 +357,12 @@ export default {
         codeUrl: "",
         codeType: "github",
         codeSecretId: "",
-        codeRepo: "",
+        apiUrl: "https://gitlab.com"
       }
+      this.otherCodeUrl = ''
+      this.otherCodeType = ''
       this.createFormVisible = true;
+      this.updateFormVisible = false
       this.fetchSecrets()
     },
     openUpdateFormDialog(object) {
@@ -328,26 +370,43 @@ export default {
         id: object.id,
         name: object.name,
         type: object.type,
-        codeType: object.code_type,
-        codeUrl: object.code_url,
-        codeSecretId: object.code_secret_id,
+        description: object.description,
+        codeType: '',
+        apiUrl: '',
+        codeSecretId: 0,
+        codeUrl: '',
+      }
+      if(object.type == 'code' && object.code) {
+        if(['https', 'git'].indexOf(object.code.type)> -1) {
+          this.form.codeType = 'other'
+          this.otherCodeUrl = object.code.clone_url
+          this.otherCodeType = object.code.type
+        } else {
+          this.form.codeType = object.code.type
+          this.otherCodeUrl = object.code.clone_url
+          if(this.form.codeType == 'gitlab') {
+            this.form.apiUrl = object.code.api_url
+          }
+        }
+        this.form.codeUrl = object.code.clone_url
+        this.form.codeSecretId = object.code.secret_id
       }
       this.updateFormVisible = true;
       this.createFormVisible = true;
       this.fetchSecrets()
     },
     closeFormDialog() {
-      this.updateFormVisible = false; 
       this.createFormVisible = false;
     },
     codeTypeChange() {
-      // this.form.codeUrl = ''1
       this.form.codeSecretId = ''
       this.codeSecretChange()
     },
     codeSecretChange() {
+      if(this.form.codeType == "other") return
+      if(this.updateFormVisible) return
       this.codeRepos = []
-      this.form.codeRepo = ''
+      this.form.codeUrl = ""
       if (this.form.codeSecretId) {
         let params = {
           git_type: this.form.codeType,

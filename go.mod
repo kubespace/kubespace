@@ -7,14 +7,13 @@ require (
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/go-redis/redis/v8 v8.11.4
 	github.com/google/go-github/v50 v50.0.0
-	github.com/google/go-querystring v1.1.0 // indirect
+	github.com/google/go-querystring v1.1.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/jessevdk/go-assets v0.0.0-20160921144138-4f4301a06e15
 	github.com/lithammer/shortuuid/v4 v4.0.0
 	github.com/xanzy/go-gitlab v0.80.0
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
-	golang.org/x/oauth2 v0.3.0
 	gorm.io/driver/mysql v1.2.1
 	gorm.io/gorm v1.22.4
 	helm.sh/helm/v3 v3.7.2

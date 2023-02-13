@@ -14,11 +14,11 @@ type Gitlab struct {
 	accessToken string
 }
 
-func NewGitLab(accessToken string) (*Gitlab, error) {
+func NewGitLab(apiUrl, accessToken string) (*Gitlab, error) {
 	if accessToken == "" {
 		return nil, fmt.Errorf("not found params accessToken")
 	}
-	client, err := gitlab.NewClient(accessToken)
+	client, err := gitlab.NewClient(accessToken, gitlab.WithBaseURL(apiUrl))
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +29,8 @@ func NewGitLab(accessToken string) (*Gitlab, error) {
 }
 
 func (g *Gitlab) ListRepositories(ctx context.Context) ([]*Repository, error) {
-	res, _, err := g.client.Projects.ListProjects(nil, gitlab.WithContext(ctx))
+	owned := true
+	res, _, err := g.client.Projects.ListProjects(&gitlab.ListProjectsOptions{Owned: &owned}, gitlab.WithContext(ctx))
 	if err != nil {
 		return nil, err
 	}

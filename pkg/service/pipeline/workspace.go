@@ -25,12 +25,10 @@ func NewWorkspaceService(models *model.Models) *WorkspaceService {
 
 func (w *WorkspaceService) getCodeName(codeType string, codeUrl string) string {
 	var re *regexp.Regexp
-	if codeType == types.WorkspaceCodeTypeHttps {
-		re, _ = regexp.Compile("http[s]?://[\\w\\.:]+/([\\w/\\-_]+)[.git]*")
-	} else if codeType == types.WorkspaceCodeTypeGit {
+	if codeType == types.WorkspaceCodeTypeGit {
 		re, _ = regexp.Compile("git@[\\w\\.]+:/?([\\w/\\-_]+)[\\.git]*")
 	} else {
-		return ""
+		re, _ = regexp.Compile("http[s]?://[\\w\\.:]+/([\\w/\\-_]+)[.git]*")
 	}
 	codeName := re.FindStringSubmatch(codeUrl)
 	if len(codeName) < 2 {
@@ -41,12 +39,10 @@ func (w *WorkspaceService) getCodeName(codeType string, codeUrl string) string {
 
 func (w *WorkspaceService) checkCodeUrl(codeType string, codeUrl string) bool {
 	var re *regexp.Regexp
-	if codeType == types.WorkspaceCodeTypeHttps {
-		re, _ = regexp.Compile("http[s]?://[\\w\\.:]+/([\\w/\\-_]+)[.git]*")
-	} else if codeType == types.WorkspaceCodeTypeGit {
+	if codeType == types.WorkspaceCodeTypeGit {
 		re, _ = regexp.Compile("git@[\\w\\.]+:/?([\\w/\\-_]+)[\\.git]*")
 	} else {
-		return false
+		re, _ = regexp.Compile("http[s]?://[\\w\\.:]+/([\\w/\\-_]+)[.git]*")
 	}
 	return re.MatchString(codeUrl)
 }
