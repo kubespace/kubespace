@@ -69,7 +69,7 @@ func NewRedisClient(c *RedisConfig) (*redis.Client, error) {
 		Password: c.Password,
 		DB:       c.DB,
 	})
-	cmd := cli.ClusterInfo(context.Background())
+	cmd := cli.Info(context.Background())
 	if cmd.Err() != nil {
 		return nil, cmd.Err()
 	}

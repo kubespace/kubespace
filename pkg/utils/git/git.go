@@ -40,6 +40,10 @@ func NewClient(gitType string, apiUrl string, secret *Secret) (Client, error) {
 	switch gitType {
 	case types.WorkspaceCodeTypeGitHub:
 		return NewGitHub(secret.AccessToken)
+	case types.WorkspaceCodeTypeGitLab:
+		return NewGitLab(apiUrl, secret.AccessToken)
+	case types.WorkspaceCodeTypeGitee:
+		return NewGitee(secret.AccessToken)
 	case types.WorkspaceCodeTypeHttps, types.WorkspaceCodeTypeGit:
 		return NewGit(secret), nil
 	}

@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/model"
@@ -8,6 +9,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
+	"github.com/kubespace/kubespace/pkg/utils/git"
 	"gorm.io/gorm"
 	"time"
 )
@@ -195,19 +197,10 @@ func (p *ServicePipeline) GetPipeline(pipelineId uint) *utils.Response {
 		}
 		pipeline.Triggers = triggers
 	}
-	codeUrl := ""
-	if workspace.Code != nil {
-		codeUrl = workspace.Code.CloneUrl
-	}
 	data := map[string]interface{}{
-		"pipeline": pipeline,
-		"stages":   stages,
-		"workspace": map[string]interface{}{
-			"id":       workspace.ID,
-			"name":     workspace.Name,
-			"type":     workspace.Type,
-			"code_url": codeUrl,
-		},
+		"pipeline":  pipeline,
+		"stages":    stages,
+		"workspace": workspace,
 	}
 	return &utils.Response{Code: code.Success, Data: data}
 }
@@ -230,4 +223,46 @@ func (p *ServicePipeline) ListPipeline(workspaceId uint) *utils.Response {
 		retData = append(retData, data)
 	}
 	return &utils.Response{Code: code.Success, Data: retData}
+}
+
+func (p *ServicePipeline) ListRepoBranches(pipelineId uint) *utils.Response {
+	pipelineObj, err := p.models.PipelineManager.Get(pipelineId)
+	if err != nil {
+		return &utils.Response{Code: code.GetError, Msg: err.Error()}
+	}
+	workspace, err := p.models.PipelineWorkspaceManager.Get(pipelineObj.WorkspaceId)
+	if err != nil {
+		return &utils.Response{Code: code.GetError, Msg: err.Error()}
+	}
+	if workspace.Type != types.WorkspaceTypeCode {
+		return &utils.Response{Code: code.ParamsError, Msg: "当前流水线空间不是代码空间"}
+	}
+	if workspace.Code == nil {
+		return &utils.Response{Code: code.ParamsError, Msg: "当前流水线代码空间未获取到仓库"}
+	}
+	secret, err := p.models.SettingsSecretManager.Get(workspace.Code.SecretId)
+	if err != nil {
+		return &utils.Response{Code: code.GetError, Msg: err.Error()}
+	}
+	gitcli, err := git.NewClient(workspace.Code.Type, workspace.Code.ApiUrl, &git.Secret{
+		Type:        secret.Type,
+		User:        secret.User,
+		Password:    secret.Password,
+		PrivateKey:  secret.PrivateKey,
+		AccessToken: secret.AccessToken,
+	})
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	repoBranches, err := gitcli.ListRepoBranches(context.Background(), workspace.Code.CloneUrl)
+	if err != nil {
+		return &utils.Response{Code: code.RequestError, Msg: err.Error()}
+	}
+	var branches []*git.Reference
+	for i, b := range repoBranches {
+		if MatchTriggerBranch(pipelineObj.Triggers, b.Name) {
+			branches = append(branches, repoBranches[i])
+		}
+	}
+	return &utils.Response{Code: code.Success, Data: branches}
 }

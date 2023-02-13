@@ -147,7 +147,8 @@ func (c *HttpClient) Do(req *http.Request, v interface{}) (*http.Response, error
 	if err != nil {
 		return nil, err
 	}
-	return r, fmt.Errorf("request %s error: status_code=%d, %s", req.URL.String(), r.StatusCode, string(body))
+	reqUrl := req.URL.Scheme + req.URL.Host + req.URL.Path
+	return r, fmt.Errorf("%s %s error: status_code=%d, %s", req.Method, reqUrl, r.StatusCode, string(body))
 
 }
 

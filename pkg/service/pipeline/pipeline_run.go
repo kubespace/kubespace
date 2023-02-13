@@ -4,13 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/transport"
-	"github.com/go-git/go-git/v5/plumbing/transport/http"
-	sshgit "github.com/go-git/go-git/v5/plumbing/transport/ssh"
-	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/manager/pipeline"
 	"github.com/kubespace/kubespace/pkg/model/types"
@@ -18,20 +11,11 @@ import (
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	utilgit "github.com/kubespace/kubespace/pkg/utils/git"
-	"golang.org/x/crypto/ssh"
 	"k8s.io/klog/v2"
-	"os"
 	"regexp"
 	"strings"
 	"time"
 )
-
-type codeCommit struct {
-	CommitId   string
-	Author     string
-	Message    string
-	CommitTime time.Time
-}
 
 type ServicePipelineRun struct {
 	models *model.Models
@@ -99,92 +83,7 @@ func (r *ServicePipelineRun) GetPipelineRun(pipelineRunId uint) *utils.Response 
 	return &utils.Response{Code: code.Success, Data: data}
 }
 
-func (r *ServicePipelineRun) getCodeAuth(secretId uint) (transport.AuthMethod, error) {
-	secret, err := r.models.SettingsSecretManager.Get(secretId)
-	if err != nil {
-		return nil, fmt.Errorf("获取代码密钥失败：" + err.Error())
-	}
-	var auth transport.AuthMethod
-	if secret.Type == types.SettingsSecretTypeKey {
-		privateKey, err := sshgit.NewPublicKeys("git", []byte(secret.PrivateKey), "")
-		if err != nil {
-			return nil, fmt.Errorf("生成代码密钥失败：" + err.Error())
-		}
-		privateKey.HostKeyCallbackHelper = sshgit.HostKeyCallbackHelper{
-			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		}
-		auth = privateKey
-	} else if secret.Type == types.SettingsSecretTypePassword {
-		auth = &http.BasicAuth{
-			Username: secret.User,
-			Password: secret.Password,
-		}
-	}
-	return auth, nil
-}
-
-func (r *ServicePipelineRun) getCodeBranchCommit(codeUrl, branch string, secretId uint) (*codeCommit, error) {
-	auth, err := r.getCodeAuth(secretId)
-	if err != nil {
-		return nil, err
-	}
-	uuid := utils.CreateUUID()
-	refName := "refs/heads/" + branch
-	ref, err := git.PlainClone("/tmp/"+uuid, true, &git.CloneOptions{
-		Auth:            auth,
-		URL:             codeUrl,
-		Progress:        os.Stdout,
-		ReferenceName:   plumbing.ReferenceName(refName),
-		SingleBranch:    true,
-		Depth:           1,
-		NoCheckout:      true,
-		InsecureSkipTLS: true,
-	})
-	if err != nil {
-		klog.Errorf("git clone %s error: %v", codeUrl, err)
-		return nil, err
-	}
-	defer os.RemoveAll("/tmp/" + uuid)
-	commits, err := ref.Log(&git.LogOptions{})
-	if err != nil {
-		klog.Errorf("git log %s error: %v", codeUrl, err)
-		return nil, err
-	}
-	commit, err := commits.Next()
-	if err != nil {
-		klog.Errorf("git log %s error: %v", codeUrl, err)
-		return nil, err
-	}
-	return &codeCommit{
-		CommitId:   commit.Hash.String(),
-		Author:     commit.Author.Name,
-		Message:    commit.Message,
-		CommitTime: commit.Author.When,
-	}, nil
-}
-
-func (r *ServicePipelineRun) getCodeBranchCommitId(codeUrl, branch string, secretId uint) (string, error) {
-	auth, err := r.getCodeAuth(secretId)
-	if err != nil {
-		return "", err
-	}
-	rem := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
-		Name: "origin",
-		URLs: []string{codeUrl},
-	})
-	refs, err := rem.List(&git.ListOptions{Auth: auth, InsecureSkipTLS: true})
-	if err != nil {
-		return "", fmt.Errorf("获取代码远程分支" + branch + "失败：" + err.Error())
-	}
-	for _, ref := range refs {
-		if ref.Name().IsBranch() && ref.Name().Short() == branch {
-			return ref.Hash().String(), nil
-		}
-	}
-	return "", fmt.Errorf("获取代码远程分支失败：未找到%s分支", branch)
-}
-
-func (r *ServicePipelineRun) MatchTriggerBranch(triggers types.PipelineTriggers, branch string) bool {
+func MatchTriggerBranch(triggers types.PipelineTriggers, branch string) bool {
 	for _, trigger := range triggers {
 		if trigger.Branch == "" && trigger.Operator != types.PipelineTriggerOperatorExclude {
 			return true
@@ -318,14 +217,14 @@ func (r *ServicePipelineRun) InitialCodeEnvs(pipeline *types.Pipeline, workspace
 	if !ok {
 		return fmt.Errorf("获取分支参数类型错误")
 	}
-	if !r.MatchTriggerBranch(pipeline.Triggers, branch) {
+	if !MatchTriggerBranch(pipeline.Triggers, branch) {
 		return fmt.Errorf("代码分支未匹配到该流水线")
 	}
 	secret, err := r.models.SettingsSecretManager.Get(workspace.Code.SecretId)
 	if err != nil {
 		return fmt.Errorf("获取代码密钥失败：" + err.Error())
 	}
-	gitcli, err := utilgit.NewClient(workspace.Code.Type, "", &utilgit.Secret{
+	gitcli, err := utilgit.NewClient(workspace.Code.Type, workspace.Code.ApiUrl, &utilgit.Secret{
 		Type:        secret.Type,
 		User:        secret.User,
 		Password:    secret.Password,

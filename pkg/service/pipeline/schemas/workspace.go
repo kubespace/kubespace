@@ -5,3 +5,7 @@ type ListGitReposParams struct {
 	GitType  string `json:"git_type" form:"git_type"`
 	ApiUrl   string `json:"api_url" form:"api_url"`
 }
+
+type ListRepoBranchParams struct {
+	PipelineId uint `json:"pipeline_id" form:"pipeline_id"`
+}
