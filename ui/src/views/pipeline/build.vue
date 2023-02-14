@@ -217,12 +217,11 @@
               <el-input :disabled="true" style="width: 100%;" placeholder="" v-model="pipelineName" autocomplete="off" size="small"></el-input>
             </el-form-item>
             <el-form-item v-if="pipeline.workspace && pipeline.workspace.type == 'code'" label="构建分支" prop="" :required="true">
-              <el-select v-if="pipeline.workspace.code && ['https', 'git'].indexOf(pipeline.workspace.code.type) ==-1 " 
-                v-model="buildParams.branch" placeholder="请选择构建分支" size="small" style="width: 100%" :loading="branchLoading"
-                allow-create filterable>
+              <el-select v-model="buildParams.branch" placeholder="请选择构建分支" size="small" style="width: 100%" 
+                :loading="branchLoading" allow-create filterable>
                 <el-option v-for="b in branches" :key="b.name" :label="b.name" :value="b.name"></el-option>
               </el-select>
-              <el-input v-else style="width: 100%;" placeholder="请输入构建分支" v-model="buildParams.branch" autocomplete="off" size="small"></el-input>
+              <!-- <el-input v-else style="width: 100%;" placeholder="请输入构建分支" v-model="buildParams.branch" autocomplete="off" size="small"></el-input> -->
             </el-form-item>
             <el-form-item v-if="pipeline.workspace && pipeline.workspace.type == 'custom'" label="" prop="" label-width="0px" :required="true">
               <el-row style="margin-bottom: 5px; margin-top: 8px;">
@@ -531,7 +530,6 @@ export default {
           this.fetchPipelineBuilds(t.pipeline)
         }
       }else if (this.pipeline.workspace && this.pipeline.workspace.code){
-        if(['git','https'].indexOf(this.pipeline.workspace.code.type) == -1) {
           this.branchLoading = true
           // 获取github/gitlab/gitee代码仓库分支
           listRepoBranches(this.pipelineId).then((response) => {
@@ -540,7 +538,7 @@ export default {
           }).catch(() => {
             this.branchLoading = false
           })
-        }
+        
       }
     },
     fetchPipelineBuilds(pipelineId) {

@@ -365,8 +365,8 @@
 <script>
 import { Clusterbar, Yaml } from '@/views/components'
 import { ResType, listResource, watchResource, getResource, delResource, updateResource } from '@/api/cluster/resource'
-import { listEvents, buildEvent } from '@/api/event'
-import { listJobs, deleteJobs, buildJobs } from '@/api/job'
+import { buildEvent } from '@/api/event'
+import { buildJobs } from '@/api/job'
 import { buildContainer, envStr, resourceFor } from '@/api/pods'
 import { Message } from 'element-ui'
 import { Terminal } from '@/views/components'

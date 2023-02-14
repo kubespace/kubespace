@@ -13,7 +13,7 @@
         :default-sort = "{prop: 'name'}"
         row-key="name"
       >
-        <el-table-column prop="name" label="名称" show-overflow-tooltip min-width="20">
+        <el-table-column prop="name" label="名称" show-overflow-tooltip min-width="25">
           <template slot-scope="scope">
             <span class="name-class" v-on:click="nameClick(scope.row.id)">
               {{ scope.row.name }}
@@ -25,7 +25,12 @@
             {{ scope.row.type == 'code' ? scope.row.code ? scope.row.code.clone_url : '' : scope.row.description }}
           </template>
         </el-table-column>
-        <el-table-column prop="update_user" label="操作人" min-width="20" show-overflow-tooltip>
+        <el-table-column prop="type" label="类型" show-overflow-tooltip min-width="15">
+          <template slot-scope="scope">
+            {{ scope.row.type == 'code' ? '代码空间' : '自定义空间' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="update_user" label="操作人" min-width="15" show-overflow-tooltip>
         </el-table-column>
         <el-table-column prop="update_time" label="更新时间" min-width="20" show-overflow-tooltip>
           <template slot-scope="scope">

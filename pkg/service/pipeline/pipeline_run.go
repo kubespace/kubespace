@@ -105,7 +105,7 @@ func MatchTriggerBranch(triggers types.PipelineTriggers, branch string) bool {
 			}
 		}
 	}
-	return true
+	return false
 }
 
 type BuildForPipelineParamsBuilds struct {
