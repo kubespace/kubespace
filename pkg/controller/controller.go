@@ -16,7 +16,7 @@ type Config struct {
 }
 
 func NewConfig(dbConfig *db.Config, resyncSec int, dataDir string) (*Config, error) {
-	dB, err := db.NewDb(dbConfig)
+	dB, err := db.NewDB(dbConfig)
 	if err != nil {
 		return nil, err
 	}
