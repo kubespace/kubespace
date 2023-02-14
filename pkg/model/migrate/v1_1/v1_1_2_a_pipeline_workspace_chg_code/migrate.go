@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-var MigrateVersion = "v_1_1_2_a"
+var MigrateVersion = "v1.1.2_a"
 
 func init() {
 	migration.Register(&migration.Migration{
@@ -70,7 +70,7 @@ func Migrate(db *gorm.DB) error {
 	if err := db.Find(&oriPipelineWorkspaces).Error; err != nil {
 		return err
 	}
-	if err := db.Migrator().AddColumn(&PipelineWorkspace{}, "code"); err != nil {
+	if err := db.AutoMigrate(&PipelineWorkspace{}); err != nil {
 		return err
 	}
 	for _, pw := range oriPipelineWorkspaces {
