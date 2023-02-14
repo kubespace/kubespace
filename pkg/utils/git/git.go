@@ -152,10 +152,12 @@ func (g *Git) ListRepoBranches(ctx context.Context, codeUrl string) ([]*Referenc
 	}
 	var refs []*Reference
 	for _, ref := range remoteRefs {
-		refs = append(refs, &Reference{
-			Name: ref.Name().String(),
-			Ref:  ref.Name().Short(),
-		})
+		if ref.Name().IsBranch() {
+			refs = append(refs, &Reference{
+				Name: ref.Name().Short(),
+				Ref:  ref.Name().String(),
+			})
+		}
 	}
 	return refs, nil
 }

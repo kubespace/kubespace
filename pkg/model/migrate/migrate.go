@@ -23,7 +23,15 @@ func (m *Migrate) Do() error {
 	if err != nil {
 		return err
 	}
-	dbMigrate, err := m.dbLock()
+	var dbMigrate *types.DBMigration
+	for i := 1; i <= 3; i++ {
+		// 尝试3次获取数据库迁移锁
+		dbMigrate, err = m.dbLock()
+		if err != nil {
+			klog.Errorf("get db migration lock error: %s", err.Error())
+		}
+		time.Sleep(time.Second * 3)
+	}
 	if err != nil {
 		return err
 	}
@@ -117,7 +125,7 @@ func (m *Migrate) dbLock() (*types.DBMigration, error) {
 
 // dbUnlock db迁移解锁
 func (m *Migrate) dbUnlock() error {
-	if err := m.db.Debug().Model(types.DBMigration{Id: 1}).Select("lock", "update_time").Updates(
+	if err := m.db.Model(types.DBMigration{Id: 1}).Select("lock", "update_time").Updates(
 		&types.DBMigration{Lock: false, UpdateTime: time.Now()}).Error; err != nil {
 		return err
 	}

@@ -125,6 +125,24 @@ func (w *WorkspaceService) Create(workspaceSer *serializers.WorkspaceSerializer,
 			return &utils.Response{Code: code.ParamsError, Msg: "代码地址格式不正确"}
 		}
 		workspaceSer.Name = w.getCodeName(workspaceSer.CodeType, workspaceSer.CodeUrl)
+		secret, err := w.models.SettingsSecretManager.Get(workspaceSer.CodeSecretId)
+		if err != nil {
+			return &utils.Response{Code: code.GetError, Msg: err.Error()}
+		}
+		gitcli, err := git.NewClient(workspaceSer.CodeType, workspaceSer.ApiUrl, &git.Secret{
+			Type:        secret.Type,
+			User:        secret.User,
+			Password:    secret.Password,
+			PrivateKey:  secret.PrivateKey,
+			AccessToken: secret.AccessToken,
+		})
+		if err != nil {
+			return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+		}
+		// 获取代码仓库分支，验证是否可以连通
+		if _, err = gitcli.ListRepoBranches(context.Background(), workspaceSer.CodeUrl); err != nil {
+			return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+		}
 	}
 	if workspaceSer.Name == "" {
 		return &utils.Response{Code: code.ParamsError, Msg: "解析代码地址失败，未获取到代码库名称"}
