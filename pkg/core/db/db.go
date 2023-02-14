@@ -35,7 +35,7 @@ type DB struct {
 	RedisInstance *redis.Client
 }
 
-func NewDb(c *Config) (*DB, error) {
+func NewDB(c *Config) (*DB, error) {
 	mysqlInstance, err := NewMysqlDb(c.Mysql)
 	if err != nil {
 		return nil, err

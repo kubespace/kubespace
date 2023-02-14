@@ -14,6 +14,7 @@ require (
 	github.com/lithammer/shortuuid/v4 v4.0.0
 	github.com/xanzy/go-gitlab v0.80.0
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
+	golang.org/x/oauth2 v0.3.0
 	gorm.io/driver/mysql v1.2.1
 	gorm.io/gorm v1.22.4
 	helm.sh/helm/v3 v3.7.2
