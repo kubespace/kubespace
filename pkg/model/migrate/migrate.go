@@ -103,9 +103,9 @@ func (m *Migrate) dbLock() (*types.DBMigration, error) {
 		return nil, fmt.Errorf("db migration has locked")
 	}
 	one.Lock = true
-	one.UpdateTime = time.Time{}
+	one.UpdateTime = time.Now()
 	// 乐观锁更新lock=true
-	updates := m.db.Model(one).Where("lock=?", one.Lock).Select("lock", "update_time").Updates(one)
+	updates := m.db.Model(one).Where("`lock`=?", false).Select("lock", "update_time").Updates(one)
 	if updates.Error != nil {
 		return nil, updates.Error
 	}
@@ -117,7 +117,7 @@ func (m *Migrate) dbLock() (*types.DBMigration, error) {
 
 // dbUnlock db迁移解锁
 func (m *Migrate) dbUnlock() error {
-	if err := m.db.Model(types.DBMigration{Id: 1}).Updates(
+	if err := m.db.Debug().Model(types.DBMigration{Id: 1}).Select("lock", "update_time").Updates(
 		&types.DBMigration{Lock: false, UpdateTime: time.Now()}).Error; err != nil {
 		return err
 	}
