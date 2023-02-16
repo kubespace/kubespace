@@ -99,7 +99,7 @@ func (p *Pipeline) list(c *views.Context) *utils.Response {
 	if err := c.ShouldBindQuery(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	return p.pipelineService.ListPipeline(ser.WorkspaceId)
+	return p.pipelineService.ListPipeline(c.User, ser.WorkspaceId)
 }
 
 func (p *Pipeline) create(c *views.Context) *utils.Response {

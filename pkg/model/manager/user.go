@@ -6,6 +6,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/utils"
 	"gorm.io/gorm"
 	"k8s.io/klog/v2"
+	"regexp"
 	"time"
 )
 
@@ -108,27 +109,60 @@ func (r *UserRoleManager) List(scope string, scopeId uint) ([]*types.UserRole, e
 	return resRoles, nil
 }
 
-func (r *UserRoleManager) CreateOrUpdate(scope string, scopeId uint, userIds []uint, role string) error {
-	for _, userId := range userIds {
-		var userRole types.UserRole
-		if err := r.DB.First(&userRole, "user_id=? and scope=? and scope_id=?", userId, scope, scopeId).Error; err != nil {
-			userRole = types.UserRole{
-				UserId:     userId,
-				Scope:      scope,
-				ScopeId:    scopeId,
-				Role:       role,
-				CreateTime: time.Now(),
-				UpdateTime: time.Now(),
-			}
-			if err = r.DB.Create(&userRole).Error; err != nil {
-				return err
-			}
-		} else {
-			userRole.Role = role
-			userRole.UpdateTime = time.Now()
-			if err = r.DB.Save(&userRole).Error; err != nil {
-				return err
-			}
+type CreateUserRole struct {
+	*UserRoleScope `json:",inline"`
+	UserIds        []uint `json:"user_ids" form:"user_ids"`
+}
+
+type UserRoleScope struct {
+	Scope      string           `json:"scope" form:"scope"`
+	ScopeId    uint             `json:"scope_id" form:"scope_id"`
+	ScopeRegex string           `json:"scope_regex" form:"scope_regex"`
+	Role       string           `json:"role" form:"role"`
+	SubScopes  []*UserRoleScope `json:"sub_scopes" form:"sub_scopes"`
+}
+
+func (r *UserRoleManager) CreateOrUpdate(createObj *CreateUserRole) error {
+	for _, userId := range createObj.UserIds {
+		if err := r.CreateOrUpdateUserRole(userId, types.RoleScopeRoot, types.RoleScopeRootId, createObj.UserRoleScope); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *UserRoleManager) CreateOrUpdateUserRole(userId uint, parentScope string, parentScopeId uint, roleScope *UserRoleScope) error {
+	var userRole types.UserRole
+	if err := r.DB.First(&userRole, "user_id=? and scope=? and scope_id=? and parent_scope=? and parent_scope_id=?",
+		userId, roleScope.Scope, roleScope.ScopeId, parentScope, parentScopeId).Error; err != nil {
+		userRole = types.UserRole{
+			UserId:        userId,
+			Scope:         roleScope.Scope,
+			ScopeId:       roleScope.ScopeId,
+			ScopeRegex:    roleScope.ScopeRegex,
+			ParentScope:   parentScope,
+			ParentScopeId: parentScopeId,
+			Role:          roleScope.Role,
+			CreateTime:    time.Now(),
+			UpdateTime:    time.Now(),
+		}
+		if err = r.DB.Create(&userRole).Error; err != nil {
+			return err
+		}
+	} else {
+		userRole.Role = roleScope.Role
+		userRole.UpdateTime = time.Now()
+		if err = r.DB.Save(&userRole).Error; err != nil {
+			return err
+		}
+	}
+	if err := r.DB.Delete(types.UserRole{}, "user_id = ? and parent_scope=? and parent_scope_id=?",
+		userId, parentScope, parentScopeId).Error; err != nil {
+		return err
+	}
+	for _, subScope := range roleScope.SubScopes {
+		if err := r.CreateOrUpdateUserRole(userId, roleScope.Scope, roleScope.ScopeId, subScope); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -156,7 +190,12 @@ func (r *UserRoleManager) GetUserRoles(userId uint) ([]types.UserRole, error) {
 	return userRoles, nil
 }
 
-func (r *UserRoleManager) HasScopeRole(user *types.User, scope string, scopeId uint, role string) bool {
+func (r *UserRoleManager) HasScopeRootRole(user *types.User, scope string, scopeId uint, scopeName string, role string) bool {
+	return r.HasScopeRole(user, types.RoleScopeRoot, types.RoleScopeRootId, scope, scopeId, scopeName, role)
+}
+
+func (r *UserRoleManager) HasScopeRole(user *types.User, parentScope string, parentScopeId uint,
+	scope string, scopeId uint, scopeName string, role string) bool {
 	if user.IsSuper {
 		return true
 	}
@@ -178,11 +217,34 @@ func (r *UserRoleManager) HasScopeRole(user *types.User, scope string, scopeId u
 		klog.Errorf("not found role %s", role)
 		return false
 	}
+	if scope == types.RoleScopePlatform {
+		scopeId = 0
+	}
 	for _, scopeRole := range *user.Roles {
-		if scopeRole.Scope == scope && scopeRole.ScopeId == scopeId && utils.Contains(roleSet, scopeRole.Role) {
+		if scopeRole.Scope == types.RoleScopePlatform && scopeRole.ScopeId == 0 && utils.Contains(roleSet, scopeRole.Role) {
 			return true
 		}
-		if scopeRole.Scope == types.RoleScopePlatform && scopeRole.ScopeId == 0 && utils.Contains(roleSet, scopeRole.Role) {
+		if scopeRole.ParentScope != parentScope {
+			continue
+		}
+		if scopeRole.ParentScopeId != parentScopeId {
+			continue
+		}
+		if scopeRole.Scope != scope {
+			continue
+		}
+		if scopeRole.ScopeRegex != "" {
+			matched, err := regexp.MatchString(scopeRole.ScopeRegex, scopeName)
+			if err != nil {
+				klog.Errorf("regex %s match scope=%s scopeName=%s error: %s", scopeRole.ScopeRegex, scope, scopeName, err.Error())
+				continue
+			}
+			if matched && utils.Contains(roleSet, scopeRole.Role) {
+				return true
+			}
+			continue
+		}
+		if scopeRole.ScopeId == scopeId && utils.Contains(roleSet, scopeRole.Role) {
 			return true
 		}
 	}

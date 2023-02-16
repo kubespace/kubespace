@@ -52,7 +52,7 @@ func (clu *Cluster) list(c *views.Context) *utils.Response {
 
 	var wg sync.WaitGroup
 	for _, du := range clus {
-		if !clu.models.UserRoleManager.HasScopeRole(c.User, types.RoleScopeCluster, du.ID, types.RoleTypeViewer) {
+		if !clu.models.UserRoleManager.HasScopeRootRole(c.User, types.RoleScopeCluster, du.ID, du.Name1, types.RoleTypeViewer) {
 			continue
 		}
 		wg.Add(1)

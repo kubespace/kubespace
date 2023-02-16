@@ -56,7 +56,7 @@ func NewModels(c *Config) (*Models, error) {
 	user := manager.NewUserManager(c.DB.Instance)
 	userRole := manager.NewUserRoleManager(c.DB.Instance, user)
 	pipelinePluginMgr := pipeline.NewPipelinePluginManager(c.DB.Instance)
-	pipelineMgr := pipeline.NewPipelineManager(c.DB.Instance)
+	pipelineMgr := pipeline.NewPipelineManager(c.DB.Instance, userRole)
 	pipelineWorkspaceMgr := pipeline.NewWorkspaceManager(c.DB.Instance, pipelineMgr)
 	pipelineRunMgr := pipeline.NewPipelineRunManager(c.DB.Instance, pipelinePluginMgr, c.ListWatcherConfig)
 	pipelineResourceMgr := pipeline.NewResourceManager(c.DB.Instance)

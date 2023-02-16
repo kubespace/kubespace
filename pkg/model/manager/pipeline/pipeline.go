@@ -1,16 +1,18 @@
 package pipeline
 
 import (
+	"github.com/kubespace/kubespace/pkg/model/manager"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"gorm.io/gorm"
 )
 
 type ManagerPipeline struct {
-	DB *gorm.DB
+	DB       *gorm.DB
+	userRole *manager.UserRoleManager
 }
 
-func NewPipelineManager(db *gorm.DB) *ManagerPipeline {
-	return &ManagerPipeline{DB: db}
+func NewPipelineManager(db *gorm.DB, userRole *manager.UserRoleManager) *ManagerPipeline {
+	return &ManagerPipeline{DB: db, userRole: userRole}
 }
 
 func (p *ManagerPipeline) CreatePipeline(pipeline *types.Pipeline, stages []*types.PipelineStage) (*types.Pipeline, error) {
@@ -90,13 +92,20 @@ func (p *ManagerPipeline) Get(pipelineId uint) (*types.Pipeline, error) {
 	return &pipeline, nil
 }
 
-func (p *ManagerPipeline) List(workspaceId uint) ([]types.Pipeline, error) {
+func (p *ManagerPipeline) List(user *types.User, workspaceId uint) ([]types.Pipeline, error) {
 	var ps []types.Pipeline
 	result := p.DB.Where("workspace_id = ?", workspaceId).Find(&ps)
 	if result.Error != nil {
 		return nil, result.Error
 	}
-	return ps, nil
+	var res []types.Pipeline
+	for i, pipeline := range ps {
+		if p.userRole.HasScopeRole(user, types.RoleScopePipespace, workspaceId, types.RoleScopePipeline,
+			pipeline.ID, pipeline.Name, types.RoleTypeViewer) {
+			res = append(res, ps[i])
+		}
+	}
+	return res, nil
 }
 
 func (p *ManagerPipeline) Stages(pipelineId uint) ([]*types.PipelineStage, error) {

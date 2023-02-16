@@ -20,10 +20,15 @@ type User struct {
 }
 
 const (
-	RoleScopePlatform = "platform"
-	RoleScopeCluster  = "cluster"
-	RoleScopePipeline = "pipeline"
-	RoleScopeProject  = "project"
+	// RoleScopeRoot 用户角色范围的根节点
+	RoleScopeRoot   = ""
+	RoleScopeRootId = 0
+
+	RoleScopePlatform  = "platform"
+	RoleScopeCluster   = "cluster"
+	RoleScopePipespace = "pipespace"
+	RoleScopePipeline  = "pipeline"
+	RoleScopeProject   = "project"
 
 	RoleTypeViewer = "viewer"
 	RoleTypeEditor = "editor"
@@ -31,12 +36,15 @@ const (
 )
 
 type UserRole struct {
-	ID         uint      `gorm:"primaryKey" json:"id"`
-	UserId     uint      `gorm:"not null;uniqueIndex:idx_user_scope_id" json:"user_id"`
-	UserName   string    `gorm:"-" json:"username"`
-	Scope      string    `gorm:"size:50;not null;uniqueIndex:idx_user_scope_id" json:"scope"`
-	ScopeId    uint      `gorm:"not null;uniqueIndex:idx_user_scope_id" json:"scope_id"`
-	Role       string    `gorm:"size:50;not null;" json:"role"`
-	CreateTime time.Time `gorm:"column:create_time;not null;autoCreateTime" json:"create_time"`
-	UpdateTime time.Time `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`
+	ID            uint      `gorm:"primaryKey" json:"id"`
+	UserId        uint      `gorm:"not null;uniqueIndex:idx_user_scope_id" json:"user_id"`
+	UserName      string    `gorm:"-" json:"username"`
+	Scope         string    `gorm:"size:50;not null;uniqueIndex:idx_user_scope_id" json:"scope"`
+	ScopeId       uint      `gorm:"not null;uniqueIndex:idx_user_scope_id" json:"scope_id"`
+	ScopeRegex    string    `gorm:"size:500;uniqueIndex:idx_user_scope_id" json:"scope_regex"`
+	ParentScope   string    `gorm:"size:50;uniqueIndex:idx_user_scope_id" json:"parent_scope"`
+	ParentScopeId uint      `gorm:"not null;uniqueIndex:idx_user_scope_id" json:"parent_scope_id"`
+	Role          string    `gorm:"size:50;not null;" json:"role"`
+	CreateTime    time.Time `gorm:"column:create_time;not null;autoCreateTime" json:"create_time"`
+	UpdateTime    time.Time `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`
 }

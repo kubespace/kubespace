@@ -2,6 +2,7 @@ package user
 
 import (
 	"github.com/kubespace/kubespace/pkg/model"
+	"github.com/kubespace/kubespace/pkg/model/manager"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/views"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
@@ -52,26 +53,26 @@ func (r *UserRole) list(c *views.Context) *utils.Response {
 }
 
 func (r *UserRole) update(c *views.Context) *utils.Response {
-	var ser serializers.UserRoleUpdateSerializers
-	if err := c.ShouldBind(&ser); err != nil {
+	var createObject manager.CreateUserRole
+	if err := c.ShouldBind(&createObject); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	if ser.Scope == "" {
+	if createObject.Scope == "" {
 		return &utils.Response{Code: code.ParamsError, Msg: "scope参数错误"}
 	}
-	if ser.Role == "" {
+	if createObject.Role == "" {
 		return &utils.Response{Code: code.ParamsError, Msg: "role参数错误"}
 	}
-	if ser.Scope == types.RoleScopePlatform {
-		ser.ScopeId = 0
+	if createObject.Scope == types.RoleScopePlatform {
+		createObject.ScopeId = 0
 	}
-	if ser.ScopeId == 0 && ser.Scope != types.RoleScopePlatform {
+	if createObject.ScopeId == 0 && createObject.Scope != types.RoleScopePlatform {
 		return &utils.Response{Code: code.ParamsError, Msg: "scopeId参数错误"}
 	}
-	if len(ser.UserIds) == 0 {
+	if len(createObject.UserIds) == 0 {
 		return &utils.Response{Code: code.ParamsError, Msg: "用户列表为空"}
 	}
-	if err := r.models.UserRoleManager.CreateOrUpdate(ser.Scope, ser.ScopeId, ser.UserIds, ser.Role); err != nil {
+	if err := r.models.UserRoleManager.CreateOrUpdate(&createObject); err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
 	return &utils.Response{Code: code.Success, Msg: "创建用户权限成功"}

@@ -49,9 +49,15 @@ type UserRoleSerializers struct {
 
 type UserRoleUpdateSerializers struct {
 	UserIds []uint `json:"user_ids" form:"user_ids"`
-	Scope   string `json:"scope" form:"scope"`
-	ScopeId uint   `json:"scope_id" form:"scope_id"`
-	Role    string `json:"role" form:"from"`
+	*UserRoleSubScope
+	SubScopes []*UserRoleSubScope `json:"sub_scopes" form:"sub_scopes"`
+}
+
+type UserRoleSubScope struct {
+	Scope      string `json:"scope" form:"scope"`
+	ScopeId    uint   `json:"scope_id" form:"scope_id"`
+	ScopeRegex string `json:"scope_regex" form:"scope_regex"`
+	Role       string `json:"role" form:"role"`
 }
 
 type UpdatePasswordSerializers struct {

@@ -205,8 +205,8 @@ func (p *ServicePipeline) GetPipeline(pipelineId uint) *utils.Response {
 	return &utils.Response{Code: code.Success, Data: data}
 }
 
-func (p *ServicePipeline) ListPipeline(workspaceId uint) *utils.Response {
-	pipelines, err := p.models.PipelineManager.List(workspaceId)
+func (p *ServicePipeline) ListPipeline(user *types.User, workspaceId uint) *utils.Response {
+	pipelines, err := p.models.PipelineManager.List(user, workspaceId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: fmt.Sprintf("获取流水线列表错误: %v", err)}
 	}

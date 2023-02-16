@@ -80,7 +80,10 @@ func (w *WorkspaceManager) Delete(workspace *types.PipelineWorkspace) error {
 			return err
 		}
 	}
-	if err := w.DB.Delete(&types.UserRole{}, "scope = ? and scope_id = ?", types.RoleScopePipeline, workspace.ID).Error; err != nil {
+	// 删除用户角色以及子资源的用户角色
+	if err := w.DB.Delete(&types.UserRole{},
+		"(scope=? and scope_id=?) or (parent_scope=? and parent_scope_id=?",
+		types.RoleScopePipespace, workspace.ID, types.RoleScopePipespace, workspace.ID).Error; err != nil {
 		return err
 	}
 	if err := w.DB.Delete(workspace).Error; err != nil {

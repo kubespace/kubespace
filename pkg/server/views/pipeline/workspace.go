@@ -92,14 +92,14 @@ func (p *PipelineWorkspace) list(c *views.Context) *utils.Response {
 	}
 	var data []types.PipelineWorkspace
 	for i, w := range workspaces {
-		if !p.models.UserRoleManager.HasScopeRole(c.User, types.RoleScopePipeline, w.ID, types.RoleTypeViewer) {
+		if !p.models.UserRoleManager.HasScopeRootRole(c.User, types.RoleScopePipespace, w.ID, w.Name, types.RoleTypeViewer) {
 			continue
 		}
 		if ser.Type != "" && w.Type != ser.Type {
 			continue
 		}
 		if ser.WithPipeline {
-			workspaces[i].Pipelines, err = p.models.PipelineManager.List(w.ID)
+			workspaces[i].Pipelines, err = p.models.PipelineManager.List(c.User, w.ID)
 			if err != nil {
 				return &utils.Response{Code: code.DBError, Msg: err.Error()}
 			}
