@@ -107,3 +107,11 @@ export function deleteAppVersion(id) {
     method: 'delete',
   })
 }
+
+export function downloadChart(path) {
+  return request({
+    url: `project/apps/download`,
+    method: 'get',
+    params: {path}
+  })
+}

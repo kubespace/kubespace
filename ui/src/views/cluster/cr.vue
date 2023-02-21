@@ -78,12 +78,10 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { ResType, listResource, getResource } from '@/api/cluster/resource'
-import { listCrs, getCr, deleteCr } from '@/api/crd'
+import { ResType, listResource, getResource, delResource } from '@/api/cluster/resource'
 import { updateGvr } from '@/api/cluster'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
-import { delResource } from '../../api/cluster/resource'
 
 export default {
   name: 'CR',

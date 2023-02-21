@@ -73,8 +73,8 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { listApps, getApp, createApp } from '@/api/app'
-import { listNamespace } from '@/api/namespace'
+import { listApps, getApp, createApp } from '@/api/project/apps'
+import { ResType, listResource } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
 import { dateFormat } from '@/utils/utils'
@@ -94,7 +94,7 @@ export default {
         yamlLoading: true,
         cellStyle: {border: 0},
         titleName: ["Applications"],
-        maxHeight: window.innerHeight - 150,
+        maxHeight: window.innerHeight - this.$contentHeight,
         loading: true,
         originApps: [],
         installApp: {},
@@ -117,7 +117,7 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150
+        let heightStyle = window.innerHeight - this.$contentHeight
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
@@ -248,7 +248,7 @@ export default {
       this.namespaces = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listNamespace(cluster).then(response => {
+        listResource(ResType.Namespace, cluster).then(response => {
           this.namespaces = response.data
           this.namespaces.sort((a, b) => {return a.name > b.name ? 1 : -1})
         }).catch((err) => {

@@ -1,4 +1,4 @@
-import { transferSecret, resolveSecret } from '@/api/secret'
+import { transferSecret, resolveSecret } from '@/api/cluster/resource'
 export { default as HealthProbe } from './HealthProbe'
 export { default as Container } from './container'
 export { default as PodVolume } from './pod_volume'

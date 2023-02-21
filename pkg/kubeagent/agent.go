@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/kubespace/kubespace/pkg/kubeagent/config"
 	"github.com/kubespace/kubespace/pkg/kubernetes"
 	kubeconfig "github.com/kubespace/kubespace/pkg/kubernetes/config"
 	"github.com/kubespace/kubespace/pkg/kubernetes/resource"
@@ -17,7 +16,7 @@ import (
 )
 
 type Agent struct {
-	config         *config.AgentConfig
+	config         *AgentConfig
 	kubeConfig     *kubeconfig.KubeConfig
 	tunnel         Tunnel
 	kubeFactory    kubernetes.KubeFactory
@@ -25,7 +24,7 @@ type Agent struct {
 	serverCli      *utils.HttpClient
 }
 
-func NewAgent(config *config.AgentConfig) *Agent {
+func NewAgent(config *AgentConfig) *Agent {
 	a := &Agent{
 		config:      config,
 		kubeConfig:  config.KubeConfig,
@@ -119,7 +118,7 @@ func (a *Agent) OnSuccess() {
 		return
 	}
 	bytesBuf := new(bytes.Buffer)
-	_, err := a.serverCli.Get("/import/agent/"+a.config.Token, nil, bytesBuf)
+	_, err := a.serverCli.Get("/import/agent/"+a.config.Token, nil, bytesBuf, utils.RequestOptions{})
 	if err != nil {
 		klog.Errorf("get server agent yaml error: %s", err.Error())
 		return

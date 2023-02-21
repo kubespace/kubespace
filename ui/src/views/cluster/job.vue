@@ -123,7 +123,6 @@
 import { Clusterbar } from '@/views/components'
 import { sse } from '@/api/cluster'
 import { ResType, listResource, watchResource, getResource, delResource, updateResource, patchResource } from '@/api/cluster/resource'
-import { listJobs, getJob, deleteJobs, updateJob, buildJobs } from '@/api/job'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
 
@@ -317,7 +316,7 @@ export default {
         return
       }
       this.yamlLoading = true
-      updateJob(cluster, ResType.Job, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
+      updateResource(ResType.Job, cluster, ResType.Job, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
         Message.success("更新成功")
         this.yamlLoading = false
         this.yamlDialog = false

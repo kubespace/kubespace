@@ -157,8 +157,7 @@
 
 <script>
 import { Clusterbar, Yaml } from '@/views/components'
-import { getPersistentVolumeClaim, updatePersistentVolumeClaim } from '@/api/persistent_volume_claim'
-import { listEvents } from '@/api/event'
+import { ResType, listResource, getResource, updateResource } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
 
 export default {
@@ -231,10 +230,10 @@ export default {
       if (!this.namespace) {
         Message.error('获取获取PersistentVolumeClaim命名空间参数异常，请刷新重试')
       }
-      getPersistentVolumeClaim(cluster, this.namespace, this.PersistentVolumeClaimName).then(response => {
+      listResource(ResType.PersistentVolumeClaim, cluster, this.namespace, this.PersistentVolumeClaimName).then(response => {
         this.loading = false
         this.originPersistentVolumeClaim = response.data
-        listEvents(cluster, this.originPersistentVolumeClaim.metadata.uid).then(response => {
+        listResource(ResType.Event, cluster, this.originPersistentVolumeClaim.metadata.uid).then(response => {
           this.eventLoading = false
           if (response.data) {
             this.persistentVolumeClaimEvents = response.data.length > 0 ? response.data : []
@@ -259,7 +258,7 @@ export default {
       this.yamlValue = ''
       this.yamlDialog = true
       this.yamlLoading = true
-      getPersistentVolumeClaim(cluster, this.namespace, this.PersistentVolumeClaimName, 'yaml')
+      getResource(ResType.PersistentVolumeClaim, cluster, this.namespace, this.PersistentVolumeClaimName, 'yaml')
         .then((response) => {
           this.yamlLoading = false
           this.yamlValue = response.data
@@ -278,7 +277,7 @@ export default {
         Message.error("获取集群参数异常，请刷新重试")
         return
       }
-      updatePersistentVolumeClaim(cluster, this.namespace, this.PersistentVolumeClaimName, this.yamlValue).then(() => {
+      updateResource(ResType.PersistentVolumeClaim, cluster, this.namespace, this.PersistentVolumeClaimName, this.yamlValue).then(() => {
         Message.success("更新成功")
       }).catch(() => {
         // console.log(e) 

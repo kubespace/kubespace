@@ -109,8 +109,7 @@
 
 <script>
 import { Clusterbar, Yaml } from '@/views/components'
-import { getHpa, updateHpa, deleteHpa } from '@/api/hpa'
-import { listEvents } from '@/api/event'
+import { ResType, listResource, getResource, updateResource, delResource } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
 
 export default {
@@ -177,11 +176,11 @@ export default {
       if (!this.namespace) {
         Message.error('获取获取Hpa命名空间参数异常，请刷新重试')
       }
-      getHpa(cluster, this.namespace, this.hpaName).then(response => {
+      getResource(ResType.Hpa, cluster, this.namespace, this.hpaName).then(response => {
         this.loading = false
         this.originHpa = response.data
         console.log("*******", this.originHpa)
-        listEvents(cluster, this.originHpa.metadata.uid).then(response => {
+        listResource(ResType.Event, cluster, this.originHpa.metadata.uid).then(response => {
           this.eventLoading = false
           if (response.data) {
             this.hpaEvents = response.data.length > 0 ? response.data : []
@@ -206,7 +205,7 @@ export default {
       this.yamlValue = ''
       this.yamlDialog = true
       this.yamlLoading = true
-      getHpa(cluster, this.namespace, this.hpaName, 'yaml')
+      getResource(ResType.Hpa, cluster, this.namespace, this.hpaName, 'yaml')
         .then((response) => {
           this.yamlLoading = false
           this.yamlValue = response.data
@@ -227,7 +226,7 @@ export default {
       }
       console.log(this.yamlValue)
       console.log(this.hpa)
-      updateHpa(cluster, this.namespace, this.hpaName, this.yamlValue).then(() => {
+      updateResource(ResType.Hpa, cluster, this.namespace, this.hpaName, this.yamlValue).then(() => {
         Message.success("更新成功")
       }).catch(() => {
         // console.log(e) 
@@ -249,7 +248,7 @@ export default {
       let params = {
         resources: hpas
       }
-      deleteHpa(cluster, params).then(() => {
+      delResource(ResType.Hpa, cluster, params).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)

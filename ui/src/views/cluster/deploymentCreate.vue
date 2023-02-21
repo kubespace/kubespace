@@ -1142,13 +1142,8 @@
 
 <script>
 import { Clusterbar, HealthProbe } from '@/views/components'
-import { listDeployments } from '@/api/deployment'
-import { listNamespace } from '@/api/namespace'
-import { listConfigMaps } from '@/api/config_map'
-import { listSecrets } from '@/api/secret'
-import { listNodes } from '@/api/nodes'
+import {ResType, listResource } from '@/api/cluster/resource'
 import { createYaml } from '@/api/cluster'
-import { listPersistentVolumeClaim } from '@/api/persistent_volume_claim'
 import { Message } from 'element-ui'
 import yaml from 'js-yaml'
 import { Yaml } from '@/views/components'
@@ -1302,7 +1297,7 @@ export default {
       this.namespaces = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listNamespace(cluster).then(response => {
+        listResource(ResType.Namespace, cluster).then(response => {
           this.namespaces = response.data
           this.namespaces.sort((a, b) => {return a.name > b.name ? 1 : -1})
         }).catch((err) => {
@@ -1316,7 +1311,7 @@ export default {
       this.namespaces = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listConfigMaps(cluster).then(response => {
+        listResource(ResType.Configmap, cluster).then(response => {
           this.configmaps = response.data
           this.configmaps.sort((a, b) => {return a.name > b.name ? 1 : -1})
         }).catch((err) => {
@@ -1330,7 +1325,7 @@ export default {
       this.namespaces = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listSecrets(cluster).then(response => {
+        listResource(ResType.Secret, cluster).then(response => {
           this.secrets = response.data
           this.secrets.sort((a, b) => {return a.name > b.name ? 1 : -1})
         }).catch((err) => {
@@ -1344,7 +1339,7 @@ export default {
       this.nodes = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listNodes(cluster).then(response => {
+        listResource(ResType.Node, cluster).then(response => {
           this.nodes = response.data
           this.nodes.sort((a, b) => {return a.name > b.name ? 1 : -1})
         }).catch((err) => {
@@ -1358,7 +1353,7 @@ export default {
       this.namespaces = []
       const cluster = this.$store.state.cluster
       if (cluster) {
-        listPersistentVolumeClaim(cluster).then(response => {
+        listResource(ResType.PersistentVolumeClaim, cluster).then(response => {
           this.pvcs = response.data
           this.pvcs.sort((a, b) => {return a.name > b.name ? 1 : -1})
         }).catch((err) => {

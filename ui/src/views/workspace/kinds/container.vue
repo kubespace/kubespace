@@ -362,7 +362,7 @@
 
 <script>
 import { newContainer, HealthProbe, resolveConfigMap } from '@/views/workspace/kinds'
-import { transferSecret } from '@/api/secret'
+import { transferSecret } from '@/api/cluster/resource'
 
 export default {
   name: 'Container',

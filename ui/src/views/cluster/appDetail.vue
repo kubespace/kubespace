@@ -357,7 +357,7 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { listReleases, deleteRelease, getRelease } from '@/api/app'
+import { listReleases, deleteRelease, getRelease } from '@/api/project/apps'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
 import { dateFormat } from '@/utils/utils'
@@ -376,7 +376,7 @@ export default {
         yamlValue: "",
         yamlLoading: true,
         cellStyle: {border: 0},
-        maxHeight: window.innerHeight - 150,
+        maxHeight: window.innerHeight - this.$contentHeight,
         loading: true,
         originReleases: [],
         search_ns: [],
@@ -401,7 +401,7 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150
+        let heightStyle = window.innerHeight - this.$contentHeight
         that.maxHeight = heightStyle
       })()
     }

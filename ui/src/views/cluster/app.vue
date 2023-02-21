@@ -171,12 +171,10 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
-// import { listReleases, deleteRelease, getRelease } from '@/api/app'
 import { listApps, listAppStatus, listAppVersions, installApp, destroyApp, deleteApp, importStoreApp } from "@/api/project/apps";
 import { Message } from 'element-ui'
 import { listStoreApps } from '@/api/project/appStore'
 import { ResType, listResource } from '@/api/cluster/resource'
-import { listNamespace } from '@/api/namespace'
 import { Yaml } from '@/views/components'
 import yaml from 'js-yaml'
 
