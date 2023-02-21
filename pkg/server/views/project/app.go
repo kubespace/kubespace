@@ -11,6 +11,7 @@ import (
 	"k8s.io/klog/v2"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -31,8 +32,8 @@ func NewProjectApp(config *config.ServerConfig) *ProjectApp {
 		views.NewView(http.MethodGet, "/version/:id", app.getAppVersion),
 		views.NewView(http.MethodGet, "/status", app.listAppStatus),
 		views.NewView(http.MethodGet, "/status_sse", app.statusSSE),
+		views.NewView(http.MethodGet, "/download", app.downloadChart),
 		views.NewView(http.MethodGet, "/:id", app.getApp),
-		views.NewView(http.MethodGet, "/download/:path", app.downloadChart),
 		views.NewView(http.MethodPost, "", app.create),
 		views.NewView(http.MethodPost, "/install", app.install),
 		views.NewView(http.MethodPost, "/destroy", app.destroy),
@@ -203,18 +204,24 @@ func (a *ProjectApp) statusSSE(c *views.Context) *utils.Response {
 }
 
 func (a *ProjectApp) downloadChart(c *views.Context) *utils.Response {
-	chartPath := c.Param("path")
+	chartPath := c.Query("path")
 	if chartPath == "" {
 		c.JSON(http.StatusNotFound, &utils.Response{Code: code.GetError, Msg: "not found chart params"})
 		return nil
 	}
-	chartPath = chartPath[1:]
 
 	appChart, err := a.models.ProjectAppVersionManager.GetAppVersionChart(chartPath)
 	if err != nil {
 		c.JSON(http.StatusNotFound, &utils.Response{Code: code.GetError, Msg: err.Error()})
 		return nil
 	}
+	chartName := chartPath
+	s := strings.Split(chartPath, "/")
+	if len(s) >= 2 {
+		chartName = s[len(s)-1]
+	}
+	fileContentDisposition := "attachment;filename=\"" + chartName + "\""
+	c.Header("Content-Disposition", fileContentDisposition)
 	c.Data(http.StatusOK, "application/x-tar", appChart.Content)
 	return nil
 }
