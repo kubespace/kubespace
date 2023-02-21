@@ -116,7 +116,6 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { listNamespace, getNamespace, deleteNamespaces, updateNamespace } from '@/api/namespace'
 import { ResType, listResource, getResource, delResource, updateResource } from '@/api/cluster/resource'
 import { createYaml } from '@/api/cluster'
 import { Message } from 'element-ui'

@@ -112,7 +112,6 @@
 <script>
 import { Clusterbar, Yaml } from '@/views/components'
 import { ResType, listResource, getResource, delResource, updateResource } from '@/api/cluster/resource'
-import { getRole, deleteRoles, updateRole } from '@/api/role'
 import { Message } from 'element-ui'
 
 export default {

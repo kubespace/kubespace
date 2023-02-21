@@ -95,8 +95,6 @@
 import { Clusterbar, Yaml } from '@/views/components'
 import { Message } from 'element-ui'
 import { ResType, listResource, getResource, delResource, updateResource, createResource } from '@/api/cluster/resource'
-import { listStorageClass, getStorageClass, updateStorageClass,
-deleteStorageClasses, buildSc } from '@/api/storage_class'
 
 export default {
   name: "StorageClass",

@@ -426,3 +426,22 @@ export function resolveSecret(secret) {
   }
   secret.data = data
 }
+
+export function buildEvent(event) {
+  if (!event) return
+  let eventTime = event.lastTimestamp
+  if (!eventTime) eventTime = event.firstTimestamp
+  if (!eventTime) eventTime = event.metadata.creationTimestamp
+  return {
+    uid: event.metadata.uid,
+    namespace: event.metadata.namespace,
+    count: event.spec ? event.spec.count : 1,
+    reason: event.reason,
+    message: event.message,
+    type: event.type,
+    object: event.involvedObject,
+    source: event.source,
+    event_time: eventTime,
+    resource_version: event.metadata.resourceVersion,
+  }
+}

@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"github.com/kubespace/kubespace/pkg/kubeagent"
-	"github.com/kubespace/kubespace/pkg/kubeagent/config"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"k8s.io/klog/v2"
 )
@@ -15,12 +14,12 @@ var (
 )
 
 func buildAgent() (*kubeagent.Agent, error) {
-	options := &config.AgentOptions{
+	options := &kubeagent.AgentOptions{
 		KubeConfigFile: *kubeConfigFile,
 		AgentToken:     *agentToken,
 		ServerHost:     *serverHost,
 	}
-	agentConfig, err := config.NewAgentConfig(options)
+	agentConfig, err := kubeagent.NewAgentConfig(options)
 	if err != nil {
 		klog.Error("New agent config error:", err)
 		return nil, err

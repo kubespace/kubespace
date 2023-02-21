@@ -119,7 +119,6 @@
 <script>
 import { Clusterbar } from '@/views/components'
 import { ResType, listResource, watchResource } from '@/api/cluster/resource'
-import { listEvents, buildEvent } from '@/api/event'
 import { Message } from 'element-ui'
 // import { Yaml } from '@/views/components'
 

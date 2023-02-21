@@ -223,10 +223,10 @@ func (p *PipelineRunController) getJobExecParam(
 		if err != nil {
 			return nil, fmt.Errorf("获取流水线空间「id=%d」失败：%s", workspaceId, err.Error())
 		}
-		if workspace.CodeSecretId == 0 {
+		if workspace.Code != nil && workspace.Code.SecretId == 0 {
 			return nil, nil
 		}
-		secret, _ := p.models.SettingsSecretManager.Get(workspace.CodeSecretId)
+		secret, _ := p.models.SettingsSecretManager.Get(workspace.Code.SecretId)
 		if secret != nil {
 			res = map[string]interface{}{
 				"type":         secret.Type,

@@ -275,7 +275,7 @@
 
 <script>
 import { newPodVolume, resolveConfigMap } from '@/views/workspace/kinds'
-import { transferSecret } from '@/api/secret'
+import { transferSecret } from '@/api/cluster/resource'
 
 export default {
   name: 'PodVolume',

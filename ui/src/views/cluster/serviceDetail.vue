@@ -207,7 +207,6 @@
 import { Clusterbar, Yaml } from '@/views/components'
 import { ResType, listResource, getResource, delResource, watchResource, updateResource,
          containerClass, podMatch } from '@/api/cluster/resource'
-// import { listPods, containerClass, buildPods, podMatch, deletePods } from '@/api/pods'
 import { Message } from 'element-ui'
 import { Terminal } from '@/views/components'
 import { Log } from '@/views/components'

@@ -365,7 +365,6 @@
 
 <script>
 import { Clusterbar, Yaml } from '@/views/components'
-import { getPod, deletePods, updatePod } from '@/api/pods'
 import { ResType, listResource, getResource, buildPods, resourceFor, watchResource } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
 import { Terminal } from '@/views/components'
@@ -522,7 +521,7 @@ export default {
       let params = {
         resources: pods
       }
-      deletePods(cluster, params).then(() => {
+      delResource(ResType.Pod, cluster, params).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)
@@ -541,7 +540,7 @@ export default {
       this.yamlValue = ""
       this.yamlDialog = true
       this.yamlLoading = true
-      getPod(cluster, this.pod.namespace, this.pod.name, "yaml").then(response => {
+      getResource(ResType.Pod, cluster, this.pod.namespace, this.pod.name, "yaml").then(response => {
         this.yamlLoading = false
         this.yamlValue = response.data
       }).catch(() => {
@@ -559,7 +558,7 @@ export default {
         return
       }
       console.log(this.yamlValue)
-      updatePod(cluster, this.pod.namespace, this.pod.name, this.yamlValue).then(() => {
+      updateResource(ResType.Pod, cluster, this.pod.namespace, this.pod.name, this.yamlValue).then(() => {
         Message.success("更新成功")
       }).catch(() => {
         // console.log(e) 
