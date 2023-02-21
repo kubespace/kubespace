@@ -29,6 +29,8 @@ func (m *Migrate) Do() error {
 		dbMigrate, err = m.dbLock()
 		if err != nil {
 			klog.Errorf("get db migration lock error: %s", err.Error())
+		} else {
+			break
 		}
 		time.Sleep(time.Second * 3)
 	}

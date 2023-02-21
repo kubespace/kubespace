@@ -63,5 +63,9 @@ func (s *Secret) listObjectProcess(query *QueryParams, obj *unstructured.Unstruc
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, se); err != nil {
 		return nil, err
 	}
+	// don't list helm release secret
+	if se.Type == "helm.sh/release.v1" {
+		return nil, nil
+	}
 	return s.ToBuildSecret(se), nil
 }

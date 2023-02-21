@@ -151,7 +151,7 @@ export default {
       if (cluster) {
         listResource(cluster, ResType.CRD).then(response => {
           this.loading = false
-          this.originCrds = response.data
+          this.originCrds = response.data || []
         }).catch(() => {
           this.loading = false
         })

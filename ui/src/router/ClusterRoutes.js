@@ -187,13 +187,6 @@ const Routes = [
         meta: { title: '保密字典', group: 'cluster', object: 'secret' },
       },
       {
-        path: 'secrets/:namespace/:secretName',
-        name: 'secretDetail',
-        hidden: true,
-        component: () => import('@/views/cluster/secretDetail'),
-        meta: { title: '配置项', group: 'cluster', sideName: 'secrets', object: 'secret' },
-      },
-      {
         path: 'hpa',
         name: 'hpa',
         component: () => import('@/views/cluster/hpa'),
@@ -316,31 +309,10 @@ const Routes = [
         meta: { title: '服务账户', group: 'cluster', object: 'serviceaccount' },
       },
       {
-        path: 'serviceaccount/:namespace/:serviceaccountName',
-        name: 'serviceaccountDetail',
-        hidden: true,
-        component: () => import('@/views/cluster/serviceaccountDetail'),
-        meta: { title: '服务账户', group: 'cluster', sideName: 'serviceaccount', object: 'serviceaccount' },
-      },
-      {
         path: 'rolebinding',
         name: 'rolebinding',
         component: () => import('@/views/cluster/rolebinding'),
         meta: { title: '角色绑定', group: 'cluster', object: 'rolebinding' },
-      },
-      {
-        path: 'rolebinding/:rolebindingName',
-        name: 'clusterrolebindingDetail',
-        hidden: true,
-        component: () => import('@/views/cluster/rolebindingDetail'),
-        meta: { title: '角色绑定', group: 'cluster', sideName: 'rolebinding', object: 'rolebinding' },
-      },
-      {
-        path: 'rolebinding/:namespace/:rolebindingName',
-        name: 'rolebindingDetail',
-        hidden: true,
-        component: () => import('@/views/cluster/rolebindingDetail'),
-        meta: { title: '角色绑定', group: 'cluster', sideName: 'rolebinding', object: 'rolebinding' },
       },
       {
         path: 'role',
