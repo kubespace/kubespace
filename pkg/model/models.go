@@ -1,14 +1,14 @@
 package model
 
 import (
-	"fmt"
 	"github.com/kubespace/kubespace/pkg/core/db"
 	"github.com/kubespace/kubespace/pkg/informer/listwatcher/config"
-	"github.com/kubespace/kubespace/pkg/model/manager"
 	"github.com/kubespace/kubespace/pkg/model/manager/cluster"
 	"github.com/kubespace/kubespace/pkg/model/manager/pipeline"
 	"github.com/kubespace/kubespace/pkg/model/manager/project"
-	"github.com/kubespace/kubespace/pkg/model/types"
+	"github.com/kubespace/kubespace/pkg/model/manager/settings"
+	"github.com/kubespace/kubespace/pkg/model/manager/spacelet"
+	"github.com/kubespace/kubespace/pkg/model/manager/user"
 	"gorm.io/gorm"
 )
 
@@ -23,10 +23,10 @@ type Models struct {
 
 	ClusterManager *cluster.ClusterManager
 
-	UserManager     *manager.UserManager
-	UserRoleManager *manager.UserRoleManager
-	TokenManager    *manager.TokenManager
-	RoleManager     *manager.RoleManager
+	UserManager     *user.UserManager
+	UserRoleManager *user.UserRoleManager
+	TokenManager    *user.TokenManager
+	RoleManager     *user.RoleManager
 
 	PipelineManager          *pipeline.ManagerPipeline
 	PipelineRunManager       *pipeline.ManagerPipelineRun
@@ -41,20 +41,18 @@ type Models struct {
 	ProjectManager           *project.ManagerProject
 	AppStoreManager          *project.AppStoreManager
 
-	SettingsSecretManager *manager.SettingsSecretManager
-	ImageRegistryManager  *manager.ImageRegistryManager
+	SettingsSecretManager *settings.SettingsSecretManager
+	ImageRegistryManager  *settings.ImageRegistryManager
+
+	SpaceletManager *spacelet.SpaceletManager
 }
 
 func NewModels(c *Config) (*Models, error) {
-	if err := DbMigrate(c.DB.Instance); err != nil {
-		return nil, fmt.Errorf("migrate db error: %s", err.Error())
-	}
+	role := user.NewRoleManager(c.DB.RedisInstance)
+	tk := user.NewTokenManager(c.DB.RedisInstance)
 
-	role := manager.NewRoleManager(c.DB.RedisInstance)
-	tk := manager.NewTokenManager(c.DB.RedisInstance)
-
-	user := manager.NewUserManager(c.DB.Instance)
-	userRole := manager.NewUserRoleManager(c.DB.Instance, user)
+	userMgr := user.NewUserManager(c.DB.Instance)
+	userRole := user.NewUserRoleManager(c.DB.Instance, userMgr)
 	pipelinePluginMgr := pipeline.NewPipelinePluginManager(c.DB.Instance)
 	pipelineMgr := pipeline.NewPipelineManager(c.DB.Instance)
 	pipelineWorkspaceMgr := pipeline.NewWorkspaceManager(c.DB.Instance, pipelineMgr)
@@ -63,8 +61,8 @@ func NewModels(c *Config) (*Models, error) {
 	jobLogMgr := pipeline.NewJobLogManager(c.DB.Instance)
 	pipelineReleaseMgr := pipeline.NewReleaseManager(c.DB.Instance)
 
-	secrets := manager.NewSettingsSecretManager(c.DB.Instance)
-	imageRegistry := manager.NewSettingsImageRegistryManager(c.DB.Instance)
+	secrets := settings.NewSettingsSecretManager(c.DB.Instance)
+	imageRegistry := settings.NewSettingsImageRegistryManager(c.DB.Instance)
 
 	appVersionMgr := project.NewAppVersionManager(c.DB.Instance)
 	projectAppMgr := project.NewAppManager(appVersionMgr, c.DB.Instance)
@@ -73,11 +71,13 @@ func NewModels(c *Config) (*Models, error) {
 
 	cm := cluster.NewClusterManager(c.DB.Instance, c.ListWatcherConfig, projectAppMgr)
 
+	sl := spacelet.NewSpaceletManager(c.DB.Instance)
+
 	return &Models{
 		db:                       c.DB.Instance,
 		ListWatcherConfig:        c.ListWatcherConfig,
 		ClusterManager:           cm,
-		UserManager:              user,
+		UserManager:              userMgr,
 		UserRoleManager:          userRole,
 		TokenManager:             tk,
 		RoleManager:              role,
@@ -94,42 +94,6 @@ func NewModels(c *Config) (*Models, error) {
 		ProjectAppVersionManager: appVersionMgr,
 		ImageRegistryManager:     imageRegistry,
 		AppStoreManager:          appStoreMgr,
+		SpaceletManager:          sl,
 	}, nil
-}
-
-func DbMigrate(db *gorm.DB) error {
-	var err error
-	migrateTypes := []interface{}{
-		&types.Cluster{},
-		&types.User{},
-		&types.UserRole{},
-		&types.PipelineWorkspace{},
-		&types.Pipeline{},
-		&types.PipelineStage{},
-		&types.PipelinePlugin{},
-		&types.PipelineRun{},
-		&types.PipelineRunStage{},
-		&types.PipelineRunJob{},
-		&types.PipelineRunJobLog{},
-		&types.PipelineResource{},
-		&types.PipelineWorkspaceRelease{},
-
-		&types.SettingsSecret{},
-		&types.SettingsImageRegistry{},
-
-		&types.Project{},
-		&types.ProjectApp{},
-		&types.AppVersion{},
-		&types.AppVersionChart{},
-		&types.AppStore{},
-		&types.ProjectAppRevision{},
-	}
-	for _, model := range migrateTypes {
-		err = db.AutoMigrate(model)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }

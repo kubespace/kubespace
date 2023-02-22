@@ -112,7 +112,10 @@ func (c *HttpClient) NewRequest(method, reqPath string, params interface{}, opti
 		}
 		u.RawQuery = q.Encode()
 	}
-	req, err := http.NewRequestWithContext(options.Context, method, u.String(), body)
+	req, err := http.NewRequest(method, u.String(), body)
+	if options.Context != nil {
+		req.WithContext(options.Context)
+	}
 	if err != nil {
 		klog.Errorf("get http request error: error=%v, url=%s, method=%s", err, u.String(), method)
 		return nil, err

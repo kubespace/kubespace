@@ -25,7 +25,7 @@
                   代码库源
                 </span>
                 <div style="font-size: 12px; padding: 10px 0px 0px; font-weight: 450">
-                  {{ workspace ? workspace.code_url : '' }}
+                  {{ workspace ? workspace.code ? workspace.code.code_url : '' : '' }}
                 </div>
                 <div v-for="(t, i) in editPipeline.triggers" :key="i"
                   style="font-size: 12px; padding: 5px 10px 0px; font-weight: 400" >
@@ -146,7 +146,7 @@
         <template v-if="dialogType == 'source'">
           <el-form :model="dialogData" label-position="left" label-width="105px" v-if="workspace.type == 'code'">
             <el-form-item label="代码库源" prop="" :required="true">
-              <el-input :disabled="true" style="width: 450px;" v-model="workspace.code_url" size="small"></el-input>
+              <el-input :disabled="true" style="width: 450px;" v-model="workspace.code.code_url" size="small"></el-input>
             </el-form-item>
             <el-form-item label="触发分支" prop="" :required="true">
               <el-row style="margin-bottom: 5px; margin-top: 8px;">

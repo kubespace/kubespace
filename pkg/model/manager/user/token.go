@@ -1,22 +1,23 @@
-package manager
+package user
 
 import (
 	"context"
 	"github.com/go-redis/redis/v8"
+	"github.com/kubespace/kubespace/pkg/model/manager"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"time"
 )
 
 type TokenManager struct {
-	CommonManager
+	manager.CommonManager
 }
 
 func NewTokenManager(redisClient *redis.Client) *TokenManager {
 	return &TokenManager{
-		CommonManager{
-			modelKey: "osp:token",
+		manager.CommonManager{
+			ModelKey: "osp:token",
 			Context:  context.Background(),
-			client:   redisClient,
+			Client:   redisClient,
 		},
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/server/config"
 	"github.com/kubespace/kubespace/pkg/server/views"
 	"github.com/kubespace/kubespace/pkg/server/views/cluster"
+	"github.com/kubespace/kubespace/pkg/server/views/spacelet"
 	"github.com/kubespace/kubespace/pkg/server/views/user"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
@@ -67,6 +68,10 @@ func NewRouter(conf *config.ServerConfig) (*Router, error) {
 	apiGroup.GET("/agent/connect", agentView.Connect)
 	apiGroup.GET("/agent/response", agentView.Response)
 	engine.GET("/import/agent/:token", agentView.AgentYaml)
+
+	// spacelet注册接口
+	spaceletView := spacelet.NewSpaceletViews(conf)
+	apiGroup.POST("/spacelet/register", spaceletView.Register)
 	return &Router{
 		Engine: engine,
 	}, nil

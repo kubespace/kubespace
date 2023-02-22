@@ -1,9 +1,10 @@
-package manager
+package user
 
 import (
 	"context"
 	"encoding/json"
 	"github.com/go-redis/redis/v8"
+	"github.com/kubespace/kubespace/pkg/model/manager"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"k8s.io/klog/v2"
@@ -11,14 +12,14 @@ import (
 )
 
 type RoleManager struct {
-	CommonManager
+	manager.CommonManager
 }
 
 func NewRoleManager(redisClient *redis.Client) *RoleManager {
 	return &RoleManager{
-		CommonManager{
-			client:   redisClient,
-			modelKey: "osp:role",
+		manager.CommonManager{
+			Client:   redisClient,
+			ModelKey: "osp:role",
 			Context:  context.Background(),
 		},
 	}
