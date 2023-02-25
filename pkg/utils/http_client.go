@@ -80,6 +80,14 @@ func (c *HttpClient) Post(path string, body interface{}, v interface{}, options 
 	return c.Do(req, v)
 }
 
+func (c *HttpClient) Put(path string, body interface{}, v interface{}, options RequestOptions) (*http.Response, error) {
+	req, err := c.NewRequest(http.MethodPut, path, body, options)
+	if err != nil {
+		return nil, err
+	}
+	return c.Do(req, v)
+}
+
 func (c *HttpClient) NewRequest(method, reqPath string, params interface{}, options RequestOptions) (*http.Request, error) {
 	u := *c.baseUrl
 	unescaped, err := url.PathUnescape(reqPath)

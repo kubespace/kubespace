@@ -30,7 +30,6 @@ func NewServer(config *Config) (*Server, error) {
 	jobExecutor := pipeline_job.NewJobExecutor(config.DataDir)
 	authGroup.POST("/pipeline_job/execute", jobExecutor.Execute)
 	authGroup.GET("/pipeline_job/status", jobExecutor.Status)
-	authGroup.GET("/pipeline_job/log", jobExecutor.Log)
 	authGroup.PUT("/pipeline_job/cleanup", jobExecutor.Cleanup)
 
 	return s, nil
