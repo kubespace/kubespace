@@ -8,6 +8,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/kubespace/kubespace/pkg/core/datatype"
 	"k8s.io/klog/v2"
+	"sync"
 	"time"
 )
 
@@ -87,7 +88,7 @@ func (r *RedisStorage) watch() {
 			if r.stopped {
 				break
 			}
-			// 这里还需要再考虑下，watch失败不退出，让list还能维持工作
+			// 这里需要考虑下，watch失败不退出，让list还能维持工作
 			r.watchErrCh <- err
 			return
 		}
@@ -227,4 +228,40 @@ func (r *RedisStorage) Stop() error {
 	}
 	close(r.stopCh)
 	return nil
+}
+
+var sharedWatch = newSharedWatch()
+
+// SharedWatch 在一个实例中共享同一个watchKey的监听
+type SharedWatch struct {
+	// key是watchKey，value是redis client对watchKey的监听对象
+	sharedKeyWatchMap map[string]*sharedWatchStorage
+	// 对sharedKeyWatchMap进行操作时加锁，保证原子性
+	mu sync.Mutex
+}
+
+func newSharedWatch() *SharedWatch {
+	return &SharedWatch{
+		sharedKeyWatchMap: make(map[string]*sharedWatchStorage),
+		mu:                sync.Mutex{},
+	}
+}
+
+// sharedWatchDelegate 对watchKey监听到对象或错误后，委托发送给该接口
+type sharedWatchDelegate interface {
+	delegate(obj interface{})
+	// 监听失败后转发
+	delegateErr(err error)
+}
+
+// sharedWatchStorage 监听watchKey的redis存储
+type sharedWatchStorage struct {
+	client   *redis.Client
+	watchKey string
+	// 每个listwatcher实例对watchKey的监听注册到这里，当监听到对象时，发送给每个listwatcher
+	delegates map[string]sharedWatchDelegate
+}
+
+func (s *sharedWatchStorage) Watch() {
+
 }
