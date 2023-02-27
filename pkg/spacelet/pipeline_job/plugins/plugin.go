@@ -64,6 +64,10 @@ type JobStatus struct {
 	filePath string
 }
 
+func NewJobStatus(filePath string) *JobStatus {
+	return &JobStatus{filePath: filePath, mu: &sync.Mutex{}}
+}
+
 // Set 将任务状态以及执行结果写入到文件
 func (s *JobStatus) Set(sr *StatusResult) error {
 	s.mu.Lock()
@@ -176,7 +180,7 @@ func (b *Plugins) Execute(pluginParams *PluginParams) (resp *utils.Response) {
 	if err != nil {
 		return &utils.Response{Code: code.PluginError, Msg: "get job status file error: " + err.Error()}
 	}
-	jobStatus := &JobStatus{filePath: statusFile}
+	jobStatus := NewJobStatus(statusFile)
 	// 设置任务状态为doing，写入状态文件
 	if err = jobStatus.Set(&StatusResult{Status: types.PipelineStatusDoing}); err != nil {
 		return &utils.Response{Code: code.PluginError, Msg: "write status error: " + err.Error()}
@@ -199,7 +203,7 @@ func (b *Plugins) GetStatusLog(jobId uint, withLog bool) (*StatusLog, error) {
 	if err != nil {
 		return nil, err
 	}
-	jobStatus := &JobStatus{filePath: statusFile}
+	jobStatus := NewJobStatus(statusFile)
 	statusResult, err := jobStatus.Get()
 	if err != nil {
 		return nil, err
@@ -239,13 +243,15 @@ func (e *pluginExec) Execute() {
 	defer e.params.Logger.Close()
 	var resp *utils.Response
 	result, err := e.execute()
+	status := types.PipelineStatusOK
 	if err != nil {
+		status = types.PipelineStatusError
 		klog.Errorf("execute job=%d error: %s", e.params.JobId, err.Error())
 		resp = &utils.Response{Code: code.PluginError, Msg: err.Error()}
 	} else {
 		resp = &utils.Response{Code: code.Success, Data: result}
 	}
-	if err = e.jobStatus.Set(&StatusResult{Status: types.PipelineStatusOK, Result: resp}); err != nil {
+	if err = e.jobStatus.Set(&StatusResult{Status: status, Result: resp}); err != nil {
 		klog.Errorf("set job=%d status result error: %s", e.params.JobId, err.Error())
 	}
 }

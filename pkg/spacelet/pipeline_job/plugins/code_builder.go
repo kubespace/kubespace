@@ -85,7 +85,6 @@ type codeBuilderPlugin struct {
 	CodeDir string
 	Images  []string
 	Result  *CodeBuilderPluginResult
-	rootDir string
 }
 
 type CodeBuilderPluginResult struct {
@@ -117,17 +116,11 @@ func newCodeBuilderPlugin(params *PluginParams) (*codeBuilderPlugin, error) {
 		return nil, fmt.Errorf("get empty code repo name")
 	}
 	buildCodePlugin.CodeDir, _ = filepath.Abs(filepath.Join(params.RootDir, codeDir))
-	buildCodePlugin.rootDir = params.RootDir
 
 	return buildCodePlugin, nil
 }
 
 func (b *codeBuilderPlugin) execute() (interface{}, error) {
-	defer func() {
-		if err := os.RemoveAll(b.rootDir); err != nil {
-			b.Log("remove job root dir %s error: %s", b.rootDir, err.Error())
-		}
-	}()
 	if err := b.clone(); err != nil {
 		return nil, err
 	}

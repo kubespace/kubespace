@@ -84,7 +84,8 @@ func NewPlugins(models *model.Models, kubeClient *cluster.KubeClient) *Plugins {
 		plugins: make(map[string]PluginExecutor),
 		models:  models,
 	}
-	p.plugins[types.BuiltinPluginBuildCodeToImage] = CodeBuilderPlugin{}
+	spacelet := SpaceletJob{models: models}
+	p.plugins[types.BuiltinPluginBuildCodeToImage] = spacelet
 	p.plugins[types.BuiltinPluginExecuteShell] = ExecShellPlugin{}
 	p.plugins[types.BuiltinPluginRelease] = ReleaserPlugin{Models: models}
 	p.plugins[types.BuiltinPluginUpgradeApp] = UpgradeAppPlugin{Models: models, KubeClient: kubeClient}

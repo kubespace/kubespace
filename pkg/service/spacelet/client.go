@@ -10,6 +10,9 @@ import (
 )
 
 type Client interface {
+	PipelineJobExecute(params *pipeline_job.JobRunParams) error
+	PipelineJobStatus(params *pipeline_job.JobStatusParams) (*plugins.StatusLog, error)
+	PipelineJobCleanup(params *pipeline_job.JobCleanParams) error
 }
 
 func NewClient(spacelet *types.Spacelet) (Client, error) {
@@ -30,7 +33,9 @@ type client struct {
 
 func (c *client) PipelineJobExecute(params *pipeline_job.JobRunParams) error {
 	var resp utils.Response
-	_, err := c.httpclient.Post("/v1/pipeline_job/execute", params, &resp, utils.RequestOptions{})
+	options := utils.RequestOptions{}
+	options.WithHeader("token", c.spacelet.Token)
+	_, err := c.httpclient.Post("/v1/pipeline_job/execute", params, &resp, options)
 	if err != nil {
 		return err
 	}
@@ -40,18 +45,16 @@ func (c *client) PipelineJobExecute(params *pipeline_job.JobRunParams) error {
 	return nil
 }
 
-func (c *client) PipelineJobStatus(jobId uint, withLog bool) (*plugins.StatusLog, error) {
-	req := &pipeline_job.JobStatusParams{
-		JobId:   jobId,
-		WithLog: withLog,
-	}
+func (c *client) PipelineJobStatus(params *pipeline_job.JobStatusParams) (*plugins.StatusLog, error) {
 	var resp utils.Response
-	_, err := c.httpclient.Get("/v1/pipeline_job/status", req, &resp, utils.RequestOptions{})
+	options := utils.RequestOptions{}
+	options.WithHeader("token", c.spacelet.Token)
+	_, err := c.httpclient.Get("/v1/pipeline_job/status", params, &resp, options)
 	if err != nil {
 		return nil, err
 	}
 	if !resp.IsSuccess() {
-		return nil, fmt.Errorf(err.Error())
+		return nil, fmt.Errorf(resp.Msg)
 	}
 	var statusLog plugins.StatusLog
 	if err = utils.ConvertTypeByJson(resp.Data, &statusLog); err != nil {
@@ -60,9 +63,11 @@ func (c *client) PipelineJobStatus(jobId uint, withLog bool) (*plugins.StatusLog
 	return &statusLog, nil
 }
 
-func (c *client) PipelineJobCleanup(params *pipeline_job.JobRunParams) error {
+func (c *client) PipelineJobCleanup(params *pipeline_job.JobCleanParams) error {
 	var resp utils.Response
-	_, err := c.httpclient.Put("/v1/pipeline_job/execute", params, &resp, utils.RequestOptions{})
+	options := utils.RequestOptions{}
+	options.WithHeader("token", c.spacelet.Token)
+	_, err := c.httpclient.Put("/v1/pipeline_job/execute", params, &resp, options)
 	if err != nil {
 		return err
 	}

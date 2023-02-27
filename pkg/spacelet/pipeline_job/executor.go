@@ -39,8 +39,8 @@ func (j *JobExecutor) Execute(c *gin.Context) {
 }
 
 type JobStatusParams struct {
-	JobId   uint `json:"job_id" form:"job_id"`
-	WithLog bool `json:"with_log" form:"with_log"`
+	JobId   uint `json:"job_id" form:"job_id" url:"job_id"`
+	WithLog bool `json:"with_log" form:"with_log" url:"with_log"`
 }
 
 func (j *JobExecutor) Status(c *gin.Context) {
@@ -58,7 +58,7 @@ func (j *JobExecutor) Status(c *gin.Context) {
 }
 
 type JobCleanParams struct {
-	JobId uint `json:"job_id" form:"job_id"`
+	JobId uint `json:"job_id" form:"job_id" url:"job_id"`
 }
 
 func (j *JobExecutor) Cleanup(c *gin.Context) {

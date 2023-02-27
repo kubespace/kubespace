@@ -50,9 +50,17 @@ func (s *SpaceletManager) GetByIpPort(hostIp string, port int) (*types.Spacelet,
 	return &object, nil
 }
 
-func (s *SpaceletManager) List() ([]*types.Spacelet, error) {
+type SpaceletListCondition struct {
+	Status string
+}
+
+func (s *SpaceletManager) List(cond *SpaceletListCondition) ([]*types.Spacelet, error) {
 	var objects []*types.Spacelet
-	if err := s.DB.Find(&objects).Error; err != nil {
+	tx := s.DB
+	if cond.Status != "" {
+		tx = tx.Where("status = ?", cond.Status)
+	}
+	if err := tx.Find(&objects).Error; err != nil {
 		return nil, err
 	}
 	return objects, nil

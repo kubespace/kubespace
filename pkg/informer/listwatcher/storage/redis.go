@@ -237,18 +237,28 @@ type SharedWatch struct {
 	// key是watchKey，value是redis client对watchKey的监听对象
 	sharedKeyWatchMap map[string]*sharedWatchStorage
 	// 对sharedKeyWatchMap进行操作时加锁，保证原子性
-	mu sync.Mutex
+	mu *sync.Mutex
 }
 
 func newSharedWatch() *SharedWatch {
 	return &SharedWatch{
 		sharedKeyWatchMap: make(map[string]*sharedWatchStorage),
-		mu:                sync.Mutex{},
+		mu:                &sync.Mutex{},
+	}
+}
+
+func (s *SharedWatch) Watch(client *redis.Client, watchKey string, delegate sharedWatchDelegate, dataType datatype.DataType) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	ws, ok := s.sharedKeyWatchMap[watchKey]
+	if ok {
+
 	}
 }
 
 // sharedWatchDelegate 对watchKey监听到对象或错误后，委托发送给该接口
 type sharedWatchDelegate interface {
+	id() string
 	delegate(obj interface{})
 	// 监听失败后转发
 	delegateErr(err error)
@@ -260,8 +270,39 @@ type sharedWatchStorage struct {
 	watchKey string
 	// 每个listwatcher实例对watchKey的监听注册到这里，当监听到对象时，发送给每个listwatcher
 	delegates map[string]sharedWatchDelegate
+	stopped   bool
+	dataType  datatype.DataType
+	mu        *sync.Mutex
+}
+
+func (s *sharedWatchStorage) AddDelegate(delegate sharedWatchDelegate) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.delegates[delegate.id()] = delegate
 }
 
 func (s *sharedWatchStorage) Watch() {
-
+	pubsub := s.client.Subscribe(context.Background(), s.watchKey)
+	klog.Infof("start watch key=%s", s.watchKey)
+	for {
+		data, err := pubsub.ReceiveMessage(context.Background())
+		if err != nil {
+			klog.Errorf("receive message error: %s", err.Error())
+			if s.stopped {
+				break
+			}
+			// 这里需要考虑下，watch失败不退出，让list还能维持工作
+			//r.watchErrCh <- err
+			return
+		}
+		obj, err := s.dataType.Unmarshal([]byte(data.Payload))
+		if err != nil {
+			klog.Errorf("unmarshal receive message to data type error: %s, datatye=%v, message=%s", err.Error(), r.dataType, data.Payload)
+		} else {
+			for _, delegate := range s.delegates {
+				delegate.delegate(obj)
+			}
+		}
+	}
+	klog.Errorf("stopped watch key=%s", s.watchKey)
 }

@@ -113,11 +113,13 @@ func (s *Server) AuthMiddleware() gin.HandlerFunc {
 		}()
 		if s.config.Token == "" {
 			c.JSON(http.StatusUnauthorized, &utils.Response{Code: code.AuthError, Msg: "not register with token"})
+			c.Abort()
 			return
 		}
 		token := c.Request.Header.Get("token")
 		if token != s.config.Token {
 			c.JSON(http.StatusUnauthorized, &utils.Response{Code: code.AuthError, Msg: "token is incorrect"})
+			c.Abort()
 			return
 		}
 		c.Next()

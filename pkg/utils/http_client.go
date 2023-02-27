@@ -47,10 +47,16 @@ func (o *RequestOptions) WithContext(ctx context.Context) {
 }
 
 func (o *RequestOptions) WithHeader(name, value string) {
+	if o.Header == nil {
+		o.Header = make(http.Header)
+	}
 	o.Header.Set(name, value)
 }
 
 func (o *RequestOptions) WithHeaders(headers map[string]string) {
+	if o.Header == nil {
+		o.Header = make(http.Header)
+	}
 	for k, v := range headers {
 		o.Header.Set(k, v)
 	}
