@@ -2,6 +2,13 @@ package types
 
 import "time"
 
+const (
+	// SpaceletStatusOnline spacele状态在线
+	SpaceletStatusOnline = "online"
+	// SpaceletStatusOffline spacelet状态不在线
+	SpaceletStatusOffline = "offline"
+)
+
 // Spacelet 流水线执行代理节点，spacelet启动时会进行注册
 type Spacelet struct {
 	ID         uint      `gorm:"primaryKey" json:"id"`

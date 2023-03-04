@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/go-redis/redis/v8"
 	"github.com/kubespace/kubespace/pkg/core/datatype"
+	"github.com/kubespace/kubespace/pkg/utils"
 	"k8s.io/klog/v2"
 	"sync"
 	"time"
@@ -16,6 +17,7 @@ var ErrNotWatch = errors.New("watch key is not subscribed")
 var ErrTimeout = errors.New("result timeout")
 
 type RedisStorage struct {
+	id         string
 	client     *redis.Client
 	watchKey   string
 	pubSub     *redis.PubSub
@@ -31,6 +33,7 @@ type RedisStorage struct {
 
 func NewRedisStorage(redisClient *redis.Client, watchKey string, listFunc ListFunc, filterFunc FilterFunc, resyncSec int, dataType datatype.DataType) Storage {
 	return &RedisStorage{
+		id:         utils.CreateUUID(),
 		client:     redisClient,
 		watchKey:   watchKey,
 		resultChan: make(chan interface{}),
@@ -43,19 +46,37 @@ func NewRedisStorage(redisClient *redis.Client, watchKey string, listFunc ListFu
 	}
 }
 
+func (r *RedisStorage) Id() string {
+	return r.id
+}
+
+func (r *RedisStorage) Delegate(obj interface{}) {
+	if r.filterFunc == nil {
+		r.resultChan <- obj
+	} else if r.filterFunc(obj) {
+		r.resultChan <- obj
+	}
+}
+
+func (r *RedisStorage) DelegateErr(err error) {
+	r.watchErrCh <- err
+}
+
 func (r *RedisStorage) Run() {
 	if r.stopped {
 		r.stopped = false
 		r.stopCh = make(chan struct{})
 	}
 	if r.watchKey != "" {
-		go r.watch()
+		// 监听watchKey
+		sharedWatch.Watch(r.client, r.watchKey, r, r.dataType)
 	}
 	if r.resyncSec > 0 && r.listFunc != nil {
 		go r.list()
 	}
 }
 
+// 定时查询listFunc定义的方法
 func (r *RedisStorage) list() {
 	ticker := time.NewTicker(time.Second * time.Duration(r.resyncSec))
 	for {
@@ -72,36 +93,6 @@ func (r *RedisStorage) list() {
 			return
 		}
 	}
-}
-
-func (r *RedisStorage) watch() {
-	if r.pubSub != nil {
-		return
-	}
-	defer r.Stop()
-	r.pubSub = r.client.Subscribe(context.Background(), r.watchKey)
-	klog.Infof("start watch key=%s", r.watchKey)
-	for {
-		data, err := r.pubSub.ReceiveMessage(context.Background())
-		if err != nil {
-			klog.Errorf("receive message error: %s", err.Error())
-			if r.stopped {
-				break
-			}
-			// 这里需要考虑下，watch失败不退出，让list还能维持工作
-			r.watchErrCh <- err
-			return
-		}
-		obj, err := r.dataType.Unmarshal([]byte(data.Payload))
-		if err != nil {
-			klog.Errorf("unmarshal receive message to data type error: %s, datatye=%v, message=%s", err.Error(), r.dataType, data.Payload)
-		} else if r.filterFunc == nil {
-			r.resultChan <- obj
-		} else if r.filterFunc != nil && r.filterFunc(obj) {
-			r.resultChan <- obj
-		}
-	}
-	klog.Errorf("stopped watch key=%s", r.watchKey)
 }
 
 func (r *RedisStorage) Result() <-chan interface{} {
@@ -218,13 +209,8 @@ func (r *RedisStorage) Stop() error {
 		return nil
 	}
 	r.stopped = true
-	if r.pubSub != nil {
-		err := r.pubSub.Close()
-		r.pubSub = nil
-		if err != nil && !errors.Is(err, redis.ErrClosed) {
-			klog.Errorf("stop pubsub connection error: %s", err.Error())
-			return err
-		}
+	if r.watchKey != "" {
+		sharedWatch.Stop(r.watchKey, r)
 	}
 	close(r.stopCh)
 	return nil
@@ -247,21 +233,42 @@ func newSharedWatch() *SharedWatch {
 	}
 }
 
+// Watch 对watchKey进行监听，如果已监听，则直接添加委托
 func (s *SharedWatch) Watch(client *redis.Client, watchKey string, delegate sharedWatchDelegate, dataType datatype.DataType) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	ws, ok := s.sharedKeyWatchMap[watchKey]
 	if ok {
+		// 已经存在监听实例，直接添加委托对象
+		ws.AddDelegate(delegate)
+		return
+	}
+	ws = newSharedWatchStorage(client, watchKey, delegate, dataType)
+	s.sharedKeyWatchMap[watchKey] = ws
+	// 开启一个协程后台监听该watchKey
+	go ws.Watch()
+}
 
+// Stop 停止对该委托对象的监听
+func (s *SharedWatch) Stop(watchKey string, delegate sharedWatchDelegate) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	ws, ok := s.sharedKeyWatchMap[watchKey]
+	if ok {
+		ws.RemoveDelegate(delegate)
+		if ws.Stopped() {
+			// 如果已经停止了，从map中删除
+			delete(s.sharedKeyWatchMap, watchKey)
+		}
 	}
 }
 
 // sharedWatchDelegate 对watchKey监听到对象或错误后，委托发送给该接口
 type sharedWatchDelegate interface {
-	id() string
-	delegate(obj interface{})
-	// 监听失败后转发
-	delegateErr(err error)
+	Id() string
+	Delegate(obj interface{})
+	// DelegateErr 监听失败的错误转发
+	DelegateErr(err error)
 }
 
 // sharedWatchStorage 监听watchKey的redis存储
@@ -273,36 +280,83 @@ type sharedWatchStorage struct {
 	stopped   bool
 	dataType  datatype.DataType
 	mu        *sync.Mutex
+	cancel    context.CancelFunc
+	ctx       context.Context
+}
+
+func newSharedWatchStorage(client *redis.Client, watchKey string, delegate sharedWatchDelegate, dataType datatype.DataType) *sharedWatchStorage {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &sharedWatchStorage{
+		client:    client,
+		watchKey:  watchKey,
+		delegates: map[string]sharedWatchDelegate{delegate.Id(): delegate},
+		stopped:   false,
+		dataType:  dataType,
+		mu:        &sync.Mutex{},
+		ctx:       ctx,
+		cancel:    cancel,
+	}
 }
 
 func (s *sharedWatchStorage) AddDelegate(delegate sharedWatchDelegate) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.delegates[delegate.id()] = delegate
+	s.delegates[delegate.Id()] = delegate
+}
+
+func (s *sharedWatchStorage) RemoveDelegate(delegate sharedWatchDelegate) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.delegates, delegate.Id())
+	if len(s.delegates) == 0 {
+		// 如果没有要监听发送的委托对象了，则退出监听
+		s.Stop()
+	}
 }
 
 func (s *sharedWatchStorage) Watch() {
-	pubsub := s.client.Subscribe(context.Background(), s.watchKey)
+	pubsub := s.client.Subscribe(s.ctx, s.watchKey)
 	klog.Infof("start watch key=%s", s.watchKey)
 	for {
-		data, err := pubsub.ReceiveMessage(context.Background())
+		data, err := pubsub.ReceiveMessage(s.ctx)
 		if err != nil {
-			klog.Errorf("receive message error: %s", err.Error())
 			if s.stopped {
 				break
 			}
-			// 这里需要考虑下，watch失败不退出，让list还能维持工作
-			//r.watchErrCh <- err
-			return
+			klog.Errorf("receive message error: %s", err.Error())
+			for _, delegate := range s.delegates {
+				// 发送监听错误给每个listwatcher
+				delegate.DelegateErr(err)
+			}
+			// 5s后重试
+			tick := time.NewTicker(5 * time.Second)
+			klog.Infof("retry watch key=%s after 5 seconds", s.watchKey)
+			select {
+			case <-tick.C:
+				continue
+			case <-s.ctx.Done():
+				break
+			}
 		}
+		// 对监听到的数据统一进行转换
 		obj, err := s.dataType.Unmarshal([]byte(data.Payload))
 		if err != nil {
-			klog.Errorf("unmarshal receive message to data type error: %s, datatye=%v, message=%s", err.Error(), r.dataType, data.Payload)
+			klog.Errorf("unmarshal receive message to data type error: %s, datatye=%v, message=%s", err.Error(), s.dataType, data.Payload)
 		} else {
 			for _, delegate := range s.delegates {
-				delegate.delegate(obj)
+				// 监听到的数据发送给每个listwatcher
+				delegate.Delegate(obj)
 			}
 		}
 	}
 	klog.Errorf("stopped watch key=%s", s.watchKey)
+}
+
+func (s *sharedWatchStorage) Stopped() bool {
+	return s.stopped
+}
+
+func (s *sharedWatchStorage) Stop() {
+	s.stopped = true
+	s.cancel()
 }

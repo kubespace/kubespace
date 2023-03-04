@@ -14,16 +14,18 @@ import (
 )
 
 type ManagerPipelineRun struct {
-	DB                     *gorm.DB
-	PluginManager          *ManagerPipelinePlugin
-	pipelineRunListWatcher listwatcher.Interface
+	DB                        *gorm.DB
+	PluginManager             *ManagerPipelinePlugin
+	pipelineRunListWatcher    listwatcher.Interface
+	pipelineRunJobListWatcher listwatcher.Interface
 }
 
 func NewPipelineRunManager(db *gorm.DB, pluginManager *ManagerPipelinePlugin, listwatcherConfig *listwatcherconfig.ListWatcherConfig) *ManagerPipelineRun {
 	return &ManagerPipelineRun{
-		DB:                     db,
-		PluginManager:          pluginManager,
-		pipelineRunListWatcher: pipeline.NewPipelineRunListWatcher(listwatcherConfig, nil),
+		DB:                        db,
+		PluginManager:             pluginManager,
+		pipelineRunListWatcher:    pipeline.NewPipelineRunListWatcher(listwatcherConfig, nil),
+		pipelineRunJobListWatcher: pipeline.NewPipelineRunJobListWatcher(listwatcherConfig, nil),
 	}
 }
 
@@ -172,6 +174,10 @@ func (p *ManagerPipelineRun) ListJobRun(cond *JobRunListCondition) ([]*types.Pip
 	return jobRun, nil
 }
 
+func (p *ManagerPipelineRun) NotifyJobRun(jobRun *types.PipelineRunJob) error {
+	return p.pipelineRunListWatcher.Notify(jobRun)
+}
+
 func (p *ManagerPipelineRun) GetStageRun(stageId uint) (*types.PipelineRunStage, error) {
 	var err error
 	var stageRun types.PipelineRunStage
@@ -230,7 +236,6 @@ func (p *ManagerPipelineRun) UpdateStageRun(stageRun *types.PipelineRunStage) er
 	if err = p.DB.First(&pipelineRun, stageRun.PipelineRunId).Error; err != nil {
 		return err
 	}
-	//p.StreamPipelineRun(&pipelineRun)
 	return err
 }
 

@@ -10,11 +10,13 @@ import (
 
 type JobExecutor struct {
 	plugins *plugins.Plugins
+	client  *utils.HttpClient
 }
 
-func NewJobExecutor(dataDir string) *JobExecutor {
+func NewJobExecutor(dataDir string, client *utils.HttpClient) *JobExecutor {
 	return &JobExecutor{
 		plugins: plugins.NewPlugins(dataDir),
+		client:  client,
 	}
 }
 

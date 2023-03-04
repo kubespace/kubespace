@@ -11,11 +11,11 @@ import (
 
 const PipelineRunJobWatchKey = "kubespace:pipeline:run_job"
 
+// PipelineRunJobWatchCondition PipelineRunJob监听条件
 type PipelineRunJobWatchCondition struct {
-	WithList   bool     `json:"with_list"`
-	PipelineId uint     `json:"pipeline_id"`
-	Id         uint     `json:"id"`
-	StatusIn   []string `json:"status_in"`
+	WithList bool     `json:"with_list"`
+	Id       uint     `json:"id"`
+	StatusIn []string `json:"status_in"`
 }
 
 type pipelineRunJobListWatcher struct {
@@ -35,7 +35,7 @@ func NewPipelineRunJobListWatcher(config *config.ListWatcherConfig, cond *Pipeli
 	if cond != nil && cond.WithList {
 		listFunc = a.List
 	}
-	a.Storage = config.NewStorage(PipelineRunJobWatchKey, listFunc, a.Filter, nil, &types.PipelineRun{})
+	a.Storage = config.NewStorage(PipelineRunJobWatchKey, listFunc, a.Filter, nil, &types.PipelineRunJob{})
 	return a
 }
 
@@ -45,9 +45,6 @@ func (p *pipelineRunJobListWatcher) Filter(obj interface{}) bool {
 		return false
 	}
 	if p.condition.Id > 0 && pipelineRun.ID != p.condition.Id {
-		return false
-	}
-	if p.condition.PipelineId > 0 && pipelineRun.PipelineId != p.condition.PipelineId {
 		return false
 	}
 	if len(p.condition.StatusIn) > 0 && !utils.Contains(p.condition.StatusIn, pipelineRun.Status) {
@@ -61,9 +58,6 @@ func (p *pipelineRunJobListWatcher) List() ([]interface{}, error) {
 	var tx = p.db
 	if p.condition.Id > 0 {
 		tx = tx.Where("id=?", p.condition.Id)
-	}
-	if p.condition.PipelineId > 0 {
-		tx = tx.Where("pipeline_id=?", p.condition.PipelineId)
 	}
 	if len(p.condition.StatusIn) > 0 {
 		tx = tx.Where("status in ?", p.condition.StatusIn)

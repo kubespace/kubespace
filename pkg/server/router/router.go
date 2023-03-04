@@ -72,6 +72,7 @@ func NewRouter(conf *config.ServerConfig) (*Router, error) {
 	// spacelet注册接口
 	spaceletView := spacelet.NewSpaceletViews(conf)
 	apiGroup.POST("/spacelet/register", spaceletView.Register)
+	apiGroup.POST("/spacelet/pipeline/callback", spaceletView.PipelineJobCallback)
 	return &Router{
 		Engine: engine,
 	}, nil

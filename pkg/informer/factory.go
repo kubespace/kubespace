@@ -9,6 +9,7 @@ import (
 type Factory interface {
 	ClusterAgentInformer(token string) Informer
 	PipelineRunInformer(cond *pipeline.PipelineRunWatchCondition) Informer
+	PipelineRunJobInformer(cond *pipeline.PipelineRunJobWatchCondition) Informer
 }
 
 type informerFactory struct {
@@ -28,4 +29,8 @@ func (s *informerFactory) ClusterAgentInformer(token string) Informer {
 
 func (s *informerFactory) PipelineRunInformer(cond *pipeline.PipelineRunWatchCondition) Informer {
 	return NewInformer(pipeline.NewPipelineRunListWatcher(s.config, cond))
+}
+
+func (s *informerFactory) PipelineRunJobInformer(cond *pipeline.PipelineRunJobWatchCondition) Informer {
+	return NewInformer(pipeline.NewPipelineRunJobListWatcher(s.config, cond))
 }

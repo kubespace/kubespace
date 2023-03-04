@@ -6,6 +6,8 @@ import (
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/config"
+	"github.com/kubespace/kubespace/pkg/service/pipeline"
+	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
 	"github.com/kubespace/kubespace/pkg/spacelet"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
@@ -14,11 +16,15 @@ import (
 )
 
 type SpaceletViews struct {
-	models *model.Models
+	models             *model.Models
+	pipelineRunService *pipeline.ServicePipelineRun
 }
 
 func NewSpaceletViews(config *config.ServerConfig) *SpaceletViews {
-	return &SpaceletViews{models: config.Models}
+	return &SpaceletViews{
+		models:             config.Models,
+		pipelineRunService: config.ServiceFactory.Pipeline.PipelineRunService,
+	}
 }
 
 // Register spacelet调用该接口进行注册入库
@@ -70,7 +76,7 @@ func (s *SpaceletViews) register(req *spacelet.RegisterRequest) *utils.Response 
 			HostIp:     req.HostIp,
 			Port:       req.Port,
 			Token:      token.Token,
-			Status:     "online",
+			Status:     types.SpaceletStatusOnline,
 			CreateTime: time.Now(),
 			UpdateTime: time.Now(),
 		}); err != nil {
@@ -78,4 +84,15 @@ func (s *SpaceletViews) register(req *spacelet.RegisterRequest) *utils.Response 
 		}
 	}
 	return &utils.Response{Code: code.Success}
+}
+
+// PipelineJobCallback spacelet执行完成job之后回调该接口，并通知contoller-manager
+func (s *SpaceletViews) PipelineJobCallback(c *gin.Context) {
+	var params schemas.JobCallbackParams
+	if err := c.ShouldBind(&params); err != nil {
+		c.JSON(http.StatusOK, &utils.Response{Code: code.ParamsError, Msg: err.Error()})
+		return
+	}
+	resp := s.pipelineRunService.JobCallback(&params)
+	c.JSON(http.StatusOK, resp)
 }

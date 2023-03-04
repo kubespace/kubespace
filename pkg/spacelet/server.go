@@ -27,7 +27,7 @@ func NewServer(config *Config) (*Server, error) {
 	authGroup := engine.Group("/v1")
 	authGroup.Use(s.AuthMiddleware())
 
-	jobExecutor := pipeline_job.NewJobExecutor(config.DataDir)
+	jobExecutor := pipeline_job.NewJobExecutor(config.DataDir, config.Client)
 	authGroup.POST("/pipeline_job/execute", jobExecutor.Execute)
 	authGroup.GET("/pipeline_job/status", jobExecutor.Status)
 	authGroup.PUT("/pipeline_job/cleanup", jobExecutor.Cleanup)
@@ -45,7 +45,9 @@ func (s *Server) Run() {
 			panic(err)
 		}
 	}()
+	// 注册spacelet节点
 	if err := s.Register(); err != nil {
+		// 注册失败程序退出
 		klog.Fatalf("register spacelet error: %s", err.Error())
 	}
 }
@@ -58,13 +60,10 @@ type RegisterRequest struct {
 
 // Register 启动spacelet后进行注册
 func (s *Server) Register() error {
-	httpcli, err := utils.NewHttpClient(s.config.ServerUrl)
-	if err != nil {
-		return err
-	}
 	hostname, _ := os.Hostname()
 	var resp utils.Response
-	if _, err = httpcli.Post("/api/v1/spacelet/register", &RegisterRequest{
+	// 调用spacelet注册接口
+	if _, err := s.config.Client.Post("/api/v1/spacelet/register", &RegisterRequest{
 		Hostname: hostname,
 		HostIp:   s.config.HostIp,
 		Port:     s.config.Port,
@@ -98,6 +97,7 @@ func (s *Server) Token(c *gin.Context) {
 	c.JSON(http.StatusOK, &utils.Response{Code: code.Success})
 }
 
+// AuthMiddleware 调用spacelet接口需要通过token认证
 func (s *Server) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
@@ -111,12 +111,15 @@ func (s *Server) AuthMiddleware() gin.HandlerFunc {
 				c.JSON(200, resp)
 			}
 		}()
+		// 未配置token，返回报错
 		if s.config.Token == "" {
 			c.JSON(http.StatusUnauthorized, &utils.Response{Code: code.AuthError, Msg: "not register with token"})
 			c.Abort()
 			return
 		}
+		// 从header获取token
 		token := c.Request.Header.Get("token")
+		// 判断token跟配置是否相同
 		if token != s.config.Token {
 			c.JSON(http.StatusUnauthorized, &utils.Response{Code: code.AuthError, Msg: "token is incorrect"})
 			c.Abort()
