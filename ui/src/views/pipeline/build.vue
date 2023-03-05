@@ -887,7 +887,10 @@ export default {
 
 .refresh-rotate {
   -webkit-transform: rotate(360deg);
-  animation: rotation 2s linear infinite;
+  // animation: rotation 2s linear infinite;
+  animation: loading-rotate 1.5s cubic-bezier(0.29, 0.99, 0.73, 0.02) infinite;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   -moz-animation: rotation 2s linear infinite;
   -webkit-animation: rotation 2s linear infinite;
   -o-animation: rotation 2s linear infinite;

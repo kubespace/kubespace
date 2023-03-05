@@ -1,4 +1,15 @@
 <template>
+<div style="width:100%; height: 100%;">
+    <div style="background-color: #fbfbfb; width:55%; height: 100%;">
+      <section class="section-class">
+        <div class="center">
+          <div style="font-size: 48px; font-weight: 400; margin: 30px 0px 20px;">
+            KubeSp<svg-icon class="icon-class" icon-class="kubespace"/>ce
+          </div>
+          <p class="center-content">致力于提升DevOps效能的Kubernetes多集群管理平台</p>
+        </div>
+      </section>
+    </div>
     <div class="login">
         <div class="login-box">
             <el-row style="margin-bottom: 25px;">
@@ -34,6 +45,7 @@
             </el-row>
         </div>
     </div>
+</div>
 </template>
 
 <script>
@@ -100,17 +112,17 @@ export default {
 .login {
     margin: auto;
     position: absolute;
-    top: 0;
+    top: 10%;
     right: 0;
     bottom: 0;
-    left: 0;
-    width: 450px;
+    left: 55%;
+    width: 450px;;
 }
 .login-box {
     border-radius: 15px;
     padding: 40px 0px 25px;
     margin: 100px 0px;
-    box-shadow: 0 2px 12px 0 rgba(191, 194, 201, 0.733);
+    box-shadow: 0px 2px 10px 0px rgba(191, 194, 201, 0.733);
     /* box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04) */
 }
 .el-row {
@@ -120,10 +132,48 @@ export default {
     font-size: 20px;
 }
 .login-title {
-    font-size: 32px;
+    letter-spacing:4px;
+    font-size: 29px;
     font-family: Chalkduster, Avenir, Helvetica Neue, Arial, Helvetica, sans-serif;
     /* background: linear-gradient(to right,#F56C6C, rgb(110, 147, 184)); */
     /* -webkit-background-clip: text; */
     /* color: transparent; */
+}
+.section-class {
+    width: 100%;
+    margin: 0 auto;
+    padding: 0;
+    box-sizing: border-box;
+    text-align: center;
+    background-color: #fbfbfb;
+    z-index: 20;
+    border-bottom: solid 1px #ddd;
+    height: 100vh;
+    position: relative;
+}
+
+.center {
+    position: absolute;
+    width: 100%;
+    /* padding-top: 70px;   */
+    top: 200px;
+    min-height: 200px;
+}
+
+.center-content {
+    font-family: raleway,century gothic,texgyreadventor,sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 22px;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: #999;
+    text-align: center;
+}
+.icon-class {
+    font-size: 34px;
+    animation: loading-rotate 5s linear infinite;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 </style>
