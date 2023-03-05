@@ -111,6 +111,7 @@ func (p *PipelineRun) watch(c *views.Context) *utils.Response {
 	go pipelineRunInformer.Run(stopCh)
 
 	<-c.Writer.CloseNotify()
+	klog.Infof("stop sse")
 	close(stopCh)
 	return nil
 }

@@ -15,7 +15,7 @@ type JobExecutor struct {
 
 func NewJobExecutor(dataDir string, client *utils.HttpClient) *JobExecutor {
 	return &JobExecutor{
-		plugins: plugins.NewPlugins(dataDir),
+		plugins: plugins.NewPlugins(dataDir, client),
 		client:  client,
 	}
 }
@@ -65,7 +65,7 @@ type JobCleanParams struct {
 
 func (j *JobExecutor) Cleanup(c *gin.Context) {
 	var params JobStatusParams
-	if err := c.BindQuery(&params); err != nil {
+	if err := c.BindJSON(&params); err != nil {
 		c.JSON(http.StatusOK, &utils.Response{Code: code.ParamsError, Msg: err.Error()})
 		return
 	}

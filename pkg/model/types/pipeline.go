@@ -306,7 +306,7 @@ type PipelineRunJob struct {
 }
 
 func (p *PipelineRunJob) Unmarshal(bytes []byte) (interface{}, error) {
-	var pipelineRunJob PipelineRunJobs
+	var pipelineRunJob PipelineRunJob
 	if err := json.Unmarshal(bytes, &pipelineRunJob); err != nil {
 		return nil, err
 	}

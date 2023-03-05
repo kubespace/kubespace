@@ -149,7 +149,7 @@ export default {
         yamlLoading: true,
         cellStyle: {border: 0},
         titleName: ["Pods"],
-        maxHeight: window.innerHeight - 135,
+        maxHeight: window.innerHeight - this.$contentHeight,
         loading: true,
         originPods: [],
         search_ns: [],
@@ -169,7 +169,7 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 135
+        let heightStyle = window.innerHeight - this.$contentHeight
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()

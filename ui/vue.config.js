@@ -48,6 +48,16 @@ module.exports = {
         ws: true,
         secure: false,
         changeOrigin: true,
+        timeout: 0,
+        // https://github.com/http-party/node-http-proxy/issues/1520
+        // sse客户端端口连接，代理没有对上游端口连接
+        onProxyRes: (proxyRes, req, res) => {
+          res.on('close', () => {
+            if (!res.writableEnded) {
+              proxyRes.destroy();
+            }
+          })
+        },
       },
       '/app': {
         target: 'http://127.0.0.1:80',
@@ -55,7 +65,8 @@ module.exports = {
         secure: false,
         changeOrigin: true,
       }
-    }
+    },
+    compress: false
   },
   configureWebpack: {
     // provide the app's title in webpack's name field, so that

@@ -329,13 +329,14 @@ export default {
     Clusterbar,
     Release
   },
+  sse: {cleanup: true},
   data() {
     return {
       titleName: [],
       search_name: '',
       users: [],
       cellStyle: {border: 0, padding: '1px 0', 'line-height': '35px'},
-      maxHeight: window.innerHeight - 145,
+      maxHeight: window.innerHeight - this.$contentHeight,
       loading: true,
       dialogVisible: false,
       pipeline: {},
@@ -369,7 +370,6 @@ export default {
     this.fetchPipelineSSE();
   },
   beforeDestroy() {
-    this.pipelineSSE.disconnect()
     if(this.refreshExecTimer) {
       clearTimeout(this.refreshExecTimer)
     }
@@ -378,7 +378,7 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 145
+        let heightStyle = window.innerHeight - this.$contentHeight
         that.maxHeight = heightStyle
       })()
     }
@@ -479,8 +479,9 @@ export default {
       let url = `/api/v1/pipeline/pipeline/${this.pipelineId}/sse`
       this.pipelineSSE = this.$sse.create({
         url: url,
-        includeCredentials: false,
-        format: 'plain'
+        withCredentials: false,
+        format: 'plain',
+        polyfill: true,
       });
       this.pipelineSSE.on("message", (res) => {
         // console.log(res)
@@ -500,6 +501,8 @@ export default {
       })
       this.pipelineSSE.connect().then(() => {
         console.log('[info] connected', 'system')
+
+        // this.pipelineSSE.disconnect()
       }).catch(() => {
         console.log('[error] failed to connect', 'system')
       })

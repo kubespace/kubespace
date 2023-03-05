@@ -63,8 +63,9 @@ func (p *Pipeline) watch(c *views.Context) *utils.Response {
 
 	c.Writer.Header().Set("Content-Type", "text/event-stream")
 	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Add("Cache-Control", "no-transform")
 	c.Writer.Header().Set("Connection", "keep-alive")
-	//c.Writer.Header().Set("Transfer-Encoding", "chunked")
+	c.Writer.Header().Set("Transfer-Encoding", "chunked")
 
 	c.SSEvent("message", "{}")
 	c.Writer.Flush()
@@ -88,7 +89,6 @@ func (p *Pipeline) watch(c *views.Context) *utils.Response {
 		return nil
 	}})
 	go pipelineRunInformer.Run(stopCh)
-
 	<-c.Writer.CloseNotify()
 	close(stopCh)
 	return nil

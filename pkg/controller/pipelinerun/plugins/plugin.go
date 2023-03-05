@@ -40,9 +40,11 @@ func NewPlugins(models *model.Models, kubeClient *cluster.KubeClient, informerFa
 	spacelet := SpaceletJob{models: models, informerFactory: informerFactory}
 	// 通过spacelet代理执行
 	p.plugins[types.BuiltinPluginBuildCodeToImage] = spacelet
+	p.plugins[types.BuiltinPluginExecuteShell] = spacelet
+	p.plugins[types.BuiltinPluginRelease] = spacelet
 
-	p.plugins[types.BuiltinPluginExecuteShell] = ExecShellPlugin{}
-	p.plugins[types.BuiltinPluginRelease] = ReleaserPlugin{Models: models}
+	//p.plugins[types.BuiltinPluginExecuteShell] = ExecShellPlugin{}
+	//p.plugins[types.BuiltinPluginRelease] = ReleaserPlugin{Models: models}
 	p.plugins[types.BuiltinPluginUpgradeApp] = UpgradeAppPlugin{Models: models, KubeClient: kubeClient}
 	p.plugins[types.BuiltinPluginDeployK8s] = DeployK8sPlugin{Models: models, KubeClient: kubeClient}
 	return p
@@ -115,7 +117,6 @@ func (l *PluginLogger) FlushLogToDB() {
 		logLens = l.Len()
 		select {
 		case <-l.closeCh:
-			klog.Info("close log update")
 			err := l.models.PipelineJobLogManager.UpdateLog(l.jobId, l.Buffer.String())
 			if err != nil {
 				klog.Errorf("update job %s log error: %s", l.jobId, err.Error())

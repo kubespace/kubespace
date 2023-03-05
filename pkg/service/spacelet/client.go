@@ -67,7 +67,7 @@ func (c *client) PipelineJobCleanup(params *pipeline_job.JobCleanParams) error {
 	var resp utils.Response
 	options := utils.RequestOptions{}
 	options.WithHeader("token", c.spacelet.Token)
-	_, err := c.httpclient.Put("/v1/pipeline_job/execute", params, &resp, options)
+	_, err := c.httpclient.Put("/v1/pipeline_job/cleanup", params, &resp, options)
 	if err != nil {
 		return err
 	}

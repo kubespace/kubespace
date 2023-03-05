@@ -280,12 +280,13 @@ type sharedWatchStorage struct {
 	stopped   bool
 	dataType  datatype.DataType
 	mu        *sync.Mutex
+	pubsub    *redis.PubSub
 	cancel    context.CancelFunc
 	ctx       context.Context
 }
 
 func newSharedWatchStorage(client *redis.Client, watchKey string, delegate sharedWatchDelegate, dataType datatype.DataType) *sharedWatchStorage {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancelFunc := context.WithCancel(context.Background())
 	return &sharedWatchStorage{
 		client:    client,
 		watchKey:  watchKey,
@@ -293,8 +294,8 @@ func newSharedWatchStorage(client *redis.Client, watchKey string, delegate share
 		stopped:   false,
 		dataType:  dataType,
 		mu:        &sync.Mutex{},
+		cancel:    cancelFunc,
 		ctx:       ctx,
-		cancel:    cancel,
 	}
 }
 
@@ -315,17 +316,19 @@ func (s *sharedWatchStorage) RemoveDelegate(delegate sharedWatchDelegate) {
 }
 
 func (s *sharedWatchStorage) Watch() {
-	pubsub := s.client.Subscribe(s.ctx, s.watchKey)
-	klog.Infof("start watch key=%s", s.watchKey)
+	if s.pubsub == nil {
+		s.pubsub = s.client.Subscribe(context.Background(), s.watchKey)
+	}
+	klog.Infof("start share watch key=%s", s.watchKey)
 	for {
-		data, err := pubsub.ReceiveMessage(s.ctx)
+		data, err := s.pubsub.ReceiveMessage(s.ctx)
+		if s.stopped {
+			break
+		}
 		if err != nil {
-			if s.stopped {
-				break
-			}
 			klog.Errorf("receive message error: %s", err.Error())
 			for _, delegate := range s.delegates {
-				// 发送监听错误给每个listwatcher
+				// 发送错误给每个委托对象
 				delegate.DelegateErr(err)
 			}
 			// 5s后重试
@@ -341,15 +344,15 @@ func (s *sharedWatchStorage) Watch() {
 		// 对监听到的数据统一进行转换
 		obj, err := s.dataType.Unmarshal([]byte(data.Payload))
 		if err != nil {
-			klog.Errorf("unmarshal receive message to data type error: %s, datatye=%v, message=%s", err.Error(), s.dataType, data.Payload)
+			klog.Errorf("unmarshal receive message to data type error: %s, datatype=%v, message=%s", err.Error(), s.dataType, data.Payload)
 		} else {
 			for _, delegate := range s.delegates {
-				// 监听到的数据发送给每个listwatcher
+				// 发送数据给每个委托对象
 				delegate.Delegate(obj)
 			}
 		}
 	}
-	klog.Errorf("stopped watch key=%s", s.watchKey)
+	klog.Infof("stopped share watch key=%s", s.watchKey)
 }
 
 func (s *sharedWatchStorage) Stopped() bool {
@@ -358,5 +361,8 @@ func (s *sharedWatchStorage) Stopped() bool {
 
 func (s *sharedWatchStorage) Stop() {
 	s.stopped = true
+	if s.pubsub != nil {
+		s.pubsub.Close()
+	}
 	s.cancel()
 }

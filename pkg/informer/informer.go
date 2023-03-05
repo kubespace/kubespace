@@ -45,9 +45,8 @@ func NewInformer(listWatcher listwatcher.Interface) Informer {
 
 func (b *informer) Run(stopCh <-chan struct{}) {
 	for {
-		klog.Infof("start run informer %v", b)
 		if err := b.run(stopCh); err != nil {
-			klog.Errorf("run informer %v error: %s", b, err.Error())
+			klog.Errorf("run informer error: %s", err.Error())
 			// 5s后重试
 			tick := time.NewTicker(5 * time.Second)
 			select {
@@ -57,7 +56,6 @@ func (b *informer) Run(stopCh <-chan struct{}) {
 				break
 			}
 		}
-		klog.Infof("stop run informer=%v", b)
 		break
 	}
 }

@@ -10,24 +10,25 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	sshgit "github.com/go-git/go-git/v5/plumbing/transport/ssh"
-	"github.com/kubespace/kubespace/pkg/model"
+	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"golang.org/x/crypto/ssh"
 	"k8s.io/klog/v2"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 )
 
+const PipelineRunAddReleaseVersionUri = "/api/v1/spacelet/pipeline/add_release"
+
 type ReleaserPlugin struct {
-	Models *model.Models
+	client *utils.HttpClient
 }
 
 func (b ReleaserPlugin) Execute(params *PluginParams) (interface{}, error) {
-	releasePlugin, err := newReleaserPlugin(params, b.Models)
+	releasePlugin, err := newReleaserPlugin(params, b.client)
 	if err != nil {
 		return nil, err
 	}
@@ -56,16 +57,15 @@ type ReleaserPluginResult struct {
 }
 
 type releaserPlugin struct {
-	*PluginLogger
-	models  *model.Models
+	*JobLogger
+	client  *utils.HttpClient
 	Params  *releaseParams
 	CodeDir string
 	Result  *ReleaserPluginResult
 	Images  []string
-	rootDir string
 }
 
-func newReleaserPlugin(pluginParams *PluginParams, models *model.Models) (*releaserPlugin, error) {
+func newReleaserPlugin(pluginParams *PluginParams, client *utils.HttpClient) (*releaserPlugin, error) {
 	var params releaseParams
 	if err := utils.ConvertTypeByJson(pluginParams.Params, &params); err != nil {
 		return nil, err
@@ -74,9 +74,9 @@ func newReleaserPlugin(pluginParams *PluginParams, models *model.Models) (*relea
 		return nil, fmt.Errorf("发布版本号为空")
 	}
 	plugin := &releaserPlugin{
-		models:       models,
-		PluginLogger: pluginParams.Logger,
-		Params:       &params,
+		client:    client,
+		JobLogger: pluginParams.Logger,
+		Params:    &params,
 		Result: &ReleaserPluginResult{
 			Version: params.Version,
 			Images:  "",
@@ -87,33 +87,31 @@ func newReleaserPlugin(pluginParams *PluginParams, models *model.Models) (*relea
 		klog.Errorf("job=%d get empty code repo name", params.JobId)
 		return nil, fmt.Errorf("get empty code repo name")
 	}
-	rootDir := filepath.Join(pluginParams.DataDir, "pipeline", strconv.Itoa(int(params.JobId)))
-	if err := os.MkdirAll(rootDir, 0755); err != nil {
-		return nil, err
-	}
-	plugin.CodeDir, _ = filepath.Abs(filepath.Join(rootDir, codeDir))
-	plugin.rootDir = rootDir
+	plugin.CodeDir, _ = filepath.Abs(filepath.Join(pluginParams.RootDir, codeDir))
 
 	return plugin, nil
 }
 
 func (r *releaserPlugin) execute() (interface{}, error) {
-	defer func() {
-		if err := os.RemoveAll(r.rootDir); err != nil {
-			r.Log("remove job root dir %s error: %s", r.rootDir, err.Error())
-		}
-	}()
-	err := r.models.PipelineReleaseManager.Add(r.Params.WorkspaceId, r.Params.Version, r.Params.JobId)
-	if err != nil {
+	var addVersionResp utils.Response
+	addVersionParams := &schemas.AddReleaseVersionParams{
+		WorkspaceId: r.Params.WorkspaceId,
+		JobId:       r.Params.JobId,
+		Version:     r.Params.Version,
+	}
+	if _, err := r.client.Post(PipelineRunAddReleaseVersionUri, addVersionParams, &addVersionResp, utils.RequestOptions{}); err != nil {
 		return nil, err
 	}
+	if !addVersionResp.IsSuccess() {
+		return nil, fmt.Errorf("add release version error: %s", addVersionResp.Msg)
+	}
 	if r.Params.CodeUrl != "" {
-		if err = r.clone(); err != nil {
+		if err := r.clone(); err != nil {
 			return nil, err
 		}
 	}
 	if r.Params.Images != "" {
-		if err = r.tagImage(); err != nil {
+		if err := r.tagImage(); err != nil {
 			return nil, err
 		}
 		r.Result.Images = strings.Join(r.Images, ",")
@@ -145,7 +143,7 @@ func (r *releaserPlugin) clone() error {
 	repo, err := git.PlainClone(r.CodeDir, false, &git.CloneOptions{
 		Auth:     auth,
 		URL:      r.Params.CodeUrl,
-		Progress: r.PluginLogger,
+		Progress: r.JobLogger,
 	})
 	if err != nil {
 		r.Log("克隆代码仓库失败：%v", err)
@@ -183,7 +181,7 @@ func (r *releaserPlugin) clone() error {
 	}
 	po := &git.PushOptions{
 		RemoteName: "origin",
-		Progress:   r.PluginLogger,
+		Progress:   r.JobLogger,
 		RefSpecs:   []config.RefSpec{config.RefSpec("refs/tags/*:refs/tags/*")},
 		Auth:       auth,
 	}
@@ -216,16 +214,16 @@ func (r *releaserPlugin) tagImage() error {
 func (r *releaserPlugin) loginDocker(user string, password string, server string) error {
 	r.Log("docker login %s", server)
 	cmd := exec.Command("bash", "-c", fmt.Sprintf("docker login -u %s -p %s %s", user, password, server))
-	cmd.Stdout = r.PluginLogger
-	cmd.Stderr = r.PluginLogger
+	cmd.Stdout = r.JobLogger
+	cmd.Stderr = r.JobLogger
 	return cmd.Run()
 }
 
 func (r *releaserPlugin) tagAndPushImage(image string) error {
 	dockerBuildCmd := fmt.Sprintf("docker pull %s", image)
 	cmd := exec.Command("bash", "-xc", dockerBuildCmd)
-	cmd.Stdout = r.PluginLogger
-	cmd.Stderr = r.PluginLogger
+	cmd.Stdout = r.JobLogger
+	cmd.Stderr = r.JobLogger
 	if err := cmd.Run(); err != nil {
 		r.Log("拉取镜像%s错误：%v", image, err)
 		klog.Errorf("pull image error: %v", err)
@@ -233,8 +231,8 @@ func (r *releaserPlugin) tagAndPushImage(image string) error {
 	}
 	newImage := strings.Split(image, ":")[0] + ":" + r.Params.Version
 	cmd = exec.Command("bash", "-xc", "docker tag "+image+" "+newImage)
-	cmd.Stdout = r.PluginLogger
-	cmd.Stderr = r.PluginLogger
+	cmd.Stdout = r.JobLogger
+	cmd.Stderr = r.JobLogger
 	if err := cmd.Run(); err != nil {
 		r.Log("镜像打标签%s错误：%v", image, err)
 		klog.Errorf("tag image error: %v", err)
@@ -246,8 +244,8 @@ func (r *releaserPlugin) tagAndPushImage(image string) error {
 	r.Images = append(r.Images, newImage)
 	rmiImage := fmt.Sprintf("docker rmi %s && docker rmi %s", image, newImage)
 	cmd = exec.Command("bash", "-xc", rmiImage)
-	cmd.Stdout = r.PluginLogger
-	cmd.Stderr = r.PluginLogger
+	cmd.Stdout = r.JobLogger
+	cmd.Stderr = r.JobLogger
 	if err := cmd.Run(); err != nil {
 		r.Log("删除本地镜像%s错误：%v", image, err)
 		klog.Errorf("rmi image error: %v", err)
@@ -259,8 +257,8 @@ func (r *releaserPlugin) tagAndPushImage(image string) error {
 func (r *releaserPlugin) pushImage(imageUrl string) error {
 	pushCmd := fmt.Sprintf("docker push %s", imageUrl)
 	cmd := exec.Command("bash", "-xc", pushCmd)
-	cmd.Stdout = r.PluginLogger
-	cmd.Stderr = r.PluginLogger
+	cmd.Stdout = r.JobLogger
+	cmd.Stderr = r.JobLogger
 	if err := cmd.Run(); err != nil {
 		r.Log("docker push %s：%v", imageUrl, err)
 		klog.Errorf("push image error: %v", err)

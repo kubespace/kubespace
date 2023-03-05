@@ -13,6 +13,7 @@
     "core-js": "^3.6.5",
     "element-ui": "^2.13.2",
     "highcharts": "^10.3.3",
+    "http-proxy-middleware": "^2.0.6",
     "js-base64": "^3.7.4",
     "js-cookie": "^2.2.1",
     "js-yaml": "^4.1.0",
@@ -27,8 +28,9 @@
     "vue": "^2.6.11",
     "vue-clipboard2": "^0.3.1",
     "vue-router": "^3.3.4",
-    "vue-sse": "^2.5.0",
+    "vue-sse": "^2.5.2",
     "vuex": "^3.5.1",
+    "webpack-dev-server": "^4.11.1",
     "xterm": "^4.8.1",
     "xterm-addon-attach": "^0.6.0",
     "xterm-addon-fit": "^0.4.0"

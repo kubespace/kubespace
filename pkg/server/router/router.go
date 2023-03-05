@@ -73,6 +73,7 @@ func NewRouter(conf *config.ServerConfig) (*Router, error) {
 	spaceletView := spacelet.NewSpaceletViews(conf)
 	apiGroup.POST("/spacelet/register", spaceletView.Register)
 	apiGroup.POST("/spacelet/pipeline/callback", spaceletView.PipelineJobCallback)
+	apiGroup.POST("/spacelet/pipeline/add_release", spaceletView.PipelineAddReleaseVersion)
 	return &Router{
 		Engine: engine,
 	}, nil

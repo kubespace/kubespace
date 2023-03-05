@@ -40,21 +40,21 @@ func NewPipelineRunJobListWatcher(config *config.ListWatcherConfig, cond *Pipeli
 }
 
 func (p *pipelineRunJobListWatcher) Filter(obj interface{}) bool {
-	pipelineRun, ok := obj.(types.PipelineRun)
+	pipelineRunJob, ok := obj.(types.PipelineRunJob)
 	if !ok {
 		return false
 	}
-	if p.condition.Id > 0 && pipelineRun.ID != p.condition.Id {
+	if p.condition.Id > 0 && pipelineRunJob.ID != p.condition.Id {
 		return false
 	}
-	if len(p.condition.StatusIn) > 0 && !utils.Contains(p.condition.StatusIn, pipelineRun.Status) {
+	if len(p.condition.StatusIn) > 0 && !utils.Contains(p.condition.StatusIn, pipelineRunJob.Status) {
 		return false
 	}
 	return true
 }
 
 func (p *pipelineRunJobListWatcher) List() ([]interface{}, error) {
-	var pipelineRuns []types.PipelineRun
+	var pipelineRunJobs []types.PipelineRunJob
 	var tx = p.db
 	if p.condition.Id > 0 {
 		tx = tx.Where("id=?", p.condition.Id)
@@ -62,12 +62,12 @@ func (p *pipelineRunJobListWatcher) List() ([]interface{}, error) {
 	if len(p.condition.StatusIn) > 0 {
 		tx = tx.Where("status in ?", p.condition.StatusIn)
 	}
-	if err := tx.Find(&pipelineRuns).Error; err != nil {
+	if err := tx.Find(&pipelineRunJobs).Error; err != nil {
 		return nil, err
 	}
 	var objs []interface{}
-	for i := range pipelineRuns {
-		objs = append(objs, pipelineRuns[i])
+	for i := range pipelineRunJobs {
+		objs = append(objs, pipelineRunJobs[i])
 	}
 	return objs, nil
 }

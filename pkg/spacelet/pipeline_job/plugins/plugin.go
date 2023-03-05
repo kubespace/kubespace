@@ -23,6 +23,7 @@ type PluginExecutor interface {
 	Execute(params *PluginParams) (interface{}, error)
 }
 
+// PluginParams 任务执行的参数
 type PluginParams struct {
 	JobId     uint
 	PluginKey string
@@ -32,19 +33,25 @@ type PluginParams struct {
 }
 
 type Plugins struct {
-	plugins map[string]PluginExecutor
-	models  *model.Models
-	dataDir string
-	client  *utils.HttpClient
+	plugins     map[string]PluginExecutor
+	models      *model.Models
+	dataDir     string
+	client      *utils.HttpClient
+	mu          *sync.Mutex
+	runningJobs map[uint]*pluginExec
 }
 
 func NewPlugins(dataDir string, client *utils.HttpClient) *Plugins {
 	p := &Plugins{
-		plugins: make(map[string]PluginExecutor),
-		dataDir: dataDir,
-		client:  client,
+		plugins:     make(map[string]PluginExecutor),
+		dataDir:     dataDir,
+		client:      client,
+		mu:          &sync.Mutex{},
+		runningJobs: make(map[uint]*pluginExec),
 	}
 	p.plugins[types.BuiltinPluginBuildCodeToImage] = CodeBuilderPlugin{}
+	p.plugins[types.BuiltinPluginExecuteShell] = ExecShellPlugin{}
+	p.plugins[types.BuiltinPluginRelease] = ReleaserPlugin{client: client}
 	return p
 }
 
@@ -80,6 +87,24 @@ func (b *Plugins) GetJobStatusFile(jobId uint) (string, error) {
 	return b.getKubeSpaceFile(jobId, "status")
 }
 
+// RecordJob 记录job当前执行的实例，如果已经正在执行了，返回false
+func (b *Plugins) RecordJob(jobId uint, exec *pluginExec) bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if _, ok := b.runningJobs[jobId]; ok {
+		return false
+	}
+	b.runningJobs[jobId] = exec
+	return true
+}
+
+// RemoveJob 执行完成后删除job记录
+func (b *Plugins) RemoveJob(jobId uint) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	delete(b.runningJobs, jobId)
+}
+
 // Execute 执行任务插件，任务开启一个协程后台执行，该方法立即返回，后续的任务执行状态通过回调接口上报
 func (b *Plugins) Execute(pluginParams *PluginParams) (resp *utils.Response) {
 	var err error
@@ -111,19 +136,29 @@ func (b *Plugins) Execute(pluginParams *PluginParams) (resp *utils.Response) {
 		return &utils.Response{Code: code.PluginError, Msg: "get job status file error: " + err.Error()}
 	}
 	jobStatus := NewJobStatus(statusFile)
+
 	// 设置任务状态为doing，写入状态文件
 	if err = jobStatus.Set(&StatusResult{Status: types.PipelineStatusDoing}); err != nil {
-		return &utils.Response{Code: code.PluginError, Msg: "write status error: " + err.Error()}
+		return &utils.Response{Code: code.PluginError, Msg: "set status error: " + err.Error()}
 	}
 
-	e := pluginExec{
+	e := &pluginExec{
 		jobStatus: jobStatus,
 		params:    pluginParams,
 		executor:  executor,
 		client:    b.client,
 	}
-	// 后台执行任务
-	go e.Execute()
+	if b.RecordJob(pluginParams.JobId, e) {
+		go func() {
+			// 执行完成关闭日志文件句柄
+			defer e.params.Logger.Close()
+			// 执行完成删除job执行记录
+			defer b.RemoveJob(pluginParams.JobId)
+			e.Execute()
+		}()
+	} else {
+		klog.Infof("job=%d already running", pluginParams.JobId)
+	}
 
 	return &utils.Response{Code: code.Success}
 }
@@ -162,6 +197,7 @@ func (b *Plugins) Cleanup(jobId uint) error {
 	if err != nil {
 		return err
 	}
+	klog.Infof("remove job id=%d root dir=%s", jobId, rootDir)
 	return os.RemoveAll(rootDir)
 }
 
@@ -174,12 +210,10 @@ type pluginExec struct {
 }
 
 func (e *pluginExec) Execute() {
-	// 退出时关闭logger记录的文件句柄
-	defer e.params.Logger.Close()
-	var resp *utils.Response
 	// 执行任务
 	result, err := e.execute()
-	status := types.PipelineStatusOK
+	var status = types.PipelineStatusOK
+	var resp *utils.Response
 	if err != nil {
 		// 执行失败
 		status = types.PipelineStatusError
@@ -206,14 +240,15 @@ func (e *pluginExec) execute() (result interface{}, err error) {
 			klog.Error("error: ", r)
 			var buf [4096]byte
 			n := runtime.Stack(buf[:], false)
-			klog.Errorf("==> %s\n", string(buf[:n]))
-			e.params.Logger.Log("==> %s\n", string(buf[:n]))
+			klog.Errorf("==> %s", string(buf[:n]))
+			e.params.Logger.Log("error: %v ==> %s\n", r, string(buf[:n]))
 			err = fmt.Errorf("%v", r)
 		}
 	}()
 	return e.executor.Execute(e.params)
 }
 
+// JobLogger 任务执行时日志写入文件
 type JobLogger struct {
 	jobId uint
 	*os.File
@@ -254,18 +289,15 @@ type StatusResult struct {
 }
 
 type JobStatus struct {
-	mu       *sync.Mutex
 	filePath string
 }
 
 func NewJobStatus(filePath string) *JobStatus {
-	return &JobStatus{filePath: filePath, mu: &sync.Mutex{}}
+	return &JobStatus{filePath: filePath}
 }
 
 // Set 将任务状态以及执行结果写入到文件
 func (s *JobStatus) Set(sr *StatusResult) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	statusBytes, err := json.Marshal(sr)
 	if err != nil {
 		return err
@@ -275,8 +307,6 @@ func (s *JobStatus) Set(sr *StatusResult) error {
 
 // Get 从文件获取任务状态以及执行结果
 func (s *JobStatus) Get() (*StatusResult, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	// 读取文件内容
 	statusBytes, err := ioutil.ReadFile(s.filePath)

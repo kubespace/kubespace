@@ -43,8 +43,8 @@ func (s SpaceletJob) Execute(params *PluginParams) (interface{}, error) {
 	stopCh := make(chan struct{})
 	// 退出时停止监听
 	defer close(stopCh)
-	// 开始监听PipelineJob对象
-	pipelineRunJobInformer.Run(stopCh)
+	// 开始监听PipelineRunJob对象
+	go pipelineRunJobInformer.Run(stopCh)
 	return sj.execute()
 }
 
@@ -57,6 +57,10 @@ func (s SpaceletJob) getSpaceletClient(jobId uint) (spacelet.Client, error) {
 	if job.SpaceletId == 0 {
 		// 分配一个执行任务数最少的spacelet节点
 		if sp, err = s.chooseSpacelet(); err != nil {
+			return nil, err
+		}
+		// 更新jobRun spaceletId
+		if err = s.models.PipelineRunManager.UpdateJobRun(jobId, &types.PipelineRunJob{SpaceletId: sp.ID}); err != nil {
 			return nil, err
 		}
 	} else {
@@ -149,7 +153,7 @@ func (s *spaceletJob) execute() (interface{}, error) {
 			// 定时轮询spacelet节点任务状态
 			klog.Infof("interval get pipeline job=%d status", s.params.JobId)
 		case <-s.watchCh:
-			// 收到spcaelet回调
+			// 收到spacelet回调
 			klog.Infof("watch pipeline job changed and get pipeline job=%d status", s.params.JobId)
 		}
 		// 查询spacelet节点任务状态接口
@@ -160,7 +164,6 @@ func (s *spaceletJob) execute() (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		klog.Infof("job=%d status=%s, result=%s", statusLog.StatusResult.Status, *statusLog.StatusResult.Result)
 		// 重置日志内容
 		s.logger.ResetWrite(statusLog.Log)
 		if statusLog.StatusResult.Status == types.PipelineStatusOK {
@@ -177,7 +180,7 @@ func (s *spaceletJob) Check(obj interface{}) bool {
 }
 
 func (s *spaceletJob) Handle(obj interface{}) error {
-	// 收到来自spaclet任务完成回调的通知
+	// 收到来自spacelet任务完成回调的通知
 	s.watchCh <- struct{}{}
 	return nil
 }

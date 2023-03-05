@@ -96,3 +96,16 @@ func (s *SpaceletViews) PipelineJobCallback(c *gin.Context) {
 	resp := s.pipelineRunService.JobCallback(&params)
 	c.JSON(http.StatusOK, resp)
 }
+
+// PipelineAddReleaseVersion spacelet流水线发布插件调用该接口，添加发布版本
+func (s *SpaceletViews) PipelineAddReleaseVersion(c *gin.Context) {
+	var params schemas.AddReleaseVersionParams
+	if err := c.ShouldBind(&params); err != nil {
+		c.JSON(http.StatusOK, &utils.Response{Code: code.ParamsError, Msg: err.Error()})
+		return
+	}
+	if err := s.models.PipelineReleaseManager.Add(params.WorkspaceId, params.Version, params.JobId); err != nil {
+		c.JSON(http.StatusOK, &utils.Response{Code: code.DBError, Msg: err.Error()})
+	}
+	c.JSON(http.StatusOK, &utils.Response{Code: code.Success})
+}

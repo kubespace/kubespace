@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 )
 
@@ -40,7 +39,7 @@ type ExecShellParams struct {
 }
 
 type execShellPlugin struct {
-	*PluginLogger
+	*JobLogger
 	Params  *ExecShellParams
 	Result  map[string]interface{} `json:"env"`
 	rootDir string
@@ -52,25 +51,16 @@ func newExecShellPlugin(params *PluginParams) (*execShellPlugin, error) {
 		return nil, err
 	}
 	execPlugin := &execShellPlugin{
-		Params:       &shellParams,
-		PluginLogger: params.Logger,
-		Result:       make(map[string]interface{}),
+		Params:    &shellParams,
+		JobLogger: params.Logger,
+		Result:    make(map[string]interface{}),
+		rootDir:   params.RootDir,
 	}
-	rootDir := filepath.Join(params.DataDir, "pipeline", strconv.Itoa(int(params.JobId)))
-	if err := os.MkdirAll(rootDir, 0755); err != nil {
-		return nil, err
-	}
-	execPlugin.rootDir, _ = filepath.Abs(rootDir)
 
 	return execPlugin, nil
 }
 
 func (b *execShellPlugin) execute() (interface{}, error) {
-	defer func() {
-		if err := os.RemoveAll(b.rootDir); err != nil {
-			b.Log("remove job root dir %s error: %s", b.rootDir, err.Error())
-		}
-	}()
 	if b.Params.Resource.Value == "" {
 		return nil, fmt.Errorf("执行脚本目标资源参数为空，请检查流水线配置")
 	}
@@ -114,8 +104,8 @@ func (b *execShellPlugin) execImage() error {
 	dockerRunCmd := fmt.Sprintf("docker run --net=host --rm -i -v %s:/pipeline -w /pipeline --entrypoint sh %s -c \"%s %s -x %s 2>&1\"", b.rootDir, image, env, shell, scriptFileName)
 	klog.Infof("job=%d code build cmd: %s", b.Params.JobId, dockerRunCmd)
 	cmd := exec.Command("bash", "-c", dockerRunCmd)
-	cmd.Stdout = b.PluginLogger
-	cmd.Stderr = b.PluginLogger
+	cmd.Stdout = b.JobLogger
+	cmd.Stderr = b.JobLogger
 	if err := cmd.Run(); err != nil {
 		klog.Errorf("job=%d build error: %v", b.Params.JobId, err)
 		return fmt.Errorf("build code error: %v", err)
@@ -182,7 +172,7 @@ func (b *execShellPlugin) execSsh() error {
 	}
 	defer session.Close()
 	b.Log("建立session成功，开始执行脚本")
-	session.Stdout = b.PluginLogger
+	session.Stdout = b.JobLogger
 	var envs []string
 	for name, val := range b.Params.Env {
 		envs = append(envs, fmt.Sprintf("%s='%v'", name, val))

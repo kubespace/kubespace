@@ -175,7 +175,11 @@ func (p *ManagerPipelineRun) ListJobRun(cond *JobRunListCondition) ([]*types.Pip
 }
 
 func (p *ManagerPipelineRun) NotifyJobRun(jobRun *types.PipelineRunJob) error {
-	return p.pipelineRunListWatcher.Notify(jobRun)
+	return p.pipelineRunJobListWatcher.Notify(jobRun)
+}
+
+func (p *ManagerPipelineRun) UpdateJobRun(id uint, jobRun *types.PipelineRunJob) error {
+	return p.DB.Model(types.PipelineRunJob{}).Where("id=?", id).Updates(jobRun).Error
 }
 
 func (p *ManagerPipelineRun) GetStageRun(stageId uint) (*types.PipelineRunStage, error) {
@@ -254,11 +258,11 @@ func (p *ManagerPipelineRun) UpdateStageJobRunParams(stageRun *types.PipelineRun
 }
 
 // GetStageRunStatus 根据stage的所有任务的状态返回该stage的状态
-// 1. 如果有doing的job，stage状态为doing；
-// 2. 如果所有job的状态为error/ok/wait，则
-// 	  a. job中有error的，则stage为error；
-//    b. 所有job都为ok，则stage为ok；
-//    c. job中有ok，有wait，则stage为doing；
+//  1. 如果有doing的job，stage状态为doing；
+//  2. 如果所有job的状态为error/ok/wait，则
+//     a. job中有error的，则stage为error；
+//     b. 所有job都为ok，则stage为ok；
+//     c. job中有ok，有wait，则stage为doing；
 func (p *ManagerPipelineRun) GetStageRunStatus(stageRun *types.PipelineRunStage) string {
 	status := ""
 	for _, jobRun := range stageRun.Jobs {

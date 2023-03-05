@@ -41,7 +41,7 @@
                 <div @click="clickStage(stage)" class="click-main-content">
                   {{ stage.name }}
                 </div>
-                <div style="margin-left: 15px;" v-for="job in stage.jobs" :key="job.id" class="click-main-content"
+                <div :style="{color: statusColorMap[job.status]}" style="margin-left: 15px;" v-for="job in stage.jobs" :key="job.id" class="click-main-content"
                   @click="clickStage(stage, job)">
                   <i :class="statusIconMap[job.status]"></i> {{ job.name }}
                 </div>
