@@ -7,6 +7,13 @@ import (
 	"sync"
 )
 
+type LdapConfig struct {
+	Url      string
+	User     string
+	Password string
+	BaseDN   string
+}
+
 type LDAPPool struct {
 	config *LdapConfig
 	pool   chan *ldap.Conn // 连接池对象
@@ -56,10 +63,10 @@ func getLDAPPool(ldconfig *LdapConfig) (*LDAPPool, error) {
 	return pool, nil
 }
 
-func WithLDAPConn(config *LdapConfig, params interface{}, fn func(conn *ldap.Conn, params interface{}) error) error {
+func WithLDAPConn(config *LdapConfig, params interface{}, fn func(conn *ldap.Conn, params interface{}) (error, interface{})) (error, interface{}) {
 	pool, err := getLDAPPool(config)
 	if err != nil {
-		return err
+		return err, nil
 	}
 
 	conn := pool.getConn()
@@ -68,12 +75,12 @@ func WithLDAPConn(config *LdapConfig, params interface{}, fn func(conn *ldap.Con
 	return fn(conn, params)
 }
 
-func AuthenticationFunc(conn *ldap.Conn, params interface{}) error {
+func AuthenticationFunc(conn *ldap.Conn, params interface{}) (error, interface{}) {
 
 	p, ok := params.(*LdapConfig)
 	if !ok {
 		klog.Fatal("params trans error")
-		return &LdapError{Message: "params trans error"}
+		return &LdapError{Message: "params trans error"}, nil
 	}
 
 	searchFilter := "(uid=" + p.User + ")"
@@ -88,12 +95,12 @@ func AuthenticationFunc(conn *ldap.Conn, params interface{}) error {
 	sr, err := conn.Search(searchRequest)
 	if err != nil {
 		klog.Fatal(err)
-		return err
+		return err, nil
 	}
 
 	if len(sr.Entries) != 1 {
 		klog.Fatal("User does not exist or too many entries returned")
-		return &LdapError{Message: "User does not exist or too many entries returned"}
+		return &LdapError{Message: "User does not exist or too many entries returned"}, nil
 	}
 
 	userDN := sr.Entries[0].DN
@@ -101,23 +108,51 @@ func AuthenticationFunc(conn *ldap.Conn, params interface{}) error {
 	err = conn.Bind(userDN, p.Password)
 	if err != nil {
 		klog.Fatal(err)
-		return err
+		return err, nil
 	}
 
 	klog.Infof("Authentication successful!")
-	return nil
+	return nil, nil
 }
 
-func SearchLdapUsersFunc(conn *ldap.Conn, params interface{}) error {
+func SearchLdapUsersFunc(conn *ldap.Conn, params interface{}) (error, interface{}) {
+	p, ok := params.(*LdapConfig)
+	if !ok {
+		klog.Fatal("params trans error")
+		return &LdapError{Message: "params trans error"}, nil
+	}
 
-	return nil
+	searchRequest := ldap.NewSearchRequest(
+		p.BaseDN,
+		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
+		"(objectClass=inetOrgPerson)",
+		[]string{"cn", "mail", "uid", "userPassword"},
+		nil,
+	)
+
+	sr, err := conn.Search(searchRequest)
+	if err != nil {
+		klog.Fatal(err)
+		return err, nil
+	}
+
+	var ldapList []map[string]string
+	for _, entry := range sr.Entries {
+		ldapUser := make(map[string]string)
+		ldapUser["uid"] = entry.GetAttributeValue("uid")
+		ldapUser["cn"] = entry.GetAttributeValue("cn")
+		ldapUser["mail"] = entry.GetAttributeValue("mail")
+		ldapUser["userPassword"] = entry.GetAttributeValue("userPassword")
+		ldapList = append(ldapList, ldapUser)
+		//fmt.Printf("  %s: %s (%s):(%s)\n", entry.GetAttributeValue("uid"), entry.GetAttributeValue("cn"), entry.GetAttributeValue("mail"), entry.GetAttributeValue("userPassword"))
+	}
+
+	return nil, ldapList
 }
 
-type LdapConfig struct {
-	Url      string
-	User     string
-	Password string
-	BaseDN   string
+func ModifyLdapUserPasswdFunc(conn *ldap.Conn, params interface{}) (error, interface{}) {
+	// TODO
+	return nil, nil
 }
 
 func (lc *LdapConfig) GetUserDN() string {

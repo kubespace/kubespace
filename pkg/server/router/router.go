@@ -122,7 +122,7 @@ func auth(m *model.Models, c *gin.Context) *utils.Response {
 		return &resp
 	}
 	resp.Data = u
-	//resp.Data = &types.User{}
+
 	return &resp
 }
 

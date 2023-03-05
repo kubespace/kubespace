@@ -75,6 +75,7 @@ func (l Login) Login(c *gin.Context) {
 		c.JSON(http.StatusOK, resp)
 		return
 	}
+
 	resp.Data = map[string]interface{}{
 		"token": tkObj.Token.String(),
 	}

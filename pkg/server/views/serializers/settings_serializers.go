@@ -15,3 +15,12 @@ type ImageRegistrySerializers struct {
 	User     string `json:"user" form:"user"`
 	Password string `json:"password" form:"password"`
 }
+
+type LdapSerializers struct {
+	Name        string `json:"name" form:"name"`
+	Enable      string `json:"enable" form:"enable"`
+	Url         string `json:"url" form:"url"`
+	BaseDN      string `json:"baseDN" form:"baseDN"`
+	AdminDN     string `json:"adminDN" form:"adminDN"`
+	AdminDNPass string `json:"adminDNPass" form:"adminDNPass"`
+}

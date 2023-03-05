@@ -19,4 +19,5 @@ const (
 	AuthError      = "AuthError"
 	HelmError      = "HelmError"
 	PluginError    = "PluginError"
+	LdapError      = "LdapError"
 )

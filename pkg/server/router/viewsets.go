@@ -33,6 +33,7 @@ func NewViewSets(conf *config.ServerConfig) *ViewSets {
 	// 配置
 	settingsSecret := settings.NewSettingsSecret(models)
 	imageRegistry := settings.NewImageRegistry(models)
+	settingLdap := settings.NewSettingsLdap(models)
 
 	// 工作空间以及应用商店
 	projectWorkspace := project.NewProject(conf)
@@ -53,6 +54,7 @@ func NewViewSets(conf *config.ServerConfig) *ViewSets {
 
 		"settings/secret":         settingsSecret.Views,
 		"settings/image_registry": imageRegistry.Views,
+		"settings/ldap":           settingLdap.Views,
 
 		"project/workspace": projectWorkspace.Views,
 		"project/apps":      projectApps.Views,

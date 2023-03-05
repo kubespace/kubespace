@@ -43,6 +43,7 @@ type Models struct {
 
 	SettingsSecretManager *manager.SettingsSecretManager
 	ImageRegistryManager  *manager.ImageRegistryManager
+	LdapManager           *manager.LdapManager
 }
 
 func NewModels(c *Config) (*Models, error) {
@@ -65,6 +66,7 @@ func NewModels(c *Config) (*Models, error) {
 
 	secrets := manager.NewSettingsSecretManager(c.DB.Instance)
 	imageRegistry := manager.NewSettingsImageRegistryManager(c.DB.Instance)
+	ldap := manager.NewLdapManager(c.DB.Instance)
 
 	appVersionMgr := project.NewAppVersionManager(c.DB.Instance)
 	projectAppMgr := project.NewAppManager(appVersionMgr, c.DB.Instance)
@@ -89,6 +91,7 @@ func NewModels(c *Config) (*Models, error) {
 		PipelineJobLogManager:    jobLogMgr,
 		PipelineReleaseManager:   pipelineReleaseMgr,
 		SettingsSecretManager:    secrets,
+		LdapManager:              ldap,
 		ProjectManager:           projectMgr,
 		ProjectAppManager:        projectAppMgr,
 		ProjectAppVersionManager: appVersionMgr,
@@ -116,6 +119,7 @@ func DbMigrate(db *gorm.DB) error {
 
 		&types.SettingsSecret{},
 		&types.SettingsImageRegistry{},
+		&types.Ldap{},
 
 		&types.Project{},
 		&types.ProjectApp{},

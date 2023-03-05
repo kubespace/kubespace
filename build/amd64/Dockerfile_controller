@@ -1,6 +1,6 @@
-ARG BASEIMAGE=registry.cn-hangzhou.aliyuncs.com/kubespace/bash:5.2.15
+ARG BASEIMAGE=registry.cn-hangzhou.aliyuncs.com/zgjhub/apline:3.17.2
 FROM $BASEIMAGE
 
-COPY bin/amd64/controller-manager /
+COPY /root/kubespace/bin/amd64/controller-manager /
 
 CMD ["/controller-manager"]
