@@ -1,17 +1,18 @@
-package manager
+package settings
 
 import (
+	"github.com/kubespace/kubespace/pkg/model/manager"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"gorm.io/gorm"
 )
 
 type SettingsSecretManager struct {
-	*CommonManager
+	*manager.CommonManager
 }
 
 func NewSettingsSecretManager(db *gorm.DB) *SettingsSecretManager {
 	return &SettingsSecretManager{
-		CommonManager: NewCommonManager(nil, db, "", false),
+		CommonManager: manager.NewCommonManager(nil, db, "", false),
 	}
 }
 
@@ -57,12 +58,12 @@ func (s *SettingsSecretManager) List() ([]types.SettingsSecret, error) {
 }
 
 type ImageRegistryManager struct {
-	*CommonManager
+	*manager.CommonManager
 }
 
 func NewSettingsImageRegistryManager(db *gorm.DB) *ImageRegistryManager {
 	return &ImageRegistryManager{
-		CommonManager: NewCommonManager(nil, db, "", false),
+		CommonManager: manager.NewCommonManager(nil, db, "", false),
 	}
 }
 

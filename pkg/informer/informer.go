@@ -47,9 +47,15 @@ func (b *informer) Run(stopCh <-chan struct{}) {
 	for {
 		klog.Infof("start run informer %v", b)
 		if err := b.run(stopCh); err != nil {
-			klog.Errorf("run informer %v error: %s, retry...", b, err.Error())
-			time.Sleep(time.Second * 5)
-			continue
+			klog.Errorf("run informer %v error: %s", b, err.Error())
+			// 5s后重试
+			tick := time.NewTicker(5 * time.Second)
+			select {
+			case <-tick.C:
+				continue
+			case <-stopCh:
+				break
+			}
 		}
 		klog.Infof("stop run informer=%v", b)
 		break
@@ -64,7 +70,7 @@ func (b *informer) run(stopCh <-chan struct{}) error {
 		case obj := <-b.listWatcher.Result():
 			go b.handle(obj)
 		case watchErr := <-b.listWatcher.WatchErr():
-			return watchErr
+			klog.Errorf("informer watch error: %v", watchErr)
 		case <-stopCh:
 			return nil
 		}

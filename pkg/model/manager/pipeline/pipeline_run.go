@@ -14,16 +14,18 @@ import (
 )
 
 type ManagerPipelineRun struct {
-	DB                     *gorm.DB
-	PluginManager          *ManagerPipelinePlugin
-	pipelineRunListWatcher listwatcher.Interface
+	DB                        *gorm.DB
+	PluginManager             *ManagerPipelinePlugin
+	pipelineRunListWatcher    listwatcher.Interface
+	pipelineRunJobListWatcher listwatcher.Interface
 }
 
 func NewPipelineRunManager(db *gorm.DB, pluginManager *ManagerPipelinePlugin, listwatcherConfig *listwatcherconfig.ListWatcherConfig) *ManagerPipelineRun {
 	return &ManagerPipelineRun{
-		DB:                     db,
-		PluginManager:          pluginManager,
-		pipelineRunListWatcher: pipeline.NewPipelineRunListWatcher(listwatcherConfig, nil),
+		DB:                        db,
+		PluginManager:             pluginManager,
+		pipelineRunListWatcher:    pipeline.NewPipelineRunListWatcher(listwatcherConfig, nil),
+		pipelineRunJobListWatcher: pipeline.NewPipelineRunJobListWatcher(listwatcherConfig, nil),
 	}
 }
 
@@ -148,6 +150,34 @@ func (p *ManagerPipelineRun) GetJobRun(jobRunId uint) (*types.PipelineRunJob, er
 	return &jobRun, nil
 }
 
+type JobRunListCondition struct {
+	WithSpacelet *bool    `json:"with_spacelet"`
+	StatusIn     []string `json:"status_in"`
+}
+
+func (p *ManagerPipelineRun) ListJobRun(cond *JobRunListCondition) ([]*types.PipelineRunJob, error) {
+	var jobRun []*types.PipelineRunJob
+	tx := p.DB
+	if cond.WithSpacelet != nil {
+		if *cond.WithSpacelet {
+			tx = tx.Where("spacelet_id != 0 and spacelet_id is not null")
+		} else {
+			tx = tx.Where("spacelet_id = 0 or spacelet_id is null")
+		}
+	}
+	if len(cond.StatusIn) > 0 {
+		tx = tx.Where("status in ?", cond.StatusIn)
+	}
+	if err := tx.Find(&jobRun).Error; err != nil {
+		return nil, err
+	}
+	return jobRun, nil
+}
+
+func (p *ManagerPipelineRun) NotifyJobRun(jobRun *types.PipelineRunJob) error {
+	return p.pipelineRunListWatcher.Notify(jobRun)
+}
+
 func (p *ManagerPipelineRun) GetStageRun(stageId uint) (*types.PipelineRunStage, error) {
 	var err error
 	var stageRun types.PipelineRunStage
@@ -206,7 +236,6 @@ func (p *ManagerPipelineRun) UpdateStageRun(stageRun *types.PipelineRunStage) er
 	if err = p.DB.First(&pipelineRun, stageRun.PipelineRunId).Error; err != nil {
 		return err
 	}
-	//p.StreamPipelineRun(&pipelineRun)
 	return err
 }
 

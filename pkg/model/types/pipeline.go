@@ -296,11 +296,21 @@ type PipelineRunJob struct {
 	PluginKey     string `gorm:"size:255;not null" json:"plugin_key"`
 	Status        string `gorm:"size:50;not null" json:"status"`
 	// 每个Job执行完之后的环境变量
-	Env        Map             `gorm:"type:json" json:"env"`
-	Params     Map             `gorm:"type:json;not null" json:"params"`
-	Result     *utils.Response `gorm:"type:json;" json:"result"`
-	CreateTime time.Time       `gorm:"not null;autoCreateTime" json:"create_time"`
-	UpdateTime time.Time       `gorm:"not null;autoUpdateTime" json:"update_time"`
+	Env    Map             `gorm:"type:json" json:"env"`
+	Params Map             `gorm:"type:json;not null" json:"params"`
+	Result *utils.Response `gorm:"type:json;" json:"result"`
+	// job执行的spacelet代理节点
+	SpaceletId uint      `gorm:"" json:"spacelet_id"`
+	CreateTime time.Time `gorm:"not null;autoCreateTime" json:"create_time"`
+	UpdateTime time.Time `gorm:"not null;autoUpdateTime" json:"update_time"`
+}
+
+func (p *PipelineRunJob) Unmarshal(bytes []byte) (interface{}, error) {
+	var pipelineRunJob PipelineRunJobs
+	if err := json.Unmarshal(bytes, &pipelineRunJob); err != nil {
+		return nil, err
+	}
+	return pipelineRunJob, nil
 }
 
 type PipelineRunJobLog struct {

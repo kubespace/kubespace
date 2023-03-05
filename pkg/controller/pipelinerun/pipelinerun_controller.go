@@ -35,7 +35,7 @@ func NewPipelineRunController(config *controller.Config) *PipelineRunController 
 			WithList: true,
 		}),
 		lock:       lock.NewMemLock(),
-		jobPlugins: plugins.NewPlugins(config.Models, config.ServiceFactory.Cluster.KubeClient),
+		jobPlugins: plugins.NewPlugins(config.Models, config.ServiceFactory.Cluster.KubeClient, config.InformerFactory),
 		dataDir:    config.DataDir,
 	}
 	p.pipelineInformer.AddHandler(p)

@@ -8,6 +8,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/model/manager/pipeline"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
+	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	utilgit "github.com/kubespace/kubespace/pkg/utils/git"
@@ -348,6 +349,20 @@ func (r *ServicePipelineRun) RetryStage(retrySer *serializers.PipelineStageRetry
 	})
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	return &utils.Response{Code: code.Success}
+}
+
+// JobCallback spacelet节点执行完成任务后进行回调，不写数据库，通知controller-manager
+func (r *ServicePipelineRun) JobCallback(params *schemas.JobCallbackParams) *utils.Response {
+	jobRun, err := r.models.PipelineRunManager.GetJobRun(params.JobId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	jobRun.Status = params.Status
+	// 通知controller-manager
+	if err = r.models.PipelineRunManager.NotifyJobRun(jobRun); err != nil {
+		return &utils.Response{Code: code.RedisError, Msg: err.Error()}
 	}
 	return &utils.Response{Code: code.Success}
 }

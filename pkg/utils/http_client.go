@@ -47,10 +47,16 @@ func (o *RequestOptions) WithContext(ctx context.Context) {
 }
 
 func (o *RequestOptions) WithHeader(name, value string) {
+	if o.Header == nil {
+		o.Header = make(http.Header)
+	}
 	o.Header.Set(name, value)
 }
 
 func (o *RequestOptions) WithHeaders(headers map[string]string) {
+	if o.Header == nil {
+		o.Header = make(http.Header)
+	}
 	for k, v := range headers {
 		o.Header.Set(k, v)
 	}
@@ -74,6 +80,14 @@ func (c *HttpClient) Delete(path string, body interface{}, v interface{}, option
 
 func (c *HttpClient) Post(path string, body interface{}, v interface{}, options RequestOptions) (*http.Response, error) {
 	req, err := c.NewRequest(http.MethodPost, path, body, options)
+	if err != nil {
+		return nil, err
+	}
+	return c.Do(req, v)
+}
+
+func (c *HttpClient) Put(path string, body interface{}, v interface{}, options RequestOptions) (*http.Response, error) {
+	req, err := c.NewRequest(http.MethodPut, path, body, options)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +126,10 @@ func (c *HttpClient) NewRequest(method, reqPath string, params interface{}, opti
 		}
 		u.RawQuery = q.Encode()
 	}
-	req, err := http.NewRequestWithContext(options.Context, method, u.String(), body)
+	req, err := http.NewRequest(method, u.String(), body)
+	if options.Context != nil {
+		req.WithContext(options.Context)
+	}
 	if err != nil {
 		klog.Errorf("get http request error: error=%v, url=%s, method=%s", err, u.String(), method)
 		return nil, err

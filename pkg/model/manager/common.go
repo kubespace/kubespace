@@ -12,10 +12,10 @@ import (
 )
 
 type CommonManager struct {
-	client *redis.Client
+	Client *redis.Client
 	DB     *gorm.DB
 
-	modelKey string
+	ModelKey string
 
 	context.Context
 	watch bool
@@ -23,16 +23,16 @@ type CommonManager struct {
 
 func NewCommonManager(redisClient *redis.Client, db *gorm.DB, key string, watch bool) *CommonManager {
 	return &CommonManager{
-		client:   redisClient,
+		Client:   redisClient,
 		DB:       db,
-		modelKey: key,
+		ModelKey: key,
 		Context:  context.Background(),
 		watch:    watch,
 	}
 }
 
 func (cm *CommonManager) Get(key string, keyObj interface{}) error {
-	data, err := cm.client.HGetAll(cm.Context, cm.PrimaryKey(key)).Result()
+	data, err := cm.Client.HGetAll(cm.Context, cm.PrimaryKey(key)).Result()
 	if err != nil {
 		return err
 	}
@@ -68,13 +68,13 @@ func (cm *CommonManager) Save(key string, keyObj interface{}, expire time.Durati
 	}
 
 	if expire < 1 {
-		err = cm.client.HMSet(cm.Context, cm.PrimaryKey(key), m).Err()
+		err = cm.Client.HMSet(cm.Context, cm.PrimaryKey(key), m).Err()
 		if err != nil {
 			klog.Error(err)
 			return err
 		}
 	} else {
-		pipeline := cm.client.Pipeline()
+		pipeline := cm.Client.Pipeline()
 		pipeline.HMSet(cm.Context, cm.PrimaryKey(key), m)
 		pipeline.Expire(cm.Context, cm.PrimaryKey(key), expire)
 		_, err := pipeline.Exec(cm.Context)
@@ -84,7 +84,7 @@ func (cm *CommonManager) Save(key string, keyObj interface{}, expire time.Durati
 	}
 	if cm.watch {
 
-		//eventObj := NewEventObj(AddEvent, cm.modelKey, keyObj)
+		//eventObj := NewEventObj(AddEvent, cm.ModelKey, keyObj)
 		//cm.MiddleMessage.SendGlobalWatch(eventObj)
 	}
 
@@ -107,12 +107,12 @@ func (cm *CommonManager) Update(key string, keyObj interface{}, expire time.Dura
 	}
 
 	if expire < 1 {
-		err = cm.client.HMSet(cm.Context, cm.PrimaryKey(key), m).Err()
+		err = cm.Client.HMSet(cm.Context, cm.PrimaryKey(key), m).Err()
 		if err != nil {
 			return err
 		}
 	} else {
-		pipeline := cm.client.Pipeline()
+		pipeline := cm.Client.Pipeline()
 		pipeline.HMSet(cm.Context, cm.PrimaryKey(key), m)
 		pipeline.Expire(cm.Context, cm.PrimaryKey(key), expire)
 		_, err := pipeline.Exec(cm.Context)
@@ -125,7 +125,7 @@ func (cm *CommonManager) Update(key string, keyObj interface{}, expire time.Dura
 		obj := make(map[string]interface{})
 		cm.Get(key, &obj)
 
-		//eventObj := NewEventObj(UpdateEvent, cm.modelKey, obj)
+		//eventObj := NewEventObj(UpdateEvent, cm.ModelKey, obj)
 		//cm.MiddleMessage.SendGlobalWatch(eventObj)
 	}
 
@@ -133,7 +133,7 @@ func (cm *CommonManager) Update(key string, keyObj interface{}, expire time.Dura
 }
 
 func (cm *CommonManager) Delete(key string) error {
-	pipeline := cm.client.Pipeline()
+	pipeline := cm.Client.Pipeline()
 	pipeline.SRem(cm.Context, cm.SetsKey(), key)
 	pipeline.Del(cm.Context, cm.PrimaryKey(key))
 	_, err := pipeline.Exec(cm.Context)
@@ -142,15 +142,15 @@ func (cm *CommonManager) Delete(key string) error {
 	}
 
 	if cm.watch {
-		//eventObj := NewEventObj(DeleteEvent, cm.modelKey, map[string]interface{}{"name": key})
+		//eventObj := NewEventObj(DeleteEvent, cm.ModelKey, map[string]interface{}{"name": key})
 		//cm.MiddleMessage.SendGlobalWatch(eventObj)
 	}
 	return nil
 }
 
 func (cm *CommonManager) List(filters map[string]interface{}) ([]map[string]string, error) {
-	pipeline := cm.client.Pipeline()
-	es, _ := cm.client.SMembers(cm.Context, cm.SetsKey()).Result()
+	pipeline := cm.Client.Pipeline()
+	es, _ := cm.Client.SMembers(cm.Context, cm.SetsKey()).Result()
 	for _, pk := range es {
 		pipeline.HGetAll(cm.Context, cm.PrimaryKey(pk))
 	}
@@ -180,19 +180,19 @@ func (cm *CommonManager) List(filters map[string]interface{}) ([]map[string]stri
 }
 
 func (cm *CommonManager) PrimaryKey(key string) string {
-	return fmt.Sprintf("%s:%s", cm.modelKey, key)
+	return fmt.Sprintf("%s:%s", cm.ModelKey, key)
 }
 
 func (cm *CommonManager) SetsKey() string {
-	return fmt.Sprintf("%s:_sets", cm.modelKey)
+	return fmt.Sprintf("%s:_sets", cm.ModelKey)
 }
 
 func (cm *CommonManager) AddSets(name string) error {
 	setKey := cm.SetsKey()
-	if ok, _ := cm.client.SIsMember(cm.Context, setKey, name).Result(); ok {
+	if ok, _ := cm.Client.SIsMember(cm.Context, setKey, name).Result(); ok {
 		return errors.New(fmt.Sprintf("have added %s to sets：%s", name, setKey))
 	}
-	err := cm.client.SAdd(cm.Context, setKey, name).Err()
+	err := cm.Client.SAdd(cm.Context, setKey, name).Err()
 	if err != nil {
 		return err
 	}

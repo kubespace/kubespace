@@ -35,11 +35,13 @@ func NewAgent(config *AgentConfig) *Agent {
 	return a
 }
 
+// Run 运行agent，tunnel通过websocket监听服务端消息，从tunnel接收到消息后，开启一个协程处理
 func (a *Agent) Run(stopCh <-chan struct{}) {
 	go a.tunnel.Run(stopCh)
 	for {
 		select {
 		case receiveBytes := <-a.tunnel.Receive():
+			// 从tunnel接收到消息后，开启协程异步处理
 			go a.Handle(receiveBytes)
 		case <-stopCh:
 			break
@@ -47,6 +49,7 @@ func (a *Agent) Run(stopCh <-chan struct{}) {
 	}
 }
 
+// Handle 从tunnel接收到消息后进行处理，处理完成后将结果发送回server端
 func (a *Agent) Handle(receiveBytes []byte) {
 	var req kubetypes.Request
 	var resp *utils.Response
@@ -56,9 +59,11 @@ func (a *Agent) Handle(receiveBytes []byte) {
 	} else {
 		resp = a.handle(&req)
 	}
+	// 通过tunnel将结果发送回server
 	a.tunnel.Send(&kubetypes.Response{TraceId: req.TraceId, Data: resp})
 }
 
+// 具体的请求处理逻辑，根据请求的类型，做不同的处理
 func (a *Agent) handle(req *kubetypes.Request) (resp *utils.Response) {
 	defer func() {
 		if err := recover(); err != nil {
