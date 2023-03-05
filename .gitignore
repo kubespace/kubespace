@@ -19,3 +19,8 @@ node_modules
 *.sw?
 logs/
 .history
+*node_modules
+cert.pem
+key.pem
+*dist/
+*go.sum

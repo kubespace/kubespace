@@ -50,7 +50,7 @@ module.exports = {
         changeOrigin: true,
         timeout: 0,
         // https://github.com/http-party/node-http-proxy/issues/1520
-        // sseå®¢æˆ·ç«¯ç«¯å£è¿æ¥ï¼Œä»£ç†æ²¡æœ‰å¯¹ä¸Šæ¸¸ç«¯å£è¿æ¥
+        // sse¿Í»§¶Ë¶Ë¿ÚÁ¬½Ó£¬´úÀíÃ»ÓĞ¶ÔÉÏÓÎ¶Ë¿ÚÁ¬½Ó
         onProxyRes: (proxyRes, req, res) => {
           res.on('close', () => {
             if (!res.writableEnded) {

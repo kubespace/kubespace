@@ -32,4 +32,5 @@ var initTypes = []interface{}{
 	&types.AppStore{},
 	&types.ProjectAppRevision{},
 	&types.Spacelet{},
+	&types.Ldap{},
 }
