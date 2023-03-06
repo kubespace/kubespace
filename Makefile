@@ -20,7 +20,7 @@ ifdef BUILD_ARM64
 endif
 
 asset-build: vue-build
-	go get github.com/jessevdk/go-assets-builder
+	go install github.com/jessevdk/go-assets-builder
 	go-assets-builder -s /ui/dist/static ui/dist -o pkg/server/router/assets.go -p router
 
 vue-build:
