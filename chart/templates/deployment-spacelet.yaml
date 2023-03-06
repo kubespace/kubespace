@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kubespace.fullname" . }}-spacelet
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kubespace.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.spacelet.replicaCount }}
+  selector:
+    matchLabels:
+      kubespace-app: kubespace-spacelet
+      {{- include "kubespace.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.spacelet.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        kubespace-app: kubespace-spacelet
+        {{- include "kubespace.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.spacelet.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      hostNetwork: true
+      containers:
+        - name: spacelet
+          securityContext:
+            {{- toYaml .Values.spacelet.securityContext | nindent 12 }}
+          image: "{{ .Values.spacelet.image.repository }}:{{ .Values.spacelet.image.tag }}"
+          imagePullPolicy: {{ .Values.spacelet.image.pullPolicy }}
+          {{- if .Values.spacelet.extraArgs }}
+          args:
+{{ toYaml .Values.spacelet.extraArgs | indent 12 }}
+          {{- end }}
+          env:
+            - name: DATA_DIR
+              value: {{ .Values.spacelet.dataDir }}
+          {{- if .Values.spacelet.extraEnvs }}
+{{ toYaml .Values.spacelet.extraEnvs | indent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: data-dir
+              mountPath: {{ .Values.spacelet.dataDir }}
+          {{- if .Values.spacelet.extraVolumeMounts }}
+{{ toYaml .Values.spacelet.extraVolumeMounts | indent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.spacelet.resources | nindent 12 }}
+      volumes:
+        - name: data-dir
+          hostPath:
+            path: {{ .Values.spacelet.dataDir }}
+      {{- if .Values.spacelet.extraVolumes }}
+{{ toYaml .Values.spacelet.extraVolumes | indent 8 }}
+      {{- end }}
+      {{- with .Values.spacelet.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.spacelet.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.spacelet.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

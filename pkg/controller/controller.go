@@ -12,10 +12,9 @@ type Config struct {
 	Models          *model.Models
 	InformerFactory informer.Factory
 	ServiceFactory  *service.Factory
-	DataDir         string
 }
 
-func NewConfig(dbConfig *db.Config, resyncSec int, dataDir string) (*Config, error) {
+func NewConfig(dbConfig *db.Config, resyncSec int) (*Config, error) {
 	dB, err := db.NewDB(dbConfig)
 	if err != nil {
 		return nil, err
@@ -38,6 +37,5 @@ func NewConfig(dbConfig *db.Config, resyncSec int, dataDir string) (*Config, err
 		Models:          models,
 		InformerFactory: informerFactory,
 		ServiceFactory:  serviceFactory,
-		DataDir:         dataDir,
 	}, nil
 }

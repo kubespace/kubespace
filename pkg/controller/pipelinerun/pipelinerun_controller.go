@@ -24,7 +24,6 @@ type PipelineRunController struct {
 	pipelineInformer informer.Informer
 	lock             lock.Lock
 	jobPlugins       *plugins.Plugins
-	dataDir          string
 }
 
 func NewPipelineRunController(config *controller.Config) *PipelineRunController {
@@ -36,7 +35,6 @@ func NewPipelineRunController(config *controller.Config) *PipelineRunController 
 		}),
 		lock:       lock.NewMemLock(),
 		jobPlugins: plugins.NewPlugins(config.Models, config.ServiceFactory.Cluster.KubeClient, config.InformerFactory),
-		dataDir:    config.DataDir,
 	}
 	p.pipelineInformer.AddHandler(p)
 	return p
@@ -209,7 +207,6 @@ func (p *PipelineRunController) executeJob(stageRun *types.PipelineRunStage, run
 		JobId:     runJob.ID,
 		PluginKey: plugin.Key,
 		Params:    executeParams,
-		DataDir:   p.dataDir,
 	}
 	return p.jobPlugins.Execute(pluginParams)
 }

@@ -21,7 +21,6 @@ type PluginExecutor interface {
 type PluginParams struct {
 	JobId     uint
 	PluginKey string
-	DataDir   string
 	Params    map[string]interface{}
 	Logger    *PluginLogger
 }
@@ -29,7 +28,6 @@ type PluginParams struct {
 type Plugins struct {
 	plugins map[string]PluginExecutor
 	models  *model.Models
-	dataDir string
 }
 
 func NewPlugins(models *model.Models, kubeClient *cluster.KubeClient, informerFactory informer.Factory) *Plugins {
@@ -43,8 +41,6 @@ func NewPlugins(models *model.Models, kubeClient *cluster.KubeClient, informerFa
 	p.plugins[types.BuiltinPluginExecuteShell] = spacelet
 	p.plugins[types.BuiltinPluginRelease] = spacelet
 
-	//p.plugins[types.BuiltinPluginExecuteShell] = ExecShellPlugin{}
-	//p.plugins[types.BuiltinPluginRelease] = ReleaserPlugin{Models: models}
 	p.plugins[types.BuiltinPluginUpgradeApp] = UpgradeAppPlugin{Models: models, KubeClient: kubeClient}
 	p.plugins[types.BuiltinPluginDeployK8s] = DeployK8sPlugin{Models: models, KubeClient: kubeClient}
 	return p

@@ -74,6 +74,23 @@ controller_manager:
     type: ClusterIP
     port: 80
   extraArgs: []
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+spacelet:
+  replicaCount: 1
+  image:
+    repository: registry.cn-hangzhou.aliyuncs.com/kubespace/spacelet
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "1.1.3"
+  imagePullSecrets: []
+  service:
+    type: ClusterIP
+    port: 80
+  extraArgs: []
   dataDir: /data/kubespace
   extraVolumeMounts:
     - name: docker-bin
@@ -101,7 +118,7 @@ controller_manager:
     #   cpu: 100m
     #   memory: 128Mi
     # requests:
-    #   cpu: 100m
+  #   cpu: 100m
   #   memory: 128Mi
 
   nodeSelector: {}
