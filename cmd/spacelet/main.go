@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	port      = flag.Int("port", utils.LookupEnvOrInt("PORT", 7521), "spacelet port to listen.")
+	port      = flag.Int("port", utils.LookupEnvOrInt("PORT", 7520), "spacelet port to listen.")
 	hostIp    = flag.String("host-ip", utils.LookupEnvOrString("HOST_IP", ""), "spacelet host ip.")
 	dataDir   = flag.String("data-dir", utils.LookupEnvOrString("DATA_DIR", "/data"), "data directory.")
 	serverUrl = flag.String("server-url", utils.LookupEnvOrString("SERVER_URL", "http://kubespace"), "kubespace server url.")

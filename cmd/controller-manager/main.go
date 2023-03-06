@@ -18,7 +18,6 @@ var (
 	mysqlPassword = flag.String("mysql-password", utils.LookupEnvOrString("MYSQL_PASSWORD", ""), "mysql password used.")
 	mysqlDbName   = flag.String("mysql-dbname", utils.LookupEnvOrString("MYSQL_DBNAME", "kubespace"), "mysql db used.")
 	resyncSec     = flag.Int("resync-seconds", utils.LookupEnvOrInt("RESYNC_SECONDS", 5), "controller list resync seconds.")
-	dataDir       = flag.String("data-dir", utils.LookupEnvOrString("DATA_DIR", "/data"), "data directory.")
 )
 
 func main() {
@@ -42,7 +41,7 @@ func main() {
 			DB:       *redisDB,
 		},
 	}
-	controllerConfig, err := controller.NewConfig(dbConfig, *resyncSec, *dataDir)
+	controllerConfig, err := controller.NewConfig(dbConfig, *resyncSec)
 	if err != nil {
 		panic(err)
 	}

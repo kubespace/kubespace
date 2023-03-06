@@ -1,0 +1,6 @@
+ARG BASEIMAGE=registry.cn-hangzhou.aliyuncs.com/kubespace/bash:5.2.15
+FROM --platform=linux/arm64 $BASEIMAGE
+
+COPY bin/arm64/spacelet /
+
+CMD ["/spacelet"]

@@ -91,6 +91,11 @@ spacelet:
     type: ClusterIP
     port: 80
   extraArgs: []
+  extraEnvs:
+    - name: PORT
+      value: "7520"
+    - name: SERVER_URL
+      value: "http://kubespace"
   dataDir: /data/kubespace
   extraVolumeMounts:
     - name: docker-bin
