@@ -41,10 +41,13 @@ type Models struct {
 	ProjectManager           *project.ManagerProject
 	AppStoreManager          *project.AppStoreManager
 
+
 	SettingsSecretManager *settings.SettingsSecretManager
 	ImageRegistryManager  *settings.ImageRegistryManager
 
+	LdapManager           *settings.LdapManager
 	SpaceletManager *spacelet.SpaceletManager
+
 }
 
 func NewModels(c *Config) (*Models, error) {
@@ -61,8 +64,12 @@ func NewModels(c *Config) (*Models, error) {
 	jobLogMgr := pipeline.NewJobLogManager(c.DB.Instance)
 	pipelineReleaseMgr := pipeline.NewReleaseManager(c.DB.Instance)
 
+
 	secrets := settings.NewSettingsSecretManager(c.DB.Instance)
 	imageRegistry := settings.NewSettingsImageRegistryManager(c.DB.Instance)
+	
+	ldap := settings.NewLdapManager(c.DB.Instance)
+
 
 	appVersionMgr := project.NewAppVersionManager(c.DB.Instance)
 	projectAppMgr := project.NewAppManager(appVersionMgr, c.DB.Instance)
@@ -89,6 +96,7 @@ func NewModels(c *Config) (*Models, error) {
 		PipelineJobLogManager:    jobLogMgr,
 		PipelineReleaseManager:   pipelineReleaseMgr,
 		SettingsSecretManager:    secrets,
+		LdapManager:              ldap,
 		ProjectManager:           projectMgr,
 		ProjectAppManager:        projectAppMgr,
 		ProjectAppVersionManager: appVersionMgr,
