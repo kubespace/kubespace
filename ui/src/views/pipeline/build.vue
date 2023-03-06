@@ -572,7 +572,6 @@ export default {
           branch: this.buildParams.branch
         }
       } else {
-        console.log(this.buildParams)
         let build_ids = []
         for(let pipelineId in this.buildParams) {
           let build = this.buildParams[pipelineId]
@@ -880,20 +879,10 @@ export default {
   cursor: pointer;
 }
 
-@-webkit-keyframes rotation{
-    from {-webkit-transform: rotate(0deg);}
-    to {-webkit-transform: rotate(360deg);}
-}
-
 .refresh-rotate {
-  -webkit-transform: rotate(360deg);
-  // animation: rotation 2s linear infinite;
   animation: loading-rotate 1.5s cubic-bezier(0.29, 0.99, 0.73, 0.02) infinite;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  -moz-animation: rotation 2s linear infinite;
-  -webkit-animation: rotation 2s linear infinite;
-  -o-animation: rotation 2s linear infinite;
 }
 </style>
 <style lang="scss">

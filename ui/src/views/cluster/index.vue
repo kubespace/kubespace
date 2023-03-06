@@ -23,11 +23,17 @@
             </span>
           </template>
         </el-table-column>
-        <el-table-column
-          prop="create_time"
-          label="创建时间"
-          show-overflow-tooltip
-        >
+        <el-table-column prop="version" label="集群版本" show-overflow-tooltip>
+          <template slot-scope="scope">
+            {{ scope.row.version }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="created_by" label="创建人" show-overflow-tooltip>
+          <template slot-scope="scope">
+            {{ scope.row.created_by }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="create_time" label="创建时间" show-overflow-tooltip>
           <template slot-scope="scope">
             {{ $dateFormat(scope.row.create_time) }}
           </template>
@@ -35,7 +41,6 @@
         <el-table-column
           prop="status"
           label="状态"
-          min-width="34%"
           show-overflow-tooltip
         >
           <template slot-scope="scope">

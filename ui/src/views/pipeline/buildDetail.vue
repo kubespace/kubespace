@@ -369,17 +369,10 @@ export default {
   cursor: pointer;
 }
 
-@-webkit-keyframes rotation{
-    from {-webkit-transform: rotate(0deg);}
-    to {-webkit-transform: rotate(360deg);}
-}
-
 .refresh-rotate {
-  -webkit-transform: rotate(360deg);
-  animation: rotation 2s linear infinite;
-  -moz-animation: rotation 2s linear infinite;
-  -webkit-animation: rotation 2s linear infinite;
-  -o-animation: rotation 2s linear infinite;
+  animation: loading-rotate 1.5s linear infinite;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 </style>
 <style lang="scss">
