@@ -43,7 +43,7 @@ func (m *Migrate) Do() error {
 		}
 	}()
 	if m.db.Migrator().HasTable("users") {
-		// 存在user表，表示已经部署了业务，从数据库中记录的当前进行升级迁移
+		// 存在user表，表示已经部署了业务，从数据库中记录的当前版本向后进行升级
 		return m.migrate(dbMigrate.Version, migrations)
 	}
 	// 还没有user表，表示第一次部署，直接初始化
@@ -125,7 +125,7 @@ func (m *Migrate) dbLock() (*types.DBMigration, error) {
 	return one, nil
 }
 
-// dbUnlock db迁移解锁
+// dbUnlock db迁移完成后解锁
 func (m *Migrate) dbUnlock() error {
 	if err := m.db.Model(types.DBMigration{Id: 1}).Select("lock", "update_time").Updates(
 		&types.DBMigration{Lock: false, UpdateTime: time.Now()}).Error; err != nil {

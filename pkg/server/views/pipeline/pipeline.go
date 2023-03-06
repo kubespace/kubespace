@@ -75,7 +75,7 @@ func (p *Pipeline) watch(c *views.Context) *utils.Response {
 		WithList:   false,
 	})
 	stopCh := make(chan struct{})
-	pipelineRunInformer.AddHandler(&informer.CommonHandler{HandleFunc: func(obj interface{}) error {
+	pipelineRunInformer.AddHandler(&informer.ResourceHandler{HandleFunc: func(obj interface{}) error {
 		pipelineRun, ok := obj.(types.PipelineRun)
 		if !ok {
 			return nil

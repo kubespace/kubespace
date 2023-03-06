@@ -319,6 +319,7 @@ func (p *ManagerPipelineRun) UpdatePipelineStageRun(updateStageObj *UpdateStageO
 	err := p.DB.Transaction(func(tx *gorm.DB) error {
 		var err error
 
+		// select for update数据库锁
 		if err = tx.Set("gorm:query_option", "FOR UPDATE").First(&stageRun, updateStageObj.StageRunId).Error; err != nil {
 			return err
 		}
@@ -331,10 +332,12 @@ func (p *ManagerPipelineRun) UpdatePipelineStageRun(updateStageObj *UpdateStageO
 			}
 		}
 		if updateStageObj.StageExecTime != nil {
+			// 更新阶段开始执行时间
 			stageRun.ExecTime = *updateStageObj.StageExecTime
 		}
 
 		if updateStageObj.StageRunStatus != "" {
+			// 如果传了阶段状态，直接更新该状态，否则根据阶段下的所有任务状态计算出阶段状态
 			stageRun.Status = updateStageObj.StageRunStatus
 		} else if updateStageObj.StageRunJobs != nil {
 			var runJobs []types.PipelineRunJob
@@ -346,6 +349,7 @@ func (p *ManagerPipelineRun) UpdatePipelineStageRun(updateStageObj *UpdateStageO
 				stageRun.Jobs = append(stageRun.Jobs, &runJobs[i])
 			}
 			stageRun.Status = p.GetStageRunStatus(&stageRun)
+			// 获取所有任务合并后的参数，传递给下一个阶段
 			stageEnvs := p.GetStageRunEnv(&stageRun)
 			if stageEnvs != nil {
 				stageRun.Env = stageEnvs
@@ -354,6 +358,7 @@ func (p *ManagerPipelineRun) UpdatePipelineStageRun(updateStageObj *UpdateStageO
 		if err = tx.First(&pipelineRun, stageRun.PipelineRunId).Error; err != nil {
 			return err
 		}
+		// 流水线构建状态根据阶段状态不同而不同
 		if stageRun.Status == types.PipelineStatusError {
 			pipelineRun.Status = types.PipelineStatusError
 		} else if stageRun.Status == types.PipelineStatusDoing || stageRun.Status == types.PipelineStatusWait {
@@ -377,6 +382,7 @@ func (p *ManagerPipelineRun) UpdatePipelineStageRun(updateStageObj *UpdateStageO
 	if err != nil {
 		return nil, nil, err
 	}
+	// 发送informer watch通知
 	if notifyErr := p.pipelineRunListWatcher.Notify(pipelineRun); notifyErr != nil {
 		klog.Warningf("notify pipeline run error: %s", notifyErr.Error())
 	}

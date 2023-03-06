@@ -46,9 +46,14 @@ func (p *PipelineRunController) Run(stopCh <-chan struct{}) {
 	p.pipelineInformer.Run(stopCh)
 }
 
+// Check 检查流水线构建状态以及是否正在执行
 func (p *PipelineRunController) Check(object interface{}) bool {
 	pipelineRun, ok := object.(types.PipelineRun)
 	if !ok {
+		return false
+	}
+	if locked, _ := p.lock.Locked(strconv.Itoa(int(pipelineRun.ID))); locked {
+		// 该流水线构建已存在锁，正在被执行
 		return false
 	}
 	latest, err := p.models.PipelineRunManager.Get(pipelineRun.ID)
@@ -64,9 +69,11 @@ func (p *PipelineRunController) Check(object interface{}) bool {
 
 func (p *PipelineRunController) Handle(object interface{}) (err error) {
 	pipelineRun := object.(types.PipelineRun)
+	// 对流水线构建执行加锁，保证只有一个goroutinue执行
 	if ok, _ := p.lock.Acquire(strconv.Itoa(int(pipelineRun.ID))); !ok {
 		return nil
 	}
+	// 执行完成释放锁
 	defer p.lock.Release(strconv.Itoa(int(pipelineRun.ID)))
 	if latestPipelineRun, err := p.models.PipelineRunManager.Get(pipelineRun.ID); err != nil {
 		return err
@@ -89,18 +96,22 @@ func (p *PipelineRunController) Handle(object interface{}) (err error) {
 			return p.models.PipelineRunManager.UpdatePipelineRun(&pipelineRun)
 		}
 		if nextStage == nil {
+			// 下一个阶段为空，表示流水线构建已执行完成，状态置为ok
 			pipelineRun.Status = types.PipelineStatusOK
 			return p.models.PipelineRunManager.UpdatePipelineRun(&pipelineRun)
 		}
 		if nextStage.Status == types.PipelineStatusOK {
+			// 阶段状态ok，执行下一个阶段
 			prevStageId = nextStage.ID
 			continue
 		}
+		// 执行当前阶段所有任务
 		if err = p.executeStage(nextStage); err != nil {
 			return err
 		}
 		nextStage, _ = p.models.PipelineRunManager.GetStageRun(nextStage.ID)
 		if nextStage.Status != types.PipelineStatusOK {
+			// 当前阶段执行不成功，退出
 			return nil
 		}
 		prevStageId = nextStage.ID
@@ -109,6 +120,8 @@ func (p *PipelineRunController) Handle(object interface{}) (err error) {
 
 func (p *PipelineRunController) executeStage(stageRun *types.PipelineRunStage) (err error) {
 	if stageRun.TriggerMode == types.StageTriggerModeManual && stageRun.Status == types.PipelineStatusWait {
+		// 阶段触发状态为手动，且执行状态为wait，修改流水线构建状态为pause并退出，等待用户在页面手动点击执行继续
+		// 用户手动点击执行后，会将阶段状态修改为doing
 		klog.Infof("current stage id=%d trigger mode is manual, pausing...", stageRun.ID)
 		if _, stageRun, err = p.models.PipelineRunManager.UpdatePipelineStageRun(&pipeline.UpdateStageObj{
 			StageRunId:     stageRun.ID,
@@ -118,6 +131,7 @@ func (p *PipelineRunController) executeStage(stageRun *types.PipelineRunStage) (
 		}
 		return err
 	}
+	// 获取当前阶段之前的所有参数，并赋值给当前阶段
 	envs, _ := p.models.PipelineRunManager.GetEnvBeforeStageRun(stageRun)
 	stageRun.Env = envs
 	if stageRun.Status == types.PipelineStatusWait {
@@ -132,10 +146,13 @@ func (p *PipelineRunController) executeStage(stageRun *types.PipelineRunStage) (
 	runJobs := stageRun.Jobs
 	wg := sync.WaitGroup{}
 	muSync := sync.Mutex{}
+	// 并发执行阶段所有任务
 	for _, runJob := range runJobs {
 		if runJob.Status == types.PipelineStatusOK {
+			// 任务状态ok不执行
 			continue
 		}
+		// 修改任务状态为doing，并更新数据库
 		runJob.Status = types.PipelineStatusDoing
 		_, stageRun, _ = p.models.PipelineRunManager.UpdatePipelineStageRun(&pipeline.UpdateStageObj{
 			StageRunId:   stageRun.ID,
@@ -151,10 +168,12 @@ func (p *PipelineRunController) executeStage(stageRun *types.PipelineRunStage) (
 			} else {
 				runJob.Status = types.PipelineStatusOK
 			}
+			// 任务执行完成后，根据任务插件配置，获取当前任务的参数，传递给下一个阶段
 			jobEnvs := p.getJobRunResultEnvs(runJob)
 			if jobEnvs != nil {
 				runJob.Env = jobEnvs
 			}
+			// 更新任务需要加锁，防止多个任务同时更新互相覆盖
 			muSync.Lock()
 			defer muSync.Unlock()
 			_, stageRun, _ = p.models.PipelineRunManager.UpdatePipelineStageRun(&pipeline.UpdateStageObj{
@@ -176,6 +195,7 @@ func (p *PipelineRunController) executeJob(stageRun *types.PipelineRunStage, run
 	executeParams := map[string]interface{}{
 		"job_id": runJob.ID,
 	}
+	// 根据任务插件配置，从阶段中获取对应参数值
 	for _, pluginParam := range plugin.Params.Params {
 		if pluginParam.ParamName == "" {
 			continue
@@ -194,6 +214,7 @@ func (p *PipelineRunController) executeJob(stageRun *types.PipelineRunStage, run
 	return p.jobPlugins.Execute(pluginParams)
 }
 
+// 计算当前任务执行所需的参数
 func (p *PipelineRunController) getJobExecParam(
 	envs map[string]interface{},
 	jobParams map[string]interface{},
@@ -299,6 +320,7 @@ func (p *PipelineRunController) getJobExecParam(
 	return res, nil
 }
 
+// getJobRunResultEnvs 获取任务执行完成后的参数，传递给下一个阶段
 func (p *PipelineRunController) getJobRunResultEnvs(jobRun *types.PipelineRunJob) map[string]interface{} {
 	if jobRun == nil {
 		return nil

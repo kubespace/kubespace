@@ -1,12 +1,14 @@
 package migrate
 
-// 注意：每次新加迁移版本，需要在这里初始化，注册到迁移列表
 import (
 	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_1/v1_1_2_a_pipeline_workspace_chg_code"
 	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_1/v1_1_3_a_add_spacelet"
+	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_1/v1_1_3_b_add_ldap"
 	"github.com/kubespace/kubespace/pkg/model/types"
 )
 
+// 注意：每次新加迁移版本，需要在这里初始化，注册到迁移列表
+// ！！！ 同时在import里添加migrate ！！！
 var initTypes = []interface{}{
 	&types.Cluster{},
 	&types.User{},

@@ -8,20 +8,27 @@ import (
 	"time"
 )
 
+// Handler informer监听到资源后，首先调用该处理器中的Check，判断是否需要处理
+// 之后调用Handle进行处理
 type Handler interface {
 	Check(interface{}) bool
 	Handle(interface{}) error
 }
 
-type CommonHandler struct {
+// ResourceHandler 通用资源处理对象，也可以自定义对象，实现Handler接口
+type ResourceHandler struct {
+	CheckFunc  func(interface{}) bool
 	HandleFunc func(interface{}) error
 }
 
-func (h *CommonHandler) Check(obj interface{}) bool {
+func (h *ResourceHandler) Check(obj interface{}) bool {
+	if h.CheckFunc != nil {
+		return h.CheckFunc(obj)
+	}
 	return true
 }
 
-func (h *CommonHandler) Handle(obj interface{}) error {
+func (h *ResourceHandler) Handle(obj interface{}) error {
 	return h.HandleFunc(obj)
 }
 

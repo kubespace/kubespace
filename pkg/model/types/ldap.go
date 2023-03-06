@@ -10,3 +10,7 @@ type Ldap struct {
 	AdminDN     string `gorm:"size:64;not null" json:"admin_dn"`
 	AdminDNPass string `gorm:"size:64;not null" json:"admin_dn_pass"`
 }
+
+func (Ldap) TableName() string {
+	return "ldap"
+}
