@@ -215,7 +215,7 @@ func (b *codeBuilderPlugin) buildCode() error {
 	}
 	shExec := b.Params.CodeBuildExec
 	if shExec == "" {
-		shExec = "bash"
+		shExec = "sh"
 	}
 
 	dockerRunCmd := fmt.Sprintf("docker run --net=host --rm -i -v %s:/app -w /app --entrypoint sh %s -c \"%s -ex /app/%s 2>&1\"", b.CodeDir, b.Params.CodeBuildImage.Value, shExec, codeBuildFile)
