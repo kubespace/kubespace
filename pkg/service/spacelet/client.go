@@ -6,6 +6,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/spacelet/pipeline_job"
 	"github.com/kubespace/kubespace/pkg/spacelet/pipeline_job/plugins"
+	"github.com/kubespace/kubespace/pkg/third/httpclient"
 	"github.com/kubespace/kubespace/pkg/utils"
 )
 
@@ -16,7 +17,7 @@ type Client interface {
 }
 
 func NewClient(spacelet *types.Spacelet) (Client, error) {
-	httpcli, err := utils.NewHttpClient(fmt.Sprintf("http://%s:%d", spacelet.HostIp, spacelet.Port))
+	httpcli, err := httpclient.NewHttpClient(fmt.Sprintf("http://%s:%d", spacelet.HostIp, spacelet.Port))
 	if err != nil {
 		return nil, err
 	}
@@ -27,13 +28,13 @@ func NewClient(spacelet *types.Spacelet) (Client, error) {
 }
 
 type client struct {
-	httpclient *utils.HttpClient
+	httpclient *httpclient.HttpClient
 	spacelet   *types.Spacelet
 }
 
 func (c *client) PipelineJobExecute(params *pipeline_job.JobRunParams) error {
 	var resp utils.Response
-	options := utils.RequestOptions{}
+	options := httpclient.RequestOptions{}
 	options.WithHeader("token", c.spacelet.Token)
 	_, err := c.httpclient.Post("/v1/pipeline_job/execute", params, &resp, options)
 	if err != nil {
@@ -47,7 +48,7 @@ func (c *client) PipelineJobExecute(params *pipeline_job.JobRunParams) error {
 
 func (c *client) PipelineJobStatus(params *pipeline_job.JobStatusParams) (*plugins.StatusLog, error) {
 	var resp utils.Response
-	options := utils.RequestOptions{}
+	options := httpclient.RequestOptions{}
 	options.WithHeader("token", c.spacelet.Token)
 	_, err := c.httpclient.Get("/v1/pipeline_job/status", params, &resp, options)
 	if err != nil {
@@ -65,7 +66,7 @@ func (c *client) PipelineJobStatus(params *pipeline_job.JobStatusParams) (*plugi
 
 func (c *client) PipelineJobCleanup(params *pipeline_job.JobCleanParams) error {
 	var resp utils.Response
-	options := utils.RequestOptions{}
+	options := httpclient.RequestOptions{}
 	options.WithHeader("token", c.spacelet.Token)
 	_, err := c.httpclient.Put("/v1/pipeline_job/cleanup", params, &resp, options)
 	if err != nil {

@@ -3,7 +3,7 @@ package kubeagent
 import (
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/kubernetes/config"
-	"github.com/kubespace/kubespace/pkg/utils"
+	"github.com/kubespace/kubespace/pkg/third/httpclient"
 )
 
 type AgentOptions struct {
@@ -16,7 +16,7 @@ type AgentConfig struct {
 	Token        string
 	KubeConfig   *config.KubeConfig
 	ServerHost   string
-	ServerClient *utils.HttpClient
+	ServerClient *httpclient.HttpClient
 }
 
 func NewAgentConfig(options *AgentOptions) (a *AgentConfig, err error) {
@@ -33,7 +33,7 @@ func NewAgentConfig(options *AgentOptions) (a *AgentConfig, err error) {
 	if a.KubeConfig, err = config.NewKubeConfig(kubeOptions); err != nil {
 		return nil, err
 	}
-	if a.ServerClient, err = utils.NewHttpClient(fmt.Sprintf("http://%s", a.ServerHost)); err != nil {
+	if a.ServerClient, err = httpclient.NewHttpClient(fmt.Sprintf("http://%s", a.ServerHost)); err != nil {
 		return nil, err
 	}
 	return

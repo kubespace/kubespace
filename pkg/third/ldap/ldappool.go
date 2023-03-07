@@ -1,4 +1,4 @@
-package utils
+package ldap
 
 import (
 	"fmt"

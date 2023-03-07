@@ -6,6 +6,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
+	"github.com/kubespace/kubespace/pkg/third/httpclient"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"io/ioutil"
@@ -36,12 +37,12 @@ type Plugins struct {
 	plugins     map[string]PluginExecutor
 	models      *model.Models
 	dataDir     string
-	client      *utils.HttpClient
+	client      *httpclient.HttpClient
 	mu          *sync.Mutex
 	runningJobs map[uint]*pluginExec
 }
 
-func NewPlugins(dataDir string, client *utils.HttpClient) *Plugins {
+func NewPlugins(dataDir string, client *httpclient.HttpClient) *Plugins {
 	p := &Plugins{
 		plugins:     make(map[string]PluginExecutor),
 		dataDir:     dataDir,
@@ -206,7 +207,7 @@ type pluginExec struct {
 	jobStatus *JobStatus
 	params    *PluginParams
 	executor  PluginExecutor
-	client    *utils.HttpClient
+	client    *httpclient.HttpClient
 }
 
 func (e *pluginExec) Execute() {
@@ -228,7 +229,7 @@ func (e *pluginExec) Execute() {
 	}
 	params := &schemas.JobCallbackParams{JobId: e.params.JobId, Status: status}
 	// 任务执行完成之后回调，失败不影响，controller-manager有轮询机制定期查询任务状态
-	if _, err = e.client.Post(PipelineCallbackUri, params, nil, utils.RequestOptions{}); err != nil {
+	if _, err = e.client.Post(PipelineCallbackUri, params, nil, httpclient.RequestOptions{}); err != nil {
 		klog.Errorf("callback job=%d error: %s", e.params.JobId, err.Error())
 	}
 }

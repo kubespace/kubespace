@@ -3,6 +3,7 @@ package pipeline_job
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/kubespace/kubespace/pkg/spacelet/pipeline_job/plugins"
+	"github.com/kubespace/kubespace/pkg/third/httpclient"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"net/http"
@@ -10,10 +11,10 @@ import (
 
 type JobExecutor struct {
 	plugins *plugins.Plugins
-	client  *utils.HttpClient
+	client  *httpclient.HttpClient
 }
 
-func NewJobExecutor(dataDir string, client *utils.HttpClient) *JobExecutor {
+func NewJobExecutor(dataDir string, client *httpclient.HttpClient) *JobExecutor {
 	return &JobExecutor{
 		plugins: plugins.NewPlugins(dataDir, client),
 		client:  client,

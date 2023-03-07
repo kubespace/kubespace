@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/kubespace/kubespace/pkg/spacelet/pipeline_job"
+	"github.com/kubespace/kubespace/pkg/third/httpclient"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"k8s.io/klog/v2"
@@ -67,7 +68,7 @@ func (s *Server) Register() error {
 		Hostname: hostname,
 		HostIp:   s.config.HostIp,
 		Port:     s.config.Port,
-	}, &resp, utils.RequestOptions{}); err != nil {
+	}, &resp, httpclient.RequestOptions{}); err != nil {
 		return err
 	}
 	if !resp.IsSuccess() {
@@ -82,6 +83,10 @@ type RegisterToken struct {
 
 // Token 注册时kubespace server会调用该接口配置token
 func (s *Server) Token(c *gin.Context) {
+	if s.config.Token != "" {
+		c.JSON(http.StatusBadRequest, &utils.Response{Code: code.ParamsError, Msg: "spacelet already has token"})
+		return
+	}
 	var token RegisterToken
 	if err := c.BindJSON(&token); err != nil {
 		c.JSON(http.StatusBadRequest, &utils.Response{Code: code.ParamsError, Msg: err.Error()})
@@ -93,7 +98,6 @@ func (s *Server) Token(c *gin.Context) {
 	}
 	// 配置token，后续认证
 	s.config.Token = token.Token
-	klog.Infof("config token=%s", token.Token)
 	c.JSON(http.StatusOK, &utils.Response{Code: code.Success})
 }
 

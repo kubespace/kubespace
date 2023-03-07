@@ -5,6 +5,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/views"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
+	"github.com/kubespace/kubespace/pkg/third/ldap"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"io"
@@ -168,20 +169,20 @@ func (s *SettingsLdap) SyncLdap2Db(c *views.Context) *utils.Response {
 		return nil
 	}
 
-	ldap, err := s.models.LdapManager.Get(uint(ldapId))
+	ldapObj, err := s.models.LdapManager.Get(uint(ldapId))
 	if err != nil {
 		c.SSEvent("error", err.Error())
 		return nil
 	}
 
-	err, result := utils.WithLDAPConn(&utils.LdapConfig{
-		Url:      ldap.Url,
-		User:     ldap.AdminDN,
-		Password: ldap.AdminDNPass,
-		BaseDN:   ldap.BaseDN,
-	}, &utils.LdapConfig{
-		BaseDN: ldap.BaseDN,
-	}, utils.SearchLdapUsersFunc)
+	err, result := ldap.WithLDAPConn(&ldap.LdapConfig{
+		Url:      ldapObj.Url,
+		User:     ldapObj.AdminDN,
+		Password: ldapObj.AdminDNPass,
+		BaseDN:   ldapObj.BaseDN,
+	}, &ldap.LdapConfig{
+		BaseDN: ldapObj.BaseDN,
+	}, ldap.SearchLdapUsersFunc)
 
 	if err != nil {
 		c.SSEvent("error", err.Error())

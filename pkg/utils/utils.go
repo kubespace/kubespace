@@ -1,14 +1,12 @@
 package utils
 
 import (
-	"bytes"
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/lithammer/shortuuid/v4"
-	"io/ioutil"
 	"k8s.io/klog/v2"
 	"net/http"
 	"os"
@@ -17,10 +15,6 @@ import (
 	"strings"
 	"time"
 )
-
-type Void struct{}
-
-var Ok Void
 
 func Contains(strList []string, str string) bool {
 	for _, s := range strList {
@@ -105,29 +99,6 @@ func MergeReplaceMap(mObj ...map[string]interface{}) map[string]interface{} {
 		}
 	}
 	return newObj
-}
-
-func HttpPost(url string, body interface{}) ([]byte, error) {
-	bodyBytes, _ := json.Marshal(body)
-	klog.Infof("request for url=%s", url)
-	klog.Infof("request body: %s", string(bodyBytes))
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
-	if err != nil {
-		return nil, err
-	}
-	data, errReadBody := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
-	if errReadBody != nil {
-		klog.Error("read received http resp body error: error=", err)
-		return nil, err
-	}
-	klog.Infof("doRequest get response: url=%s, status=%v", url, resp.StatusCode)
-	if resp.StatusCode != http.StatusOK {
-		klog.Errorf("receive http code not 200: httpcode=%d, data=%s", resp.StatusCode, string(data))
-		return data, fmt.Errorf("status code %v", resp.StatusCode)
-	} else {
-		return data, nil
-	}
 }
 
 func ConvertTypeByJson(srcObj interface{}, destPtr interface{}) (err error) {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
+	"github.com/kubespace/kubespace/pkg/third/httpclient"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"time"
 )
@@ -15,7 +16,7 @@ const (
 )
 
 type Gitee struct {
-	httpClient  *utils.HttpClient
+	httpClient  *httpclient.HttpClient
 	accessToken string
 }
 
@@ -23,7 +24,7 @@ func NewGitee(accessToken string) (*Gitee, error) {
 	if accessToken == "" {
 		return nil, fmt.Errorf("not found gitee access token params")
 	}
-	httpCli, err := utils.NewHttpClient(defaultBaseURL + apiVersionPath)
+	httpCli, err := httpclient.NewHttpClient(defaultBaseURL + apiVersionPath)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +48,7 @@ type GiteeRepository struct {
 func (g *Gitee) ListRepositories(ctx context.Context) ([]*Repository, error) {
 	query := &GiteeRepositoryListQuery{AccessToken: g.accessToken}
 	var giteeRepos []*GiteeRepository
-	if _, err := g.httpClient.Get("user/repos", query, &giteeRepos, utils.RequestOptions{Context: ctx}); err != nil {
+	if _, err := g.httpClient.Get("user/repos", query, &giteeRepos, httpclient.RequestOptions{Context: ctx}); err != nil {
 		return nil, err
 	}
 	var repos []*Repository
@@ -87,7 +88,7 @@ func (g *Gitee) ListRepoBranches(ctx context.Context, codeUrl string) ([]*Refere
 	query := &GiteeRepositoryListQuery{AccessToken: g.accessToken}
 	path := fmt.Sprintf("repos/%s/%s/branches", owner, repo)
 	var giteeBranches []*GiteeRepoBranch
-	if _, err = g.httpClient.Get(path, query, &giteeBranches, utils.RequestOptions{Context: ctx}); err != nil {
+	if _, err = g.httpClient.Get(path, query, &giteeBranches, httpclient.RequestOptions{Context: ctx}); err != nil {
 		return nil, err
 	}
 	var refs []*Reference
@@ -122,7 +123,7 @@ func (g *Gitee) ListRepoPullRequests(ctx context.Context, codeUrl string) ([]*Pu
 	query := &GiteeListPullRequests{AccessToken: g.accessToken, State: "open"}
 	path := fmt.Sprintf("repos/%s/%s/pulls", owner, repo)
 	var giteePrs []*GiteePullRequest
-	if _, err = g.httpClient.Get(path, query, &giteePrs, utils.RequestOptions{Context: ctx}); err != nil {
+	if _, err = g.httpClient.Get(path, query, &giteePrs, httpclient.RequestOptions{Context: ctx}); err != nil {
 		return nil, err
 	}
 	var prs []*PullRequest
@@ -156,7 +157,7 @@ func (g *Gitee) CreateTag(ctx context.Context, codeUrl, commitId, tagName string
 		Refs:        commitId,
 		TagName:     tagName,
 	}
-	if _, err = g.httpClient.Post(path, req, nil, utils.RequestOptions{Context: ctx}); err != nil {
+	if _, err = g.httpClient.Post(path, req, nil, httpclient.RequestOptions{Context: ctx}); err != nil {
 		return err
 	}
 	return nil
@@ -184,7 +185,7 @@ func (g *Gitee) GetBranchLatestCommit(ctx context.Context, codeUrl, branch strin
 	query := &GiteeRepositoryListQuery{AccessToken: g.accessToken}
 	path := fmt.Sprintf("repos/%s/%s/commits/%s", owner, repo, branch)
 	var repoCommit GiteeCommit
-	if _, err = g.httpClient.Get(path, query, &repoCommit, utils.RequestOptions{Context: ctx}); err != nil {
+	if _, err = g.httpClient.Get(path, query, &repoCommit, httpclient.RequestOptions{Context: ctx}); err != nil {
 		return nil, err
 	}
 	commit := &Commit{
@@ -204,7 +205,7 @@ type GiteeUser struct {
 func (g *Gitee) Clone(ctx context.Context, repoDir string, isBare bool, options *git.CloneOptions) (*git.Repository, error) {
 	query := &GiteeRepositoryListQuery{AccessToken: g.accessToken}
 	var user GiteeUser
-	if _, err := g.httpClient.Get("user", query, &user, utils.RequestOptions{Context: ctx}); err != nil {
+	if _, err := g.httpClient.Get("user", query, &user, httpclient.RequestOptions{Context: ctx}); err != nil {
 		return nil, err
 	}
 

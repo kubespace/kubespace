@@ -9,6 +9,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/service/pipeline"
 	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
 	"github.com/kubespace/kubespace/pkg/spacelet"
+	"github.com/kubespace/kubespace/pkg/third/httpclient"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"net/http"
@@ -48,7 +49,7 @@ func (s *SpaceletViews) register(req *spacelet.RegisterRequest) *utils.Response 
 	if req.Hostname == "" {
 		return &utils.Response{Code: code.ParamsError, Msg: "param hostname is empty"}
 	}
-	httpcli, err := utils.NewHttpClient(fmt.Sprintf("http://%s:%d", req.HostIp, req.Port))
+	httpcli, err := httpclient.NewHttpClient(fmt.Sprintf("http://%s:%d", req.HostIp, req.Port))
 	if err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
@@ -63,7 +64,7 @@ func (s *SpaceletViews) register(req *spacelet.RegisterRequest) *utils.Response 
 		token.Token = spaceletObj.Token
 	}
 	// 调用spacelet token接口，配置认证
-	if _, err = httpcli.Post("/v1/token", token, &tokenResp, utils.RequestOptions{}); err != nil {
+	if _, err = httpcli.Post("/v1/token", token, &tokenResp, httpclient.RequestOptions{}); err != nil {
 		return &utils.Response{Code: code.RequestError, Msg: err.Error()}
 	}
 	if !tokenResp.IsSuccess() {

@@ -8,6 +8,7 @@ import (
 	kubeconfig "github.com/kubespace/kubespace/pkg/kubernetes/config"
 	"github.com/kubespace/kubespace/pkg/kubernetes/resource"
 	kubetypes "github.com/kubespace/kubespace/pkg/kubernetes/types"
+	"github.com/kubespace/kubespace/pkg/third/httpclient"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"k8s.io/klog/v2"
@@ -21,7 +22,7 @@ type Agent struct {
 	tunnel         Tunnel
 	kubeFactory    kubernetes.KubeFactory
 	sessionWriters sync.Map
-	serverCli      *utils.HttpClient
+	serverCli      *httpclient.HttpClient
 }
 
 func NewAgent(config *AgentConfig) *Agent {
@@ -119,11 +120,11 @@ func (a *Agent) handle(req *kubetypes.Request) (resp *utils.Response) {
 // agent从server下载当前版本匹配的yaml，并更新；
 func (a *Agent) OnSuccess() {
 	if a.kubeConfig.Client.RestConfig().BearerToken == "" {
-		// 没有bearerToken表示agent未运行在集群pod中，不更新agent
+		// bearerToken为空表示agent未运行在集群pod中，不更新agent
 		return
 	}
 	bytesBuf := new(bytes.Buffer)
-	_, err := a.serverCli.Get("/import/agent/"+a.config.Token, nil, bytesBuf, utils.RequestOptions{})
+	_, err := a.serverCli.Get("/import/agent/"+a.config.Token, nil, bytesBuf, httpclient.RequestOptions{})
 	if err != nil {
 		klog.Errorf("get server agent yaml error: %s", err.Error())
 		return

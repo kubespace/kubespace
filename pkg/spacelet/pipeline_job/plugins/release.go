@@ -11,6 +11,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	sshgit "github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
+	"github.com/kubespace/kubespace/pkg/third/httpclient"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"golang.org/x/crypto/ssh"
 	"k8s.io/klog/v2"
@@ -24,7 +25,7 @@ import (
 const PipelineRunAddReleaseVersionUri = "/api/v1/spacelet/pipeline/add_release"
 
 type ReleaserPlugin struct {
-	client *utils.HttpClient
+	client *httpclient.HttpClient
 }
 
 func (b ReleaserPlugin) Execute(params *PluginParams) (interface{}, error) {
@@ -58,14 +59,14 @@ type ReleaserPluginResult struct {
 
 type releaserPlugin struct {
 	*JobLogger
-	client  *utils.HttpClient
+	client  *httpclient.HttpClient
 	Params  *releaseParams
 	CodeDir string
 	Result  *ReleaserPluginResult
 	Images  []string
 }
 
-func newReleaserPlugin(pluginParams *PluginParams, client *utils.HttpClient) (*releaserPlugin, error) {
+func newReleaserPlugin(pluginParams *PluginParams, client *httpclient.HttpClient) (*releaserPlugin, error) {
 	var params releaseParams
 	if err := utils.ConvertTypeByJson(pluginParams.Params, &params); err != nil {
 		return nil, err
@@ -99,7 +100,7 @@ func (r *releaserPlugin) execute() (interface{}, error) {
 		JobId:       r.Params.JobId,
 		Version:     r.Params.Version,
 	}
-	if _, err := r.client.Post(PipelineRunAddReleaseVersionUri, addVersionParams, &addVersionResp, utils.RequestOptions{}); err != nil {
+	if _, err := r.client.Post(PipelineRunAddReleaseVersionUri, addVersionParams, &addVersionResp, httpclient.RequestOptions{}); err != nil {
 		return nil, err
 	}
 	if !addVersionResp.IsSuccess() {

@@ -1,6 +1,8 @@
 package spacelet
 
-import "github.com/kubespace/kubespace/pkg/utils"
+import (
+	"github.com/kubespace/kubespace/pkg/third/httpclient"
+)
 
 type Options struct {
 	HostIp    string
@@ -12,7 +14,7 @@ type Options struct {
 type Config struct {
 	// kubespace服务地址
 	ServerUrl string
-	Client    *utils.HttpClient
+	Client    *httpclient.HttpClient
 	// spacelet所在服务器的主机ip
 	HostIp string
 	// spacelet服务启动端口
@@ -24,7 +26,7 @@ type Config struct {
 }
 
 func NewConfig(options *Options) (*Config, error) {
-	httpcli, err := utils.NewHttpClient(options.ServerUrl)
+	httpcli, err := httpclient.NewHttpClient(options.ServerUrl)
 	if err != nil {
 		return nil, err
 	}

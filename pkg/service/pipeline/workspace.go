@@ -6,9 +6,9 @@ import (
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
+	"github.com/kubespace/kubespace/pkg/third/git"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
-	"github.com/kubespace/kubespace/pkg/utils/git"
 	"regexp"
 	"time"
 )
