@@ -149,3 +149,13 @@ func GetCodeRepoName(codeUrl string) string {
 	codeSplit = strings.Split(codeDir, ".")
 	return codeSplit[0]
 }
+
+// GetImageName 获取镜像的名称
+// 如：docker.io/kubespace/kubespace:latest -> kubespace/kubespace
+func GetImageName(img string) string {
+	name := strings.Split(img, ":")[0]
+	if strings.Contains(strings.Split(name, "/")[0], ".") {
+		name = strings.Join(strings.Split(name, "/")[1:], "/")
+	}
+	return name
+}

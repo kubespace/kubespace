@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/model"
@@ -14,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/yaml"
 	"strings"
+	"text/template"
 )
 
 var WorkloadKinds = []string{"Deployment", "StatefulSet", "DaemonSet", "Job", "Pod", "CronJob"}
@@ -23,50 +25,54 @@ type DeployK8sPlugin struct {
 	KubeClient *cluster.KubeClient
 }
 
-func (p DeployK8sPlugin) Execute(params *PluginParams) (interface{}, error) {
-	deploy, err := newDeployK8s(params, p.Models, p.KubeClient)
-	if err != nil {
-		return nil, err
-	}
-	err = deploy.execute()
-	if err != nil {
-		return nil, err
-	}
-	return deploy.result, nil
+func (p DeployK8sPlugin) Executor(params *ExecutorParams) (Executor, error) {
+	return newDeployK8s(params, p.Models, p.KubeClient)
 }
 
 type deployK8sParams struct {
-	Cluster   string `json:"cluster"`
-	Namespace string `json:"namespace"`
-	Yaml      string `json:"yaml"`
-	Images    string `json:"images"`
+	Cluster   string                 `json:"cluster"`
+	Namespace string                 `json:"namespace"`
+	Yaml      string                 `json:"yaml"`
+	Images    string                 `json:"images"`
+	Env       map[string]interface{} `json:"env"`
 }
 
 type deployK8sResult struct {
 }
 
 type deployK8s struct {
+	Logger
 	models     *model.Models
 	kubeClient *cluster.KubeClient
 	params     *deployK8sParams
-	images     []string
+	images     map[string]string
 	result     *deployK8sResult
-	*PluginLogger
 }
 
-func newDeployK8s(params *PluginParams, models *model.Models, kubeClient *cluster.KubeClient) (*deployK8s, error) {
+func newDeployK8s(params *ExecutorParams, models *model.Models, kubeClient *cluster.KubeClient) (*deployK8s, error) {
 	var deployParams deployK8sParams
 	if err := utils.ConvertTypeByJson(params.Params, &deployParams); err != nil {
 		params.Logger.Log("插件参数：%v", params.Params)
 		return nil, fmt.Errorf("插件参数错误: %s", err.Error())
 	}
 	return &deployK8s{
-		models:       models,
-		kubeClient:   kubeClient,
-		params:       &deployParams,
-		result:       &deployK8sResult{},
-		PluginLogger: params.Logger,
+		models:     models,
+		kubeClient: kubeClient,
+		params:     &deployParams,
+		result:     &deployK8sResult{},
+		Logger:     params.Logger,
 	}, nil
+}
+
+func (u *deployK8s) Execute() (interface{}, error) {
+	if err := u.execute(); err != nil {
+		return nil, err
+	}
+	return u.result, nil
+}
+
+func (u *deployK8s) Cancel() error {
+	return nil
 }
 
 func (u *deployK8s) execute() error {
@@ -78,8 +84,8 @@ func (u *deployK8s) execute() error {
 		u.Log("要升级的镜像列表参数为空")
 		//return nil
 	}
-	u.images = strings.Split(u.params.Images, ",")
-	u.Log("升级的镜像列表：%v", u.images)
+	u.images = stringToImage(u.params.Images)
+	u.Log("升级的镜像列表：%v", u.params.Images)
 	if u.params.Cluster == "" {
 		u.Log("集群参数为空")
 		return fmt.Errorf("集群参数为空")
@@ -92,7 +98,11 @@ func (u *deployK8s) execute() error {
 	if u.params.Namespace == "" {
 		u.params.Namespace = "default"
 	}
-	yamlList := strings.Split(u.params.Yaml, "---\n")
+	yamlTpl, err := u.templateParse(u.params.Yaml)
+	if err != nil {
+		return err
+	}
+	yamlList := strings.Split(yamlTpl, "---\n")
 	destYamlStr := ""
 	replaced := false
 	for _, yamlStr := range yamlList {
@@ -241,14 +251,26 @@ func (u *deployK8s) replaceContainerImage(containers []corev1.Container) (bool, 
 }
 
 func (u *deployK8s) matchImage(srcImage string) string {
-	srcImage = strings.Split(srcImage, ":")[0]
-	if strings.Contains(strings.Split(srcImage, "/")[0], ".") {
-		srcImage = strings.Join(strings.Split(srcImage, "/")[1:], "/")
-	}
-	for _, image := range u.images {
-		if strings.Contains(image, srcImage+":") {
+	srcImage = utils.GetImageName(srcImage)
+	for image := range u.images {
+		if image == srcImage {
 			return image
 		}
 	}
 	return ""
+}
+
+func (u *deployK8s) templateParse(yamlTpl string) (string, error) {
+	tpl, err := template.New("yaml").Parse(yamlTpl)
+	if err != nil {
+		u.Log("parse template error: %s", err.Error())
+		return "", err
+	}
+	buf := bytes.Buffer{}
+	err = tpl.Execute(&buf, u.params.Env)
+	if err != nil {
+		u.Log("execute template error: %s", err.Error())
+		return "", err
+	}
+	return string(buf.Bytes()), nil
 }

@@ -208,6 +208,8 @@ func (r *ServicePipelineRun) InitialCodeEnvs(pipeline *types.Pipeline, workspace
 		return fmt.Errorf("未获取到流水线空间代码信息")
 	}
 	envs["PIPELINE_CODE_URL"] = workspace.Code.CloneUrl
+	envs["PIPELINE_CODE_API_URL"] = workspace.Code.ApiUrl
+	envs["PIPELINE_CODE_TYPE"] = workspace.Code.Type
 	paramBranch, ok := params["branch"]
 	if ok {
 		envs["PIPELINE_CODE_BRANCH"] = paramBranch
@@ -225,13 +227,7 @@ func (r *ServicePipelineRun) InitialCodeEnvs(pipeline *types.Pipeline, workspace
 	if err != nil {
 		return fmt.Errorf("获取代码密钥失败：" + err.Error())
 	}
-	gitcli, err := utilgit.NewClient(workspace.Code.Type, workspace.Code.ApiUrl, &utilgit.Secret{
-		Type:        secret.Type,
-		User:        secret.User,
-		Password:    secret.Password,
-		PrivateKey:  secret.PrivateKey,
-		AccessToken: secret.AccessToken,
-	})
+	gitcli, err := utilgit.NewClient(workspace.Code.Type, workspace.Code.ApiUrl, secret.GetSecret())
 	commit, err := gitcli.GetBranchLatestCommit(context.Background(), workspace.Code.CloneUrl, branch)
 	if err != nil {
 		return fmt.Errorf("获取远程分支%s失败：%s", branch, err.Error())
@@ -309,9 +305,6 @@ func (r *ServicePipelineRun) ManualExecuteStage(manualSer *serializers.PipelineS
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
-	if len(manualSer.CustomParams) > 0 {
-		stageRun.CustomParams = manualSer.CustomParams
-	}
 	for i, job := range stageRun.Jobs {
 		for pluginKey, params := range manualSer.JobParams {
 			if job.PluginKey == pluginKey && len(params) > 0 {
@@ -326,6 +319,7 @@ func (r *ServicePipelineRun) ManualExecuteStage(manualSer *serializers.PipelineS
 		StageRunStatus: types.PipelineStatusDoing,
 		StageExecTime:  &now,
 		StageRunJobs:   stageRun.Jobs,
+		CustomParams:   manualSer.CustomParams,
 	}); err != nil {
 		return &utils.Response{Code: code.DBError, Msg: "更新阶段任务参数失败:" + err.Error()}
 	}
@@ -338,8 +332,50 @@ func (r *ServicePipelineRun) RetryStage(retrySer *serializers.PipelineStageRetry
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
 	if stageRun.Status != types.PipelineStatusError {
-		klog.Infof("current stage run id=%v status is %v, not error", stageRun.ID, stageRun.Status)
-		return &utils.Response{Code: code.RequestError, Msg: "current stage run id=%v status is %v, not error"}
+		msg := fmt.Sprintf("current stage run id=%v status is %v, not error", stageRun.ID, stageRun.Status)
+		return &utils.Response{Code: code.RequestError, Msg: msg}
+	}
+	now := time.Now()
+	_, stageRun, err = r.models.PipelineRunManager.UpdatePipelineStageRun(&pipeline.UpdateStageObj{
+		StageRunId:     stageRun.ID,
+		StageRunStatus: types.PipelineStatusDoing,
+		StageExecTime:  &now,
+	})
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	return &utils.Response{Code: code.Success}
+}
+
+func (r *ServicePipelineRun) CancelStage(cancelParams *schemas.PipelineStageCancelParams) *utils.Response {
+	stageRun, err := r.models.PipelineRunManager.GetStageRun(cancelParams.StageRunId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	if stageRun.Status != types.PipelineStatusDoing {
+		klog.Infof("current stage run id=%v status is %v, not running", stageRun.ID, stageRun.Status)
+		return &utils.Response{Code: code.RequestError, Msg: "当前阶段不在执行中，请刷新重试"}
+	}
+	// 更新当前阶段状态为取消中
+	_, stageRun, err = r.models.PipelineRunManager.UpdatePipelineStageRun(&pipeline.UpdateStageObj{
+		StageRunId:     stageRun.ID,
+		StageRunStatus: types.PipelineStatusCancel,
+	})
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	return &utils.Response{Code: code.Success}
+}
+
+// ReExecStage 取消之后重新执行
+func (r *ServicePipelineRun) ReExecStage(retrySer *schemas.PipelineStageReexecParams) *utils.Response {
+	stageRun, err := r.models.PipelineRunManager.GetStageRun(retrySer.StageRunId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	if stageRun.Status != types.PipelineStatusCanceled {
+		msg := fmt.Sprintf("current stage run id=%v status is %v, not canceled", stageRun.ID, stageRun.Status)
+		return &utils.Response{Code: code.RequestError, Msg: msg}
 	}
 	now := time.Now()
 	_, stageRun, err = r.models.PipelineRunManager.UpdatePipelineStageRun(&pipeline.UpdateStageObj{

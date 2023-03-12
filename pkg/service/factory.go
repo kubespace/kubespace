@@ -1,7 +1,6 @@
 package service
 
 import (
-	"github.com/kubespace/kubespace/pkg/informer"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/service/cluster"
 	"github.com/kubespace/kubespace/pkg/service/pipeline"
@@ -9,24 +8,28 @@ import (
 )
 
 type Config struct {
-	Models          *model.Models
-	InformerFactory informer.Factory
+	models *model.Models
+}
+
+func NewConfig(models *model.Models) *Config {
+	return &Config{models: models}
 }
 
 type Factory struct {
-	config   *Config
-	Cluster  *ClusterFactory
-	Project  *ProjectFactory
+	// 集群相关Service
+	Cluster *ClusterFactory
+	// 项目相关Service，如工作空间、应用
+	Project *ProjectFactory
+	// 流水线相关Service
 	Pipeline *PipelineFactory
 }
 
 func NewServiceFactory(config *Config) *Factory {
-	kubeClient := cluster.NewKubeClient(config.Models)
-	appBase := project.NewAppBaseService(config.Models)
+	kubeClient := cluster.NewKubeClient(config.models)
+	appBase := project.NewAppBaseService(config.models)
 	appService := project.NewAppService(kubeClient, appBase)
-	projectService := project.NewProjectService(config.Models, kubeClient, appService)
+	projectService := project.NewProjectService(config.models, kubeClient, appService)
 	return &Factory{
-		config: config,
 		Cluster: &ClusterFactory{
 			KubeClient: kubeClient,
 		},
@@ -36,9 +39,9 @@ func NewServiceFactory(config *Config) *Factory {
 			AppStoreService: project.NewAppStoreService(appBase),
 		},
 		Pipeline: &PipelineFactory{
-			WorkspaceService:   pipeline.NewWorkspaceService(config.Models),
-			PipelineService:    pipeline.NewPipelineService(config.Models),
-			PipelineRunService: pipeline.NewPipelineRunService(config.Models),
+			WorkspaceService:   pipeline.NewWorkspaceService(config.models),
+			PipelineService:    pipeline.NewPipelineService(config.models),
+			PipelineRunService: pipeline.NewPipelineRunService(config.models),
 		},
 	}
 }

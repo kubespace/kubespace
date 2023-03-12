@@ -23,12 +23,7 @@
         <el-table-column prop="create_time" label="最新构建" show-overflow-tooltip>
           <template slot-scope="scope">
             <span v-if="scope.row.last_build" :style="{'color': getBuildStatusColor(scope.row.last_build.status)}">
-              <template v-if="scope.row.last_build.status && scope.row.last_build.status != 'pause'">
-                <i style="font-size: 16px;" :class="getBuildStatusIcon(scope.row.last_build.status)"></i>
-              </template>
-              <template v-else-if="scope.row.last_build.status">
-                <svg-icon icon-class="pause" style="font-size: 16px;"/>
-              </template>
+              <status-icon style="font-size: 15px;" :status="scope.row.last_build.status"></status-icon>
               {{ scope.row.last_build ? '#' + scope.row.last_build.build_number : "无" }}
             </span>
           </template>
@@ -71,13 +66,15 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
+import { StatusIcon } from '@/views/pipeline/components'
 import { listPipelines, deletePipeline } from '@/api/pipeline/pipeline'
 import { Message } from 'element-ui'
 
 export default {
   name: 'PipelineWorkspace',
   components: {
-    Clusterbar
+    Clusterbar,
+    StatusIcon,
   },
   data() {
     return {

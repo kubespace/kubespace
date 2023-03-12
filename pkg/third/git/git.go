@@ -20,15 +20,8 @@ import (
 	"time"
 )
 
-type Secret struct {
-	Type        string
-	User        string
-	Password    string
-	PrivateKey  string
-	AccessToken string
-}
-
 type Client interface {
+	Auth() (transport.AuthMethod, error)
 	ListRepositories(ctx context.Context) ([]*Repository, error)
 	ListRepoBranches(ctx context.Context, codeUrl string) ([]*Reference, error)
 	GetBranchLatestCommit(ctx context.Context, codeUrl, branch string) (*Commit, error)
@@ -36,7 +29,7 @@ type Client interface {
 	CreateTag(ctx context.Context, codeUrl, commitId, tagName string) error
 }
 
-func NewClient(gitType string, apiUrl string, secret *Secret) (Client, error) {
+func NewClient(gitType string, apiUrl string, secret *types.Secret) (Client, error) {
 	switch gitType {
 	case types.WorkspaceCodeTypeGitHub:
 		return NewGitHub(secret.AccessToken)
@@ -102,10 +95,10 @@ type PullRequest struct {
 }
 
 type Git struct {
-	secret *Secret
+	secret *types.Secret
 }
 
-func NewGit(secret *Secret) *Git {
+func NewGit(secret *types.Secret) *Git {
 	return &Git{secret: secret}
 }
 
@@ -113,7 +106,7 @@ func (g *Git) ListRepositories(ctx context.Context) ([]*Repository, error) {
 	return nil, fmt.Errorf("not implement list git repositories")
 }
 
-func (g *Git) getCodeAuth() (transport.AuthMethod, error) {
+func (g *Git) Auth() (transport.AuthMethod, error) {
 	var auth transport.AuthMethod
 	switch g.secret.Type {
 	case types.SettingsSecretTypeKey:
@@ -138,7 +131,7 @@ func (g *Git) getCodeAuth() (transport.AuthMethod, error) {
 }
 
 func (g *Git) ListRepoBranches(ctx context.Context, codeUrl string) ([]*Reference, error) {
-	auth, err := g.getCodeAuth()
+	auth, err := g.Auth()
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +156,7 @@ func (g *Git) ListRepoBranches(ctx context.Context, codeUrl string) ([]*Referenc
 }
 
 func (g *Git) GetBranchLatestCommit(ctx context.Context, codeUrl, branch string) (*Commit, error) {
-	auth, err := g.getCodeAuth()
+	auth, err := g.Auth()
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +196,7 @@ func (g *Git) GetBranchLatestCommit(ctx context.Context, codeUrl, branch string)
 }
 
 func (g *Git) Clone(ctx context.Context, repoDir string, isBare bool, options *git.CloneOptions) (*git.Repository, error) {
-	auth, err := g.getCodeAuth()
+	auth, err := g.Auth()
 	if err != nil {
 		return nil, err
 	}

@@ -3,10 +3,13 @@ package types
 import (
 	"database/sql/driver"
 	"encoding/json"
+	"errors"
 	"github.com/kubespace/kubespace/pkg/core/db"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"time"
 )
+
+var JobAlreadyRunningError = errors.New("job already running")
 
 const (
 	WorkspaceTypeCode   = "code"
@@ -27,12 +30,15 @@ const (
 )
 
 const (
-	PipelineStatusWait   = "wait"
-	PipelineStatusDoing  = "doing"
+	PipelineStatusWait  = "wait"
+	PipelineStatusDoing = "doing"
+	PipelineStatusOK    = "ok"
+	PipelineStatusError = "error"
+	PipelineStatusPause = "pause"
+	// PipelineStatusCancel 取消中，取消完成后状态为canceled
 	PipelineStatusCancel = "cancel"
-	PipelineStatusOK     = "ok"
-	PipelineStatusError  = "error"
-	PipelineStatusPause  = "pause"
+	// PipelineStatusCanceled 取消执行完成后状态
+	PipelineStatusCanceled = "canceled"
 
 	PipelineEnvWorkspaceId         = "PIPELINE_WORKSPACE_ID"
 	PipelineEnvWorkspaceName       = "PIPELINE_WORKSPACE_NAME"
@@ -282,6 +288,7 @@ type PipelineRunStage struct {
 	CustomParams   Map             `gorm:"json" json:"custom_params"`
 	Jobs           PipelineRunJobs `gorm:"-" json:"jobs"`
 	ExecTime       time.Time       `gorm:"not null;autoCreateTime" json:"exec_time"`
+	FinishTime     *time.Time      `gorm:"" json:"finish_time"`
 	CreateTime     time.Time       `gorm:"not null;autoCreateTime" json:"create_time"`
 	UpdateTime     time.Time       `gorm:"not null;autoUpdateTime" json:"update_time"`
 }

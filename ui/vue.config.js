@@ -50,7 +50,7 @@ module.exports = {
         changeOrigin: true,
         timeout: 0,
         // https://github.com/http-party/node-http-proxy/issues/1520
-        // sse客户端端口连接，代理没有对上游端口连接
+        // sse娴忚鍣ㄦ柇寮�杩炴帴鍚庯紝proxy鏈笌server鏂紑杩炴帴
         onProxyRes: (proxyRes, req, res) => {
           res.on('close', () => {
             if (!res.writableEnded) {

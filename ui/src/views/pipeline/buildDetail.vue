@@ -8,8 +8,7 @@
           style="margin: 3px 0px 10px 0px; border: 1px solid #EBEEF5; box-shadow: none; padding: 5px 20px;">
           <el-form-item label="构建号">
             <span :style="{color: statusColorMap[build.pipeline_run.status], 'font-size': '16px'}">
-              <i v-if="build.pipeline_run.status != 'pause'" :class="statusIconMap[build.pipeline_run.status]"></i>
-              <svg-icon v-else icon-class="pause" />
+              <status-icon :status="build.pipeline_run.status"></status-icon>
               #{{ build.pipeline_run.build_number }}
             </span>
           </el-form-item>
@@ -43,7 +42,7 @@
                 </div>
                 <div :style="{color: statusColorMap[job.status]}" style="margin-left: 15px;" v-for="job in stage.jobs" :key="job.id" class="click-main-content"
                   @click="clickStage(stage, job)">
-                  <i :class="statusIconMap[job.status]"></i> {{ job.name }}
+                  <status-icon :status="job.status"></status-icon> {{ job.name }}
                 </div>
               </div>
             </el-aside>
@@ -121,12 +120,14 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
+import { StatusIcon } from '@/views/pipeline/components'
 import { getBuild, getJobLog } from '@/api/pipeline/build'
 
 export default {
   name: 'PipelineBuildDetail',
   components: {
-    Clusterbar
+    Clusterbar,
+    StatusIcon,
   },
   data() {
     return {

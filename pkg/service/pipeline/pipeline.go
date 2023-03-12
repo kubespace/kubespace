@@ -244,7 +244,7 @@ func (p *ServicePipeline) ListRepoBranches(pipelineId uint) *utils.Response {
 	if err != nil {
 		return &utils.Response{Code: code.GetError, Msg: err.Error()}
 	}
-	gitcli, err := git.NewClient(workspace.Code.Type, workspace.Code.ApiUrl, &git.Secret{
+	gitcli, err := git.NewClient(workspace.Code.Type, workspace.Code.ApiUrl, &types.Secret{
 		Type:        secret.Type,
 		User:        secret.User,
 		Password:    secret.Password,

@@ -17,16 +17,8 @@ type UpgradeAppPlugin struct {
 	KubeClient *cluster.KubeClient
 }
 
-func (p UpgradeAppPlugin) Execute(params *PluginParams) (interface{}, error) {
-	upgrade, err := newUpgradeApp(params, p.Models, p.KubeClient)
-	if err != nil {
-		return nil, err
-	}
-	err = upgrade.execute()
-	if err != nil {
-		return nil, err
-	}
-	return upgrade.result, nil
+func (p UpgradeAppPlugin) Executor(params *ExecutorParams) (Executor, error) {
+	return newUpgradeApp(params, p.Models, p.KubeClient)
 }
 
 type upgradeAppParams struct {
@@ -47,28 +39,39 @@ type upgradeAppResult struct {
 }
 
 type upgradeApp struct {
+	Logger
 	models     *model.Models
 	kubeClient *cluster.KubeClient
 	params     *upgradeAppParams
-	images     []string
+	images     map[string]string
 	result     *upgradeAppResult
 	project    *types.Project
-	*PluginLogger
 }
 
-func newUpgradeApp(params *PluginParams, models *model.Models, kubeClient *cluster.KubeClient) (*upgradeApp, error) {
+func newUpgradeApp(params *ExecutorParams, models *model.Models, kubeClient *cluster.KubeClient) (*upgradeApp, error) {
 	var upgradeParams upgradeAppParams
 	if err := utils.ConvertTypeByJson(params.Params, &upgradeParams); err != nil {
 		params.Logger.Log("插件参数：%v", params.Params)
 		return nil, fmt.Errorf("插件参数错误: %s", err.Error())
 	}
 	return &upgradeApp{
-		models:       models,
-		kubeClient:   kubeClient,
-		params:       &upgradeParams,
-		result:       &upgradeAppResult{},
-		PluginLogger: params.Logger,
+		models:     models,
+		kubeClient: kubeClient,
+		params:     &upgradeParams,
+		result:     &upgradeAppResult{},
+		Logger:     params.Logger,
 	}, nil
+}
+
+func (u *upgradeApp) Execute() (interface{}, error) {
+	if err := u.execute(); err != nil {
+		return nil, err
+	}
+	return u.result, nil
+}
+
+func (u *upgradeApp) Cancel() error {
+	return nil
 }
 
 func (u *upgradeApp) execute() error {
@@ -89,8 +92,8 @@ func (u *upgradeApp) execute() error {
 		u.Log("要升级的应用列表参数为空")
 		return nil
 	}
-	u.images = strings.Split(u.params.Images, ",")
-	u.Log("升级的镜像列表：%v", u.images)
+	u.images = stringToImage(u.params.Images)
+	u.Log("升级的镜像列表：%v", u.params.Images)
 	for _, appId := range u.params.Apps {
 		if err = u.upgrade(appId, u.params.WithInstall); err != nil {
 			return err

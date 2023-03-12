@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/kubespace/kubespace/pkg/third/httpclient"
 	"github.com/kubespace/kubespace/pkg/utils"
@@ -43,6 +44,19 @@ type GiteeRepository struct {
 	Path     string `json:"path"`
 	FullName string `json:"full_name"`
 	HtmlUrl  string `json:"html_url"`
+}
+
+func (g *Gitee) Auth() (transport.AuthMethod, error) {
+	query := &GiteeRepositoryListQuery{AccessToken: g.accessToken}
+	var user GiteeUser
+	if _, err := g.httpClient.Get("user", query, &user, httpclient.RequestOptions{}); err != nil {
+		return nil, err
+	}
+
+	return &http.BasicAuth{
+		Username: user.Name,
+		Password: g.accessToken,
+	}, nil
 }
 
 func (g *Gitee) ListRepositories(ctx context.Context) ([]*Repository, error) {

@@ -4,6 +4,7 @@ const (
 	Success = "Success"
 
 	UnknownError   = "UnknownError"
+	RuntimeError   = "RuntimeError"
 	RedisError     = "RedisError"
 	DBError        = "DBError"
 	RequestError   = "RequestError"
@@ -19,4 +20,5 @@ const (
 	AuthError      = "AuthError"
 	HelmError      = "HelmError"
 	PluginError    = "PluginError"
+	JobCanceled    = "JobCanceled"
 )

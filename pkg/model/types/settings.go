@@ -10,6 +10,15 @@ const (
 	SettingsSecretTypeToken    = "token"
 )
 
+// Secret 用于所有地方的密钥，比如git、镜像仓库等
+type Secret struct {
+	Type        string `json:"type"`
+	User        string `json:"user"`
+	Password    string `json:"password"`
+	PrivateKey  string `json:"private_key"`
+	AccessToken string `json:"access_token"`
+}
+
 type SettingsSecret struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
 	Name        string    `gorm:"size:255;not null;uniqueIndex" json:"name"`
@@ -25,6 +34,22 @@ type SettingsSecret struct {
 	UpdateTime  time.Time `gorm:"not null;autoUpdateTime" json:"update_time"`
 }
 
+func (s *SettingsSecret) GetSecret() *Secret {
+	return &Secret{
+		Type:        s.Type,
+		User:        s.User,
+		Password:    s.Password,
+		PrivateKey:  s.PrivateKey,
+		AccessToken: s.AccessToken,
+	}
+}
+
+type ImageRegistry struct {
+	Registry string `json:"registry"`
+	User     string `json:"user"`
+	Password string `json:"password"`
+}
+
 type SettingsImageRegistry struct {
 	ID         uint      `gorm:"primaryKey" json:"id"`
 	Registry   string    `gorm:"size:255;not null;uniqueIndex" json:"registry"`
@@ -34,4 +59,12 @@ type SettingsImageRegistry struct {
 	UpdateUser string    `gorm:"size:255;not null" json:"update_user"`
 	CreateTime time.Time `gorm:"not null;autoCreateTime" json:"create_time"`
 	UpdateTime time.Time `gorm:"not null;autoUpdateTime" json:"update_time"`
+}
+
+func (s *SettingsImageRegistry) GetImageRegistry() *ImageRegistry {
+	return &ImageRegistry{
+		Registry: s.Registry,
+		User:     s.User,
+		Password: s.Password,
+	}
 }

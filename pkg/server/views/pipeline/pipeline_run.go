@@ -9,6 +9,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/server/views"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	pipelineservice "github.com/kubespace/kubespace/pkg/service/pipeline"
+	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"k8s.io/klog/v2"
@@ -39,6 +40,8 @@ func NewPipelineRun(config *config.ServerConfig) *PipelineRun {
 		views.NewView(http.MethodPost, "", pw.build),
 		views.NewView(http.MethodPost, "/manual_execute", pw.manual),
 		views.NewView(http.MethodPost, "/retry", pw.retry),
+		views.NewView(http.MethodPost, "/cancel", pw.cancel),
+		views.NewView(http.MethodPost, "/reexec", pw.reexec),
 		views.NewView(http.MethodGet, "/log/:jobRunId", pw.log),
 		views.NewView(http.MethodGet, "/log/:jobRunId/sse", pw.logStream),
 	}
@@ -130,12 +133,25 @@ func (p *PipelineRun) manual(c *views.Context) *utils.Response {
 func (p *PipelineRun) retry(c *views.Context) *utils.Response {
 	var ser serializers.PipelineStageRetrySerializer
 	if err := c.ShouldBind(&ser); err != nil {
-		return &utils.Response{
-			Code: code.ParamsError,
-			Msg:  err.Error(),
-		}
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
 	return p.pipelineRunService.RetryStage(&ser)
+}
+
+func (p *PipelineRun) cancel(c *views.Context) *utils.Response {
+	var params schemas.PipelineStageCancelParams
+	if err := c.ShouldBind(&params); err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	return p.pipelineRunService.CancelStage(&params)
+}
+
+func (p *PipelineRun) reexec(c *views.Context) *utils.Response {
+	var params schemas.PipelineStageReexecParams
+	if err := c.ShouldBind(&params); err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	return p.pipelineRunService.ReExecStage(&params)
 }
 
 func (p *PipelineRun) log(c *views.Context) *utils.Response {

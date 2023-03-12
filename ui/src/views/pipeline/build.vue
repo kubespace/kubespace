@@ -14,22 +14,7 @@
                 <div class="build-info__left-number-inner" 
                   :style="{color: getBuildStatusColor(build.pipeline_run.status), 
                     'line-height': pipeline.workspace.type == 'code' ? '22px' : '45px'}">
-                  <template v-if="build.pipeline_run.status == 'ok'">
-                    <i class="el-icon-success"></i>
-                  </template>
-                  <template v-if="build.pipeline_run.status == 'error'">
-                    <i class="el-icon-error"></i>
-                  </template>
-                  <template v-if="build.pipeline_run.status == 'wait'">
-                    <i class="el-icon-remove"></i>
-                  </template>
-                  <template v-if="build.pipeline_run.status == 'doing'">
-                    <i class="el-icon-refresh refresh-rotate"></i>
-                  </template>
-                  <template v-if="build.pipeline_run.status == 'pause'">
-                    <!-- <i class="el-icon-video-pause"></i> -->
-                    <svg-icon icon-class="pause" />
-                  </template>
+                  <status-icon :status="build.pipeline_run.status"></status-icon>
                   <span class="build-info__left__number" @click="clickBuildNumber(build)"> #{{ build.pipeline_run.build_number }}</span>
                   <!-- #{{ build.pipeline_run.build_number }} -->
                 </div>
@@ -50,7 +35,7 @@
               <el-steps simple class="el-steps">
                 <el-step title="" icon="none" :status="getStageStatus(stage.status)" v-for="stage in build.stages_run" :key="stage.id">
                   <div slot="title" class="el-steps-title">
-                    <div style="margin-left: 1px;"  @click="clickBuildDetail(build, 'stage', stage)">{{ stage.name }}{{ releaseVersion(stage) }}</div>
+                    <div><span class="el-steps-title-name" style="margin-left: 1px; overflow: hidden; white-space: nowrap;"  @click="clickBuildDetail(build, 'stage', stage)">{{ stage.name }}{{ releaseVersion(stage) }}</span> </div>
                     <div style="margin-top: 3px;">
                       <template v-if="stage.status == 'ok'">
                         <i class="el-icon-circle-check" style="font-size: 18px;"></i>
@@ -76,11 +61,19 @@
                           --
                         </div>
                       </template>
-                      <template v-if="stage.status == 'pause'">
-                        <!-- <svg-icon icon-class="pause" style="font-size: 18px;"/>
+                      <template v-if="stage.status == 'cancel'">
+                        <i class="el-icon-remove-outline" style="font-size: 18px;"></i>
                         <div class="el-steps-stage-exectime">
-                          --
-                        </div> -->
+                          {{ getStageExecTime(stage.exec_time, stage.finish_time) }}
+                        </div>
+                      </template>
+                      <template v-if="stage.status == 'canceled'">
+                        <i class="el-icon-remove-outline" style="font-size: 18px;"></i>
+                        <div class="el-steps-stage-exectime">
+                          {{ getStageExecTime(stage.exec_time, stage.finish_time) }}
+                        </div>
+                      </template>
+                      <template v-if="stage.status == 'pause'">
                         <div>
                           <el-button size="mini" type="primary" style="padding: 2px 5px;" round
                             @click="openManualStageDialog(stage)">
@@ -178,11 +171,21 @@
                 <el-table-column
                   prop="name"
                   label="任务"
-                  width="200">
+                  width="180">
+                </el-table-column>
+                <el-table-column
+                  prop="status"
+                  label="状态"
+                  width="90">
+                  <template slot-scope="scope">
+                    <span>
+                      {{ jobStatusMap[scope.row.status] }}
+                    </span>
+                  </template>
                 </el-table-column>
                 <el-table-column
                   prop="result"
-                  label="返回"
+                  label="执行结果"
                   width="">
                   <template slot-scope="scope">
                     <span>
@@ -192,10 +195,13 @@
                 </el-table-column>
               </el-table>
               <!-- <el-button style="margin-top: 8px; border-radius: 0px; padding: 5px 15px;" type="primary" size="mini">重新构建</el-button> -->
-              
+              <el-button style="margin-top: 8px; border-radius: 0px; padding: 5px 15px;" type="danger" 
+                size="mini" v-if="(build.clickDetail.stage.status == 'doing')" @click="stageCancel(build.clickDetail.stage)">取消执行</el-button>
+              <el-button style="margin-top: 8px; border-radius: 0px; padding: 5px 15px;" type="primary" 
+                size="mini" v-if="(build.clickDetail.stage.status == 'canceled')" @click="stageReexec(build.clickDetail.stage)">重新执行</el-button>
             </template>
             <el-button style="margin-top: 8px; border-radius: 0px; padding: 5px 15px;" type="primary" 
-                size="mini" :disabled="!(build.pipeline_run.status == 'error')" @click="stageRetry(build)">失败重试</el-button>
+                size="mini" v-if="(build.pipeline_run.status == 'error')" @click="stageRetry(build)">失败重试</el-button>
           </div>
         </div>
       </div>
@@ -318,16 +324,19 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
+import { StatusIcon } from '@/views/pipeline/components'
 import { getPipeline, listRepoBranches } from '@/api/pipeline/pipeline'
-import { listBuilds, buildPipeline, manualExec, stageRetry } from '@/api/pipeline/build'
+import { listBuilds, buildPipeline, manualExec, stageRetry, stageCancel, stageReexec } from '@/api/pipeline/build'
 import { manualCheck, Release } from '@/views/pipeline/plugin-manual'
 import { Message } from 'element-ui'
+import { del } from 'vue'
 
 export default {
   name: 'PipelineWorkspace',
   components: {
     Clusterbar,
-    Release
+    Release,
+    StatusIcon,
   },
   sse: {cleanup: true},
   data() {
@@ -361,6 +370,14 @@ export default {
       pipelineBuilds: {},
       branches: [],
       branchLoading: false,
+      jobStatusMap: {
+        'ok': '执行成功',
+        'error': '执行失败',
+        'wait': '未执行',
+        'doing': '执行中',
+        'cancel': '取消',
+        'canceled': '已取消',
+      }
     }
   },
   created() {
@@ -438,9 +455,9 @@ export default {
               if(!this.refreshStages[s.id]) {
                 var endTime = new Date();
                 var execTime = new Date(s.exec_time);
-                this.$set(this.refreshStages, s.id, Math.floor((endTime.getTime()-execTime.getTime()) / 1000))
-                // this.$set(this.refreshStages, s.id, 1)
-                // this.refreshStages[s.id] = 
+                var diffTime = Math.floor((endTime.getTime()-execTime.getTime()) / 1000)
+                if (diffTime <= 0) diffTime = 0
+                this.$set(this.refreshStages, s.id, diffTime)
               }
               hasDoing = true
             } else if(this.refreshStages[s.id]) {
@@ -491,6 +508,18 @@ export default {
             for(let i in this.builds){
               let build = this.builds[i]
               if(build.pipeline_run.id == data.pipeline_run.id) {
+                if (build.clickDetail) {
+                  let clickDetail = build.clickDetail
+                  if(clickDetail.type == 'stage') {
+                    for(let s of data.stages_run) {
+                      if (s.id == clickDetail.stage.id) {
+                        clickDetail.stage = s
+                        break
+                      }
+                    }
+                  }
+                  data.clickDetail = clickDetail
+                }
                 this.$set(this.builds, i, data)
                 this.processExecTime()
                 break
@@ -512,7 +541,7 @@ export default {
     },
     releaseVersion(stage) {
       for(let s of stage.jobs) {
-        if(s.plugin_key == 'release' && s.params.version) {
+        if(s.plugin_key == 'release' && s.params.version && s.status != 'wait') {
           return ' - ' + s.params.version
         }
       }
@@ -616,7 +645,8 @@ export default {
       if(status == 'error') return 'error'
       if(status == 'wait') return 'wait'
       if(status == 'doing') return 'process'
-      if(status == 'cancel') return 'wait'
+      if(status == 'cancel') return 'process'
+      if(status == 'canceled') return 'process'
       if(status == 'pause') return 'process'
     },
     getBuildStatusColor(status) {
@@ -631,6 +661,7 @@ export default {
 
       var execTime = new Date(execTimeStr)
       var diffTime = Math.floor((endTime.getTime()-execTime.getTime()) / 1000)
+      if (diffTime < 0) diffTime = 0
       return this.getStageExecTimeStr(diffTime)
     },
     
@@ -750,13 +781,51 @@ export default {
         }
       }
       if(!stageId) {
-        Message.error("获取构建阶段失败，请刷新重试")
+        Message.error("未获取到执行失败的阶段，请刷新重试")
         return
       }
       this.loading = true
       let parmas = {stage_run_id: stageId}
       stageRetry(parmas).then((response) => {
         this.$message({message: '重试成功', type: 'success'});
+        // this.fetchBuilds(0)
+        this.loading = false
+      }).catch( (err) => {
+        this.loading = false
+      })
+    },
+    stageReexec(stage) {
+      if(!stage) {
+        Message.error("获取构建阶段失败，请刷新重试")
+        return
+      }
+      if(!stage.id) {
+        Message.error("获取构建阶段失败，请刷新重试")
+        return
+      }
+      this.loading = true
+      let parmas = {stage_run_id: stage.id}
+      stageReexec(parmas).then((response) => {
+        this.$message({message: '重新执行成功', type: 'success'});
+        // this.fetchBuilds(0)
+        this.loading = false
+      }).catch( (err) => {
+        this.loading = false
+      })
+    },
+    stageCancel(stage) {
+      if(!stage) {
+        Message.error("获取构建阶段失败，请刷新重试")
+        return
+      }
+      if(!stage.id) {
+        Message.error("获取构建阶段失败，请刷新重试")
+        return
+      }
+      this.loading = true
+      let parmas = {stage_run_id: stage.id}
+      stageCancel(parmas).then((response) => {
+        this.$message({message: '取消成功', type: 'success'});
         // this.fetchBuilds(0)
         this.loading = false
       }).catch( (err) => {
@@ -856,11 +925,11 @@ export default {
   font-weight: 400;
   width: 120px;
 }
-.el-steps-title:hover{
+.el-steps-title-name:hover{
   cursor: pointer;
-  font-size: 15px;
-  font-weight: 450;
-  // color: #81bd63;
+  // font-size: 15px;
+  // font-weight: 450;
+  color: #409EFF;
 }
 .el-steps-stage-exectime {
   display: inline-flex;

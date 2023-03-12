@@ -2,11 +2,8 @@ package pipelinerun
 
 import (
 	"fmt"
-	"github.com/kubespace/kubespace/pkg/controller"
-	"github.com/kubespace/kubespace/pkg/controller/pipelinerun/plugins"
+	"github.com/kubespace/kubespace/pkg/controller/pipelinerun/job_run"
 	"github.com/kubespace/kubespace/pkg/core/lock"
-	"github.com/kubespace/kubespace/pkg/informer"
-	pipelinelistwatcher "github.com/kubespace/kubespace/pkg/informer/listwatcher/pipeline"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/manager/pipeline"
 	"github.com/kubespace/kubespace/pkg/model/types"
@@ -19,53 +16,39 @@ import (
 	"time"
 )
 
-type PipelineRunController struct {
-	models           *model.Models
-	pipelineInformer informer.Informer
-	lock             lock.Lock
-	jobPlugins       *plugins.Plugins
+// RunHandler 流水线构建处理
+type RunHandler struct {
+	models *model.Models
+	// 流水线构建时对其进行加锁，保证只有一个进行处理
+	lock   lock.Lock
+	jobRun *job_run.JobRun
 }
 
-func NewPipelineRunController(config *controller.Config) *PipelineRunController {
-	p := &PipelineRunController{
-		models: config.Models,
-		pipelineInformer: config.InformerFactory.PipelineRunInformer(&pipelinelistwatcher.PipelineRunWatchCondition{
-			StatusIn: []string{types.PipelineStatusWait, types.PipelineStatusDoing},
-			WithList: true,
-		}),
-		lock:       lock.NewMemLock(),
-		jobPlugins: plugins.NewPlugins(config.Models, config.ServiceFactory.Cluster.KubeClient, config.InformerFactory),
+func NewRunHandler(models *model.Models, jobRun *job_run.JobRun) *RunHandler {
+	return &RunHandler{
+		models: models,
+		lock:   lock.NewMemLock(),
+		jobRun: jobRun,
 	}
-	p.pipelineInformer.AddHandler(p)
-	return p
-}
-
-func (p *PipelineRunController) Run(stopCh <-chan struct{}) {
-	p.pipelineInformer.Run(stopCh)
 }
 
 // Check 检查流水线构建状态以及是否正在执行
-func (p *PipelineRunController) Check(object interface{}) bool {
+func (p *RunHandler) Check(object interface{}) bool {
 	pipelineRun, ok := object.(types.PipelineRun)
 	if !ok {
+		return false
+	}
+	if pipelineRun.Status != types.PipelineStatusDoing && pipelineRun.Status != types.PipelineStatusWait {
 		return false
 	}
 	if locked, _ := p.lock.Locked(strconv.Itoa(int(pipelineRun.ID))); locked {
 		// 该流水线构建已存在锁，正在被执行
 		return false
 	}
-	latest, err := p.models.PipelineRunManager.Get(pipelineRun.ID)
-	if err != nil {
-		klog.Errorf("get latest pipeline run error: %s", err.Error())
-		return false
-	}
-	if latest.Status != types.PipelineStatusDoing && latest.Status != types.PipelineStatusWait {
-		return false
-	}
 	return true
 }
 
-func (p *PipelineRunController) Handle(object interface{}) (err error) {
+func (p *RunHandler) Handle(object interface{}) (err error) {
 	pipelineRun := object.(types.PipelineRun)
 	// 对流水线构建执行加锁，保证只有一个goroutinue执行
 	if ok, _ := p.lock.Acquire(strconv.Itoa(int(pipelineRun.ID))); !ok {
@@ -77,6 +60,10 @@ func (p *PipelineRunController) Handle(object interface{}) (err error) {
 		return err
 	} else {
 		pipelineRun = *latestPipelineRun
+	}
+
+	if pipelineRun.Status != types.PipelineStatusDoing && pipelineRun.Status != types.PipelineStatusWait {
+		return fmt.Errorf("pipeline run id=%d status=%s, do not run", pipelineRun.ID, pipelineRun.Status)
 	}
 	defer utils.HandleCrash(func(r interface{}) {
 		pipelineRun.Status = types.PipelineStatusError
@@ -116,7 +103,7 @@ func (p *PipelineRunController) Handle(object interface{}) (err error) {
 	}
 }
 
-func (p *PipelineRunController) executeStage(stageRun *types.PipelineRunStage) (err error) {
+func (p *RunHandler) executeStage(stageRun *types.PipelineRunStage) (err error) {
 	if stageRun.TriggerMode == types.StageTriggerModeManual && stageRun.Status == types.PipelineStatusWait {
 		// 阶段触发状态为手动，且执行状态为wait，修改流水线构建状态为pause并退出，等待用户在页面手动点击执行继续
 		// 用户手动点击执行后，会将阶段状态修改为doing
@@ -152,6 +139,7 @@ func (p *PipelineRunController) executeStage(stageRun *types.PipelineRunStage) (
 		}
 		// 修改任务状态为doing，并更新数据库
 		runJob.Status = types.PipelineStatusDoing
+		runJob.Result = nil
 		_, stageRun, _ = p.models.PipelineRunManager.UpdatePipelineStageRun(&pipeline.UpdateStageObj{
 			StageRunId:   stageRun.ID,
 			StageRunJobs: types.PipelineRunJobs{runJob},
@@ -160,16 +148,30 @@ func (p *PipelineRunController) executeStage(stageRun *types.PipelineRunStage) (
 		go func(runJob *types.PipelineRunJob) {
 			defer wg.Done()
 			resp := p.executeJob(stageRun, runJob)
-			runJob.Result = resp
-			if !resp.IsSuccess() {
-				runJob.Status = types.PipelineStatusError
-			} else {
-				runJob.Status = types.PipelineStatusOK
+			runJob, err = p.models.PipelineRunManager.GetJobRun(runJob.ID)
+			if err != nil {
+				return
 			}
-			// 任务执行完成后，根据任务插件配置，获取当前任务的参数，传递给下一个阶段
-			jobEnvs := p.getJobRunResultEnvs(runJob)
-			if jobEnvs != nil {
-				runJob.Env = jobEnvs
+			if runJob.Status == types.PipelineStatusCanceled {
+				// 当前任务执行状态为已取消，退出
+				return
+			}
+			if runJob.Status == types.PipelineStatusCancel {
+				// 当前任务执行状态取消中，修改为已取消
+				runJob.Status = types.PipelineStatusCanceled
+				runJob.Result = &utils.Response{Code: code.JobCanceled}
+			} else {
+				runJob.Result = resp
+				if !resp.IsSuccess() {
+					runJob.Status = types.PipelineStatusError
+				} else {
+					runJob.Status = types.PipelineStatusOK
+				}
+				// 任务执行完成后，根据任务插件配置，获取当前任务的参数，传递给下一个阶段
+				jobEnvs := p.getJobRunResultEnvs(runJob)
+				if jobEnvs != nil {
+					runJob.Env = jobEnvs
+				}
 			}
 			// 更新任务需要加锁，防止多个任务同时更新互相覆盖
 			muSync.Lock()
@@ -184,7 +186,7 @@ func (p *PipelineRunController) executeStage(stageRun *types.PipelineRunStage) (
 	return
 }
 
-func (p *PipelineRunController) executeJob(stageRun *types.PipelineRunStage, runJob *types.PipelineRunJob) (resp *utils.Response) {
+func (p *RunHandler) executeJob(stageRun *types.PipelineRunStage, runJob *types.PipelineRunJob) (resp *utils.Response) {
 	plugin, err := p.models.PipelinePluginManager.GetByKey(runJob.PluginKey)
 	if err != nil {
 		klog.Errorf("get plugin key=%s error: %v", runJob.PluginKey, err)
@@ -203,16 +205,11 @@ func (p *PipelineRunController) executeJob(stageRun *types.PipelineRunStage, run
 			return &utils.Response{Code: code.ParamsError, Msg: fmt.Sprintf("获取执行参数异常：%s", err.Error())}
 		}
 	}
-	pluginParams := &plugins.PluginParams{
-		JobId:     runJob.ID,
-		PluginKey: plugin.Key,
-		Params:    executeParams,
-	}
-	return p.jobPlugins.Execute(pluginParams)
+	return p.jobRun.Execute(runJob.ID, plugin.Key, executeParams)
 }
 
 // 计算当前任务执行所需的参数
-func (p *PipelineRunController) getJobExecParam(
+func (p *RunHandler) getJobExecParam(
 	envs map[string]interface{},
 	jobParams map[string]interface{},
 	pluginParam *types.PipelinePluginParamsSpec) (interface{}, error) {
@@ -246,13 +243,7 @@ func (p *PipelineRunController) getJobExecParam(
 		}
 		secret, _ := p.models.SettingsSecretManager.Get(workspace.Code.SecretId)
 		if secret != nil {
-			res = map[string]interface{}{
-				"type":         secret.Type,
-				"user":         secret.User,
-				"password":     secret.Password,
-				"private_key":  secret.PrivateKey,
-				"access_token": secret.AccessToken,
-			}
+			res = secret.GetSecret()
 		}
 	case types.PluginParamsFromImageRegistry:
 		res = nil
@@ -281,11 +272,7 @@ func (p *PipelineRunController) getJobExecParam(
 			klog.Errorf("get image registry error: %s", err.Error())
 			return nil, nil
 		}
-		res = map[string]interface{}{
-			"registry": registry.Registry,
-			"user":     registry.User,
-			"password": registry.Password,
-		}
+		res = registry.GetImageRegistry()
 	case types.PluginParamsFromPipelineResource:
 		resourceParam, ok := jobParams[pluginParam.FromName]
 		if !ok {
@@ -304,13 +291,7 @@ func (p *PipelineRunController) getJobExecParam(
 			"value": resource.Value,
 		}
 		if resource.Secret != nil {
-			resMap["secret"] = map[string]string{
-				"type":         resource.Secret.Type,
-				"user":         resource.Secret.User,
-				"password":     resource.Secret.Password,
-				"private_key":  resource.Secret.PrivateKey,
-				"access_token": resource.Secret.AccessToken,
-			}
+			resMap["secret"] = resource.Secret.GetSecret()
 		}
 		res = resMap
 	}
@@ -318,7 +299,7 @@ func (p *PipelineRunController) getJobExecParam(
 }
 
 // getJobRunResultEnvs 获取任务执行完成后的参数，传递给下一个阶段
-func (p *PipelineRunController) getJobRunResultEnvs(jobRun *types.PipelineRunJob) map[string]interface{} {
+func (p *RunHandler) getJobRunResultEnvs(jobRun *types.PipelineRunJob) map[string]interface{} {
 	if jobRun == nil {
 		return nil
 	}

@@ -264,6 +264,10 @@ func (p *ManagerPipelineRun) UpdateStageJobRunParams(stageRun *types.PipelineRun
 //     b. 所有job都为ok，则stage为ok；
 //     c. job中有ok，有wait，则stage为doing；
 func (p *ManagerPipelineRun) GetStageRunStatus(stageRun *types.PipelineRunStage) string {
+	if stageRun.Status == types.PipelineStatusCancel || stageRun.Status == types.PipelineStatusCanceled {
+		// 如果当前阶段状态为取消状态，不以任务状态为准
+		return stageRun.Status
+	}
 	status := ""
 	for _, jobRun := range stageRun.Jobs {
 		if jobRun.Status == types.PipelineStatusDoing {
@@ -303,6 +307,7 @@ type UpdateStageObj struct {
 	StageRunStatus string
 	StageExecTime  *time.Time
 	StageRunJobs   types.PipelineRunJobs
+	CustomParams   types.Map
 }
 
 func (p *ManagerPipelineRun) UpdatePipelineStageRun(updateStageObj *UpdateStageObj) (*types.PipelineRun, *types.PipelineRunStage, error) {
@@ -323,10 +328,27 @@ func (p *ManagerPipelineRun) UpdatePipelineStageRun(updateStageObj *UpdateStageO
 		if err = tx.Set("gorm:query_option", "FOR UPDATE").First(&stageRun, updateStageObj.StageRunId).Error; err != nil {
 			return err
 		}
+		if updateStageObj.StageRunStatus == types.PipelineStatusCancel && stageRun.Status != types.PipelineStatusDoing {
+			return errors.New("stage status is not doing, can not cancel")
+		}
+		if updateStageObj.StageRunStatus == types.PipelineStatusCanceled && stageRun.Status != types.PipelineStatusCancel {
+			// 阶段状态修改为canceled已取消，当前状态必须为cancel取消中
+			return errors.New("stage status is not cancel, can not set canceled")
+		}
 
 		if updateStageObj.StageRunJobs != nil {
-			for _, runJob := range updateStageObj.StageRunJobs {
-				if err := tx.Save(runJob).Error; err != nil {
+			for _, updateJobRun := range updateStageObj.StageRunJobs {
+				if updateJobRun.Status == types.PipelineStatusCancel {
+					jobRun, err := p.GetJobRun(updateJobRun.ID)
+					if err != nil {
+						return err
+					}
+					// 只能取消未执行完成的任务
+					if jobRun.Status == types.PipelineStatusOK || jobRun.Status == types.PipelineStatusError {
+						continue
+					}
+				}
+				if err = tx.Save(updateJobRun).Error; err != nil {
 					return err
 				}
 			}
@@ -335,11 +357,16 @@ func (p *ManagerPipelineRun) UpdatePipelineStageRun(updateStageObj *UpdateStageO
 			// 更新阶段开始执行时间
 			stageRun.ExecTime = *updateStageObj.StageExecTime
 		}
+		if updateStageObj.CustomParams != nil {
+			stageRun.CustomParams = updateStageObj.CustomParams
+		}
 
 		if updateStageObj.StageRunStatus != "" {
 			// 如果传了阶段状态，直接更新该状态，否则根据阶段下的所有任务状态计算出阶段状态
 			stageRun.Status = updateStageObj.StageRunStatus
-		} else if updateStageObj.StageRunJobs != nil {
+		} else if updateStageObj.StageRunJobs != nil &&
+			stageRun.Status != types.PipelineStatusCancel && stageRun.Status != types.PipelineStatusCanceled {
+			// 当前阶段状态如果为取消，则不更新阶段状态以及环境参数
 			var runJobs []types.PipelineRunJob
 			if err = tx.Where("stage_run_id = ?", updateStageObj.StageRunId).Find(&runJobs).Error; err != nil {
 				return err
@@ -359,16 +386,26 @@ func (p *ManagerPipelineRun) UpdatePipelineStageRun(updateStageObj *UpdateStageO
 			return err
 		}
 		// 流水线构建状态根据阶段状态不同而不同
+		now := time.Now()
+		if updateStageObj.StageRunStatus == types.PipelineStatusCancel {
+			// 如果第一次更新阶段状态为取消，设置完成时间为当前时间，后续再更新，不会修改完成时间
+			stageRun.FinishTime = &now
+		}
 		if stageRun.Status == types.PipelineStatusError {
+			stageRun.FinishTime = &now
 			pipelineRun.Status = types.PipelineStatusError
 		} else if stageRun.Status == types.PipelineStatusDoing || stageRun.Status == types.PipelineStatusWait {
 			pipelineRun.Status = types.PipelineStatusDoing
 		} else if stageRun.Status == types.PipelineStatusOK {
+			stageRun.FinishTime = &now
 			pipelineRun.Status = types.PipelineStatusDoing
 		} else if stageRun.Status == types.PipelineStatusPause {
 			pipelineRun.Status = types.PipelineStatusPause
+		} else if stageRun.Status == types.PipelineStatusCancel {
+			pipelineRun.Status = types.PipelineStatusCancel
+		} else if stageRun.Status == types.PipelineStatusCanceled {
+			pipelineRun.Status = types.PipelineStatusCanceled
 		}
-		now := time.Now()
 		stageRun.UpdateTime = now
 		pipelineRun.UpdateTime = now
 		if err = tx.Save(&stageRun).Error; err != nil {

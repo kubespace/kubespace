@@ -129,7 +129,7 @@ func (w *WorkspaceService) Create(workspaceSer *serializers.WorkspaceSerializer,
 		if err != nil {
 			return &utils.Response{Code: code.GetError, Msg: err.Error()}
 		}
-		gitcli, err := git.NewClient(workspaceSer.CodeType, workspaceSer.ApiUrl, &git.Secret{
+		gitcli, err := git.NewClient(workspaceSer.CodeType, workspaceSer.ApiUrl, &types.Secret{
 			Type:        secret.Type,
 			User:        secret.User,
 			Password:    secret.Password,
@@ -185,7 +185,7 @@ func (w *WorkspaceService) ListGitRepos(params *schemas.ListGitReposParams) *uti
 	if err != nil {
 		return &utils.Response{Code: code.GetError, Msg: err.Error()}
 	}
-	gitcli, err := git.NewClient(params.GitType, params.ApiUrl, &git.Secret{
+	gitcli, err := git.NewClient(params.GitType, params.ApiUrl, &types.Secret{
 		Type:        secret.Type,
 		User:        secret.User,
 		Password:    secret.Password,

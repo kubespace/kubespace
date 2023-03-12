@@ -1,4 +1,4 @@
-package plugins
+package job_run
 
 import (
 	"errors"
@@ -9,6 +9,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/model/manager/pipeline"
 	spaceletmanager "github.com/kubespace/kubespace/pkg/model/manager/spacelet"
 	"github.com/kubespace/kubespace/pkg/model/types"
+	"github.com/kubespace/kubespace/pkg/service/pipeline/job_runner/plugins"
 	"github.com/kubespace/kubespace/pkg/service/spacelet"
 	"github.com/kubespace/kubespace/pkg/spacelet/pipeline_job"
 	"k8s.io/klog/v2"
@@ -23,29 +24,13 @@ type SpaceletJob struct {
 	informerFactory informer.Factory
 }
 
-// Execute 创建一个spaceletJob，通过调用spacelet执行pipeline接口执行任务
-func (s SpaceletJob) Execute(params *PluginParams) (interface{}, error) {
+// Executor 创建一个spaceletJob执行器，通过调用spacelet执行pipeline接口执行任务
+func (s SpaceletJob) Executor(params *plugins.ExecutorParams) (plugins.Executor, error) {
 	client, err := s.getSpaceletClient(params.JobId)
 	if err != nil {
 		return nil, err
 	}
-	sj, err := newSpaceletJob(client, params)
-	if err != nil {
-		return nil, err
-	}
-	// 监听PipelineRunJob，当spaceletJob执行完成回调时，该informer监听处理
-	pipelineRunJobInformer := s.informerFactory.PipelineRunJobInformer(&pipelinelistwatcher.PipelineRunJobWatchCondition{
-		WithList: false,
-		Id:       params.JobId,
-		StatusIn: nil,
-	})
-	pipelineRunJobInformer.AddHandler(sj)
-	stopCh := make(chan struct{})
-	// 退出时停止监听
-	defer close(stopCh)
-	// 开始监听PipelineRunJob对象
-	go pipelineRunJobInformer.Run(stopCh)
-	return sj.execute()
+	return newSpaceletJob(client, params, s.informerFactory)
 }
 
 func (s SpaceletJob) getSpaceletClient(jobId uint) (spacelet.Client, error) {
@@ -115,19 +100,47 @@ func (s SpaceletJob) chooseSpacelet() (*types.Spacelet, error) {
 }
 
 type spaceletJob struct {
-	params         *PluginParams
-	spaceletClient spacelet.Client
-	logger         *PluginLogger
-	watchCh        chan struct{}
+	plugins.Logger
+	params          *plugins.ExecutorParams
+	spaceletClient  spacelet.Client
+	watchCh         chan struct{}
+	informerFactory informer.Factory
 }
 
-func newSpaceletJob(client spacelet.Client, params *PluginParams) (*spaceletJob, error) {
+func newSpaceletJob(client spacelet.Client, params *plugins.ExecutorParams, informerFactory informer.Factory) (*spaceletJob, error) {
 	return &spaceletJob{
-		params:         params,
-		spaceletClient: client,
-		logger:         params.Logger,
-		watchCh:        make(chan struct{}),
+		params:          params,
+		spaceletClient:  client,
+		Logger:          params.Logger,
+		watchCh:         make(chan struct{}),
+		informerFactory: informerFactory,
 	}, nil
+}
+
+func (s *spaceletJob) Execute() (interface{}, error) {
+	// 监听PipelineRunJob，当spaceletJob执行完成回调时，该informer监听处理
+	pipelineRunJobInformer := s.informerFactory.PipelineRunJobInformer(&pipelinelistwatcher.PipelineRunJobWatchCondition{
+		WithList: false,
+		Id:       s.params.JobId,
+		// 只监听任务执行成功或失败
+		StatusIn: []string{types.PipelineStatusOK, types.PipelineStatusError},
+	})
+	pipelineRunJobInformer.AddHandler(s)
+	stopCh := make(chan struct{})
+	// 退出时停止监听
+	defer close(stopCh)
+	// 开始监听PipelineRunJob对象
+	go pipelineRunJobInformer.Run(stopCh)
+	return s.execute()
+}
+
+func (s *spaceletJob) Cancel() error {
+	klog.Infof("cancel job id=%d", s.params.JobId)
+	if err := s.spaceletClient.PipelineJobCancel(&pipeline_job.JobCancelParams{JobId: s.params.JobId}); err != nil {
+		klog.Errorf("cancel pipeline job error: %s", err.Error())
+		return err
+	}
+	return nil
 }
 
 func (s *spaceletJob) execute() (interface{}, error) {
@@ -165,7 +178,7 @@ func (s *spaceletJob) execute() (interface{}, error) {
 			return nil, err
 		}
 		// 重置日志内容
-		s.logger.ResetWrite(statusLog.Log)
+		s.Logger.Reset(statusLog.Log)
 		if statusLog.StatusResult.Status == types.PipelineStatusOK {
 			return statusLog.StatusResult.Result.Data, nil
 		}

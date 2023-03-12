@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/google/go-github/v50/github"
 	"github.com/kubespace/kubespace/pkg/utils"
@@ -21,6 +22,13 @@ func NewGitHub(accessToken string) (*Github, error) {
 	return &Github{
 		client:      github.NewTokenClient(context.Background(), accessToken),
 		accessToken: accessToken,
+	}, nil
+}
+
+func (g *Github) Auth() (transport.AuthMethod, error) {
+	return &http.BasicAuth{
+		Username: "user",
+		Password: g.accessToken,
 	}, nil
 }
 

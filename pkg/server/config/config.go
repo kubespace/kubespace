@@ -70,10 +70,7 @@ func NewServerConfig(op *ServerOptions) (*ServerConfig, error) {
 		return nil, err
 	}
 	informerFactory := informer.NewInformerFactory(models.ListWatcherConfig)
-	serviceFactory := service.NewServiceFactory(&service.Config{
-		Models:          models,
-		InformerFactory: informerFactory,
-	})
+	serviceFactory := service.NewServiceFactory(service.NewConfig(models))
 	return &ServerConfig{
 		AgentVersion:    op.AgentVersion,
 		AgentRepository: op.AgentRepository,

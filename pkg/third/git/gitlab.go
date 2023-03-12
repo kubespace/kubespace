@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/xanzy/go-gitlab"
@@ -25,6 +26,13 @@ func NewGitLab(apiUrl, accessToken string) (*Gitlab, error) {
 	return &Gitlab{
 		client:      client,
 		accessToken: accessToken,
+	}, nil
+}
+
+func (g *Gitlab) Auth() (transport.AuthMethod, error) {
+	return &http.BasicAuth{
+		Username: "user",
+		Password: g.accessToken,
 	}, nil
 }
 

@@ -29,10 +29,7 @@ func NewConfig(dbConfig *db.Config, resyncSec int) (*Config, error) {
 	}
 	informerFactory := informer.NewInformerFactory(listWatcherConfig)
 
-	serviceFactory := service.NewServiceFactory(&service.Config{
-		Models:          models,
-		InformerFactory: informerFactory,
-	})
+	serviceFactory := service.NewServiceFactory(service.NewConfig(models))
 	return &Config{
 		Models:          models,
 		InformerFactory: informerFactory,

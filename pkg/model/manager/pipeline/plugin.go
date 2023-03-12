@@ -38,7 +38,7 @@ var BuiltinPlugins = []types.PipelinePlugin{
 	{
 		Name:    "构建代码镜像",
 		Key:     types.BuiltinPluginBuildCodeToImage,
-		Version: "1.0",
+		Version: "1.1",
 		Url:     types.PipelinePluginBuiltinUrl,
 		Params: types.PipelinePluginParams{
 			Params: []*types.PipelinePluginParamsSpec{
@@ -46,6 +46,18 @@ var BuiltinPlugins = []types.PipelinePlugin{
 					ParamName: "code_url",
 					From:      types.PluginParamsFromEnv,
 					FromName:  "PIPELINE_CODE_URL",
+					Default:   "",
+				},
+				{
+					ParamName: "code_api_url",
+					From:      types.PluginParamsFromEnv,
+					FromName:  "PIPELINE_CODE_API_URL",
+					Default:   "",
+				},
+				{
+					ParamName: "code_type",
+					From:      types.PluginParamsFromEnv,
+					FromName:  "PIPELINE_CODE_TYPE",
 					Default:   "",
 				},
 				{
@@ -216,7 +228,7 @@ var BuiltinPlugins = []types.PipelinePlugin{
 	{
 		Name:    "版本发布",
 		Key:     types.BuiltinPluginRelease,
-		Version: "1.0",
+		Version: "1.1",
 		Url:     types.PipelinePluginBuiltinUrl,
 		Params: types.PipelinePluginParams{
 			Params: []*types.PipelinePluginParamsSpec{
@@ -230,6 +242,18 @@ var BuiltinPlugins = []types.PipelinePlugin{
 					ParamName: "code_url",
 					From:      types.PluginParamsFromEnv,
 					FromName:  "PIPELINE_CODE_URL",
+					Default:   "",
+				},
+				{
+					ParamName: "code_api_url",
+					From:      types.PluginParamsFromEnv,
+					FromName:  "PIPELINE_CODE_API_URL",
+					Default:   "",
+				},
+				{
+					ParamName: "code_type",
+					From:      types.PluginParamsFromEnv,
+					FromName:  "PIPELINE_CODE_TYPE",
 					Default:   "",
 				},
 				{
@@ -286,7 +310,7 @@ var BuiltinPlugins = []types.PipelinePlugin{
 	{
 		Name:    "部署K8s资源",
 		Key:     types.BuiltinPluginDeployK8s,
-		Version: "1.0",
+		Version: "1.1",
 		Url:     types.PipelinePluginBuiltinUrl,
 		Params: types.PipelinePluginParams{
 			Params: []*types.PipelinePluginParamsSpec{
@@ -295,6 +319,12 @@ var BuiltinPlugins = []types.PipelinePlugin{
 					From:      types.PluginParamsFromJob,
 					FromName:  "cluster",
 					Default:   "",
+				},
+				{
+					ParamName: "env",
+					From:      types.PluginParamsFromPipelineEnv,
+					FromName:  "",
+					Default:   nil,
 				},
 				{
 					ParamName: "images",

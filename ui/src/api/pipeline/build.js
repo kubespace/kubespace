@@ -45,3 +45,19 @@ export function stageRetry(data) {
     data,
   })
 }
+
+export function stageCancel(data) {
+  return request({
+    url: `pipeline/build/cancel`,
+    method: 'post',
+    data,
+  })
+}
+
+export function stageReexec(data) {
+  return request({
+    url: `pipeline/build/reexec`,
+    method: 'post',
+    data,
+  })
+}

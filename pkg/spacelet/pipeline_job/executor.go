@@ -2,7 +2,6 @@ package pipeline_job
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/kubespace/kubespace/pkg/spacelet/pipeline_job/plugins"
 	"github.com/kubespace/kubespace/pkg/third/httpclient"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
@@ -10,14 +9,14 @@ import (
 )
 
 type JobExecutor struct {
-	plugins *plugins.Plugins
-	client  *httpclient.HttpClient
+	jobRun *SpaceletJobRun
+	client *httpclient.HttpClient
 }
 
 func NewJobExecutor(dataDir string, client *httpclient.HttpClient) *JobExecutor {
 	return &JobExecutor{
-		plugins: plugins.NewPlugins(dataDir, client),
-		client:  client,
+		jobRun: NewSpaceletJobRun(dataDir, client),
+		client: client,
 	}
 }
 
@@ -33,12 +32,7 @@ func (j *JobExecutor) Execute(c *gin.Context) {
 		c.JSON(http.StatusOK, &utils.Response{Code: code.ParamsError, Msg: err.Error()})
 		return
 	}
-	pluginParams := &plugins.PluginParams{
-		JobId:     params.JobId,
-		PluginKey: params.Plugin,
-		Params:    params.Params,
-	}
-	c.JSON(http.StatusOK, j.plugins.Execute(pluginParams))
+	c.JSON(http.StatusOK, j.jobRun.Execute(params.JobId, params.Plugin, params.Params))
 }
 
 type JobStatusParams struct {
@@ -52,7 +46,7 @@ func (j *JobExecutor) Status(c *gin.Context) {
 		c.JSON(http.StatusOK, &utils.Response{Code: code.ParamsError, Msg: err.Error()})
 		return
 	}
-	statusLog, err := j.plugins.GetStatusLog(params.JobId, params.WithLog)
+	statusLog, err := j.jobRun.GetStatusLog(params.JobId, params.WithLog)
 	if err != nil {
 		c.JSON(http.StatusOK, &utils.Response{Code: code.GetError, Msg: err.Error()})
 		return
@@ -70,12 +64,28 @@ func (j *JobExecutor) Cleanup(c *gin.Context) {
 		c.JSON(http.StatusOK, &utils.Response{Code: code.ParamsError, Msg: err.Error()})
 		return
 	}
-	err := j.plugins.Cleanup(params.JobId)
+	err := j.jobRun.Cleanup(params.JobId)
 	if err != nil {
-		c.JSON(http.StatusOK, &utils.Response{Code: code.GetError, Msg: err.Error()})
+		c.JSON(http.StatusOK, &utils.Response{Code: code.RequestError, Msg: err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, &utils.Response{Code: code.Success})
 }
 
-func (j *JobExecutor) Cancel(c *gin.Context) {}
+type JobCancelParams struct {
+	JobId uint `json:"job_id" form:"job_id" url:"job_id"`
+}
+
+func (j *JobExecutor) Cancel(c *gin.Context) {
+	var params JobCancelParams
+	if err := c.BindJSON(&params); err != nil {
+		c.JSON(http.StatusOK, &utils.Response{Code: code.ParamsError, Msg: err.Error()})
+		return
+	}
+	err := j.jobRun.Cancel(params.JobId)
+	if err != nil {
+		c.JSON(http.StatusOK, &utils.Response{Code: code.RequestError, Msg: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, &utils.Response{Code: code.Success})
+}

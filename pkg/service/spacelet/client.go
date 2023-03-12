@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/spacelet/pipeline_job"
-	"github.com/kubespace/kubespace/pkg/spacelet/pipeline_job/plugins"
 	"github.com/kubespace/kubespace/pkg/third/httpclient"
 	"github.com/kubespace/kubespace/pkg/utils"
 )
 
 type Client interface {
 	PipelineJobExecute(params *pipeline_job.JobRunParams) error
-	PipelineJobStatus(params *pipeline_job.JobStatusParams) (*plugins.StatusLog, error)
+	PipelineJobStatus(params *pipeline_job.JobStatusParams) (*pipeline_job.StatusLog, error)
 	PipelineJobCleanup(params *pipeline_job.JobCleanParams) error
+	PipelineJobCancel(params *pipeline_job.JobCancelParams) error
 }
 
 func NewClient(spacelet *types.Spacelet) (Client, error) {
@@ -46,7 +46,7 @@ func (c *client) PipelineJobExecute(params *pipeline_job.JobRunParams) error {
 	return nil
 }
 
-func (c *client) PipelineJobStatus(params *pipeline_job.JobStatusParams) (*plugins.StatusLog, error) {
+func (c *client) PipelineJobStatus(params *pipeline_job.JobStatusParams) (*pipeline_job.StatusLog, error) {
 	var resp utils.Response
 	options := httpclient.RequestOptions{}
 	options.WithHeader("token", c.spacelet.Token)
@@ -57,7 +57,7 @@ func (c *client) PipelineJobStatus(params *pipeline_job.JobStatusParams) (*plugi
 	if !resp.IsSuccess() {
 		return nil, fmt.Errorf(resp.Msg)
 	}
-	var statusLog plugins.StatusLog
+	var statusLog pipeline_job.StatusLog
 	if err = utils.ConvertTypeByJson(resp.Data, &statusLog); err != nil {
 		return nil, err
 	}
@@ -69,6 +69,20 @@ func (c *client) PipelineJobCleanup(params *pipeline_job.JobCleanParams) error {
 	options := httpclient.RequestOptions{}
 	options.WithHeader("token", c.spacelet.Token)
 	_, err := c.httpclient.Put("/v1/pipeline_job/cleanup", params, &resp, options)
+	if err != nil {
+		return err
+	}
+	if !resp.IsSuccess() {
+		return errors.New(resp.Msg)
+	}
+	return nil
+}
+
+func (c *client) PipelineJobCancel(params *pipeline_job.JobCancelParams) error {
+	var resp utils.Response
+	options := httpclient.RequestOptions{}
+	options.WithHeader("token", c.spacelet.Token)
+	_, err := c.httpclient.Put("/v1/pipeline_job/cancel", params, &resp, options)
 	if err != nil {
 		return err
 	}

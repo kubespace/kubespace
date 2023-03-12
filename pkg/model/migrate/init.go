@@ -4,6 +4,7 @@ import (
 	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_1/v1_1_2_a_pipeline_workspace_chg_code"
 	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_1/v1_1_3_a_add_spacelet"
 	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_1/v1_1_3_b_add_ldap"
+	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_1/v1_1_4_a_stagerun_add_finishtime"
 	"github.com/kubespace/kubespace/pkg/model/types"
 )
 

@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"golang.org/x/crypto/ssh"
@@ -19,13 +20,8 @@ const (
 
 type ExecShellPlugin struct{}
 
-func (b ExecShellPlugin) Execute(params *PluginParams) (interface{}, error) {
-	shellPlugin, err := newExecShellPlugin(params)
-	if err != nil {
-		return nil, err
-	}
-
-	return shellPlugin.execute()
+func (b ExecShellPlugin) Executor(params *ExecutorParams) (Executor, error) {
+	return newExecShellExecutor(params)
 }
 
 type ExecShellParams struct {
@@ -38,29 +34,35 @@ type ExecShellParams struct {
 	Env      map[string]interface{} `json:"env"`
 }
 
-type execShellPlugin struct {
-	*JobLogger
-	Params  *ExecShellParams
-	Result  map[string]interface{} `json:"env"`
-	rootDir string
+type execShellExecutor struct {
+	Logger
+	Params     *ExecShellParams
+	Result     map[string]interface{} `json:"env"`
+	rootDir    string
+	cancelFunc context.CancelFunc
+	ctx        context.Context
+	canceled   bool
 }
 
-func newExecShellPlugin(params *PluginParams) (*execShellPlugin, error) {
+func newExecShellExecutor(params *ExecutorParams) (*execShellExecutor, error) {
 	var shellParams ExecShellParams
 	if err := utils.ConvertTypeByJson(params.Params, &shellParams); err != nil {
 		return nil, err
 	}
-	execPlugin := &execShellPlugin{
-		Params:    &shellParams,
-		JobLogger: params.Logger,
-		Result:    make(map[string]interface{}),
-		rootDir:   params.RootDir,
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	execPlugin := &execShellExecutor{
+		Params:     &shellParams,
+		Logger:     params.Logger,
+		Result:     make(map[string]interface{}),
+		rootDir:    params.RootDir,
+		cancelFunc: cancelFunc,
+		ctx:        ctx,
 	}
 
 	return execPlugin, nil
 }
 
-func (b *execShellPlugin) execute() (interface{}, error) {
+func (b *execShellExecutor) Execute() (interface{}, error) {
 	if b.Params.Resource.Value == "" {
 		return nil, fmt.Errorf("执行脚本目标资源参数为空，请检查流水线配置")
 	}
@@ -76,7 +78,13 @@ func (b *execShellPlugin) execute() (interface{}, error) {
 	return b.Result, nil
 }
 
-func (b *execShellPlugin) execImage() error {
+func (b *execShellExecutor) Cancel() error {
+	b.canceled = true
+	b.cancelFunc()
+	return nil
+}
+
+func (b *execShellExecutor) execImage() error {
 	image := b.Params.Resource.Value
 	shell := b.Params.Shell
 	if shell == "" {
@@ -103,11 +111,12 @@ func (b *execShellPlugin) execImage() error {
 	env := strings.Join(envs, " ")
 	dockerRunCmd := fmt.Sprintf("docker run --net=host --rm -i -v %s:/pipeline -w /pipeline --entrypoint sh %s -c \"%s %s -x %s 2>&1\"", b.rootDir, image, env, shell, scriptFileName)
 	klog.Infof("job=%d code build cmd: %s", b.Params.JobId, dockerRunCmd)
-	cmd := exec.Command("bash", "-c", dockerRunCmd)
-	cmd.Stdout = b.JobLogger
-	cmd.Stderr = b.JobLogger
-	if err := cmd.Run(); err != nil {
+	cmd := exec.CommandContext(b.ctx, "bash", "-c", dockerRunCmd)
+	cmd.Stdout = b.Logger
+	cmd.Stderr = b.Logger
+	if err = cmd.Run(); err != nil {
 		klog.Errorf("job=%d build error: %v", b.Params.JobId, err)
+		b.Log(err.Error())
 		return fmt.Errorf("build code error: %v", err)
 	} else {
 		outputBytes, err := os.ReadFile(b.rootDir + "/output")
@@ -134,7 +143,7 @@ func (b *execShellPlugin) execImage() error {
 	return nil
 }
 
-func (b *execShellPlugin) execSsh() error {
+func (b *execShellExecutor) execSsh() error {
 	// 建立SSH客户端连接
 	host := b.Params.Resource.Value
 	if b.Params.Port != "" {
@@ -172,7 +181,7 @@ func (b *execShellPlugin) execSsh() error {
 	}
 	defer session.Close()
 	b.Log("建立session成功，开始执行脚本")
-	session.Stdout = b.JobLogger
+	session.Stdout = b.Logger
 	var envs []string
 	for name, val := range b.Params.Env {
 		envs = append(envs, fmt.Sprintf("%s='%v'", name, val))
