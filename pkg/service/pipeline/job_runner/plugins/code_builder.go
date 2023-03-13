@@ -31,6 +31,7 @@ func stringToImage(imgStr string) map[string]string {
 		}
 		imgSplitMap := make(map[string]string)
 		if err := json.Unmarshal([]byte(imgSplitStr), &imgSplitMap); err != nil {
+			klog.Errorf("Unmarshal images=%s error: %s", imgSplitStr, err.Error())
 			continue
 		}
 		for k, v := range imgSplitMap {

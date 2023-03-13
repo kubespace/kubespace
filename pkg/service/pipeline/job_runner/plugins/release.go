@@ -201,7 +201,9 @@ func (r *releaserExecutor) clone() error {
 }
 
 func (r *releaserExecutor) tagImage() error {
+	r.Log("images=%s", r.Params.Images)
 	images := stringToImage(r.Params.Images)
+	r.Log("images=%v", images)
 	if r.Params.ImageBuildRegistry.User != "" && r.Params.ImageBuildRegistry.Password != "" {
 		if err := r.loginDocker(r.Params.ImageBuildRegistry.User, r.Params.ImageBuildRegistry.Password, r.Params.ImageBuildRegistry.Registry); err != nil {
 			r.Log("docker login %s error: %v", r.Params.ImageBuildRegistry.Registry, err)
