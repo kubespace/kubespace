@@ -6,6 +6,8 @@ metadata:
   labels:
     {{- include "kubespace.labels" . | nindent 4 }}
 spec:
+  strategy:
+    type: Recreate
   replicas: {{ .Values.spacelet.replicaCount }}
   selector:
     matchLabels:
