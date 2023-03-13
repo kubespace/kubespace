@@ -89,13 +89,18 @@ func (b *informer) AddHandler(handler Handler) {
 }
 
 func (b *informer) handle(obj interface{}) {
-	defer utils.HandleCrash(func(r interface{}) { klog.Errorf("crashed object: %v", obj) })
 	for _, handler := range b.handlers {
 		if !handler.Check(obj) {
 			continue
 		}
-		if err := handler.Handle(obj); err != nil {
-			klog.Errorf("handle object error=%s, object=%v", err.Error(), obj)
-		}
+		// 开启一个goroutinue处理，不阻塞后续handler
+		go func(handler Handler) {
+			defer utils.HandleCrash(func(r interface{}) {
+				klog.Errorf("handle object crashed: %v", obj)
+			})
+			if err := handler.Handle(obj); err != nil {
+				klog.Errorf("handle object error=%s, object=%v", err.Error(), obj)
+			}
+		}(handler)
 	}
 }

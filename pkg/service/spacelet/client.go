@@ -9,6 +9,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/utils"
 )
 
+// Client spacelet客户端调用接口
 type Client interface {
 	PipelineJobExecute(params *pipeline_job.JobRunParams) error
 	PipelineJobStatus(params *pipeline_job.JobStatusParams) (*pipeline_job.StatusLog, error)
@@ -32,6 +33,7 @@ type client struct {
 	spacelet   *types.Spacelet
 }
 
+// PipelineJobExecute 调用spacelet执行流水线构建任务
 func (c *client) PipelineJobExecute(params *pipeline_job.JobRunParams) error {
 	var resp utils.Response
 	options := httpclient.RequestOptions{}
@@ -46,6 +48,7 @@ func (c *client) PipelineJobExecute(params *pipeline_job.JobRunParams) error {
 	return nil
 }
 
+// PipelineJobStatus 调用spaceelt流水线构建任务执行状态以及日志
 func (c *client) PipelineJobStatus(params *pipeline_job.JobStatusParams) (*pipeline_job.StatusLog, error) {
 	var resp utils.Response
 	options := httpclient.RequestOptions{}
@@ -64,6 +67,7 @@ func (c *client) PipelineJobStatus(params *pipeline_job.JobStatusParams) (*pipel
 	return &statusLog, nil
 }
 
+// PipelineJobCleanup 清理流水线构建任务
 func (c *client) PipelineJobCleanup(params *pipeline_job.JobCleanParams) error {
 	var resp utils.Response
 	options := httpclient.RequestOptions{}
@@ -78,6 +82,7 @@ func (c *client) PipelineJobCleanup(params *pipeline_job.JobCleanParams) error {
 	return nil
 }
 
+// PipelineJobCancel 取消流水线构建任务
 func (c *client) PipelineJobCancel(params *pipeline_job.JobCancelParams) error {
 	var resp utils.Response
 	options := httpclient.RequestOptions{}
