@@ -252,9 +252,9 @@ func (u *deployK8s) replaceContainerImage(containers []corev1.Container) (bool, 
 
 func (u *deployK8s) matchImage(srcImage string) string {
 	srcImage = utils.GetImageName(srcImage)
-	for image := range u.images {
-		if image == srcImage {
-			return image
+	for name, img := range u.images {
+		if name == srcImage {
+			return img
 		}
 	}
 	return ""
