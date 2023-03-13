@@ -24,8 +24,11 @@ func stringToImage(imgStr string) map[string]string {
 		return nil
 	}
 	imgMap := make(map[string]string)
-	imgSplits := strings.Split(imgStr, ",")
+	imgSplits := strings.Split(imgStr, ",{")
 	for _, imgSplitStr := range imgSplits {
+		if imgSplitStr[0:1] != "{" {
+			imgSplitStr = "{" + imgSplitStr
+		}
 		imgSplitMap := make(map[string]string)
 		if err := json.Unmarshal([]byte(imgSplitStr), &imgSplitMap); err != nil {
 			continue
