@@ -108,6 +108,7 @@ func (p *PipelineRunController) executeStage(stageRun *types.PipelineRunStage) (
 		stageRun.ExecTime = time.Now()
 		stageRun.Status = types.PipelineStatusDoing
 	}
+	klog.Infof("current stage id=%d envs=%v", stageRun.ID, envs)
 	err = p.models.PipelineRunManager.UpdateStageRun(stageRun)
 	if err != nil {
 		klog.Errorf("update stage id=%d exec time error: %v", stageRun.ID, err)
@@ -184,6 +185,7 @@ func (p *PipelineRunController) executeJob(stageRun *types.PipelineRunStage, run
 	executeParams := map[string]interface{}{
 		"job_id": runJob.ID,
 	}
+	klog.Infof("stage run id=%d envs=%v", stageRun.ID, stageRun.Env)
 	// 根据任务插件配置，从阶段中获取对应参数值
 	for _, pluginParam := range plugin.Params.Params {
 		if pluginParam.ParamName == "" {
