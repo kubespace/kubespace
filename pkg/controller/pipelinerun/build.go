@@ -129,6 +129,10 @@ func (p *PipelineRunController) executeStage(stageRun *types.PipelineRunStage) (
 			StageRunId:   stageRun.ID,
 			StageRunJobs: types.PipelineRunJobs{runJob},
 		})
+		// 清空日志
+		if err = p.models.PipelineJobLogManager.UpdateLog(runJob.ID, ""); err != nil {
+			klog.Errorf("clear jobrun id=%d log error: %s", runJob.ID, err.Error())
+		}
 		wg.Add(1)
 		go func(runJob *types.PipelineRunJob) {
 			defer wg.Done()
