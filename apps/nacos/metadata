@@ -1,0 +1,5 @@
+{
+    "name": "nacos",
+    "versions": ["nacos-2.0.2.tgz"],
+    "type": "middleware"
+}

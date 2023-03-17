@@ -54,7 +54,7 @@ func (g *Gitee) Auth() (transport.AuthMethod, error) {
 	}
 
 	return &http.BasicAuth{
-		Username: user.Name,
+		Username: user.Login,
 		Password: g.accessToken,
 	}, nil
 }
@@ -212,8 +212,9 @@ func (g *Gitee) GetBranchLatestCommit(ctx context.Context, codeUrl, branch strin
 }
 
 type GiteeUser struct {
-	Id   int    `json:"id"`
-	Name string `json:"name"`
+	Id    int    `json:"id"`
+	Name  string `json:"name"`
+	Login string `json:"login"`
 }
 
 func (g *Gitee) Clone(ctx context.Context, repoDir string, isBare bool, options *git.CloneOptions) (*git.Repository, error) {
@@ -223,10 +224,12 @@ func (g *Gitee) Clone(ctx context.Context, repoDir string, isBare bool, options 
 		return nil, err
 	}
 
+	// gitee这个地方需要使用Login字段进行认证
 	auth := &http.BasicAuth{
-		Username: user.Name,
+		Username: user.Login,
 		Password: g.accessToken,
 	}
+
 	options.InsecureSkipTLS = true
 	options.Auth = auth
 	return git.PlainCloneContext(ctx, repoDir, isBare, options)
