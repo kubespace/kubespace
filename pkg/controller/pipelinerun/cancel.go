@@ -48,7 +48,6 @@ func (p *PipelineRunController) cancel(object interface{}) (err error) {
 		if stageRun.Status != types.PipelineStatusCancel {
 			continue
 		}
-		var cancelJobs []*types.PipelineRunJob
 		for _, jobRun := range stageRun.Jobs {
 			// 已经执行完成的任务不取消
 			if jobRun.Status == types.PipelineStatusOK || jobRun.Status == types.PipelineStatusError {
@@ -60,13 +59,18 @@ func (p *PipelineRunController) cancel(object interface{}) (err error) {
 			}
 			// 取消之后，任务未取消完成，状态修改为cancel取消中，任务退出后，在build流程会将状态修改为canceled
 			jobRun.Status = types.PipelineStatusCancel
-			cancelJobs = append(cancelJobs, jobRun)
+			// 及时更新到数据库
+			if _, _, err = p.models.PipelineRunManager.UpdatePipelineStageRun(&pipeline.UpdateStageObj{
+				StageRunId:   stageRun.ID,
+				StageRunJobs: []*types.PipelineRunJob{jobRun},
+			}); err != nil {
+				return err
+			}
 		}
-		// 更新阶段以及流水线构建状态为canceled已取消
+		// 更新阶段状态为canceled已取消，controller不会处理canceled状态
 		_, _, err = p.models.PipelineRunManager.UpdatePipelineStageRun(&pipeline.UpdateStageObj{
 			StageRunId:     stageRun.ID,
 			StageRunStatus: types.PipelineStatusCanceled,
-			StageRunJobs:   cancelJobs,
 		})
 		return err
 	}

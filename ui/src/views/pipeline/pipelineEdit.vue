@@ -27,7 +27,7 @@
                 <div style="font-size: 12px; padding: 10px 0px 0px; font-weight: 450">
                   {{ workspace ? workspace.code ? workspace.code.clone_url : '' : '' }}
                 </div>
-                <div v-for="(t, i) in editPipeline.triggers" :key="i"
+                <div v-for="(t, i) in editPipeline.sources" :key="i"
                   style="font-size: 12px; padding: 5px 10px 0px; font-weight: 400" >
                   <svg-icon icon-class="branch" /> {{ operatorMap[t.operator] }} {{ t.branch }}
                 </div>
@@ -36,8 +36,8 @@
                 <span class="pipeline-source-outer__span">
                   流水线源
                 </span>
-                <template v-if="editPipeline.triggers && editPipeline.triggers.length > 0">
-                  <div v-for="(t, i) in editPipeline.triggers" :key="i">
+                <template v-if="editPipeline.sources && editPipeline.sources.length > 0">
+                  <div v-for="(t, i) in editPipeline.sources" :key="i">
                     <div style="font-size: 12px; padding: 10px 0px 0px; font-weight: 450; width: 200px">
                       {{ t.workspace_name ? t.workspace_name : getTriggerWorkspaceName(t.workspace) }}
                     </div>
@@ -148,7 +148,7 @@
             <el-form-item label="代码库源" prop="" :required="true">
               <el-input :disabled="true" style="width: 450px;" v-model="workspace.code.clone_url" size="small"></el-input>
             </el-form-item>
-            <el-form-item label="触发分支" prop="" :required="true">
+            <el-form-item label="构建分支" prop="" :required="true">
               <el-row style="margin-bottom: 5px; margin-top: 8px;">
                 <el-col :span="7" style="background-color: #F5F7FA; padding-left: 10px;">
                   <div class="border-span-header">
@@ -162,7 +162,7 @@
                 </el-col>
                 <!-- <el-col :span="5"><div style="width: 100px;"></div></el-col> -->
               </el-row>
-              <el-row style="padding-bottom: 5px;" v-for="(d, i) in dialogData.triggers" :key="i">
+              <el-row style="padding-bottom: 5px;" v-for="(d, i) in dialogData.sources" :key="i">
                 <el-col :span="7">
                   <div class="border-span-header" style="margin-right: 10px;">
                     <el-select v-model="d.operator" placeholder="匹配方式" size="small" style="width: 100%;">
@@ -179,14 +179,14 @@
                 </el-col>
                 <el-col :span="2" style="padding-left: 10px">
                   <el-button circle size="mini" style="padding: 5px;" 
-                    @click="dialogData.triggers.splice(i, 1)" icon="el-icon-close"></el-button>
+                    @click="dialogData.sources.splice(i, 1)" icon="el-icon-close"></el-button>
                 </el-col>
               </el-row>
               <el-row>
                 <el-col :span="17">
                 <el-button style="width: 100%; border-radius: 0px; padding: 9px 15px;
                   border-color: rgb(102, 177, 255); color: rgb(102, 177, 255)" plain size="mini" 
-                  @click="dialogData.triggers.push({type: 'code', branch_type: 'branch', operator: 'equal', branch: ''})" icon="el-icon-plus">添加匹配</el-button>
+                  @click="dialogData.sources.push({type: 'code', branch_type: 'branch', operator: 'equal', branch: ''})" icon="el-icon-plus">添加匹配</el-button>
                 </el-col>
               </el-row>
             </el-form-item>
@@ -207,7 +207,7 @@
                 </el-col>
                 <!-- <el-col :span="5"><div style="width: 100px;"></div></el-col> -->
               </el-row>
-              <el-row style="padding-bottom: 5px;" v-for="(d, i) in dialogData.triggers" :key="i">
+              <el-row style="padding-bottom: 5px;" v-for="(d, i) in dialogData.sources" :key="i">
                 <el-col :span="12">
                   <div class="border-span-header" style="margin-right: 10px;">
                     <el-select v-model="d.workspace" placeholder="流水线空间" size="small" style="width: 100%;" @change="changePipeline">
@@ -224,14 +224,14 @@
                 </el-col>
                 <el-col :span="2" style="padding-left: 10px">
                   <el-button circle size="mini" style="padding: 5px;" 
-                    @click="dialogData.triggers.splice(i, 1)" icon="el-icon-close"></el-button>
+                    @click="dialogData.sources.splice(i, 1)" icon="el-icon-close"></el-button>
                 </el-col>
               </el-row>
               <el-row>
                 <el-col :span="19">
                 <el-button style="width: 100%; border-radius: 0px; padding: 9px 15px;
                   border-color: rgb(102, 177, 255); color: rgb(102, 177, 255)" plain size="mini" 
-                  @click="dialogData.triggers.push({type: 'pipeline'})" icon="el-icon-plus">添加流水线源</el-button>
+                  @click="dialogData.sources.push({type: 'pipeline'})" icon="el-icon-plus">添加流水线源</el-button>
                 </el-col>
               </el-row>
             </el-form-item>
@@ -295,7 +295,7 @@ export default {
         workspace_id: parseInt(this.$route.params.workspaceId),
         id: 0,
         name: "",
-        triggers: [],
+        sources: [],
         stages: []
       },
       operatorMap: {
@@ -372,7 +372,7 @@ export default {
             component: 'Release'
           })
           if(!this.pipelineId) {
-            this.editPipeline.triggers = [{"type": "code", "branch_type": "branch", "operator": "equal", "branch": ""}]
+            this.editPipeline.sources = [{"type": "code", "branch_type": "branch", "operator": "equal", "branch": ""}]
           }
         }
         
@@ -391,7 +391,7 @@ export default {
             id: this.pipeline.pipeline.id,
             workspace_id: this.pipeline.workspace.id,
             name: this.pipeline.pipeline.name,
-            triggers: this.pipeline.pipeline.triggers,
+            sources: this.pipeline.pipeline.sources,
             stages: [],
           }
           for(let stage of this.pipeline.stages) {
@@ -473,8 +473,8 @@ export default {
       } else if(this.dialogType == 'add_job') {
         this.dialogOriginData.jobs.push(this.dialogData)
       } else if(this.dialogType == 'source') {
-        // this.editPipeline.triggers = this.dialogData.triggers
-        this.$set(this.editPipeline, 'triggers', this.dialogData.triggers)
+        // this.editPipeline.sources = this.dialogData.sources
+        this.$set(this.editPipeline, 'sources', this.dialogData.sources)
       }
       this.dialogVisible = false
     },
@@ -548,10 +548,10 @@ export default {
     openEditSource() {
       this.dialogType = 'source'
       // this.dialogData = {
-      //   triggers: JSON.parse(JSON.stringify(this.editPipeline.triggers))
+      //   sources: JSON.parse(JSON.stringify(this.editPipeline.sources))
       // }
       
-      this.$set(this.dialogData, 'triggers', JSON.parse(JSON.stringify(this.editPipeline.triggers)))
+      this.$set(this.dialogData, 'sources', JSON.parse(JSON.stringify(this.editPipeline.sources)))
       this.dialogVisible = true
     },
     fetchWorkspaces() {
@@ -590,7 +590,7 @@ export default {
     },
     changePipeline(val) {
       // this.$set(p, 'pipeline', '')
-      for(let d of this.dialogData.triggers) {
+      for(let d of this.dialogData.sources) {
         if(d.workspace == val) {
           if(d.pipeline) delete d.pipeline
           if(d.workspace_name) d.workspace_name = ''

@@ -34,7 +34,7 @@ type PipelineSerializer struct {
 	ID          uint                      `json:"id"`
 	WorkspaceId uint                      `json:"workspace_id"`
 	Name        string                    `json:"name"`
-	Triggers    types.PipelineTriggers    `json:"triggers"`
+	Sources     types.PipelineSources     `json:"sources"`
 	Stages      []PipelineStageSerializer `json:"stages"`
 }
 

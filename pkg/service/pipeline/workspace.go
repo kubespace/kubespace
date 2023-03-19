@@ -54,8 +54,8 @@ func (w *WorkspaceService) defaultCodePipelines() ([]*types.Pipeline, error) {
 		UpdateUser: "admin",
 		CreateTime: time.Now(),
 		UpdateTime: time.Now(),
-		Triggers: types.PipelineTriggers{
-			&types.PipelineTrigger{
+		Sources: types.PipelineSources{
+			&types.PipelineSource{
 				Type:       types.WorkspaceTypeCode,
 				BranchType: types.PipelineBranchTypeBranch,
 				Operator:   types.PipelineTriggerOperatorExclude,
@@ -82,8 +82,8 @@ func (w *WorkspaceService) defaultCodePipelines() ([]*types.Pipeline, error) {
 		UpdateUser: "admin",
 		CreateTime: time.Now(),
 		UpdateTime: time.Now(),
-		Triggers: types.PipelineTriggers{
-			&types.PipelineTrigger{
+		Sources: types.PipelineSources{
+			&types.PipelineSource{
 				Type:       types.WorkspaceTypeCode,
 				BranchType: types.PipelineBranchTypeBranch,
 				Operator:   types.PipelineTriggerOperatorEqual,

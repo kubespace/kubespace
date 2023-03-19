@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/kubespace/kubespace/pkg/core/db"
 	"github.com/kubespace/kubespace/pkg/utils"
+	"gorm.io/datatypes"
 	"time"
 )
 
@@ -50,8 +51,10 @@ const (
 )
 
 const (
-	PipelineTriggerTypeCode     = "code"
-	PipelineTriggerTypePipeline = "pipeline"
+	// PipelineSourceTypeCode 流水线构建来源为代码库
+	PipelineSourceTypeCode = "code"
+	// PipelineSourceTypePipeline 流水线构建来源于其他流水线
+	PipelineSourceTypePipeline = "pipeline"
 
 	PipelineTriggerOperatorEqual   = "equal"
 	PipelineTriggerOperatorExclude = "exclude"
@@ -99,7 +102,7 @@ type Pipeline struct {
 	ID          uint             `gorm:"primaryKey" json:"id"`
 	Name        string           `gorm:"size:50;not null;uniqueIndex:idx_workspace_name" json:"name"`
 	WorkspaceId uint             `gorm:"not null;uniqueIndex:idx_workspace_name" json:"workspace_id"`
-	Triggers    PipelineTriggers `gorm:"type:json" json:"triggers"`
+	Sources     PipelineSources  `gorm:"type:json" json:"sources"`
 	Stages      []*PipelineStage `gorm:"-" json:"stages"`
 	CreateUser  string           `gorm:"size:50;not null" json:"create_user"`
 	UpdateUser  string           `gorm:"size:50;not null" json:"update_user"`
@@ -107,13 +110,13 @@ type Pipeline struct {
 	UpdateTime  time.Time        `gorm:"not null;autoUpdateTime" json:"update_time"`
 }
 
-type PipelineTriggers []*PipelineTrigger
+type PipelineSources []*PipelineSource
 
-func (pt *PipelineTriggers) Scan(value interface{}) error {
+func (pt *PipelineSources) Scan(value interface{}) error {
 	return db.Scan(value, pt)
 }
 
-func (pt PipelineTriggers) Value() (driver.Value, error) {
+func (pt PipelineSources) Value() (driver.Value, error) {
 	return db.Value(pt)
 }
 
@@ -122,7 +125,8 @@ const (
 	PipelineBranchTypeRequest = "request"
 )
 
-type PipelineTrigger struct {
+// PipelineSource 流水线触发源，代码分支以及其他流水线
+type PipelineSource struct {
 	Type          string `json:"type"`
 	Workspace     uint   `json:"workspace"`
 	WorkspaceName string `json:"workspace_name"`
@@ -134,6 +138,29 @@ type PipelineTrigger struct {
 	Branch        string `json:"branch"`
 }
 
+const (
+	// PipelineTriggerTypeCron 定时触发流水线构建
+	PipelineTriggerTypeCron = "cron"
+	// PipelineTriggerTypeCode 代码提交更新时触发流水线构建
+	PipelineTriggerTypeCode = "code"
+)
+
+// PipelineTrigger 流水线触发配置
+type PipelineTrigger struct {
+	ID         uint           `gorm:"primaryKey" json:"id"`
+	PipelineId uint           `gorm:"" json:"pipeline_id"`
+	Type       string         `json:"type"`
+	Config     datatypes.JSON `gorm:"type:json" json:"config"`
+	UpdateUser string         `gorm:"size:50;not null" json:"update_user"`
+	CreateTime time.Time      `gorm:"not null;autoCreateTime" json:"create_time"`
+	UpdateTime time.Time      `gorm:"not null;autoUpdateTime" json:"update_time"`
+}
+
+// PipelineTriggerConfigCron 流水线定时触发配置
+type PipelineTriggerConfigCron struct {
+}
+
+// PipelineStage 流水线阶段
 type PipelineStage struct {
 	ID         uint   `gorm:"primaryKey" json:"id"`
 	Name       string `gorm:"size:50;not null;uniqueIndex:idx_pipeline_stage_name" json:"name"`

@@ -248,7 +248,7 @@
                 </el-col>
                 <!-- <el-col :span="5"><div style="width: 100px;"></div></el-col> -->
               </el-row>
-              <el-row style="padding-bottom: 0px;" v-for="(d, i) in pipeline.pipeline ? pipeline.pipeline.triggers : []" :key="i">
+              <el-row style="padding-bottom: 0px;" v-for="(d, i) in pipeline.pipeline ? pipeline.pipeline.sources : []" :key="i">
                 <el-col :span="10">
                   <div class="border-span-header" style="margin-right: 10px;">
                     {{ d.workspace_name }}
@@ -329,7 +329,6 @@ import { getPipeline, listRepoBranches } from '@/api/pipeline/pipeline'
 import { listBuilds, buildPipeline, manualExec, stageRetry, stageCancel, stageReexec } from '@/api/pipeline/build'
 import { manualCheck, Release } from '@/views/pipeline/plugin-manual'
 import { Message } from 'element-ui'
-import { del } from 'vue'
 
 export default {
   name: 'PipelineWorkspace',
@@ -413,7 +412,7 @@ export default {
           this.titleName = ["流水线", this.pipeline.pipeline.name]
           this.pipelineName = this.pipeline.pipeline.name
           if(this.pipeline.workspace.type == 'custom') {
-            for(let t of this.pipeline.pipeline.triggers || []) {
+            for(let t of this.pipeline.pipeline.sources || []) {
               // this.buildParams[t.pipeline] = {}
               this.$set(this.buildParams, t.pipeline, t)
             }
@@ -557,7 +556,7 @@ export default {
       // this.dialogLoading = true
       if(this.pipeline.workspace && this.pipeline.workspace.type == 'custom') {
         this.pipelineBuilds = {}
-        for(let t of this.pipeline.pipeline.triggers || []) {
+        for(let t of this.pipeline.pipeline.sources || []) {
           // 获取触发源的每条流水线最新50条构建
           this.fetchPipelineBuilds(t.pipeline)
         }

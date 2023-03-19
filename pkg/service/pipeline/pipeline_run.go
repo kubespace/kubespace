@@ -84,21 +84,22 @@ func (r *ServicePipelineRun) GetPipelineRun(pipelineRunId uint) *utils.Response 
 	return &utils.Response{Code: code.Success, Data: data}
 }
 
-func MatchTriggerBranch(triggers types.PipelineTriggers, branch string) bool {
-	for _, trigger := range triggers {
-		if trigger.Branch == "" && trigger.Operator != types.PipelineTriggerOperatorExclude {
+// MatchBranchSource 判断是否匹配代码分支源
+func MatchBranchSource(sources types.PipelineSources, branch string) bool {
+	for _, source := range sources {
+		if source.Branch == "" && source.Operator != types.PipelineTriggerOperatorExclude {
 			return true
 		}
-		if trigger.Operator == types.PipelineTriggerOperatorEqual && trigger.Branch == branch {
+		if source.Operator == types.PipelineTriggerOperatorEqual && source.Branch == branch {
 			return true
 		}
-		if trigger.Operator == types.PipelineTriggerOperatorExclude && trigger.Branch == branch {
+		if source.Operator == types.PipelineTriggerOperatorExclude && source.Branch == branch {
 			return false
 		}
-		if trigger.Operator == types.PipelineTriggerOperatorInclude {
-			matched, err := regexp.MatchString(trigger.Branch, branch)
+		if source.Operator == types.PipelineTriggerOperatorInclude {
+			matched, err := regexp.MatchString(source.Branch, branch)
 			if err != nil {
-				klog.Errorf("regex %s match branch %s error: %s", trigger.Branch, branch, err.Error())
+				klog.Errorf("regex %s match branch %s error: %s", source.Branch, branch, err.Error())
 				continue
 			}
 			if matched {
@@ -163,8 +164,8 @@ func (r *ServicePipelineRun) InitialEnvs(pipeline *types.Pipeline, workspace *ty
 				continue
 			}
 			find := false
-			for _, trigger := range pipeline.Triggers {
-				if buildInfo.PipelineId == trigger.Pipeline {
+			for _, source := range pipeline.Sources {
+				if buildInfo.PipelineId == source.Pipeline {
 					find = true
 					build, err := r.models.PipelineRunManager.Get(buildInfo.BuildId)
 					if err != nil {
@@ -220,7 +221,7 @@ func (r *ServicePipelineRun) InitialCodeEnvs(pipeline *types.Pipeline, workspace
 	if !ok {
 		return fmt.Errorf("获取分支参数类型错误")
 	}
-	if !MatchTriggerBranch(pipeline.Triggers, branch) {
+	if !MatchBranchSource(pipeline.Sources, branch) {
 		return fmt.Errorf("代码分支未匹配到该流水线")
 	}
 	secret, err := r.models.SettingsSecretManager.Get(workspace.Code.SecretId)

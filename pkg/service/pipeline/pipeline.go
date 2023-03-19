@@ -32,13 +32,13 @@ func (p *ServicePipeline) Create(pipelineSer *serializers.PipelineSerializer, us
 	pipeline := &types.Pipeline{
 		Name:        pipelineSer.Name,
 		WorkspaceId: pipelineSer.WorkspaceId,
-		Triggers:    pipelineSer.Triggers,
+		Sources:     pipelineSer.Sources,
 		CreateUser:  user.Name,
 		UpdateUser:  user.Name,
 		CreateTime:  time.Now(),
 		UpdateTime:  time.Now(),
 	}
-	if len(pipelineSer.Triggers) == 0 {
+	if len(pipelineSer.Sources) == 0 {
 		return &utils.Response{Code: code.ParamsError, Msg: "流水线触发源不能为空"}
 	}
 	if resp := p.CheckTrigger(workspace, pipelineSer); !resp.IsSuccess() {
@@ -75,30 +75,30 @@ func (p *ServicePipeline) Create(pipelineSer *serializers.PipelineSerializer, us
 
 func (p *ServicePipeline) CheckTrigger(workspace *types.PipelineWorkspace, pipelineSer *serializers.PipelineSerializer) *utils.Response {
 	triggerWorkspaceIdMap := make(map[uint]struct{})
-	for _, trigger := range pipelineSer.Triggers {
-		if workspace.Type == types.WorkspaceTypeCode && trigger.Type != types.PipelineTriggerTypeCode {
+	for _, source := range pipelineSer.Sources {
+		if workspace.Type == types.WorkspaceTypeCode && source.Type != types.PipelineSourceTypeCode {
 			return &utils.Response{
 				Code: code.ParamsError,
-				Msg:  fmt.Sprintf("pipeline trigger type %s is wrong", trigger.Type),
+				Msg:  fmt.Sprintf("pipeline trigger type %s is wrong", source.Type),
 			}
 		}
 		if workspace.Type == types.WorkspaceTypeCustom {
-			if trigger.Type != types.PipelineTriggerTypePipeline {
+			if source.Type != types.PipelineSourceTypePipeline {
 				return &utils.Response{
 					Code: code.ParamsError,
-					Msg:  fmt.Sprintf("pipeline trigger type %s is wrong", trigger.Type),
+					Msg:  fmt.Sprintf("pipeline trigger type %s is wrong", source.Type),
 				}
 			}
-			if trigger.Workspace == 0 {
+			if source.Workspace == 0 {
 				return &utils.Response{Code: code.ParamsError, Msg: "流水线触发空间不能为空"}
 			}
-			if trigger.Pipeline == 0 {
+			if source.Pipeline == 0 {
 				return &utils.Response{Code: code.ParamsError, Msg: "触发空间流水线不能为空"}
 			}
-			if _, ok := triggerWorkspaceIdMap[trigger.Workspace]; ok {
+			if _, ok := triggerWorkspaceIdMap[source.Workspace]; ok {
 				return &utils.Response{Code: code.ParamsError, Msg: "触发流水线空间源不能相同"}
 			}
-			triggerWorkspaceIdMap[trigger.Workspace] = struct{}{}
+			triggerWorkspaceIdMap[source.Workspace] = struct{}{}
 			//if trigger.Stage == 0 {
 			//	return &utils.Response{Code: code.ParamsError, Msg: "触发流水线阶段不能为空"}
 			//}
@@ -120,7 +120,7 @@ func (p *ServicePipeline) Update(pipelineSer *serializers.PipelineSerializer, us
 		}
 	}
 	pipeline.Name = pipelineSer.Name
-	pipeline.Triggers = pipelineSer.Triggers
+	pipeline.Sources = pipelineSer.Sources
 	pipeline.UpdateUser = user.Name
 	if resp := p.CheckTrigger(workspace, pipelineSer); !resp.IsSuccess() {
 		return resp
@@ -169,9 +169,9 @@ func (p *ServicePipeline) GetPipeline(pipelineId uint) *utils.Response {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
 	if workspace.Type == types.WorkspaceTypeCustom {
-		var triggers []*types.PipelineTrigger
-		for i, t := range pipeline.Triggers {
-			if t.Type == types.PipelineTriggerTypePipeline {
+		var sources []*types.PipelineSource
+		for i, t := range pipeline.Sources {
+			if t.Type == types.PipelineSourceTypePipeline {
 				w, err := p.models.PipelineWorkspaceManager.Get(t.Workspace)
 				if err != nil {
 					if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -180,7 +180,7 @@ func (p *ServicePipeline) GetPipeline(pipelineId uint) *utils.Response {
 						continue
 					}
 				} else {
-					pipeline.Triggers[i].WorkspaceName = w.Name
+					pipeline.Sources[i].WorkspaceName = w.Name
 				}
 				p, err := p.models.PipelineManager.Get(t.Pipeline)
 				if err != nil {
@@ -190,12 +190,12 @@ func (p *ServicePipeline) GetPipeline(pipelineId uint) *utils.Response {
 						continue
 					}
 				} else {
-					pipeline.Triggers[i].PipelineName = p.Name
+					pipeline.Sources[i].PipelineName = p.Name
 				}
-				triggers = append(triggers, pipeline.Triggers[i])
+				sources = append(sources, pipeline.Sources[i])
 			}
 		}
-		pipeline.Triggers = triggers
+		pipeline.Sources = sources
 	}
 	data := map[string]interface{}{
 		"pipeline":  pipeline,
@@ -260,7 +260,7 @@ func (p *ServicePipeline) ListRepoBranches(pipelineId uint) *utils.Response {
 	}
 	var branches []*git.Reference
 	for i, b := range repoBranches {
-		if MatchTriggerBranch(pipelineObj.Triggers, b.Name) {
+		if MatchBranchSource(pipelineObj.Sources, b.Name) {
 			branches = append(branches, repoBranches[i])
 		}
 	}

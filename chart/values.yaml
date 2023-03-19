@@ -14,7 +14,7 @@ server:
     repository: registry.cn-hangzhou.aliyuncs.com/kubespace/kubespace-server
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: "1.1.4"
+    tag: "1.1.5"
   imagePullSecrets: []
   service:
     type: NodePort
@@ -27,7 +27,7 @@ server:
     - name: AGENT_REPOSITORY
       value: "registry.cn-hangzhou.aliyuncs.com/kubespace/kube-agent"
     - name: AGENT_VERSION
-      value: "1.1.4"
+      value: "1.1.5"
 
   ingress:
     enabled: false
@@ -68,7 +68,7 @@ controller_manager:
     repository: registry.cn-hangzhou.aliyuncs.com/kubespace/controller-manager
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: "1.1.4"
+    tag: "1.1.5"
   imagePullSecrets: []
   service:
     type: ClusterIP
@@ -85,7 +85,7 @@ spacelet:
     repository: registry.cn-hangzhou.aliyuncs.com/kubespace/spacelet
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: "1.1.4"
+    tag: "1.1.5"
   imagePullSecrets: []
   service:
     type: ClusterIP
