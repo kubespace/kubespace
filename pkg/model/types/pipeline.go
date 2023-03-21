@@ -151,13 +151,66 @@ type PipelineTrigger struct {
 	PipelineId uint           `gorm:"" json:"pipeline_id"`
 	Type       string         `json:"type"`
 	Config     datatypes.JSON `gorm:"type:json" json:"config"`
-	UpdateUser string         `gorm:"size:50;not null" json:"update_user"`
-	CreateTime time.Time      `gorm:"not null;autoCreateTime" json:"create_time"`
-	UpdateTime time.Time      `gorm:"not null;autoUpdateTime" json:"update_time"`
+	// 定时触发的触发时间
+	TriggerTime time.Time `gorm:"" json:"trigger_time"`
+	UpdateUser  string    `gorm:"size:50;not null" json:"update_user"`
+	CreateTime  time.Time `gorm:"not null;autoCreateTime" json:"create_time"`
+	UpdateTime  time.Time `gorm:"not null;autoUpdateTime" json:"update_time"`
 }
 
 // PipelineTriggerConfigCron 流水线定时触发配置
 type PipelineTriggerConfigCron struct {
+	Cron string `json:"cron"`
+}
+
+// PipelineTriggerConfigCode 流水线代码源分支最新提交记录
+type PipelineTriggerConfigCode struct {
+	BranchLatestCommit map[string]*PipelineTriggerConfigCodeBranch `json:"branches"`
+}
+
+type PipelineTriggerConfigCodeBranch struct {
+	Branch     string    `json:"branch"`
+	CommitId   string    `json:"commit_id"`
+	Author     string    `json:"author"`
+	Message    string    `json:"message"`
+	CommitTime time.Time `json:"commit_time"`
+}
+
+const (
+	// PipelineTriggerEventStatusNew 新生成未消费的触发事件
+	PipelineTriggerEventStatusNew = "new"
+	// PipelineTriggerEventStatusConsumed 已消费的事件
+	PipelineTriggerEventStatusConsumed = "consumed"
+
+	// PipelineTriggerEventFromTrigger 事件触发来源流水线触发配置
+	PipelineTriggerEventFromTrigger = "trigger"
+)
+
+// PipelineTriggerEvent 根据流水线触发配置，当触发条件达到时生成触发事件，根据事件生成新的流水线构建任务
+type PipelineTriggerEvent struct {
+	ID         uint   `gorm:"primaryKey" json:"id"`
+	PipelineId uint   `gorm:"" json:"pipeline_id"`
+	From       string `gorm:"size:50" json:"from"`
+	TriggerId  uint   `gorm:"" json:"trigger_id"`
+	Status     string `gorm:"size:50;" json:"status"`
+	// 事件触发的构建配置
+	EventConfig datatypes.JSON `gorm:"type:json" json:"event_config"`
+	// 事件执行结果记录，触发成功/失败，以及失败原因
+	EventResult *utils.Response `gorm:"type:json" json:"event_result"`
+	CreateTime  time.Time       `gorm:"not null;autoCreateTime" json:"create_time"`
+	UpdateTime  time.Time       `gorm:"not null;autoUpdateTime" json:"update_time"`
+}
+
+// PipelineTriggerEventConfig 流水线触发事件的配置信息，
+// 1. 如果是代码源更新触发，则触发配置为分支以及commit_id
+// 2. 如果是定时触发，则该配置为空，根据流水线的类型生成流水线构建
+// 		a. 如果是代码源流水线，则根据监听的所有分支，找到最新构建的分支进行构建
+// 		b. 如果是自定义流水线，则查询监听的所有流水线，找到最新的构建成功的记录进行构建
+type PipelineTriggerEventConfig struct {
+	// 代码源触发时的提交
+	CodeCommit *PipelineTriggerConfigCodeBranch
+	// 自定义流水线触发时的流水线源
+	PipelineSources []*PipelineSource
 }
 
 // PipelineStage 流水线阶段
