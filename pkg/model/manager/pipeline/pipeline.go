@@ -153,6 +153,9 @@ func (p *ManagerPipeline) Delete(pipelineId uint) error {
 		if err := tx.Delete(&types.PipelineStage{}, "pipeline_id=?", pipelineId).Error; err != nil {
 			return err
 		}
+		if err := tx.Delete(&types.PipelineTrigger{}, "pipeline_id=?", pipelineId).Error; err != nil {
+			return err
+		}
 		if err := tx.Delete(&types.Pipeline{}, "id=?", pipelineId).Error; err != nil {
 			return err
 		}

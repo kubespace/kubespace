@@ -50,5 +50,5 @@ func NewPipelineRunController(config *controller.Config) *PipelineRunController 
 }
 
 func (p *PipelineRunController) Run(stopCh <-chan struct{}) {
-	p.pipelineRunInformer.Run(stopCh)
+	go p.pipelineRunInformer.Run(stopCh)
 }

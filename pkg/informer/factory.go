@@ -10,6 +10,8 @@ type Factory interface {
 	ClusterAgentInformer(token string) Informer
 	PipelineRunInformer(cond *pipeline.PipelineRunWatchCondition) Informer
 	PipelineRunJobInformer(cond *pipeline.PipelineRunJobWatchCondition) Informer
+	PipelineTriggerInformer(cond *pipeline.PipelineTriggerWatchCondition) Informer
+	PipelineTriggerEventInformer(cond *pipeline.PipelineTriggerEventWatchCondition) Informer
 }
 
 type informerFactory struct {
@@ -33,4 +35,12 @@ func (s *informerFactory) PipelineRunInformer(cond *pipeline.PipelineRunWatchCon
 
 func (s *informerFactory) PipelineRunJobInformer(cond *pipeline.PipelineRunJobWatchCondition) Informer {
 	return NewInformer(pipeline.NewPipelineRunJobListWatcher(s.config, cond))
+}
+
+func (s *informerFactory) PipelineTriggerInformer(cond *pipeline.PipelineTriggerWatchCondition) Informer {
+	return NewInformer(pipeline.NewPipelineTriggerListWatcher(s.config, cond))
+}
+
+func (s *informerFactory) PipelineTriggerEventInformer(cond *pipeline.PipelineTriggerEventWatchCondition) Informer {
+	return NewInformer(pipeline.NewPipelineTriggerEventListWatcher(s.config, cond))
 }

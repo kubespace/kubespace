@@ -229,6 +229,9 @@ func (r *ServicePipelineRun) InitialCodeEnvs(pipeline *types.Pipeline, workspace
 		return fmt.Errorf("获取代码密钥失败：" + err.Error())
 	}
 	gitcli, err := utilgit.NewClient(workspace.Code.Type, workspace.Code.ApiUrl, secret.GetSecret())
+	if err != nil {
+		return err
+	}
 	commit, err := gitcli.GetBranchLatestCommit(context.Background(), workspace.Code.CloneUrl, branch)
 	if err != nil {
 		return fmt.Errorf("获取远程分支%s失败：%s", branch, err.Error())

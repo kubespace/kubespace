@@ -47,7 +47,7 @@ func main() {
 	}
 
 	pipelineRunController := pipelinerun.NewPipelineRunController(controllerConfig)
-	go pipelineRunController.Run(stopCh)
+	pipelineRunController.Run(stopCh)
 
 	<-stopCh
 }

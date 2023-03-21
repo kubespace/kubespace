@@ -158,6 +158,29 @@ type PipelineTrigger struct {
 	UpdateTime  time.Time `gorm:"not null;autoUpdateTime" json:"update_time"`
 }
 
+func (p *PipelineTrigger) Unmarshal(bytes []byte) (interface{}, error) {
+	var trigger PipelineTrigger
+	if err := json.Unmarshal(bytes, &trigger); err != nil {
+		return nil, err
+	}
+	return trigger, nil
+}
+
+type PipelineTriggerConfig struct {
+	// 定时触发配置
+	Cron *PipelineTriggerConfigCron `json:"cron"`
+	// 代码源分支最新提交记录以及配置
+	Code *PipelineTriggerConfigCode `json:"code"`
+}
+
+func (pt *PipelineTriggerConfig) Scan(value interface{}) error {
+	return db.Scan(value, pt)
+}
+
+func (pt PipelineTriggerConfig) Value() (driver.Value, error) {
+	return db.Value(pt)
+}
+
 // PipelineTriggerConfigCron 流水线定时触发配置
 type PipelineTriggerConfigCron struct {
 	Cron string `json:"cron"`
@@ -194,23 +217,39 @@ type PipelineTriggerEvent struct {
 	TriggerId  uint   `gorm:"" json:"trigger_id"`
 	Status     string `gorm:"size:50;" json:"status"`
 	// 事件触发的构建配置
-	EventConfig datatypes.JSON `gorm:"type:json" json:"event_config"`
+	EventConfig *PipelineTriggerEventConfig `gorm:"type:json" json:"event_config"`
 	// 事件执行结果记录，触发成功/失败，以及失败原因
 	EventResult *utils.Response `gorm:"type:json" json:"event_result"`
 	CreateTime  time.Time       `gorm:"not null;autoCreateTime" json:"create_time"`
 	UpdateTime  time.Time       `gorm:"not null;autoUpdateTime" json:"update_time"`
 }
 
+func (p *PipelineTriggerEvent) Unmarshal(bytes []byte) (interface{}, error) {
+	var event PipelineTriggerEvent
+	if err := json.Unmarshal(bytes, &event); err != nil {
+		return nil, err
+	}
+	return event, nil
+}
+
 // PipelineTriggerEventConfig 流水线触发事件的配置信息，
-// 1. 如果是代码源更新触发，则触发配置为分支以及commit_id
-// 2. 如果是定时触发，则该配置为空，根据流水线的类型生成流水线构建
-// 		a. 如果是代码源流水线，则根据监听的所有分支，找到最新构建的分支进行构建
-// 		b. 如果是自定义流水线，则查询监听的所有流水线，找到最新的构建成功的记录进行构建
+//  1. 如果是代码源更新触发，则触发配置为分支以及commit_id
+//  2. 如果是定时触发，则该配置为空，根据流水线的类型生成流水线构建
+//     a. 如果是代码源流水线，则根据监听的所有分支，找到最新构建的分支进行构建
+//     b. 如果是自定义流水线，则查询监听的所有流水线，找到最新的构建成功的记录进行构建
 type PipelineTriggerEventConfig struct {
 	// 代码源触发时的提交
 	CodeCommit *PipelineTriggerConfigCodeBranch
 	// 自定义流水线触发时的流水线源
 	PipelineSources []*PipelineSource
+}
+
+func (pt *PipelineTriggerEventConfig) Scan(value interface{}) error {
+	return db.Scan(value, pt)
+}
+
+func (pt PipelineTriggerEventConfig) Value() (driver.Value, error) {
+	return db.Value(pt)
 }
 
 // PipelineStage 流水线阶段

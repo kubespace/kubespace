@@ -10,7 +10,7 @@ import (
 
 const PipelineTriggerWatchKey = "kubespace:pipeline:trigger"
 
-// PipelineTriggerWatchCondition PipelineRunJob监听条件
+// PipelineTriggerWatchCondition PipelineTrigger监听条件
 type PipelineTriggerWatchCondition struct {
 }
 
@@ -27,7 +27,7 @@ func NewPipelineTriggerListWatcher(config *config.ListWatcherConfig, cond *Pipel
 		db:        config.DB,
 		condition: cond,
 	}
-	a.Storage = config.NewStorage(PipelineTriggerWatchKey, a.List, a.Filter, nil, &types.PipelineRunJob{})
+	a.Storage = config.NewStorage(PipelineTriggerWatchKey, a.List, a.Filter, nil, &types.PipelineTrigger{})
 	return a
 }
 
