@@ -28,26 +28,26 @@ type Models struct {
 	TokenManager    *user.TokenManager
 	RoleManager     *user.RoleManager
 
-	PipelineManager          *pipeline.ManagerPipeline
-	PipelineRunManager       *pipeline.ManagerPipelineRun
-	PipelineWorkspaceManager *pipeline.WorkspaceManager
-	PipelinePluginManager    *pipeline.ManagerPipelinePlugin
-	PipelineResourceManager  *pipeline.ResourceManager
-	PipelineJobLogManager    *pipeline.JobLog
-	PipelineReleaseManager   *pipeline.Release
+	PipelineManager             *pipeline.ManagerPipeline
+	PipelineRunManager          *pipeline.ManagerPipelineRun
+	PipelineWorkspaceManager    *pipeline.WorkspaceManager
+	PipelinePluginManager       *pipeline.ManagerPipelinePlugin
+	PipelineResourceManager     *pipeline.ResourceManager
+	PipelineJobLogManager       *pipeline.JobLog
+	PipelineReleaseManager      *pipeline.Release
+	PipelineTriggerManager      *pipeline.PipelineTriggerManager
+	PipelineTriggerEventManager *pipeline.PipelineTriggerEventManager
 
 	ProjectAppManager        *project.AppManager
 	ProjectAppVersionManager *project.AppVersionManager
 	ProjectManager           *project.ManagerProject
 	AppStoreManager          *project.AppStoreManager
 
-
 	SettingsSecretManager *settings.SettingsSecretManager
 	ImageRegistryManager  *settings.ImageRegistryManager
 
-	LdapManager           *settings.LdapManager
+	LdapManager     *settings.LdapManager
 	SpaceletManager *spacelet.SpaceletManager
-
 }
 
 func NewModels(c *Config) (*Models, error) {
@@ -63,13 +63,13 @@ func NewModels(c *Config) (*Models, error) {
 	pipelineResourceMgr := pipeline.NewResourceManager(c.DB.Instance)
 	jobLogMgr := pipeline.NewJobLogManager(c.DB.Instance)
 	pipelineReleaseMgr := pipeline.NewReleaseManager(c.DB.Instance)
-
+	pipelineTriggerMgr := pipeline.NewPipelineTriggerManager(c.DB.Instance)
+	pipelineTriggerEventMgr := pipeline.NewPipelineTriggerEventManager(c.DB.Instance, c.ListWatcherConfig)
 
 	secrets := settings.NewSettingsSecretManager(c.DB.Instance)
 	imageRegistry := settings.NewSettingsImageRegistryManager(c.DB.Instance)
-	
-	ldap := settings.NewLdapManager(c.DB.Instance)
 
+	ldap := settings.NewLdapManager(c.DB.Instance)
 
 	appVersionMgr := project.NewAppVersionManager(c.DB.Instance)
 	projectAppMgr := project.NewAppManager(appVersionMgr, c.DB.Instance)
@@ -81,27 +81,29 @@ func NewModels(c *Config) (*Models, error) {
 	sl := spacelet.NewSpaceletManager(c.DB.Instance)
 
 	return &Models{
-		db:                       c.DB.Instance,
-		ListWatcherConfig:        c.ListWatcherConfig,
-		ClusterManager:           cm,
-		UserManager:              userMgr,
-		UserRoleManager:          userRole,
-		TokenManager:             tk,
-		RoleManager:              role,
-		PipelineManager:          pipelineMgr,
-		PipelineRunManager:       pipelineRunMgr,
-		PipelineWorkspaceManager: pipelineWorkspaceMgr,
-		PipelinePluginManager:    pipelinePluginMgr,
-		PipelineResourceManager:  pipelineResourceMgr,
-		PipelineJobLogManager:    jobLogMgr,
-		PipelineReleaseManager:   pipelineReleaseMgr,
-		SettingsSecretManager:    secrets,
-		LdapManager:              ldap,
-		ProjectManager:           projectMgr,
-		ProjectAppManager:        projectAppMgr,
-		ProjectAppVersionManager: appVersionMgr,
-		ImageRegistryManager:     imageRegistry,
-		AppStoreManager:          appStoreMgr,
-		SpaceletManager:          sl,
+		db:                          c.DB.Instance,
+		ListWatcherConfig:           c.ListWatcherConfig,
+		ClusterManager:              cm,
+		UserManager:                 userMgr,
+		UserRoleManager:             userRole,
+		TokenManager:                tk,
+		RoleManager:                 role,
+		PipelineManager:             pipelineMgr,
+		PipelineRunManager:          pipelineRunMgr,
+		PipelineWorkspaceManager:    pipelineWorkspaceMgr,
+		PipelinePluginManager:       pipelinePluginMgr,
+		PipelineResourceManager:     pipelineResourceMgr,
+		PipelineJobLogManager:       jobLogMgr,
+		PipelineReleaseManager:      pipelineReleaseMgr,
+		PipelineTriggerManager:      pipelineTriggerMgr,
+		PipelineTriggerEventManager: pipelineTriggerEventMgr,
+		SettingsSecretManager:       secrets,
+		LdapManager:                 ldap,
+		ProjectManager:              projectMgr,
+		ProjectAppManager:           projectAppMgr,
+		ProjectAppVersionManager:    appVersionMgr,
+		ImageRegistryManager:        imageRegistry,
+		AppStoreManager:             appStoreMgr,
+		SpaceletManager:             sl,
 	}, nil
 }

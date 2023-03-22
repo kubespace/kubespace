@@ -6,7 +6,6 @@ import (
 	"errors"
 	"github.com/kubespace/kubespace/pkg/core/db"
 	"github.com/kubespace/kubespace/pkg/utils"
-	"gorm.io/datatypes"
 	"time"
 )
 
@@ -147,10 +146,10 @@ const (
 
 // PipelineTrigger 流水线触发配置
 type PipelineTrigger struct {
-	ID         uint           `gorm:"primaryKey" json:"id"`
-	PipelineId uint           `gorm:"" json:"pipeline_id"`
-	Type       string         `json:"type"`
-	Config     datatypes.JSON `gorm:"type:json" json:"config"`
+	ID         uint                  `gorm:"primaryKey" json:"id"`
+	PipelineId uint                  `gorm:"" json:"pipeline_id"`
+	Type       string                `json:"type"`
+	Config     PipelineTriggerConfig `gorm:"type:json" json:"config"`
 	// 定时触发的触发时间
 	TriggerTime time.Time `gorm:"" json:"trigger_time"`
 	UpdateUser  string    `gorm:"size:50;not null" json:"update_user"`
@@ -217,7 +216,7 @@ type PipelineTriggerEvent struct {
 	TriggerId  uint   `gorm:"" json:"trigger_id"`
 	Status     string `gorm:"size:50;" json:"status"`
 	// 事件触发的构建配置
-	EventConfig *PipelineTriggerEventConfig `gorm:"type:json" json:"event_config"`
+	EventConfig PipelineTriggerEventConfig `gorm:"type:json" json:"event_config"`
 	// 事件执行结果记录，触发成功/失败，以及失败原因
 	EventResult *utils.Response `gorm:"type:json" json:"event_result"`
 	CreateTime  time.Time       `gorm:"not null;autoCreateTime" json:"create_time"`

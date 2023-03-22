@@ -2,12 +2,12 @@ package pipeline_trigger
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	pipelineservice "github.com/kubespace/kubespace/pkg/service/pipeline"
 	utilgit "github.com/kubespace/kubespace/pkg/third/git"
 	"k8s.io/klog/v2"
+	"time"
 )
 
 func (p *PipelineTriggerController) triggerLockKey(id uint) string {
@@ -51,16 +51,11 @@ func (p *PipelineTriggerController) triggerHandle(obj interface{}) error {
 	return nil
 }
 
-// 触发代码空间流水线
+// 代码空间流水线触发事件，是否有最新的代码提交，如果有，则生成一个新的流水线构建事件
 func (p *PipelineTriggerController) triggerCodePipeline(
 	workspace *types.PipelineWorkspace,
 	pipeline *types.Pipeline,
 	trigger *types.PipelineTrigger) error {
-	// 流水线触发代码分支配置
-	var triggerConfig types.PipelineTriggerConfigCode
-	if err := json.Unmarshal(trigger.Config, &triggerConfig); err != nil {
-		return err
-	}
 	if workspace.Code == nil {
 		return fmt.Errorf("pipeline workspace id=%d name=%s no secret", workspace.ID, workspace.Name)
 	}
@@ -77,14 +72,21 @@ func (p *PipelineTriggerController) triggerCodePipeline(
 	if err != nil {
 		return err
 	}
+
+	// 是否是第一次触发，第一次不生成触发事件
 	first := false
-	if triggerConfig.BranchLatestCommit == nil {
+	// 流水线触发代码分支配置
+	triggerCodeConfig := trigger.Config.Code
+	if triggerCodeConfig == nil {
+		triggerCodeConfig = &types.PipelineTriggerConfigCode{}
+	}
+	if triggerCodeConfig.BranchLatestCommit == nil {
 		// 如果还没有触发分支的记录，则是第一次初始化，不进行事件触发
-		triggerConfig.BranchLatestCommit = make(map[string]*types.PipelineTriggerConfigCodeBranch)
+		triggerCodeConfig.BranchLatestCommit = make(map[string]*types.PipelineTriggerConfigCodeBranch)
 		first = true
 	}
 	for _, branch := range branches {
-		currCommit, ok := triggerConfig.BranchLatestCommit[branch.Name]
+		currCommit, ok := triggerCodeConfig.BranchLatestCommit[branch.Name]
 		if !ok || currCommit.CommitId != branch.Ref {
 			// 如果没有记录或者当前记录的commitId与代码库不一致，则更新该commitId
 			latestCommit, err := gitcli.GetBranchLatestCommit(context.Background(), workspace.Code.CloneUrl, branch.Name)
@@ -99,12 +101,25 @@ func (p *PipelineTriggerController) triggerCodePipeline(
 				Message:    latestCommit.Message,
 				CommitTime: latestCommit.CommitTime,
 			}
-			triggerConfig.BranchLatestCommit[branch.Name] = configBranch
 			if !first && pipelineservice.MatchBranchSource(pipeline.Sources, branch.Name) {
-				// 如果不是第一次初始化，且匹配当前流水线代码源规则，则发送触发事件
+				// 如果不是第一次初始化，且匹配当前流水线代码源规则，则生成触发事件
+				if err := p.models.PipelineTriggerEventManager.Create(&types.PipelineTriggerEvent{
+					PipelineId:  pipeline.ID,
+					From:        types.PipelineTriggerEventFromTrigger,
+					TriggerId:   trigger.ID,
+					Status:      types.PipelineTriggerEventStatusNew,
+					EventConfig: types.PipelineTriggerEventConfig{CodeCommit: configBranch},
+					CreateTime:  time.Now(),
+					UpdateTime:  time.Now(),
+				}); err != nil {
+					klog.Errorf("create pipeline trigger event error: %s", err.Error())
+					continue
+				}
 			}
+			triggerCodeConfig.BranchLatestCommit[branch.Name] = configBranch
 		}
 	}
 	// 更新triggerConfig到数据库
-	return nil
+	return p.models.PipelineTriggerManager.Update(trigger.ID, &types.PipelineTrigger{
+		Config: types.PipelineTriggerConfig{Code: triggerCodeConfig}, UpdateTime: time.Now()})
 }
