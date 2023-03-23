@@ -1,8 +1,8 @@
-package pipelinerun
+package pipeline_run
 
 import (
 	"github.com/kubespace/kubespace/pkg/controller"
-	"github.com/kubespace/kubespace/pkg/controller/pipelinerun/job_run"
+	"github.com/kubespace/kubespace/pkg/controller/pipeline_run/job_run"
 	"github.com/kubespace/kubespace/pkg/core/lock"
 	"github.com/kubespace/kubespace/pkg/informer"
 	pipelinelistwatcher "github.com/kubespace/kubespace/pkg/informer/listwatcher/pipeline"
@@ -10,6 +10,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/model/types"
 )
 
+// PipelineRunController 流水线构建controller
 type PipelineRunController struct {
 	models              *model.Models
 	pipelineRunInformer informer.Informer

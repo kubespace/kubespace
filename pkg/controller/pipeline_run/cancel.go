@@ -1,4 +1,4 @@
-package pipelinerun
+package pipeline_run
 
 import (
 	"fmt"

@@ -21,7 +21,7 @@ func (p *PipelineTriggerController) triggerCheck(obj interface{}) bool {
 		return false
 	}
 	if locked, _ := p.lock.Locked(p.triggerLockKey(trigger.ID)); locked {
-		// 正在处理该流水线配置
+		// 正在处理该流水线触发配置
 		return false
 	}
 	return true
