@@ -187,10 +187,10 @@ type PipelineTriggerConfigCron struct {
 
 // PipelineTriggerConfigCode 流水线代码源分支最新提交记录
 type PipelineTriggerConfigCode struct {
-	BranchLatestCommit map[string]*PipelineTriggerConfigCodeBranch `json:"branches"`
+	BranchLatestCommit map[string]*PipelineBuildCodeBranch `json:"branches"`
 }
 
-type PipelineTriggerConfigCodeBranch struct {
+type PipelineBuildCodeBranch struct {
 	Branch     string    `json:"branch"`
 	CommitId   string    `json:"commit_id"`
 	Author     string    `json:"author"`
@@ -238,7 +238,7 @@ func (p *PipelineTriggerEvent) Unmarshal(bytes []byte) (interface{}, error) {
 //     b. 如果是自定义流水线，则查询监听的所有流水线，找到最新的构建成功的记录进行构建
 type PipelineTriggerEventConfig struct {
 	// 代码源触发时的提交
-	CodeCommit *PipelineTriggerConfigCodeBranch
+	CodeCommit *PipelineBuildCodeBranch
 	// 自定义流水线触发时的流水线源
 	PipelineSources []*PipelineSource
 }

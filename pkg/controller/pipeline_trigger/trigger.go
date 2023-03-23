@@ -82,7 +82,7 @@ func (p *PipelineTriggerController) triggerCodePipeline(
 	}
 	if triggerCodeConfig.BranchLatestCommit == nil {
 		// 如果还没有触发分支的记录，则是第一次初始化，不进行事件触发
-		triggerCodeConfig.BranchLatestCommit = make(map[string]*types.PipelineTriggerConfigCodeBranch)
+		triggerCodeConfig.BranchLatestCommit = make(map[string]*types.PipelineBuildCodeBranch)
 		first = true
 	}
 	for _, branch := range branches {
@@ -94,7 +94,7 @@ func (p *PipelineTriggerController) triggerCodePipeline(
 				klog.Errorf("get code %s branch=%s latest commit info error: %s", workspace.Code.CloneUrl, branch.Name, err.Error())
 				continue
 			}
-			configBranch := &types.PipelineTriggerConfigCodeBranch{
+			configBranch := &types.PipelineBuildCodeBranch{
 				Branch:     branch.Name,
 				CommitId:   latestCommit.CommitId,
 				Author:     latestCommit.Author,

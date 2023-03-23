@@ -28,3 +28,5 @@ type PipelineBuildParams struct {
 	PipelineId uint                   `json:"pipeline_id"`
 	Params     map[string]interface{} `json:"params"`
 }
+
+//type PipelineBuildCode
