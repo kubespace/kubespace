@@ -3,6 +3,8 @@ package pipeline_trigger
 import (
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/model/types"
+	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
+	"time"
 )
 
 func (p *PipelineTriggerController) eventLockKey(id uint) string {
@@ -44,7 +46,23 @@ func (p *PipelineTriggerController) eventHandle(obj interface{}) error {
 		return err
 	}
 	if pipelineWorkspace.Type == types.WorkspaceTypeCode {
-
+		// 触发代码流水线构建
+		codeCommitConfig := event.EventConfig.CodeCommit
+		buildResp := p.pipelineRunService.Build(&schemas.PipelineBuildParams{
+			PipelineId: pipeline.ID,
+			CodeBranch: &schemas.PipelineBuildCodeBranch{
+				Branch:     codeCommitConfig.Branch,
+				CommitId:   codeCommitConfig.CommitId,
+				Author:     codeCommitConfig.Author,
+				Message:    codeCommitConfig.Message,
+				CommitTime: codeCommitConfig.CommitTime,
+			},
+		}, codeCommitConfig.Author)
+		return p.models.PipelineTriggerEventManager.Update(event.ID, &types.PipelineTriggerEvent{
+			EventResult: buildResp,
+			Status:      types.PipelineTriggerEventStatusConsumed,
+			UpdateTime:  time.Now(),
+		})
 	}
 	return nil
 }

@@ -2,7 +2,6 @@ package pipeline
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/manager/pipeline"
@@ -131,25 +130,25 @@ type BuildForPipelineParams struct {
 	BuildIds []*BuildForPipelineParamsBuilds `json:"build_ids"`
 }
 
-func (r *ServicePipelineRun) InitialEnvs(pipeline *types.Pipeline, workspace *types.PipelineWorkspace, params map[string]interface{}) (map[string]interface{}, error) {
+func (r *ServicePipelineRun) InitialEnvs(pipeline *types.Pipeline, workspace *types.PipelineWorkspace, params *schemas.PipelineBuildParams) (map[string]interface{}, error) {
 	envs := map[string]interface{}{}
 	envs[types.PipelineEnvWorkspaceId] = workspace.ID
 	envs[types.PipelineEnvWorkspaceName] = workspace.Name
 	envs[types.PipelineEnvPipelineId] = pipeline.ID
 	envs[types.PipelineEnvPipelineName] = pipeline.Name
 	if workspace.Type == types.WorkspaceTypeCode {
-		if err := r.InitialCodeEnvs(pipeline, workspace, params, envs); err != nil {
+		if err := r.InitialCodeEnvs(pipeline, workspace, params.CodeBranch, envs); err != nil {
 			return nil, err
 		}
 	} else if workspace.Type == types.WorkspaceTypeCustom {
-		paramsBytes, err := json.Marshal(params)
-		if err != nil {
-			return nil, err
-		}
-		var buildPipelineParams BuildForPipelineParams
-		if err = json.Unmarshal(paramsBytes, &buildPipelineParams); err != nil {
-			return nil, err
-		}
+		//paramsBytes, err := json.Marshal(params)
+		//if err != nil {
+		//	return nil, err
+		//}
+		//var buildPipelineParams BuildForPipelineParams
+		//if err = json.Unmarshal(paramsBytes, &buildPipelineParams); err != nil {
+		//	return nil, err
+		//}
 		delPipelineEnvs := []string{
 			types.PipelineEnvWorkspaceId,
 			types.PipelineEnvWorkspaceName,
@@ -159,7 +158,7 @@ func (r *ServicePipelineRun) InitialEnvs(pipeline *types.Pipeline, workspace *ty
 			types.PipelineEnvPipelineTriggerUser,
 		}
 		var pipelineBuildId []string
-		for _, buildInfo := range buildPipelineParams.BuildIds {
+		for _, buildInfo := range params.CustomSources {
 			if !buildInfo.IsBuild {
 				continue
 			}
@@ -204,47 +203,55 @@ func (r *ServicePipelineRun) InitialEnvs(pipeline *types.Pipeline, workspace *ty
 	return envs, nil
 }
 
-func (r *ServicePipelineRun) InitialCodeEnvs(pipeline *types.Pipeline, workspace *types.PipelineWorkspace, params, envs map[string]interface{}) error {
+func (r *ServicePipelineRun) InitialCodeEnvs(
+	pipeline *types.Pipeline,
+	workspace *types.PipelineWorkspace,
+	codeBranch *schemas.PipelineBuildCodeBranch,
+	envs map[string]interface{}) error {
+
 	if workspace.Code == nil {
 		return fmt.Errorf("未获取到流水线空间代码信息")
+	}
+	if codeBranch.Branch == "" {
+		return fmt.Errorf("参数错误，代码分支为空")
+	}
+	if !MatchBranchSource(pipeline.Sources, codeBranch.Branch) {
+		return fmt.Errorf("代码分支未匹配到该流水线")
 	}
 	envs["PIPELINE_CODE_URL"] = workspace.Code.CloneUrl
 	envs["PIPELINE_CODE_API_URL"] = workspace.Code.ApiUrl
 	envs["PIPELINE_CODE_TYPE"] = workspace.Code.Type
-	paramBranch, ok := params["branch"]
-	if ok {
-		envs["PIPELINE_CODE_BRANCH"] = paramBranch
+	envs["PIPELINE_CODE_BRANCH"] = codeBranch.Branch
+	if codeBranch.CommitId != "" {
+		// 指定分支提交id
+		envs["PIPELINE_CODE_COMMIT_ID"] = codeBranch.CommitId
+		envs["PIPELINE_CODE_COMMIT_AUTHOR"] = codeBranch.Author
+		envs["PIPELINE_CODE_COMMIT_MESSAGE"] = codeBranch.Message
+		envs["PIPELINE_CODE_COMMIT_TIME"] = codeBranch.CommitTime
 	} else {
-		return fmt.Errorf("未获取到代码分支参数")
+		// 获取分支最新提交id
+		secret, err := r.models.SettingsSecretManager.Get(workspace.Code.SecretId)
+		if err != nil {
+			return fmt.Errorf("获取代码密钥失败：" + err.Error())
+		}
+		gitcli, err := utilgit.NewClient(workspace.Code.Type, workspace.Code.ApiUrl, secret.GetSecret())
+		if err != nil {
+			return err
+		}
+		commit, err := gitcli.GetBranchLatestCommit(context.Background(), workspace.Code.CloneUrl, codeBranch.Branch)
+		if err != nil {
+			return fmt.Errorf("获取远程分支%s失败：%s", codeBranch.Branch, err.Error())
+		}
+		envs["PIPELINE_CODE_COMMIT_ID"] = commit.CommitId
+		envs["PIPELINE_CODE_COMMIT_AUTHOR"] = commit.Author
+		envs["PIPELINE_CODE_COMMIT_MESSAGE"] = commit.Message
+		envs["PIPELINE_CODE_COMMIT_TIME"] = commit.CommitTime
 	}
-	branch, ok := paramBranch.(string)
-	if !ok {
-		return fmt.Errorf("获取分支参数类型错误")
-	}
-	if !MatchBranchSource(pipeline.Sources, branch) {
-		return fmt.Errorf("代码分支未匹配到该流水线")
-	}
-	secret, err := r.models.SettingsSecretManager.Get(workspace.Code.SecretId)
-	if err != nil {
-		return fmt.Errorf("获取代码密钥失败：" + err.Error())
-	}
-	gitcli, err := utilgit.NewClient(workspace.Code.Type, workspace.Code.ApiUrl, secret.GetSecret())
-	if err != nil {
-		return err
-	}
-	commit, err := gitcli.GetBranchLatestCommit(context.Background(), workspace.Code.CloneUrl, branch)
-	if err != nil {
-		return fmt.Errorf("获取远程分支%s失败：%s", branch, err.Error())
-	}
-	envs["PIPELINE_CODE_COMMIT_ID"] = commit.CommitId
-	envs["PIPELINE_CODE_COMMIT_AUTHOR"] = commit.Author
-	envs["PIPELINE_CODE_COMMIT_MESSAGE"] = commit.Message
-	envs["PIPELINE_CODE_COMMIT_TIME"] = commit.CommitTime
 	return nil
 }
 
-func (r *ServicePipelineRun) Build(buildSer *serializers.PipelineBuildSerializer, user *types.User) *utils.Response {
-	pipelineObj, err := r.models.PipelineManager.Get(buildSer.PipelineId)
+func (r *ServicePipelineRun) Build(buildParams *schemas.PipelineBuildParams, username string) *utils.Response {
+	pipelineObj, err := r.models.PipelineManager.Get(buildParams.PipelineId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
@@ -252,14 +259,14 @@ func (r *ServicePipelineRun) Build(buildSer *serializers.PipelineBuildSerializer
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
-	stages, err := r.models.PipelineManager.Stages(buildSer.PipelineId)
+	stages, err := r.models.PipelineManager.Stages(buildParams.PipelineId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
 	if len(stages) == 0 {
 		return &utils.Response{Code: code.DataNotExists, Msg: "当前流水线未配置阶段"}
 	}
-	envs, err := r.InitialEnvs(pipelineObj, workspace, buildSer.Params)
+	envs, err := r.InitialEnvs(pipelineObj, workspace, buildParams)
 	if err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
@@ -288,11 +295,15 @@ func (r *ServicePipelineRun) Build(buildSer *serializers.PipelineBuildSerializer
 		stageRun.Jobs = stageRunJobs
 		stagesRun = append(stagesRun, &stageRun)
 	}
+	var paramsMap = make(types.Map)
+	if err = utils.ConvertTypeByJson(buildParams, &paramsMap); err != nil {
+		return &utils.Response{Code: code.UnMarshalError, Msg: err.Error()}
+	}
 	pipelineRun := &types.PipelineRun{
-		PipelineId: buildSer.PipelineId,
+		PipelineId: buildParams.PipelineId,
 		Status:     types.PipelineStatusWait,
-		Operator:   user.Name,
-		Params:     buildSer.Params,
+		Operator:   username,
+		Params:     paramsMap,
 		Env:        envs,
 		CreateTime: time.Now(),
 		UpdateTime: time.Now(),

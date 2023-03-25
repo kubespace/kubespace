@@ -50,11 +50,11 @@ func NewPipelineRun(config *config.ServerConfig) *PipelineRun {
 }
 
 func (p *PipelineRun) build(c *views.Context) *utils.Response {
-	var ser serializers.PipelineBuildSerializer
+	var ser schemas.PipelineBuildParams
 	if err := c.ShouldBind(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	return p.pipelineRunService.Build(&ser, c.User)
+	return p.pipelineRunService.Build(&ser, c.User.Name)
 }
 
 func (p *PipelineRun) list(c *views.Context) *utils.Response {
