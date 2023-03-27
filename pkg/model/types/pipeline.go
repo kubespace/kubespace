@@ -88,6 +88,45 @@ func (c PipelineWorkspaceCode) Value() (driver.Value, error) {
 	return db.Value(c)
 }
 
+const (
+	// PipelineCodeCacheStatusOpen 对代码分支进行缓存
+	PipelineCodeCacheStatusOpen = "open"
+	// PipelineCodeCacheStatusClose 不进行代码分支缓存，当该代码空间下没有流水线代码触发配置时，状态为close，不需要缓存
+	PipelineCodeCacheStatusClose = "close"
+)
+
+// PipelineCodeCache 缓存代码分支的最新commit
+type PipelineCodeCache struct {
+	ID          uint `gorm:"primaryKey" json:"id"`
+	WorkspaceId uint `gorm:"" json:"workspace_id"`
+	// 缓存状态，open（开启）/close（关闭），当该代码空间下没有流水线代码触发配置时，状态为close，不需要缓存
+	Status      string                 `gorm:"size:50" json:"status"`
+	CommitCache *CodeBranchCommitCache `gorm:"type:json" json:"branch_cache"`
+	CreateTime  time.Time              `gorm:"column:create_time;not null;autoCreateTime" json:"create_time"`
+	UpdateTime  time.Time              `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`
+}
+
+// CodeBranchCommitCache 流水线代码源分支最新提交记录缓存
+type CodeBranchCommitCache struct {
+	BranchLatestCommit map[string]*PipelineBuildCodeBranch `json:"branches"`
+}
+
+type PipelineBuildCodeBranch struct {
+	Branch     string    `json:"branch"`
+	CommitId   string    `json:"commit_id"`
+	Author     string    `json:"author"`
+	Message    string    `json:"message"`
+	CommitTime time.Time `json:"commit_time"`
+}
+
+func (c *CodeBranchCommitCache) Scan(value interface{}) error {
+	return db.Scan(value, c)
+}
+
+func (c CodeBranchCommitCache) Value() (driver.Value, error) {
+	return db.Value(c)
+}
+
 type PipelineWorkspaceRelease struct {
 	ID             uint      `gorm:"primaryKey" json:"id"`
 	WorkspaceId    uint      `gorm:"not null;uniqueIndex:idx_workspace_version" json:"workspace_id"`
@@ -150,7 +189,7 @@ type PipelineTrigger struct {
 	PipelineId uint                  `gorm:"" json:"pipeline_id"`
 	Type       string                `json:"type"`
 	Config     PipelineTriggerConfig `gorm:"type:json" json:"config"`
-	// 定时触发的触发时间
+	// 定时触发的下一次触发时间
 	TriggerTime time.Time `gorm:"" json:"trigger_time"`
 	UpdateUser  string    `gorm:"size:50;not null" json:"update_user"`
 	CreateTime  time.Time `gorm:"not null;autoCreateTime" json:"create_time"`
@@ -168,7 +207,7 @@ func (p *PipelineTrigger) Unmarshal(bytes []byte) (interface{}, error) {
 type PipelineTriggerConfig struct {
 	// 定时触发配置
 	Cron *PipelineTriggerConfigCron `json:"cron"`
-	// 代码源分支最新提交记录以及配置
+	// 代码源分支最近一次触发的提交记录
 	Code *PipelineTriggerConfigCode `json:"code"`
 }
 
@@ -188,14 +227,6 @@ type PipelineTriggerConfigCron struct {
 // PipelineTriggerConfigCode 流水线代码源分支最新提交记录
 type PipelineTriggerConfigCode struct {
 	BranchLatestCommit map[string]*PipelineBuildCodeBranch `json:"branches"`
-}
-
-type PipelineBuildCodeBranch struct {
-	Branch     string    `json:"branch"`
-	CommitId   string    `json:"commit_id"`
-	Author     string    `json:"author"`
-	Message    string    `json:"message"`
-	CommitTime time.Time `json:"commit_time"`
 }
 
 const (
