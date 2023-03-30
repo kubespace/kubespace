@@ -9,6 +9,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/server/views"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	pipelineservice "github.com/kubespace/kubespace/pkg/service/pipeline"
+	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"net/http"
@@ -103,12 +104,9 @@ func (p *Pipeline) list(c *views.Context) *utils.Response {
 }
 
 func (p *Pipeline) create(c *views.Context) *utils.Response {
-	var ser serializers.PipelineSerializer
+	var ser schemas.PipelineParams
 	if err := c.ShouldBind(&ser); err != nil {
-		return &utils.Response{
-			Code: code.ParamsError,
-			Msg:  err.Error(),
-		}
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
 	return p.pipelineService.Create(&ser, c.User)
 }

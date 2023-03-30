@@ -6,15 +6,15 @@ import (
 )
 
 type ManagerPipeline struct {
-	DB *gorm.DB
+	db *gorm.DB
 }
 
 func NewPipelineManager(db *gorm.DB) *ManagerPipeline {
-	return &ManagerPipeline{DB: db}
+	return &ManagerPipeline{db: db}
 }
 
-func (p *ManagerPipeline) CreatePipeline(pipeline *types.Pipeline, stages []*types.PipelineStage) (*types.Pipeline, error) {
-	err := p.DB.Transaction(func(tx *gorm.DB) error {
+func (p *ManagerPipeline) CreatePipeline(pipeline *types.Pipeline, stages []*types.PipelineStage, triggers []*types.PipelineTrigger) (*types.Pipeline, error) {
+	err := p.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(pipeline).Error; err != nil {
 			return err
 		}
@@ -27,6 +27,12 @@ func (p *ManagerPipeline) CreatePipeline(pipeline *types.Pipeline, stages []*typ
 			}
 			prevStageId = stage.ID
 		}
+		for _, trigger := range triggers {
+			trigger.PipelineId = pipeline.ID
+			if err := tx.Create(trigger).Error; err != nil {
+				return err
+			}
+		}
 		return nil
 	})
 	if err != nil {
@@ -35,8 +41,8 @@ func (p *ManagerPipeline) CreatePipeline(pipeline *types.Pipeline, stages []*typ
 	return pipeline, nil
 }
 
-func (p *ManagerPipeline) UpdatePipeline(pipeline *types.Pipeline, stages []*types.PipelineStage) (*types.Pipeline, error) {
-	err := p.DB.Transaction(func(tx *gorm.DB) error {
+func (p *ManagerPipeline) UpdatePipeline(pipeline *types.Pipeline, stages []*types.PipelineStage, triggers []*types.PipelineTrigger) (*types.Pipeline, error) {
+	err := p.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Save(pipeline).Error; err != nil {
 			return err
 		}
@@ -74,6 +80,17 @@ func (p *ManagerPipeline) UpdatePipeline(pipeline *types.Pipeline, stages []*typ
 			}
 			prevStageId = stage.ID
 		}
+		for _, trigger := range triggers {
+			if trigger.ID == 0 {
+				if err = tx.Create(trigger).Error; err != nil {
+					return err
+				}
+			} else {
+				if err = tx.Save(triggers).Error; err != nil {
+					return err
+				}
+			}
+		}
 		return nil
 	})
 	if err != nil {
@@ -84,7 +101,7 @@ func (p *ManagerPipeline) UpdatePipeline(pipeline *types.Pipeline, stages []*typ
 
 func (p *ManagerPipeline) Get(pipelineId uint) (*types.Pipeline, error) {
 	var pipeline types.Pipeline
-	if err := p.DB.First(&pipeline, pipelineId).Error; err != nil {
+	if err := p.db.First(&pipeline, pipelineId).Error; err != nil {
 		return nil, err
 	}
 	return &pipeline, nil
@@ -92,7 +109,7 @@ func (p *ManagerPipeline) Get(pipelineId uint) (*types.Pipeline, error) {
 
 func (p *ManagerPipeline) List(workspaceId uint) ([]types.Pipeline, error) {
 	var ps []types.Pipeline
-	result := p.DB.Where("workspace_id = ?", workspaceId).Find(&ps)
+	result := p.db.Where("workspace_id = ?", workspaceId).Find(&ps)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -101,7 +118,7 @@ func (p *ManagerPipeline) List(workspaceId uint) ([]types.Pipeline, error) {
 
 func (p *ManagerPipeline) Stages(pipelineId uint) ([]*types.PipelineStage, error) {
 	var stages []types.PipelineStage
-	if err := p.DB.Where("pipeline_id = ?", pipelineId).Find(&stages).Error; err != nil {
+	if err := p.db.Where("pipeline_id = ?", pipelineId).Find(&stages).Error; err != nil {
 		return nil, err
 	}
 
@@ -125,7 +142,7 @@ func (p *ManagerPipeline) Stages(pipelineId uint) ([]*types.PipelineStage, error
 }
 
 func (p *ManagerPipeline) Delete(pipelineId uint) error {
-	return p.DB.Transaction(func(tx *gorm.DB) error {
+	return p.db.Transaction(func(tx *gorm.DB) error {
 		var pipelineRuns []types.PipelineRun
 		if err := tx.Order("id desc").Where("pipeline_id = ?", pipelineId).Find(&pipelineRuns).Error; err != nil {
 			return err

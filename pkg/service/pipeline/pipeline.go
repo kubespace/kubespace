@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/model"
+	pipelinemgr "github.com/kubespace/kubespace/pkg/model/manager/pipeline"
 	"github.com/kubespace/kubespace/pkg/model/types"
-	"github.com/kubespace/kubespace/pkg/server/views/serializers"
+	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
 	"github.com/kubespace/kubespace/pkg/third/git"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"gorm.io/gorm"
+	"k8s.io/klog/v2"
 	"time"
 )
 
@@ -24,28 +26,28 @@ func NewPipelineService(models *model.Models) *ServicePipeline {
 	}
 }
 
-func (p *ServicePipeline) Create(pipelineSer *serializers.PipelineSerializer, user *types.User) *utils.Response {
-	workspace, err := p.models.PipelineWorkspaceManager.Get(pipelineSer.WorkspaceId)
+func (p *ServicePipeline) Create(params *schemas.PipelineParams, user *types.User) *utils.Response {
+	workspace, err := p.models.PipelineWorkspaceManager.Get(params.WorkspaceId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
 	pipeline := &types.Pipeline{
-		Name:        pipelineSer.Name,
-		WorkspaceId: pipelineSer.WorkspaceId,
-		Sources:     pipelineSer.Sources,
+		Name:        params.Name,
+		WorkspaceId: params.WorkspaceId,
+		Sources:     params.Sources,
 		CreateUser:  user.Name,
 		UpdateUser:  user.Name,
 		CreateTime:  time.Now(),
 		UpdateTime:  time.Now(),
 	}
-	if len(pipelineSer.Sources) == 0 {
+	if len(params.Sources) == 0 {
 		return &utils.Response{Code: code.ParamsError, Msg: "流水线触发源不能为空"}
 	}
-	if resp := p.CheckTrigger(workspace, pipelineSer); !resp.IsSuccess() {
+	if resp := p.CheckSource(workspace, params.Sources); !resp.IsSuccess() {
 		return resp
 	}
 	var stages []*types.PipelineStage
-	for _, stageSer := range pipelineSer.Stages {
+	for _, stageSer := range params.Stages {
 		if stageSer.TriggerMode != types.StageTriggerModeAuto && stageSer.TriggerMode != types.StageTriggerModeManual {
 			return &utils.Response{
 				Code: code.ParamsError,
@@ -60,22 +62,26 @@ func (p *ServicePipeline) Create(pipelineSer *serializers.PipelineSerializer, us
 		}
 		stages = append(stages, stage)
 	}
-	pipeline, err = p.models.PipelineManager.CreatePipeline(pipeline, stages)
+	triggers, err := p.GetPipelineTrigger(0, params.Triggers, user.Name)
 	if err != nil {
-		return &utils.Response{
-			Code: code.DBError,
-			Msg:  err.Error(),
+		return &utils.Response{Code: code.ParamsError, Msg: "获取触发配置失败: " + err.Error()}
+	}
+	pipeline, err = p.models.PipelineManager.CreatePipeline(pipeline, stages, triggers)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	if err = p.models.PipelineCodeCacheManager.CreateOrUpdate(pipeline.WorkspaceId); err != nil {
+		if delErr := p.models.PipelineManager.Delete(pipeline.ID); delErr != nil {
+			klog.Errorf("delete pipeline id=%d error: %s", pipeline.ID, err.Error())
 		}
+		return &utils.Response{Code: code.DBError, Msg: "更新代码分支缓存失败：" + err.Error()}
 	}
-	return &utils.Response{
-		Code: code.Success,
-		Data: pipeline,
-	}
+	return &utils.Response{Code: code.Success, Data: pipeline}
 }
 
-func (p *ServicePipeline) CheckTrigger(workspace *types.PipelineWorkspace, pipelineSer *serializers.PipelineSerializer) *utils.Response {
+func (p *ServicePipeline) CheckSource(workspace *types.PipelineWorkspace, sources types.PipelineSources) *utils.Response {
 	triggerWorkspaceIdMap := make(map[uint]struct{})
-	for _, source := range pipelineSer.Sources {
+	for _, source := range sources {
 		if workspace.Type == types.WorkspaceTypeCode && source.Type != types.PipelineSourceTypeCode {
 			return &utils.Response{
 				Code: code.ParamsError,
@@ -99,39 +105,64 @@ func (p *ServicePipeline) CheckTrigger(workspace *types.PipelineWorkspace, pipel
 				return &utils.Response{Code: code.ParamsError, Msg: "触发流水线空间源不能相同"}
 			}
 			triggerWorkspaceIdMap[source.Workspace] = struct{}{}
-			//if trigger.Stage == 0 {
-			//	return &utils.Response{Code: code.ParamsError, Msg: "触发流水线阶段不能为空"}
-			//}
 		}
 	}
 	return &utils.Response{Code: code.Success}
 }
 
-func (p *ServicePipeline) Update(pipelineSer *serializers.PipelineSerializer, user *types.User) *utils.Response {
-	workspace, err := p.models.PipelineWorkspaceManager.Get(pipelineSer.WorkspaceId)
+func (p *ServicePipeline) GetPipelineTrigger(pipelineId uint, triggers []*schemas.PipelineTrigger, username string) ([]*types.PipelineTrigger, error) {
+	var triggerObjs []*types.PipelineTrigger
+	var err error
+	for _, trig := range triggers {
+		var triggerObj *types.PipelineTrigger
+		if trig.Id != 0 {
+			triggerObj, err = p.models.PipelineTriggerManager.Get(trig.Id)
+			if err != nil {
+				return nil, err
+			}
+			if trig.Type == types.PipelineTriggerTypeCron {
+				triggerObj.Config.Cron = &types.PipelineTriggerConfigCron{Cron: trig.Cron}
+			}
+		}
+		if triggerObj == nil {
+			var triggerConf types.PipelineTriggerConfig
+			if trig.Type == types.PipelineTriggerTypeCron {
+				triggerConf.Cron = &types.PipelineTriggerConfigCron{Cron: trig.Cron}
+			}
+			triggerObj = &types.PipelineTrigger{
+				ID:         0,
+				PipelineId: pipelineId,
+				Type:       trig.Type,
+				Config:     triggerConf,
+				UpdateUser: username,
+				CreateTime: time.Now(),
+				UpdateTime: time.Now(),
+			}
+		}
+		triggerObjs = append(triggerObjs, triggerObj)
+	}
+	return triggerObjs, nil
+}
+
+func (p *ServicePipeline) Update(params *schemas.PipelineParams, user *types.User) *utils.Response {
+	workspace, err := p.models.PipelineWorkspaceManager.Get(params.WorkspaceId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
-	pipeline, err := p.models.PipelineManager.Get(pipelineSer.ID)
+	pipeline, err := p.models.PipelineManager.Get(params.ID)
 	if err != nil {
-		return &utils.Response{
-			Code: code.DBError,
-			Msg:  fmt.Sprintf("获取流水线失败:%s", err.Error()),
-		}
+		return &utils.Response{Code: code.DBError, Msg: fmt.Sprintf("获取流水线失败:%s", err.Error())}
 	}
-	pipeline.Name = pipelineSer.Name
-	pipeline.Sources = pipelineSer.Sources
+	pipeline.Name = params.Name
+	pipeline.Sources = params.Sources
 	pipeline.UpdateUser = user.Name
-	if resp := p.CheckTrigger(workspace, pipelineSer); !resp.IsSuccess() {
+	if resp := p.CheckSource(workspace, params.Sources); !resp.IsSuccess() {
 		return resp
 	}
 	var stages []*types.PipelineStage
-	for _, stageSer := range pipelineSer.Stages {
+	for _, stageSer := range params.Stages {
 		if stageSer.TriggerMode != types.StageTriggerModeAuto && stageSer.TriggerMode != types.StageTriggerModeManual {
-			return &utils.Response{
-				Code: code.ParamsError,
-				Msg:  fmt.Sprintf("trigger mode %s is unknown", stageSer.TriggerMode),
-			}
+			return &utils.Response{Code: code.ParamsError, Msg: fmt.Sprintf("trigger mode %s is unknown", stageSer.TriggerMode)}
 		}
 		stage := &types.PipelineStage{
 			ID:           stageSer.ID,
@@ -142,17 +173,18 @@ func (p *ServicePipeline) Update(pipelineSer *serializers.PipelineSerializer, us
 		}
 		stages = append(stages, stage)
 	}
-	pipeline, err = p.models.PipelineManager.UpdatePipeline(pipeline, stages)
+	triggers, err := p.GetPipelineTrigger(pipeline.ID, params.Triggers, user.Name)
 	if err != nil {
-		return &utils.Response{
-			Code: code.DBError,
-			Msg:  err.Error(),
-		}
+		return &utils.Response{Code: code.ParamsError, Msg: "获取触发配置失败: " + err.Error()}
 	}
-	return &utils.Response{
-		Code: code.Success,
-		Data: pipeline,
+	pipeline, err = p.models.PipelineManager.UpdatePipeline(pipeline, stages, triggers)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
+	if err = p.models.PipelineCodeCacheManager.CreateOrUpdate(pipeline.WorkspaceId); err != nil {
+		return &utils.Response{Code: code.DBError, Msg: "更新代码分支缓存失败：" + err.Error()}
+	}
+	return &utils.Response{Code: code.Success, Data: pipeline}
 }
 
 func (p *ServicePipeline) GetPipeline(pipelineId uint) *utils.Response {
@@ -197,10 +229,23 @@ func (p *ServicePipeline) GetPipeline(pipelineId uint) *utils.Response {
 		}
 		pipeline.Sources = sources
 	}
+	triggerObjs, err := p.models.PipelineTriggerManager.List(&pipelinemgr.PipelineTriggerCondition{PipelineId: pipeline.ID})
+	var triggers []*schemas.PipelineTrigger
+	for _, obj := range triggerObjs {
+		t := &schemas.PipelineTrigger{
+			Id:   obj.ID,
+			Type: obj.Type,
+		}
+		if obj.Type == types.PipelineTriggerTypeCron {
+			t.Cron = obj.Config.Cron.Cron
+		}
+		triggers = append(triggers, t)
+	}
 	data := map[string]interface{}{
 		"pipeline":  pipeline,
 		"stages":    stages,
 		"workspace": workspace,
+		"triggers":  triggers,
 	}
 	return &utils.Response{Code: code.Success, Data: data}
 }

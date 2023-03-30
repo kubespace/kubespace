@@ -12,6 +12,7 @@ type Factory interface {
 	PipelineRunJobInformer(cond *pipeline.PipelineRunJobWatchCondition) Informer
 	PipelineTriggerInformer(cond *pipeline.PipelineTriggerWatchCondition) Informer
 	PipelineTriggerEventInformer(cond *pipeline.PipelineTriggerEventWatchCondition) Informer
+	PipelineCodeCacheInformer(cond *pipeline.PipelineCodeCacheWatchCondition) Informer
 }
 
 type informerFactory struct {
@@ -43,4 +44,8 @@ func (s *informerFactory) PipelineTriggerInformer(cond *pipeline.PipelineTrigger
 
 func (s *informerFactory) PipelineTriggerEventInformer(cond *pipeline.PipelineTriggerEventWatchCondition) Informer {
 	return NewInformer(pipeline.NewPipelineTriggerEventListWatcher(s.config, cond))
+}
+
+func (s *informerFactory) PipelineCodeCacheInformer(cond *pipeline.PipelineCodeCacheWatchCondition) Informer {
+	return NewInformer(pipeline.NewPipelineCodeCacheListWatcher(s.config, cond))
 }

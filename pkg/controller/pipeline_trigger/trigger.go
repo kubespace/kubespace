@@ -1,11 +1,9 @@
 package pipeline_trigger
 
 import (
-	"context"
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	pipelineservice "github.com/kubespace/kubespace/pkg/service/pipeline"
-	utilgit "github.com/kubespace/kubespace/pkg/third/git"
 	"k8s.io/klog/v2"
 	"time"
 )
@@ -56,22 +54,19 @@ func (p *PipelineTriggerController) triggerCodePipeline(
 	workspace *types.PipelineWorkspace,
 	pipeline *types.Pipeline,
 	trigger *types.PipelineTrigger) error {
-	if workspace.Code == nil {
-		return fmt.Errorf("pipeline workspace id=%d name=%s no secret", workspace.ID, workspace.Name)
-	}
-	secret, err := p.models.SettingsSecretManager.Get(workspace.Code.SecretId)
-	if err != nil {
-		return fmt.Errorf("获取代码密钥失败：" + err.Error())
-	}
-	gitcli, err := utilgit.NewClient(workspace.Code.Type, workspace.Code.ApiUrl, secret.GetSecret())
+	codeCache, err := p.models.PipelineCodeCacheManager.GetByWorkspaceId(workspace.ID)
 	if err != nil {
 		return err
 	}
-	// 获取所有分支以及分支的最新提交commitId
-	branches, err := gitcli.ListRepoBranches(context.Background(), workspace.Code.CloneUrl)
-	if err != nil {
-		return err
+	if codeCache == nil {
+		klog.Infof("not found code cache with workspace id=%d", workspace.ID)
+		return nil
 	}
+	if codeCache.CommitCache == nil || codeCache.CommitCache.BranchLatestCommit == nil {
+		klog.Infof("code cache is empty and retry next time")
+		return nil
+	}
+	commitCache := codeCache.CommitCache.BranchLatestCommit
 
 	// 是否是第一次触发，第一次不生成触发事件
 	first := false
@@ -85,30 +80,20 @@ func (p *PipelineTriggerController) triggerCodePipeline(
 		triggerCodeConfig.BranchLatestCommit = make(map[string]*types.PipelineBuildCodeBranch)
 		first = true
 	}
-	for _, branch := range branches {
-		currCommit, ok := triggerCodeConfig.BranchLatestCommit[branch.Name]
-		if !ok || currCommit.CommitId != branch.Ref {
+	updated := false
+	for branch, commit := range commitCache {
+		currCommit, ok := triggerCodeConfig.BranchLatestCommit[branch]
+		if !ok || currCommit.CommitId != commit.CommitId {
 			// 如果没有记录或者当前记录的commitId与代码库不一致，则更新该commitId
-			latestCommit, err := gitcli.GetBranchLatestCommit(context.Background(), workspace.Code.CloneUrl, branch.Name)
-			if err != nil {
-				klog.Errorf("get code %s branch=%s latest commit info error: %s", workspace.Code.CloneUrl, branch.Name, err.Error())
-				continue
-			}
-			configBranch := &types.PipelineBuildCodeBranch{
-				Branch:     branch.Name,
-				CommitId:   latestCommit.CommitId,
-				Author:     latestCommit.Author,
-				Message:    latestCommit.Message,
-				CommitTime: latestCommit.CommitTime,
-			}
-			if !first && pipelineservice.MatchBranchSource(pipeline.Sources, branch.Name) {
+
+			if !first && pipelineservice.MatchBranchSource(pipeline.Sources, branch) {
 				// 如果不是第一次初始化，且匹配当前流水线代码源规则，则生成触发事件
 				if err := p.models.PipelineTriggerEventManager.Create(&types.PipelineTriggerEvent{
 					PipelineId:  pipeline.ID,
 					From:        types.PipelineTriggerEventFromTrigger,
 					TriggerId:   trigger.ID,
 					Status:      types.PipelineTriggerEventStatusNew,
-					EventConfig: types.PipelineTriggerEventConfig{CodeCommit: configBranch},
+					EventConfig: types.PipelineTriggerEventConfig{CodeCommit: commitCache[branch]},
 					CreateTime:  time.Now(),
 					UpdateTime:  time.Now(),
 				}); err != nil {
@@ -116,10 +101,17 @@ func (p *PipelineTriggerController) triggerCodePipeline(
 					continue
 				}
 			}
-			triggerCodeConfig.BranchLatestCommit[branch.Name] = configBranch
+			triggerCodeConfig.BranchLatestCommit[branch] = commitCache[branch]
+			updated = true
 		}
 	}
-	// 更新triggerConfig到数据库
-	return p.models.PipelineTriggerManager.Update(trigger.ID, &types.PipelineTrigger{
-		Config: types.PipelineTriggerConfig{Code: triggerCodeConfig}, UpdateTime: time.Now()})
+	if updated {
+		// 更新triggerConfig到数据库
+		return p.models.PipelineTriggerManager.Update(trigger.ID, &types.PipelineTrigger{
+			Config:      types.PipelineTriggerConfig{Code: triggerCodeConfig},
+			UpdateTime:  time.Now(),
+			TriggerTime: nil,
+		})
+	}
+	return nil
 }

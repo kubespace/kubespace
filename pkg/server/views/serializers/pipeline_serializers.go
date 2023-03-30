@@ -31,22 +31,19 @@ type WorkspaceReleaseSerializer struct {
 }
 
 type PipelineSerializer struct {
-	ID          uint                      `json:"id"`
-	WorkspaceId uint                      `json:"workspace_id"`
-	Name        string                    `json:"name"`
-	Sources     types.PipelineSources     `json:"sources"`
-	Stages      []PipelineStageSerializer `json:"stages"`
+	ID          uint                       `json:"id"`
+	WorkspaceId uint                       `json:"workspace_id"`
+	Name        string                     `json:"name"`
+	Sources     types.PipelineSources      `json:"sources"`
+	Triggers    []*PipelineTrigger         `json:"triggers"`
+	Stages      []*PipelineStageSerializer `json:"stages"`
 }
 
 type PipelineTrigger struct {
-	Type        string                      `json:"type"`
-	Expressions []PipelineTriggerExpression `json:"expressions"`
-}
-
-type PipelineTriggerExpression struct {
-	Key      string `json:"key"`
-	Operator string `json:"operator"`
-	Value    string `json:"value"`
+	// 触发类型，
+	Type string `json:"type"`
+	// 定时配置
+	Cron string `json:"cron"`
 }
 
 type PipelineStageSerializer struct {

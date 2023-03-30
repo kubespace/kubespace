@@ -3,7 +3,8 @@ package main
 import (
 	"flag"
 	"github.com/kubespace/kubespace/pkg/controller"
-	"github.com/kubespace/kubespace/pkg/controller/pipelinerun"
+	"github.com/kubespace/kubespace/pkg/controller/pipeline_run"
+	"github.com/kubespace/kubespace/pkg/controller/pipeline_trigger"
 	"github.com/kubespace/kubespace/pkg/core/db"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"k8s.io/klog/v2"
@@ -46,8 +47,13 @@ func main() {
 		panic(err)
 	}
 
-	pipelineRunController := pipelinerun.NewPipelineRunController(controllerConfig)
+	// 流水线构建controller
+	pipelineRunController := pipeline_run.NewPipelineRunController(controllerConfig)
 	pipelineRunController.Run(stopCh)
+
+	// 流水线自动触发controller
+	pipelineTriggerController := pipeline_trigger.NewPipelineTriggerController(controllerConfig)
+	pipelineTriggerController.Run(stopCh)
 
 	<-stopCh
 }

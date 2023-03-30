@@ -37,6 +37,7 @@ type Models struct {
 	PipelineReleaseManager      *pipeline.Release
 	PipelineTriggerManager      *pipeline.PipelineTriggerManager
 	PipelineTriggerEventManager *pipeline.PipelineTriggerEventManager
+	PipelineCodeCacheManager    *pipeline.PipelineCodeCacheManager
 
 	ProjectAppManager        *project.AppManager
 	ProjectAppVersionManager *project.AppVersionManager
@@ -63,8 +64,9 @@ func NewModels(c *Config) (*Models, error) {
 	pipelineResourceMgr := pipeline.NewResourceManager(c.DB.Instance)
 	jobLogMgr := pipeline.NewJobLogManager(c.DB.Instance)
 	pipelineReleaseMgr := pipeline.NewReleaseManager(c.DB.Instance)
-	pipelineTriggerMgr := pipeline.NewPipelineTriggerManager(c.DB.Instance)
+	pipelineTriggerMgr := pipeline.NewPipelineTriggerManager(c.DB.Instance, c.ListWatcherConfig)
 	pipelineTriggerEventMgr := pipeline.NewPipelineTriggerEventManager(c.DB.Instance, c.ListWatcherConfig)
+	pipelineCodeCacheMgr := pipeline.NewPipelineCodeCacheManager(c.DB.Instance)
 
 	secrets := settings.NewSettingsSecretManager(c.DB.Instance)
 	imageRegistry := settings.NewSettingsImageRegistryManager(c.DB.Instance)
@@ -97,6 +99,7 @@ func NewModels(c *Config) (*Models, error) {
 		PipelineReleaseManager:      pipelineReleaseMgr,
 		PipelineTriggerManager:      pipelineTriggerMgr,
 		PipelineTriggerEventManager: pipelineTriggerEventMgr,
+		PipelineCodeCacheManager:    pipelineCodeCacheMgr,
 		SettingsSecretManager:       secrets,
 		LdapManager:                 ldap,
 		ProjectManager:              projectMgr,

@@ -28,7 +28,7 @@ func NewPipelineTriggerEventListWatcher(config *config.ListWatcherConfig, cond *
 		db:        config.DB,
 		condition: cond,
 	}
-	a.Storage = config.NewStorage(PipelineTriggerWatchKey, a.List, a.Filter, nil, &types.PipelineTriggerEvent{})
+	a.Storage = config.NewStorage(PipelineTriggerEventWatchKey, a.List, a.Filter, nil, &types.PipelineTriggerEvent{})
 	return a
 }
 
@@ -44,17 +44,17 @@ func (p *pipelineTriggerEventListWatcher) Filter(obj interface{}) bool {
 }
 
 func (p *pipelineTriggerEventListWatcher) List() ([]interface{}, error) {
-	var pipelineTriggers []types.PipelineTrigger
+	var pipelineTriggerEvents []types.PipelineTriggerEvent
 	var tx = p.db
 	if p.condition.Status != "" {
 		tx = tx.Where("status = ?", p.condition.Status)
 	}
-	if err := tx.Find(&pipelineTriggers).Error; err != nil {
+	if err := tx.Find(&pipelineTriggerEvents).Error; err != nil {
 		return nil, err
 	}
 	var objs []interface{}
-	for i := range pipelineTriggers {
-		objs = append(objs, pipelineTriggers[i])
+	for i := range pipelineTriggerEvents {
+		objs = append(objs, pipelineTriggerEvents[i])
 	}
 	return objs, nil
 }

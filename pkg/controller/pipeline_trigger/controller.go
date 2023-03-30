@@ -16,6 +16,7 @@ type PipelineTriggerController struct {
 	models                       *model.Models
 	pipelineTriggerInformer      informer.Informer
 	pipelineTriggerEventInformer informer.Informer
+	pipelineCodeCacheInformer    informer.Informer
 	// 流水线构建时对其进行加锁，保证只有一个进行处理
 	lock               lock.Lock
 	pipelineRunService *pipeline.ServicePipelineRun
@@ -28,12 +29,17 @@ func NewPipelineTriggerController(config *controller.Config) *PipelineTriggerCon
 	// 监听流水线触发事件状态为New状态
 	pipelineTriggerEventInformer := config.InformerFactory.PipelineTriggerEventInformer(
 		&pipelinelistwatcher.PipelineTriggerEventWatchCondition{Status: types.PipelineTriggerEventStatusNew})
+	// 监听流水线代码缓存状态为open状态
+	pipelineCodeCacheInformer := config.InformerFactory.PipelineCodeCacheInformer(
+		&pipelinelistwatcher.PipelineCodeCacheWatchCondition{Status: types.PipelineCodeCacheStatusOpen})
 
 	c := &PipelineTriggerController{
-		models:                  config.Models,
-		pipelineTriggerInformer: pipelineTriggerInformer,
-		lock:                    lock.NewMemLock(),
-		pipelineRunService:      config.ServiceFactory.Pipeline.PipelineRunService,
+		models:                       config.Models,
+		pipelineTriggerInformer:      pipelineTriggerInformer,
+		pipelineTriggerEventInformer: pipelineTriggerEventInformer,
+		pipelineCodeCacheInformer:    pipelineCodeCacheInformer,
+		lock:                         lock.NewMemLock(),
+		pipelineRunService:           config.ServiceFactory.Pipeline.PipelineRunService,
 	}
 	// 流水线触发handler
 	pipelineTriggerInformer.AddHandler(&informer.ResourceHandler{
@@ -45,10 +51,17 @@ func NewPipelineTriggerController(config *controller.Config) *PipelineTriggerCon
 		CheckFunc:  c.eventCheck,
 		HandleFunc: c.eventHandle,
 	})
+	// 流水线代码分支缓存handler
+	pipelineCodeCacheInformer.AddHandler(&informer.ResourceHandler{
+		CheckFunc:  c.codeCacheCheck,
+		HandleFunc: c.codeCacheHandle,
+	})
 
 	return c
 }
 
 func (p *PipelineTriggerController) Run(stopCh <-chan struct{}) {
 	go p.pipelineTriggerInformer.Run(stopCh)
+	go p.pipelineTriggerEventInformer.Run(stopCh)
+	go p.pipelineCodeCacheInformer.Run(stopCh)
 }

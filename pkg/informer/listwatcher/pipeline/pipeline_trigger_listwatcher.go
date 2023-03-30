@@ -6,12 +6,14 @@ import (
 	"github.com/kubespace/kubespace/pkg/informer/listwatcher/storage"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"gorm.io/gorm"
+	"time"
 )
 
 const PipelineTriggerWatchKey = "kubespace:pipeline:trigger"
 
 // PipelineTriggerWatchCondition PipelineTrigger监听条件
 type PipelineTriggerWatchCondition struct {
+	Triggered bool
 }
 
 type pipelineTriggerListWatcher struct {
@@ -42,6 +44,9 @@ func (p *pipelineTriggerListWatcher) Filter(obj interface{}) bool {
 func (p *pipelineTriggerListWatcher) List() ([]interface{}, error) {
 	var pipelineTriggers []types.PipelineTrigger
 	var tx = p.db
+	if p.condition.Triggered {
+		tx = tx.Where("trigger_time >= ", time.Now())
+	}
 	if err := tx.Find(&pipelineTriggers).Error; err != nil {
 		return nil, err
 	}

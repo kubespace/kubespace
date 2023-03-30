@@ -1,6 +1,9 @@
 package schemas
 
-import "time"
+import (
+	"github.com/kubespace/kubespace/pkg/model/types"
+	"time"
+)
 
 // JobCallbackParams 任务执行完成回调参数
 type JobCallbackParams struct {
@@ -33,6 +36,7 @@ type PipelineBuildParams struct {
 	//Params        map[string]interface{}       `json:"params"`
 }
 
+// PipelineBuildCodeBranch 流水线代码空间构建参数
 type PipelineBuildCodeBranch struct {
 	Branch     string    `json:"branch"`
 	CommitId   string    `json:"commit_id"`
@@ -41,6 +45,7 @@ type PipelineBuildCodeBranch struct {
 	CommitTime time.Time `json:"commit_time"`
 }
 
+// PipelineBuildCustomSource 流水线自定义空间构建参数，当前流水线绑定的每个源
 type PipelineBuildCustomSource struct {
 	WorkspaceId         uint   `json:"workspace_id"`
 	WorkspaceName       string `json:"workspace_name"`
@@ -56,4 +61,29 @@ type PipelineBuildCustomSource struct {
 	CodeCommit          string `json:"code_commit"`
 	CodeCommitTime      string `json:"code_commit_time"`
 	IsBuild             bool   `json:"is_build" default:"true"`
+}
+
+type PipelineParams struct {
+	ID          uint                  `json:"id"`
+	WorkspaceId uint                  `json:"workspace_id"`
+	Name        string                `json:"name"`
+	Sources     types.PipelineSources `json:"sources"`
+	Triggers    []*PipelineTrigger    `json:"triggers"`
+	Stages      []*PipelineStage      `json:"stages"`
+}
+
+type PipelineTrigger struct {
+	Id uint `json:"id"`
+	// 触发类型，
+	Type string `json:"type"`
+	// 定时配置
+	Cron string `json:"cron"`
+}
+
+type PipelineStage struct {
+	ID           uint                   `json:"id"`
+	Name         string                 `json:"name"`
+	TriggerMode  string                 `json:"trigger_mode"`
+	CustomParams map[string]interface{} `json:"custom_params"`
+	Jobs         types.PipelineJobs     `json:"jobs"`
 }

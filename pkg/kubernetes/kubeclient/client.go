@@ -65,7 +65,7 @@ func NewClientByInCluster() (Client, error) {
 }
 
 func NewClientWithRestConfig(restConfig *rest.Config) (Client, error) {
-	restConfig.Timeout = time.Second * 5
+	restConfig.Timeout = time.Second * 3
 	clientSet, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, err

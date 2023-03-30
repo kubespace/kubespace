@@ -106,6 +106,14 @@ type PipelineCodeCache struct {
 	UpdateTime  time.Time              `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`
 }
 
+func (p *PipelineCodeCache) Unmarshal(bytes []byte) (interface{}, error) {
+	var cache PipelineCodeCache
+	if err := json.Unmarshal(bytes, &cache); err != nil {
+		return nil, err
+	}
+	return cache, nil
+}
+
 // CodeBranchCommitCache 流水线代码源分支最新提交记录缓存
 type CodeBranchCommitCache struct {
 	BranchLatestCommit map[string]*PipelineBuildCodeBranch `json:"branches"`
@@ -190,10 +198,10 @@ type PipelineTrigger struct {
 	Type       string                `json:"type"`
 	Config     PipelineTriggerConfig `gorm:"type:json" json:"config"`
 	// 定时触发的下一次触发时间
-	TriggerTime time.Time `gorm:"" json:"trigger_time"`
-	UpdateUser  string    `gorm:"size:50;not null" json:"update_user"`
-	CreateTime  time.Time `gorm:"not null;autoCreateTime" json:"create_time"`
-	UpdateTime  time.Time `gorm:"not null;autoUpdateTime" json:"update_time"`
+	TriggerTime *time.Time `gorm:"" json:"trigger_time"`
+	UpdateUser  string     `gorm:"size:50;not null" json:"update_user"`
+	CreateTime  time.Time  `gorm:"not null;autoCreateTime" json:"create_time"`
+	UpdateTime  time.Time  `gorm:"not null;autoUpdateTime" json:"update_time"`
 }
 
 func (p *PipelineTrigger) Unmarshal(bytes []byte) (interface{}, error) {
@@ -206,9 +214,9 @@ func (p *PipelineTrigger) Unmarshal(bytes []byte) (interface{}, error) {
 
 type PipelineTriggerConfig struct {
 	// 定时触发配置
-	Cron *PipelineTriggerConfigCron `json:"cron"`
+	Cron *PipelineTriggerConfigCron `json:"cron,omitempty"`
 	// 代码源分支最近一次触发的提交记录
-	Code *PipelineTriggerConfigCode `json:"code"`
+	Code *PipelineTriggerConfigCode `json:"code,omitempty"`
 }
 
 func (pt *PipelineTriggerConfig) Scan(value interface{}) error {
