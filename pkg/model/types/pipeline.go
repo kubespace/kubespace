@@ -197,11 +197,11 @@ type PipelineTrigger struct {
 	PipelineId uint                  `gorm:"" json:"pipeline_id"`
 	Type       string                `json:"type"`
 	Config     PipelineTriggerConfig `gorm:"type:json" json:"config"`
-	// 定时触发的下一次触发时间
-	TriggerTime *time.Time `gorm:"" json:"trigger_time"`
-	UpdateUser  string     `gorm:"size:50;not null" json:"update_user"`
-	CreateTime  time.Time  `gorm:"not null;autoCreateTime" json:"create_time"`
-	UpdateTime  time.Time  `gorm:"not null;autoUpdateTime" json:"update_time"`
+	// 下一次触发时间
+	NextTriggerTime *time.Time `gorm:"" json:"next_trigger_time"`
+	UpdateUser      string     `gorm:"size:50;not null" json:"update_user"`
+	CreateTime      time.Time  `gorm:"not null;autoCreateTime" json:"create_time"`
+	UpdateTime      time.Time  `gorm:"not null;autoUpdateTime" json:"update_time"`
 }
 
 func (p *PipelineTrigger) Unmarshal(bytes []byte) (interface{}, error) {

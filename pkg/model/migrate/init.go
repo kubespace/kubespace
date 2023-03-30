@@ -6,6 +6,7 @@ import (
 	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_1/v1_1_3_b_add_ldap"
 	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_1/v1_1_4_a_stagerun_add_finishtime"
 	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_1/v1_1_5_a_chg_pipeline_source_column"
+	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_1/v1_1_5_b_pipeline_triggers_and_code_cache"
 	"github.com/kubespace/kubespace/pkg/model/types"
 )
 
@@ -25,6 +26,8 @@ var initTypes = []interface{}{
 	&types.PipelineRunJobLog{},
 	&types.PipelineResource{},
 	&types.PipelineWorkspaceRelease{},
+	&types.PipelineCodeCache{},
+	&types.PipelineTrigger{},
 
 	&types.SettingsSecret{},
 	&types.SettingsImageRegistry{},
