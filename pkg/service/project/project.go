@@ -36,16 +36,16 @@ func (p *ProjectService) Delete(projectId uint, delResource bool) *utils.Respons
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: "获取工作空间失败: " + err.Error()}
 	}
-	apps, err := p.appService.ListApp(types.AppVersionScopeProjectApp, projectId)
-	if err != nil {
-		return &utils.Response{Code: code.GetError, Msg: err.Error()}
-	}
-	for _, app := range apps {
-		if app.Status != types.AppStatusUninstall {
-			return &utils.Response{Code: code.DeleteError, Msg: "删除工作空间失败：应用" + app.Name + "正在运行"}
-		}
-	}
 	if delResource {
+		apps, err := p.appService.ListApp(types.AppVersionScopeProjectApp, projectId)
+		if err != nil {
+			return &utils.Response{Code: code.GetError, Msg: err.Error()}
+		}
+		for _, app := range apps {
+			if app.Status != types.AppStatusUninstall {
+				return &utils.Response{Code: code.DeleteError, Msg: "删除工作空间失败：应用" + app.Name + "正在运行"}
+			}
+		}
 		resTypes := []string{
 			kubetypes.ConfigMapType,
 			kubetypes.SecretType,

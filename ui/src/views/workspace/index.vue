@@ -44,7 +44,7 @@
               <el-link :underline="false" style="margin-right: 13px;" type="primary" @click="nameClick(scope.row.id)">详情</el-link>
               <el-link :disabled="!$editorRole(scope.row.id)" :underline="false" type="primary" style="margin-right: 13px" @click="openUpdateFormDialog(scope.row)">编辑</el-link>
               <el-link :disabled="!$adminRole(scope.row.id)" :underline="false" type="primary" style="margin-right: 13px" @click="openCloneFormDialog(scope.row)">克隆</el-link>
-              <el-link :disabled="!$adminRole(scope.row.id)" :underline="false" type="danger" @click="handleDeleteWorkspace(scope.row.id, scope.row.name)">删除</el-link>
+              <el-link :disabled="!$adminRole(scope.row.id)" :underline="false" type="danger" @click="openDeleteDialog(scope.row)">删除</el-link>
             </div>
           </template>
         </el-table-column>
@@ -93,6 +93,20 @@
           <div slot="footer" class="dialogFooter" style="margin-top: 20px;">
             <el-button @click="createFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
             <el-button type="primary" @click="updateFormVisible ? handleUpdateWorkspace() : form.clone ? handleCloneWorkspace() : handleCreateWorkspace()" >确 定</el-button>
+          </div>
+        </div>
+      </el-dialog>
+      <el-dialog
+        title="提示"
+        :visible.sync="dialogDeleteVisible"
+        width="30%" >
+        <div v-loading="dialogLoading">
+          <i class="el-icon-warning" style="font-size: 18px; margin-right: 10px;"></i>
+          <span >请确认是否删除「{{ dialogDeleteObject.name }}」工作空间？</span>
+          <el-checkbox style="margin: 15px 0px 0px 30px;" v-model="dialogDeleteObject.del_resource">同时删除集群资源</el-checkbox>
+          <div slot="footer" class="dialog-footer" style="margin: 20px; text-align: right;">
+            <el-button size="small" @click="dialogDeleteVisible = false">取 消</el-button>
+            <el-button size="small" type="primary" @click="handleDeleteWorkspace">确 定</el-button>
           </div>
         </div>
       </el-dialog>
@@ -151,7 +165,9 @@ export default {
         'password': '密码',
         'key': '密钥',
         'token': 'AccessToken'
-      }
+      },
+      dialogDeleteVisible: false,
+      dialogDeleteObject: {},
     };
   },
   created() {
@@ -280,27 +296,30 @@ export default {
         console.log(err)
       });
     },
-    handleDeleteWorkspace(id, name) {
-      if(!id) {
+    openDeleteDialog(project) {
+      this.dialogDeleteObject = {
+        id: project.id,
+        name: project.name,
+        del_resource: true,
+      }
+      this.dialogDeleteVisible = true
+    },
+    handleDeleteWorkspace() {
+      if(!this.dialogDeleteObject) {
         Message.error("获取密钥id参数异常，请刷新重试");
         return
       }
-      this.$confirm(`请确认是否删除「${name}」此工作空间，并同时删除该命名空间下资源?`, '提示', {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }).then(() => {
-          this.loading = true
-          deleteProject(id, {"del_resource": true}).then(() => {
-            this.loading = false
-            Message.success("删除工作空间成功")
-            this.fetchWorkspaces()
-          }).catch((err) => {
-            this.loading = false
-            console.log(err)
-          });
-        }).catch(() => {       
-        });
+      this.dialogLoading = true
+      deleteProject(this.dialogDeleteObject.id, {"del_resource": this.dialogDeleteObject.del_resource}).then(() => {
+        this.dialogLoading = false
+        Message.success("删除工作空间成功")
+        this.dialogDeleteVisible = false
+        this.fetchWorkspaces()
+      }).catch((err) => {
+        this.dialogLoading = false
+        console.log(err)
+      });
+        
     },
     nameSearch(val) {
       this.search_name = val;

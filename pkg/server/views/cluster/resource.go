@@ -134,7 +134,7 @@ func (p *KubeResource) watch(c *views.Context) *utils.Response {
 		c.SSEvent("message", err.Error())
 		return nil
 	}
-	c.SSEvent("message", "\n")
+	c.SSEvent("message", "{}")
 	c.Writer.Flush()
 	defer watchOuter.Close()
 	for {

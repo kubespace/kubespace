@@ -25,11 +25,12 @@ type PipelineTriggerController struct {
 func NewPipelineTriggerController(config *controller.Config) *PipelineTriggerController {
 
 	// 定时监听所有的流水线触发配置
-	pipelineTriggerInformer := config.InformerFactory.PipelineTriggerInformer(&pipelinelistwatcher.PipelineTriggerWatchCondition{})
+	pipelineTriggerInformer := config.InformerFactory.PipelineTriggerInformer(
+		&pipelinelistwatcher.PipelineTriggerWatchCondition{Triggered: true})
 	// 监听流水线触发事件状态为New状态
 	pipelineTriggerEventInformer := config.InformerFactory.PipelineTriggerEventInformer(
 		&pipelinelistwatcher.PipelineTriggerEventWatchCondition{Status: types.PipelineTriggerEventStatusNew})
-	// 监听流水线代码缓存状态为open状态
+	// 流水线代码分支最新提交缓存，监听状态为open状态
 	pipelineCodeCacheInformer := config.InformerFactory.PipelineCodeCacheInformer(
 		&pipelinelistwatcher.PipelineCodeCacheWatchCondition{Status: types.PipelineCodeCacheStatusOpen})
 

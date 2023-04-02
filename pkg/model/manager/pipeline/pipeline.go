@@ -74,11 +74,25 @@ func (p *ManagerPipeline) UpdatePipeline(pipeline *types.Pipeline, stages []*typ
 					return err
 				}
 			} else {
-				if err = tx.Save(stage).Error; err != nil {
+				if err = tx.Updates(stage).Error; err != nil {
 					return err
 				}
 			}
 			prevStageId = stage.ID
+		}
+		var updateIds []uint
+		for _, trigger := range triggers {
+			if trigger.ID != 0 {
+				updateIds = append(updateIds, trigger.ID)
+			}
+		}
+		delTx := tx.Where("pipeline_id=?", pipeline.ID)
+		if updateIds != nil {
+			delTx = delTx.Where("id not in ?", updateIds)
+		}
+		// 删除不在更新中的trigger
+		if err = delTx.Debug().Delete(&types.PipelineTrigger{}).Error; err != nil {
+			return err
 		}
 		for _, trigger := range triggers {
 			if trigger.ID == 0 {
@@ -86,7 +100,7 @@ func (p *ManagerPipeline) UpdatePipeline(pipeline *types.Pipeline, stages []*typ
 					return err
 				}
 			} else {
-				if err = tx.Save(triggers).Error; err != nil {
+				if err = tx.Updates(trigger).Error; err != nil {
 					return err
 				}
 			}

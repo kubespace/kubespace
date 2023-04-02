@@ -15,11 +15,11 @@ export function getBuild(build_id) {
   })
 }
 
-export function buildPipeline(pipeline_id, params) {
+export function buildPipeline(data) {
   return request({
     url: `pipeline/build`,
     method: 'post',
-    data: {'pipeline_id': parseInt(pipeline_id), 'params': params}
+    data: data
   })
 }
 

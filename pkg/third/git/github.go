@@ -61,7 +61,11 @@ func (g *Github) ListRepoRefs(ctx context.Context, codeUrl, matchRef string) ([]
 	}
 	var refs []*Reference
 	for _, r := range repoRefs {
-		refs = append(refs, &Reference{Name: r.GetRef(), Ref: r.GetRef()})
+		refs = append(refs, &Reference{
+			Name:     r.GetRef(),
+			Ref:      r.GetRef(),
+			CommitId: r.Object.GetSHA(),
+		})
 	}
 	return refs, nil
 }

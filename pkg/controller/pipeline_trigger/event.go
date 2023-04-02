@@ -36,6 +36,14 @@ func (p *PipelineTriggerController) eventHandle(obj interface{}) error {
 	}
 	// 执行完成释放锁
 	defer p.lock.Release(p.eventLockKey(event.ID))
+	if eventObj, err := p.models.PipelineTriggerEventManager.Get(event.ID); err != nil {
+		return err
+	} else {
+		event = *eventObj
+	}
+	if event.Status != types.PipelineTriggerEventStatusNew {
+		return nil
+	}
 
 	pipeline, err := p.models.PipelineManager.Get(event.PipelineId)
 	if err != nil {

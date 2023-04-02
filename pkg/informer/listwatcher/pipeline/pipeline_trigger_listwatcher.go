@@ -45,7 +45,7 @@ func (p *pipelineTriggerListWatcher) List() ([]interface{}, error) {
 	var pipelineTriggers []types.PipelineTrigger
 	var tx = p.db
 	if p.condition.Triggered {
-		tx = tx.Where("next_trigger_time >= ", time.Now())
+		tx = tx.Where("next_trigger_time <= ?", time.Now())
 	}
 	if err := tx.Find(&pipelineTriggers).Error; err != nil {
 		return nil, err

@@ -81,8 +81,9 @@ type Commit struct {
 }
 
 type Reference struct {
-	Name string `json:"name"`
-	Ref  string `json:"ref"`
+	Name     string `json:"name"`
+	Ref      string `json:"ref"`
+	CommitId string `json:"commit_id"`
 }
 
 type PullRequest struct {
@@ -147,8 +148,9 @@ func (g *Git) ListRepoBranches(ctx context.Context, codeUrl string) ([]*Referenc
 	for _, ref := range remoteRefs {
 		if ref.Name().IsBranch() {
 			refs = append(refs, &Reference{
-				Name: ref.Name().Short(),
-				Ref:  ref.Name().String(),
+				Name:     ref.Name().Short(),
+				Ref:      ref.Name().String(),
+				CommitId: ref.Hash().String(),
 			})
 		}
 	}

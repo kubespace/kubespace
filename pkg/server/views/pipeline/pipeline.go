@@ -112,7 +112,7 @@ func (p *Pipeline) create(c *views.Context) *utils.Response {
 }
 
 func (p *Pipeline) update(c *views.Context) *utils.Response {
-	var ser serializers.PipelineSerializer
+	var ser schemas.PipelineParams
 	if err := c.ShouldBind(&ser); err != nil {
 		return &utils.Response{
 			Code: code.ParamsError,

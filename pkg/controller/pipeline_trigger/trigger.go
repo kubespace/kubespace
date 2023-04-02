@@ -1,6 +1,7 @@
 package pipeline_trigger
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	pipelineservice "github.com/kubespace/kubespace/pkg/service/pipeline"
@@ -34,6 +35,16 @@ func (p *PipelineTriggerController) triggerHandle(obj interface{}) error {
 	}
 	// 执行完成释放锁
 	defer p.lock.Release(p.triggerLockKey(trigger.ID))
+	if triggerObj, err := p.models.PipelineTriggerManager.Get(trigger.ID); err != nil {
+		return err
+	} else if triggerObj == nil {
+		return fmt.Errorf("not found trigger object id=%d", trigger.ID)
+	} else {
+		trigger = *triggerObj
+	}
+	if trigger.NextTriggerTime == nil || trigger.NextTriggerTime.Time.After(time.Now()) {
+		return nil
+	}
 
 	pipeline, err := p.models.PipelineManager.Get(trigger.PipelineId)
 	if err != nil {
@@ -43,6 +54,7 @@ func (p *PipelineTriggerController) triggerHandle(obj interface{}) error {
 	if err != nil {
 		return err
 	}
+	klog.Infof("start trigger pipeline id=%d name=%s workspace name=%s", pipeline.ID, pipeline.Name, pipelineWorkspace.Name)
 	if trigger.Type == types.PipelineTriggerTypeCode {
 		return p.triggerCodePipeline(pipelineWorkspace, pipeline, &trigger)
 	}
@@ -105,12 +117,12 @@ func (p *PipelineTriggerController) triggerCodePipeline(
 			updated = true
 		}
 	}
-	if updated {
+	if updated || trigger.NextTriggerTime != nil {
 		// 更新triggerConfig到数据库
 		return p.models.PipelineTriggerManager.Update(trigger.ID, &types.PipelineTrigger{
-			Config:      types.PipelineTriggerConfig{Code: triggerCodeConfig},
-			UpdateTime:  time.Now(),
-			TriggerTime: nil,
+			Config:          types.PipelineTriggerConfig{Code: triggerCodeConfig},
+			UpdateTime:      time.Now(),
+			NextTriggerTime: &sql.NullTime{},
 		})
 	}
 	return nil

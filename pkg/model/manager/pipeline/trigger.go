@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"database/sql"
 	"errors"
 	"github.com/kubespace/kubespace/pkg/informer/listwatcher"
 	listwatcherconfig "github.com/kubespace/kubespace/pkg/informer/listwatcher/config"
@@ -24,7 +25,7 @@ func NewPipelineTriggerManager(db *gorm.DB, listwatcherConfig *listwatcherconfig
 }
 
 func (r *PipelineTriggerManager) Update(id uint, updates *types.PipelineTrigger) error {
-	return r.db.Model(types.PipelineTrigger{}).Where("id=?", id).Updates(updates).Error
+	return r.db.Debug().Model(types.PipelineTrigger{}).Where("id=?", id).Updates(updates).Error
 }
 
 func (r *PipelineTriggerManager) List(cond *PipelineTriggerCondition) ([]*types.PipelineTrigger, error) {
@@ -73,13 +74,13 @@ func (r *PipelineTriggerManager) conditionQuery(cond *PipelineTriggerCondition) 
 	return nil
 }
 
-func (r *PipelineTriggerManager) UpdateTriggerTime(triggerTime *time.Time, condition *PipelineTriggerCondition) error {
+func (r *PipelineTriggerManager) UpdateTriggerTime(triggerTime time.Time, condition *PipelineTriggerCondition) error {
 	tx := r.conditionQuery(condition)
 	if tx == nil {
 		return nil
 	}
 	if err := tx.Updates(&types.PipelineTrigger{
-		TriggerTime: triggerTime, UpdateTime: time.Now()}).Error; err != nil {
+		NextTriggerTime: &sql.NullTime{Time: triggerTime, Valid: true}, UpdateTime: time.Now()}).Error; err != nil {
 		return err
 	}
 	if triggerTime.Before(time.Now()) {

@@ -65,7 +65,6 @@ func NewClientByInCluster() (Client, error) {
 }
 
 func NewClientWithRestConfig(restConfig *rest.Config) (Client, error) {
-	restConfig.Timeout = time.Second * 3
 	clientSet, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, err
@@ -74,7 +73,9 @@ func NewClientWithRestConfig(restConfig *rest.Config) (Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	discoveryClient, err := discovery.NewDiscoveryClientForConfig(restConfig)
+	discoveryConfig := *restConfig
+	discoveryConfig.Timeout = time.Second * 3
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(&discoveryConfig)
 	if err != nil {
 		return nil, err
 	}

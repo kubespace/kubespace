@@ -35,3 +35,11 @@ func (r *PipelineTriggerEventManager) Create(event *types.PipelineTriggerEvent) 
 func (r *PipelineTriggerEventManager) Update(id uint, event *types.PipelineTriggerEvent) error {
 	return r.db.Model(types.PipelineTriggerEvent{}).Where("id=?", id).Updates(event).Error
 }
+
+func (r *PipelineTriggerEventManager) Get(id uint) (*types.PipelineTriggerEvent, error) {
+	var event types.PipelineTriggerEvent
+	if err := r.db.First(&event, "id=?", id).Error; err != nil {
+		return nil, err
+	}
+	return &event, nil
+}

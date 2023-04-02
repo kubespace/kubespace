@@ -108,8 +108,9 @@ func (g *Gitee) ListRepoBranches(ctx context.Context, codeUrl string) ([]*Refere
 	var refs []*Reference
 	for _, b := range giteeBranches {
 		refs = append(refs, &Reference{
-			Name: b.Name,
-			Ref:  b.Name,
+			Name:     b.Name,
+			Ref:      b.Name,
+			CommitId: b.Commit.SHA,
 		})
 	}
 	return refs, nil

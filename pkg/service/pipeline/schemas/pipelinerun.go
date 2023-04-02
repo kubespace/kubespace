@@ -77,7 +77,7 @@ type PipelineTrigger struct {
 	// 触发类型，
 	Type string `json:"type"`
 	// 定时配置
-	Cron string `json:"cron"`
+	Cron string `json:"cron,omitempty"`
 }
 
 type PipelineStage struct {

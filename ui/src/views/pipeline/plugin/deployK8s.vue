@@ -28,10 +28,8 @@
             (变量替换) 
             <el-popover placement="top-start" title="" width="500" trigger="hover">
               <div style="line-height: 24px;">
-                <p>
                   Yaml内容支持go template语法变量替换。比如：在上游或当前阶段配置了变量`a`，则在Yaml中可以使用{{ a }} (注意变量前要加.) 
                   替换为变量`a`的值。
-                </p>
               </div>
               <i slot="reference" class="el-icon-question"></i>
             </el-popover>

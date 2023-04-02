@@ -3,6 +3,7 @@ package v1_1_3_b_add_ldap
 import (
 	"github.com/kubespace/kubespace/pkg/model/migrate/migration"
 	v1_1_5_a "github.com/kubespace/kubespace/pkg/model/migrate/v1_1/v1_1_5_a_chg_pipeline_source_column"
+	"github.com/kubespace/kubespace/pkg/utils"
 	"gorm.io/gorm"
 	"time"
 )
@@ -42,6 +43,21 @@ type PipelineCodeCache struct {
 	UpdateTime  time.Time   `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`
 }
 
+// PipelineTriggerEvent 根据流水线触发配置，当触发条件达到时生成触发事件，根据事件生成新的流水线构建任务
+type PipelineTriggerEvent struct {
+	ID         uint   `gorm:"primaryKey" json:"id"`
+	PipelineId uint   `gorm:"" json:"pipeline_id"`
+	From       string `gorm:"size:50" json:"from"`
+	TriggerId  uint   `gorm:"" json:"trigger_id"`
+	Status     string `gorm:"size:50;" json:"status"`
+	// 事件触发的构建配置
+	EventConfig interface{} `gorm:"type:json" json:"event_config"`
+	// 事件执行结果记录，触发成功/失败，以及失败原因
+	EventResult *utils.Response `gorm:"type:json" json:"event_result"`
+	CreateTime  time.Time       `gorm:"not null;autoCreateTime" json:"create_time"`
+	UpdateTime  time.Time       `gorm:"not null;autoUpdateTime" json:"update_time"`
+}
+
 func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(&PipelineTrigger{}, &PipelineCodeCache{})
+	return db.AutoMigrate(&PipelineTrigger{}, &PipelineCodeCache{}, &PipelineTriggerEvent{})
 }

@@ -590,13 +590,13 @@ export default {
         Message.error("获取流水线空间参数失败，请刷新重试")
         return
       }
-      let params = {}
+      let params = {pipeline_id: parseInt(this.pipelineId)}
       if(this.pipeline.workspace.type == 'code') {
         if(!this.buildParams.branch) {
           Message.error("请输入构建分支")
           return
         }
-        params = {
+        params['code_branch'] = {
           branch: this.buildParams.branch
         }
       } else {
@@ -627,10 +627,10 @@ export default {
             }
           }
         }
-        params.build_ids = build_ids
+        params["custom_sources"] = build_ids
       }
       this.dialogLoading = true
-      buildPipeline(this.pipelineId, params).then((response) => {
+      buildPipeline(params).then((response) => {
         this.$message({message: '构建成功', type: 'success'});
         this.dialogLoading = false
         this.fetchBuilds(0)

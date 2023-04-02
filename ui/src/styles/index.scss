@@ -139,7 +139,10 @@ div:focus {
       margin-right: 4px;
     }
     .el-input-number .el-input__inner {
-      text-align: left;
+      // text-align: left;
+    }
+    .el-input-group__prepend {
+      border-radius: 0px;
     }
 
   }

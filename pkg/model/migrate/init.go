@@ -28,6 +28,7 @@ var initTypes = []interface{}{
 	&types.PipelineWorkspaceRelease{},
 	&types.PipelineCodeCache{},
 	&types.PipelineTrigger{},
+	&types.PipelineTriggerEvent{},
 
 	&types.SettingsSecret{},
 	&types.SettingsImageRegistry{},

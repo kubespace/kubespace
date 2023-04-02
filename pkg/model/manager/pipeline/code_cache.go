@@ -38,38 +38,39 @@ func (r *PipelineCodeCacheManager) GetByWorkspaceId(workspaceId uint) (*types.Pi
 
 func (r *PipelineCodeCacheManager) CreateOrUpdate(workspaceId uint) error {
 	var codeTriggersCnt int64
-	if err := r.db.Model(&types.PipelineTrigger{}).Where("pipeline_id in (?)",
+	if err := r.db.Debug().Model(&types.PipelineTrigger{}).Where("pipeline_id in (?)",
 		r.db.Table("pipelines").Select("id").Where("workspace_id=?", workspaceId)).Count(
 		&codeTriggersCnt).Error; err != nil {
 		return err
 	}
+	codeCache, err := r.GetByWorkspaceId(workspaceId)
+	if err != nil {
+		return err
+	}
+	status := types.PipelineCodeCacheStatusClose
 	if codeTriggersCnt > 0 {
-		// 有流水线代码更新触发配置，打开代码分支缓存
-		codeCache, err := r.GetByWorkspaceId(workspaceId)
-		if err != nil {
+		status = types.PipelineCodeCacheStatusOpen
+	}
+	// 有流水线代码更新触发配置，打开代码分支缓存
+	if codeCache == nil && status == types.PipelineCodeCacheStatusOpen {
+		codeCache = &types.PipelineCodeCache{
+			WorkspaceId: workspaceId,
+			Status:      types.PipelineCodeCacheStatusOpen,
+			CreateTime:  time.Now(),
+			UpdateTime:  time.Now(),
+		}
+		if err = r.db.Omit("id").Create(codeCache).Error; err != nil {
 			return err
 		}
-		if codeCache == nil {
-			codeCache = &types.PipelineCodeCache{
-				WorkspaceId: workspaceId,
-				Status:      types.PipelineCodeCacheStatusOpen,
-				CreateTime:  time.Now(),
-				UpdateTime:  time.Now(),
-			}
-			if err = r.db.Omit("id").Create(codeCache).Error; err != nil {
-				return err
-			}
-			return nil
-		}
-		if codeCache.Status == types.PipelineCodeCacheStatusClose {
-			if err = r.db.Model(&types.PipelineCodeCache{}).Where("id=?", codeCache.ID).Updates(&types.PipelineCodeCache{
-				Status:     types.PipelineCodeCacheStatusOpen,
-				UpdateTime: time.Now(),
-			}).Error; err != nil {
-				return err
-			}
-		}
+		return nil
 	}
+	if err = r.db.Model(&types.PipelineCodeCache{}).Where("id=?", codeCache.ID).Updates(&types.PipelineCodeCache{
+		Status:     status,
+		UpdateTime: time.Now(),
+	}).Error; err != nil {
+		return err
+	}
+
 	return nil
 }
 

@@ -188,12 +188,24 @@ export default {
         this.form.version = this.chart.version.split('-')[0]
         let values = yaml.load(resp.data.values)
         for(let tpl of resp.data.templates) {
+          console.log(tpl)
+          let tplStr = atob(decodeURIComponent(tpl.data))
+          if(tpl.name.indexOf('service.yaml')) {
+            tplStr = tplStr.replace(/\n    {{- index .Values "services".*| toYaml | nindent 4 }}/, '')
+          }
           try{
-            var data = yaml.load(atob(decodeURIComponent(tpl.data)))
+            var data = yaml.load(tplStr)
           } catch(e){
             console.log(e)
             Message.error(e)
             return
+          }
+          console.log(data)
+          if(data.kind == 'Service' && values.services && values.services[data.metadata.name].ports) {
+            data.spec.ports = values.services[data.metadata.name].ports
+          }
+          if(data.kind == 'Service' && values.services && values.services[data.metadata.name].type) {
+            data.spec.type = values.services[data.metadata.name].type
           }
           resolveToTemplate(data)
           if(this.workloadTypes.indexOf(data.kind) > -1) {
@@ -254,6 +266,7 @@ export default {
         description: this.form.description,
         version_description: this.form.version_description
       }
+      console.log(data)
       this.loading = true
       createApp(data).then(() => {
         this.loading = false
@@ -277,7 +290,7 @@ export default {
         return
       }
       this.chart.templates = {}
-      let valuesDict = {workloads: {}}
+      let valuesDict = {workloads: {}, services: {}}
       let idx = 0
       for(let template of this.form.templates) {
         let obj = transferTemplate(template, this.form.name)
@@ -307,7 +320,6 @@ export default {
           if(['Deployment', 'StatefulSet'].indexOf(template.kind) > -1) {
             valuesDict.workloads[template.metadata.name].replicas = tpl.spec.replicas
             tpl.spec.replicas = `0{{ index .Values "workloads" "${template.metadata.name}" "replicas" }}`
-            // tpl.spec.replicas = "{{ abcdef  asdfe }}"
           }
           valuesDict.workloads[template.metadata.name].kind = template.kind
         }
@@ -315,9 +327,19 @@ export default {
           tpl.spec.selector = {
             'kubespace.cn/app': this.form.name
           }
+          valuesDict.services[tpl.metadata.name] = {type: tpl.spec.type}
+          tpl.spec.type = `{{ index .Values "services" "${tpl.metadata.name}" "type" }}`
+          valuesDict.services[tpl.metadata.name].ports = tpl.spec.ports
+          tpl.spec.ports = `.replaceValuesPorts`
         }
         let tplName = `${idx < 10 ? '0'+idx : ''+idx}${tpl.metadata.name}-${tpl.kind}.yaml`.toLowerCase()
-        this.chart.templates[tplName] = yaml.dump(tpl)
+        let tplStr = yaml.dump(tpl)
+        if (tpl.kind == 'Service') {
+          let valuesPort = `\n    {{- index .Values "services" "${tpl.metadata.name}" "ports" | toYaml | nindent 4 }}`
+          tplStr = tplStr.replace('.replaceValuesPorts', valuesPort)
+        }
+        this.chart.templates[tplName] = tplStr
+
         idx++
       }
       this.chart.values = yaml.dump(valuesDict)

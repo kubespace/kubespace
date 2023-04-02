@@ -106,7 +106,7 @@ export function watchResource(sse, cluster, resType, watchFunc, params) {
   });
   clusterSSE.on("message", (res) => {
     // console.log(res)
-    if(res && res != "\n") {
+    if(res && res != "\n" && res != "{}") {
       try{
         var data = JSON.parse(res)
       } catch(err) {
@@ -114,6 +114,7 @@ export function watchResource(sse, cluster, resType, watchFunc, params) {
           clusterSSE.disconnect()
           return
       }
+      if(!data) return
       let d = {"resource": data.Object}
       if (data.Type == "ADDED") d.event="add"
       else if(data.Type == "MODIFIED") d.event = "update"

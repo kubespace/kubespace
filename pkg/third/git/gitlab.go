@@ -73,8 +73,9 @@ func (g *Gitlab) ListRepoBranches(ctx context.Context, codeUrl string) ([]*Refer
 	var branches []*Reference
 	for _, b := range repoBranches {
 		branches = append(branches, &Reference{
-			Name: b.Name,
-			Ref:  b.Name,
+			Name:     b.Name,
+			Ref:      b.Name,
+			CommitId: b.Commit.ID,
 		})
 	}
 	return branches, nil

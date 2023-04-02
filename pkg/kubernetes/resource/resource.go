@@ -184,6 +184,8 @@ func (r *Resource) Watch(params interface{}, writer OutWriter) *utils.Response {
 		}
 		listOptions.ResourceVersion = listObjs.GetResourceVersion()
 	}
+	var timeout int64 = 0
+	listOptions.TimeoutSeconds = &timeout
 	watcher, err := r.client.Dynamic().Resource(*r.gvr).Namespace(query.Namespace).Watch(context.Background(), *listOptions)
 	if err != nil {
 		return &utils.Response{Code: code.RequestError, Msg: err.Error()}

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
@@ -198,10 +199,10 @@ type PipelineTrigger struct {
 	Type       string                `json:"type"`
 	Config     PipelineTriggerConfig `gorm:"type:json" json:"config"`
 	// 下一次触发时间
-	NextTriggerTime *time.Time `gorm:"" json:"next_trigger_time"`
-	UpdateUser      string     `gorm:"size:50;not null" json:"update_user"`
-	CreateTime      time.Time  `gorm:"not null;autoCreateTime" json:"create_time"`
-	UpdateTime      time.Time  `gorm:"not null;autoUpdateTime" json:"update_time"`
+	NextTriggerTime *sql.NullTime `gorm:"" json:"next_trigger_time"`
+	UpdateUser      string        `gorm:"size:50;not null" json:"update_user"`
+	CreateTime      time.Time     `gorm:"not null;autoCreateTime" json:"create_time"`
+	UpdateTime      time.Time     `gorm:"not null;autoUpdateTime" json:"update_time"`
 }
 
 func (p *PipelineTrigger) Unmarshal(bytes []byte) (interface{}, error) {
@@ -277,9 +278,9 @@ func (p *PipelineTriggerEvent) Unmarshal(bytes []byte) (interface{}, error) {
 //     b. 如果是自定义流水线，则查询监听的所有流水线，找到最新的构建成功的记录进行构建
 type PipelineTriggerEventConfig struct {
 	// 代码源触发时的提交
-	CodeCommit *PipelineBuildCodeBranch
+	CodeCommit *PipelineBuildCodeBranch `json:"code_commit,omitempty"`
 	// 自定义流水线触发时的流水线源
-	PipelineSources []*PipelineSource
+	PipelineSources []*PipelineSource `json:"pipeline_sources,omitempty"`
 }
 
 func (pt *PipelineTriggerEventConfig) Scan(value interface{}) error {

@@ -121,6 +121,13 @@
                   </el-select>
                 </el-form-item>
                 <template v-if="form.from == 'space'">
+                  <el-form-item label="副本数" prop="" :required="true">
+                    <span  v-for="(v, k) of form.values_dict.workloads ? form.values_dict.workloads : {}" :key="k">
+                      <span v-if="form.values_dict.workloads && Object.keys(form.values_dict.workloads).length > 1" style="margin-right:10px;">{{ k }}</span>
+                    <el-input-number size="small" placeholder="请输入内容" v-model="v.replicas" :min="1">
+                    </el-input-number>
+                  </span>
+                  </el-form-item>
                   <el-row style="line-height: 38px; margin-top: 10px;">
                     <el-col :span="7"><div style="padding-left: 10px; background-color: rgb(245, 247, 250);color: #909399">负载容器</div></el-col>
                     <el-col :span="11"><div style="background-color: rgb(245, 247, 250);color: #909399">镜像</div></el-col>
@@ -139,6 +146,43 @@
                       </el-col>
                     </el-row>
                   </div>
+                  <el-row style="line-height: 38px; margin-top: 23px;">
+                    <el-col :span="7"><div style="padding-left: 10px; background-color: rgb(245, 247, 250);color: #909399">Service</div></el-col>
+                    <el-col :span="7"><div style="background-color: rgb(245, 247, 250);color: #909399">类型</div></el-col>
+                    <el-col :span="10"><div style="background-color: rgb(245, 247, 250);color: #909399">端口</div></el-col>
+                  </el-row>
+                  <div v-for="(v, k) of form.values_dict.services ? form.values_dict.services : {}" :key="k">
+                    <el-row style="margin-top: 10px;">
+                      <el-col :span="7">
+                        <div style="padding-left: 10px;padding-top: 6px; padding-right: 3px;">{{ k }}</div>
+                      </el-col>
+                      <el-col :span="7" style="padding-right: 15px">
+                        <!-- <el-input v-model="v.type" autocomplete="off" placeholder="请输入容器镜像" size="small"></el-input> -->
+                        <el-select v-model="v.type" placeholder="请选择应用版本" size="small" style="width: 100%;">
+                          <el-option label="ClusterIP" value="ClusterIP"></el-option>
+                          <el-option label="NodePort" value="NodePort"></el-option>
+                        </el-select>
+                      </el-col>
+                      <el-col :span="10">
+                        <template v-for="p of v.ports" >
+                          <template v-if="v.type=='NodePort'">
+                            <div :key="p.port" style="margin-bottom: 10px;">
+                              <el-input v-if="v.type=='NodePort'" v-model="p.nodePort" autocomplete="off" 
+                                placeholder="指定nodePort" size="small" style="width: 100%;">
+                                <template slot="prepend">
+                                  <span style="width: 100px; display: block;">{{ p.port }} / {{ p.targetPort }}</span>
+                                </template>
+                              </el-input>
+                            </div>
+                          </template>
+                          <div v-else :key="p.port" style="display: inline;">
+                            <span style=" line-height: 30px; margin-right: 10px;" 
+                              class="back-class">{{ p.port }} / {{ p.targetPort }}</span>
+                          </div>
+                        </template>
+                      </el-col>
+                    </el-row>
+                  </div>
                 </template>
                 <div v-if="form.from == 'import'">
                   <yaml v-model="form.values"></yaml>
@@ -146,7 +190,7 @@
               </div>
             </el-form>
           </div>
-          <div slot="footer" class="dialogFooter" style="padding-top: 25px;">
+          <div slot="footer" class="dialogFooter" style="padding-top: 20px;">
             <el-button @click="installFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
             <el-button type="primary" @click="updateFormVisible ? handleInstallApp(true) : handleInstallApp()" >
               {{ updateFormVisible ? '升 级' : '安 装' }}
@@ -292,14 +336,14 @@ export default {
     const that = this;
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150;
+        let heightStyle = window.innerHeight - this.$contentHeight;
         that.maxHeight = heightStyle;
       })();
     };
   },
   data() {
     return {
-      maxHeight: window.innerHeight - 150,
+      maxHeight: window.innerHeight - this.$contentHeight,
       cellStyle: { border: 0 },
       titleName: ["应用管理"],
       loading: true,
@@ -409,6 +453,7 @@ export default {
       }
       let values = this.form.values
       if(this.form.from == 'space') {
+        // 复制一份对象，不修改原有对象
         let values_dict = JSON.parse(JSON.stringify(this.form.values_dict))
         for(let wk in values_dict.workloads || {}) {
           for(let ck in values_dict.workloads[wk].containers || {}) {
@@ -531,6 +576,7 @@ export default {
                 }
               }
             }
+            console.log(values_dict)
           }
           this.form.values_dict = values_dict
           return

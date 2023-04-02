@@ -184,11 +184,24 @@
               </el-row>
               <el-row>
                 <el-col :span="17">
-                <el-button style="width: 100%; border-radius: 0px; padding: 9px 15px;
-                  border-color: rgb(102, 177, 255); color: rgb(102, 177, 255)" plain size="mini" 
+                <el-button style="width: 100%; border-radius: 0px; padding: 9px 15px; border-color: rgb(102, 177, 255); color: rgb(102, 177, 255)" plain size="mini" 
                   @click="dialogData.sources.push({type: 'code', branch_type: 'branch', operator: 'equal', branch: ''})" icon="el-icon-plus">添加匹配</el-button>
                 </el-col>
               </el-row>
+            </el-form-item>
+            <el-form-item label="自动触发" prop="">
+              <div slot="label">
+                自动触发
+                <span>
+                  <el-popover placement="top-start" title="" width="500" trigger="hover">
+                    <div style="line-height: 20px;">
+                        代码提交到当前流水线匹配的分支后，是否自动触发该流水线
+                    </div>
+                    <i slot="reference" class="el-icon-question"></i>
+                  </el-popover>
+                </span>
+              </div>
+              <el-switch v-model="dialogData.code_trigger" ></el-switch>
             </el-form-item>
           </el-form>
 
@@ -229,8 +242,7 @@
               </el-row>
               <el-row>
                 <el-col :span="19">
-                <el-button style="width: 100%; border-radius: 0px; padding: 9px 15px;
-                  border-color: rgb(102, 177, 255); color: rgb(102, 177, 255)" plain size="mini" 
+                <el-button style="width: 100%; border-radius: 0px; padding: 9px 15px; border-color: rgb(102, 177, 255); color: rgb(102, 177, 255)" plain size="mini" 
                   @click="dialogData.sources.push({type: 'pipeline'})" icon="el-icon-plus">添加流水线源</el-button>
                 </el-col>
               </el-row>
@@ -296,7 +308,8 @@ export default {
         id: 0,
         name: "",
         sources: [],
-        stages: []
+        stages: [],
+        triggers: [],
       },
       operatorMap: {
         "equal": "==",
@@ -351,7 +364,33 @@ export default {
     },
     dialogTitle() {
       if(this.dialogType == 'edit_stage') return '编辑'
-    }
+    },
+    originCodeTrigger() {
+      if(!this.pipeline) {
+        return null
+      }
+      if(!this.pipeline.triggers) {
+        return null
+      }
+      for(let t of this.pipeline.triggers) {
+        if(t.type == "code") {
+          return t
+        }
+      }
+      return null
+    },
+    hasCodeTrigger() {
+      if(!this.editPipeline) return false
+      if(!this.editPipeline.triggers) {
+        return false
+      }
+      for(let t of this.editPipeline.triggers) {
+        if (t.type == "code") {
+          return true
+        }
+      }
+      return false
+    },
   },
   methods: {
     fetchWorkspace() {
@@ -392,7 +431,11 @@ export default {
             workspace_id: this.pipeline.workspace.id,
             name: this.pipeline.pipeline.name,
             sources: this.pipeline.pipeline.sources,
+            triggers: this.pipeline.triggers,
             stages: [],
+          }
+          if (!this.editPipeline.triggers) {
+            this.editPipeline.triggers = []
           }
           for(let stage of this.pipeline.stages) {
             this.editPipeline.stages.push({
@@ -416,6 +459,7 @@ export default {
         Message.error("请输入流水线名称")
         return
       }
+      console.log(this.editPipeline)
       this.loading = true
       if(this.pipelineId) {
         updatePipeline(this.editPipeline).then((response) => {
@@ -475,6 +519,22 @@ export default {
       } else if(this.dialogType == 'source') {
         // this.editPipeline.sources = this.dialogData.sources
         this.$set(this.editPipeline, 'sources', this.dialogData.sources)
+        if(this.dialogData.code_trigger && !this.hasCodeTrigger) {
+          if(this.originCodeTrigger) {
+            this.editPipeline.triggers.push(this.originCodeTrigger)
+          } else {
+            this.editPipeline.triggers.push({type: "code"})
+          }
+        } else if(!this.dialogData.code_trigger && this.hasCodeTrigger) {
+          let triggers = []
+          for(let t of this.editPipeline.triggers) {
+            if (t.type != "code") {
+              triggers.push(t)
+            }
+          }
+          this.editPipeline.triggers = triggers
+        }
+        console.log(this.editPipeline)
       }
       this.dialogVisible = false
     },
@@ -552,6 +612,7 @@ export default {
       // }
       
       this.$set(this.dialogData, 'sources', JSON.parse(JSON.stringify(this.editPipeline.sources)))
+      this.$set(this.dialogData, "code_trigger", this.hasCodeTrigger)
       this.dialogVisible = true
     },
     fetchWorkspaces() {

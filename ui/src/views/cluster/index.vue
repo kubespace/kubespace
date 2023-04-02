@@ -67,7 +67,7 @@
               <el-link :underline="false" type='primary' style="margin-right: 15px;" 
                 @click="nameClick(scope.row.name)"
                 v-if="scope.row.status === 'Connect'">集群详情</el-link>
-              <el-link :disabled="!$adminRole()"  :underline="false" type="danger" @click="deleteClusters([{name: scope.row.name}])">删除</el-link>
+              <el-link :disabled="!$adminRole()"  :underline="false" type="danger" @click="deleteClusters([{name: scope.row.name, name1: scope.row.name1}])">删除</el-link>
             </div>
             <!-- <el-button
               @click.native.prevent="deleteRow(scope.$index, tableData)"
@@ -276,11 +276,23 @@ export default {
         Message.error('请选择要删除的集群')
         return
       }
-      deleteCluster(delClusters).then((response) => {
+      let cs = ''
+      for(let c of delClusters) {
+        cs += `${c.name1},`
+      }
+      cs = cs.substr(0, cs.length - 1)
+      this.$confirm(`请确认是否删除「${cs}」集群?`, '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        deleteCluster(delClusters).then((response) => {
           this.fetchData()
-      }).catch((e) => {
-        console.log(e)
-      })
+        }).catch((e) => {
+          console.log(e)
+        })
+      }).catch(() => {       
+      });
     },
     onCopy(e) {
       Message.success("复制成功")

@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/model"
@@ -137,6 +138,10 @@ func (p *ServicePipeline) GetPipelineTrigger(pipelineId uint, triggers []*schema
 				UpdateUser: username,
 				CreateTime: time.Now(),
 				UpdateTime: time.Now(),
+			}
+			if trig.Type == types.PipelineTriggerTypeCode {
+				// 第一次立即触发并初始化分支配置
+				triggerObj.NextTriggerTime = &sql.NullTime{Time: time.Now(), Valid: true}
 			}
 		}
 		triggerObjs = append(triggerObjs, triggerObj)
