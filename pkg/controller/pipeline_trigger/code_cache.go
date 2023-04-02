@@ -75,7 +75,11 @@ func (p *PipelineTriggerController) codeCacheHandle(obj interface{}) error {
 	for _, branch := range branches {
 		currCommit, ok := commitCache.BranchLatestCommit[branch.Name]
 		if !ok || currCommit.CommitId != branch.CommitId {
-			klog.Infof("branch=%s updated, curr commit id=%s, remote commit id=%s", branch, currCommit.CommitId, branch.CommitId)
+			currCommitId := ""
+			if ok {
+				currCommitId = currCommit.CommitId
+			}
+			klog.Infof("branch=%s updated, curr commit id=%s, remote commit id=%s", branch, currCommitId, branch.CommitId)
 			// 如果没有记录或者当前记录的commitId与代码库不一致，则更新该commitId
 			latestCommit, err := gitcli.GetBranchLatestCommit(context.Background(), workspace.Code.CloneUrl, branch.Name)
 			if err != nil {
