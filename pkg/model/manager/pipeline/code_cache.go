@@ -64,13 +64,14 @@ func (r *PipelineCodeCacheManager) CreateOrUpdate(workspaceId uint) error {
 		}
 		return nil
 	}
-	if err = r.db.Model(&types.PipelineCodeCache{}).Where("id=?", codeCache.ID).Updates(&types.PipelineCodeCache{
-		Status:     status,
-		UpdateTime: time.Now(),
-	}).Error; err != nil {
-		return err
+	if codeCache != nil {
+		if err = r.db.Model(&types.PipelineCodeCache{}).Where("id=?", codeCache.ID).Updates(&types.PipelineCodeCache{
+			Status:     status,
+			UpdateTime: time.Now(),
+		}).Error; err != nil {
+			return err
+		}
 	}
-
 	return nil
 }
 
