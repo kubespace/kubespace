@@ -188,7 +188,7 @@ export default {
         this.form.version = this.chart.version.split('-')[0]
         let values = yaml.load(resp.data.values)
         for(let tpl of resp.data.templates) {
-          console.log(tpl)
+          // console.log(tpl)
           let tplStr = atob(decodeURIComponent(tpl.data))
           if(tpl.name.indexOf('service.yaml')) {
             tplStr = tplStr.replace(/\n    {{- index .Values "services".*| toYaml | nindent 4 }}/, '')
@@ -200,7 +200,7 @@ export default {
             Message.error(e)
             return
           }
-          console.log(data)
+          // console.log(data)
           if(data.kind == 'Service' && values.services && values.services[data.metadata.name].ports) {
             data.spec.ports = values.services[data.metadata.name].ports
           }
@@ -266,7 +266,7 @@ export default {
         description: this.form.description,
         version_description: this.form.version_description
       }
-      console.log(data)
+      // console.log(data)
       this.loading = true
       createApp(data).then(() => {
         this.loading = false

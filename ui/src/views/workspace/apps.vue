@@ -146,12 +146,12 @@
                       </el-col>
                     </el-row>
                   </div>
-                  <el-row style="line-height: 38px; margin-top: 23px;">
+                  <el-row v-if="form.values_dict.services && Object.keys(form.values_dict.services).length > 0" style="line-height: 38px; margin-top: 23px;">
                     <el-col :span="7"><div style="padding-left: 10px; background-color: rgb(245, 247, 250);color: #909399">Service</div></el-col>
                     <el-col :span="7"><div style="background-color: rgb(245, 247, 250);color: #909399">类型</div></el-col>
                     <el-col :span="10"><div style="background-color: rgb(245, 247, 250);color: #909399">端口</div></el-col>
                   </el-row>
-                  <div v-for="(v, k) of form.values_dict.services ? form.values_dict.services : {}" :key="k">
+                  <div v-for="(v, k) of form.values_dict.services ? form.values_dict.services : {}" :key="'service'+k">
                     <el-row style="margin-top: 10px;">
                       <el-col :span="7">
                         <div style="padding-left: 10px;padding-top: 6px; padding-right: 3px;">{{ k }}</div>
@@ -470,6 +470,24 @@ export default {
             }
           }
         }
+        for( let s in values_dict.services || {}) {
+          let svc = values_dict.services[s]
+          if(svc.type != 'NodePort') {
+            continue
+          }
+          for(let p of svc.ports) {
+            if(p.nodePort) {
+              try{
+                p.nodePort = parseInt(p.nodePort)
+              }catch(e) {
+                Message.error("service nodePort端口错误，请输入数字")
+                return
+              }
+            } else {
+              delete p['nodePort']
+            }
+          }
+        }
         values = yaml.dump(values_dict)
       }
       let data = {
@@ -576,7 +594,6 @@ export default {
                 }
               }
             }
-            console.log(values_dict)
           }
           this.form.values_dict = values_dict
           return
@@ -631,14 +648,14 @@ export default {
     getAppStatus() {
       listAppStatus({scope_id: this.projectId, scope: "project_app"}).then((resp) => {
         let mapStatus = resp.data
-        console.log(mapStatus)
+        // console.log(mapStatus)
         for(let i in this.originApps) {
           let app = this.originApps[i]
           if(app.name in mapStatus) {
             this.$set(app, 'status', mapStatus[app.name].status)
             // app.status = mapStatus[app.name].status
             this.$set(this.originApps, i, app)
-            console.log(this.originApps)
+            // console.log(this.originApps)
           }
         }
         this.refreshAppStatus()
