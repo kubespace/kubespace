@@ -60,22 +60,26 @@ func (clu *Cluster) list(c *views.Context) *utils.Response {
 			defer wg.Done()
 			status := types.ClusterPending
 			clusterVersion := ""
+			connectErr := ""
 			res := clu.kubeClient.Get(du.Name, kubetypes.ClusterType, map[string]interface{}{"only_version": true})
 			if res.IsSuccess() {
 				status = types.ClusterConnect
 				clusterVersion, _ = res.Data.(string)
+			} else {
+				connectErr = res.Msg
 			}
 			data = append(data, map[string]interface{}{
-				"id":          du.ID,
-				"name":        du.Name,
-				"name1":       du.Name1,
-				"token":       du.Token,
-				"status":      status,
-				"version":     clusterVersion,
-				"created_by":  du.CreatedBy,
-				"members":     du.Members,
-				"create_time": du.CreateTime,
-				"update_time": du.UpdateTime,
+				"id":            du.ID,
+				"name":          du.Name,
+				"name1":         du.Name1,
+				"token":         du.Token,
+				"status":        status,
+				"connect_error": connectErr,
+				"version":       clusterVersion,
+				"created_by":    du.CreatedBy,
+				"members":       du.Members,
+				"create_time":   du.CreateTime,
+				"update_time":   du.UpdateTime,
 			})
 		}(du)
 	}

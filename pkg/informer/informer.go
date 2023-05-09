@@ -99,7 +99,7 @@ func (b *informer) handle(obj interface{}) {
 				klog.Errorf("handle object crashed: %v", obj)
 			})
 			if err := handler.Handle(obj); err != nil {
-				klog.Errorf("handle object error=%s, object=%v", err.Error(), obj)
+				klog.Errorf("informer key=%s, handle object error=%s, object=%+v", b.listWatcher.Key(), err.Error(), obj)
 			}
 		}(handler)
 	}

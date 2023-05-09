@@ -36,7 +36,11 @@ func (r *PipelineCodeCacheManager) GetByWorkspaceId(workspaceId uint) (*types.Pi
 	return &cache, nil
 }
 
-func (r *PipelineCodeCacheManager) CreateOrUpdate(workspaceId uint) error {
+func (r *PipelineCodeCacheManager) CreateOrUpdate(workspaceObj *types.PipelineWorkspace) error {
+	if workspaceObj.Type == types.WorkspaceTypeCustom {
+		return nil
+	}
+	workspaceId := workspaceObj.ID
 	var codeTriggersCnt int64
 	if err := r.db.Debug().Model(&types.PipelineTrigger{}).Where("pipeline_id in (?)",
 		r.db.Table("pipelines").Select("id").Where("workspace_id=?", workspaceId)).Count(

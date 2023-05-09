@@ -29,7 +29,8 @@ func NewPipelineTriggerListWatcher(config *config.ListWatcherConfig, cond *Pipel
 		db:        config.DB,
 		condition: cond,
 	}
-	a.Storage = config.NewStorage(PipelineTriggerWatchKey, a.List, a.Filter, nil, &types.PipelineTrigger{})
+	resync := 3
+	a.Storage = config.NewStorage(PipelineTriggerWatchKey, a.List, a.Filter, &resync, &types.PipelineTrigger{})
 	return a
 }
 

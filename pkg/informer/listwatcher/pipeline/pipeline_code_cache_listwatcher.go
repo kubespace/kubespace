@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const PipelineCodeCacheWatchKey = "kubespace:pipeline:trigger_event"
+const PipelineCodeCacheWatchKey = "kubespace:pipeline:code_cache"
 
 // PipelineCodeCacheWatchCondition PipelineTriggerEvent监听条件
 type PipelineCodeCacheWatchCondition struct {

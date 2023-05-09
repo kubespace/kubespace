@@ -256,9 +256,10 @@ type PipelineTriggerEvent struct {
 	TriggerId  uint   `gorm:"" json:"trigger_id"`
 	Status     string `gorm:"size:50;" json:"status"`
 	// 事件触发的构建配置
-	EventConfig PipelineTriggerEventConfig `gorm:"type:json" json:"event_config"`
+	EventConfig PipelineBuildConfig `gorm:"type:json" json:"event_config"`
 	// 事件执行结果记录，触发成功/失败，以及失败原因
 	EventResult *utils.Response `gorm:"type:json" json:"event_result"`
+	TriggerUser string          `gorm:"size:255;" json:"trigger_user"`
 	CreateTime  time.Time       `gorm:"not null;autoCreateTime" json:"create_time"`
 	UpdateTime  time.Time       `gorm:"not null;autoUpdateTime" json:"update_time"`
 }
@@ -271,23 +272,35 @@ func (p *PipelineTriggerEvent) Unmarshal(bytes []byte) (interface{}, error) {
 	return event, nil
 }
 
-// PipelineTriggerEventConfig 流水线触发事件的配置信息，
+type PipelineBuildCustomSource struct {
+	WorkspaceId         uint   `json:"workspace_id"`
+	WorkspaceName       string `json:"workspace_name"`
+	PipelineId          uint   `json:"pipeline_id"`
+	PipelineName        string `json:"pipeline_name"`
+	BuildReleaseVersion string `json:"build_release_version"`
+	BuildId             uint   `json:"build_id"`
+	BuildNumber         uint   `json:"build_number"`
+	BuildOperator       string `json:"build_operator"`
+	IsBuild             bool   `json:"is_build" default:"true"`
+}
+
+// PipelineBuildConfig 流水线触发事件的配置信息，
 //  1. 如果是代码源更新触发，则触发配置为分支以及commit_id
 //  2. 如果是定时触发，则该配置为空，根据流水线的类型生成流水线构建
 //     a. 如果是代码源流水线，则根据监听的所有分支，找到最新构建的分支进行构建
 //     b. 如果是自定义流水线，则查询监听的所有流水线，找到最新的构建成功的记录进行构建
-type PipelineTriggerEventConfig struct {
+type PipelineBuildConfig struct {
 	// 代码源触发时的提交
-	CodeCommit *PipelineBuildCodeBranch `json:"code_commit,omitempty"`
+	CodeBranch *PipelineBuildCodeBranch `json:"code_branch,omitempty"`
 	// 自定义流水线触发时的流水线源
-	PipelineSources []*PipelineSource `json:"pipeline_sources,omitempty"`
+	CustomSources []*PipelineBuildCustomSource `json:"custom_sources,omitempty"`
 }
 
-func (pt *PipelineTriggerEventConfig) Scan(value interface{}) error {
+func (pt *PipelineBuildConfig) Scan(value interface{}) error {
 	return db.Scan(value, pt)
 }
 
-func (pt PipelineTriggerEventConfig) Value() (driver.Value, error) {
+func (pt PipelineBuildConfig) Value() (driver.Value, error) {
 	return db.Value(pt)
 }
 

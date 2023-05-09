@@ -129,33 +129,20 @@
                 <el-table-column
                   prop="workspace_name"
                   label="流水线空间"
-                  width="230">
+                  width="300">
                 </el-table-column>
                 <el-table-column
                   prop="pipeline_name"
                   label="流水线"
-                  width="150">
+                  width="300">
                 </el-table-column>
                 <el-table-column
                   prop="when"
                   label="构建号"
-                  width="140">
+                  width="">
                   <template slot-scope="scope">
                     {{ scope.row.build_release_version ? scope.row.build_release_version : '#' + scope.row.build_number }} ({{scope.row.build_operator}})
                   </template>
-                </el-table-column>
-                <el-table-column
-                  prop="code_commit"
-                  label="CommitId"
-                  width="160">
-                  <template slot-scope="scope">
-                    {{ scope.row.code_commit.substr(0, 10) }} ({{ scope.row.code_author }})
-                  </template>
-                </el-table-column>
-                <el-table-column
-                  prop="code_comment"
-                  label="Comment"
-                  width="">
                 </el-table-column>
               </el-table>
               <!-- <el-button style="margin-top: 8px; border-radius: 0px; padding: 5px 15px;" type="primary" size="mini">重新构建</el-button> -->
@@ -707,7 +694,7 @@ export default {
           }
           this.$set(build, 'clickDetail', {type: type, commit: [commit]})
         } else {
-          this.$set(build, 'clickDetail', {type: type, builds: build.pipeline_run.params.build_ids})
+          this.$set(build, 'clickDetail', {type: type, builds: build.pipeline_run.params.custom_sources})
         }
       } else {
         this.$set(build, 'clickDetail', {type: type, stage: stage})

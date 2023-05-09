@@ -71,7 +71,7 @@ func (p *ServicePipeline) Create(params *schemas.PipelineParams, user *types.Use
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
-	if err = p.models.PipelineCodeCacheManager.CreateOrUpdate(pipeline.WorkspaceId); err != nil {
+	if err = p.models.PipelineCodeCacheManager.CreateOrUpdate(workspace); err != nil {
 		if delErr := p.models.PipelineManager.Delete(pipeline.ID); delErr != nil {
 			klog.Errorf("delete pipeline id=%d error: %s", pipeline.ID, err.Error())
 		}
@@ -121,29 +121,31 @@ func (p *ServicePipeline) GetPipelineTrigger(pipelineId uint, triggers []*schema
 			if err != nil {
 				return nil, err
 			}
-			if trig.Type == types.PipelineTriggerTypeCron {
-				triggerObj.Config.Cron = &types.PipelineTriggerConfigCron{Cron: trig.Cron}
-			}
-		}
-		if triggerObj == nil {
-			var triggerConf types.PipelineTriggerConfig
-			if trig.Type == types.PipelineTriggerTypeCron {
-				triggerConf.Cron = &types.PipelineTriggerConfigCron{Cron: trig.Cron}
-			}
+		} else {
 			triggerObj = &types.PipelineTrigger{
 				ID:         0,
 				PipelineId: pipelineId,
 				Type:       trig.Type,
-				Config:     triggerConf,
+				Config:     types.PipelineTriggerConfig{},
 				UpdateUser: username,
 				CreateTime: time.Now(),
 				UpdateTime: time.Now(),
 			}
+
 			if trig.Type == types.PipelineTriggerTypeCode {
 				// 第一次立即触发并初始化分支配置
 				triggerObj.NextTriggerTime = &sql.NullTime{Time: time.Now(), Valid: true}
 			}
 		}
+		if trig.Type == types.PipelineTriggerTypeCron {
+			triggerObj.Config.Cron = &types.PipelineTriggerConfigCron{Cron: trig.Cron}
+			nextTriggerTime, err := utils.NextTriggerTime(trig.Cron)
+			if err != nil {
+				return nil, err
+			}
+			triggerObj.NextTriggerTime = &sql.NullTime{Time: nextTriggerTime, Valid: true}
+		}
+
 		triggerObjs = append(triggerObjs, triggerObj)
 	}
 	return triggerObjs, nil
@@ -186,7 +188,7 @@ func (p *ServicePipeline) Update(params *schemas.PipelineParams, user *types.Use
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
-	if err = p.models.PipelineCodeCacheManager.CreateOrUpdate(pipeline.WorkspaceId); err != nil {
+	if err = p.models.PipelineCodeCacheManager.CreateOrUpdate(workspace); err != nil {
 		return &utils.Response{Code: code.DBError, Msg: "更新代码分支缓存失败：" + err.Error()}
 	}
 	return &utils.Response{Code: code.Success, Data: pipeline}

@@ -7,6 +7,7 @@ import (
 	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_1/v1_1_4_a_stagerun_add_finishtime"
 	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_1/v1_1_5_a_chg_pipeline_source_column"
 	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_1/v1_1_5_b_pipeline_triggers_and_code_cache"
+	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_1/v1_1_6_a_pipeline_trigger_event_add_user"
 	"github.com/kubespace/kubespace/pkg/model/types"
 )
 

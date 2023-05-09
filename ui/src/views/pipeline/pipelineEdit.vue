@@ -152,109 +152,172 @@
           </el-form>
         </template>
         <template v-if="dialogType == 'source'">
-          <el-form :model="dialogData" label-position="left" label-width="105px" v-if="workspace.type == 'code'">
-            <el-form-item label="代码库源" prop="" :required="true">
-              <el-input :disabled="true" style="width: 450px;" v-model="workspace.code.clone_url" size="small"></el-input>
-            </el-form-item>
-            <el-form-item label="构建分支" prop="" :required="true">
-              <el-row style="margin-bottom: 5px; margin-top: 8px;">
-                <el-col :span="7" style="background-color: #F5F7FA; padding-left: 10px;">
-                  <div class="border-span-header">
-                    <span  class="border-span-content">*</span>匹配方式
-                  </div>
-                </el-col>
-                <el-col :span="10" style="background-color: #F5F7FA">
-                  <div class="border-span-header">
-                    分支
-                  </div>
-                </el-col>
-                <!-- <el-col :span="5"><div style="width: 100px;"></div></el-col> -->
-              </el-row>
-              <el-row style="padding-bottom: 5px;" v-for="(d, i) in dialogData.sources" :key="i">
-                <el-col :span="7">
-                  <div class="border-span-header" style="margin-right: 10px;">
-                    <el-select v-model="d.operator" placeholder="匹配方式" size="small" style="width: 100%;">
-                      <el-option label="精确匹配" value="equal"></el-option>
-                      <el-option label="精确排除" value="exclude"></el-option>
-                      <el-option label="正则匹配" value="regex"></el-option>
-                    </el-select>
-                  </div>
-                </el-col>
-                <el-col :span="10">
-                  <div class="border-span-header">
-                    <el-input style="border-radius: 0px;" v-model="d.branch" size="small" placeholder="匹配分支，空表示所有分支"></el-input>
-                  </div>
-                </el-col>
-                <el-col :span="2" style="padding-left: 10px">
-                  <el-button circle size="mini" style="padding: 5px;" 
-                    @click="dialogData.sources.splice(i, 1)" icon="el-icon-close"></el-button>
-                </el-col>
-              </el-row>
-              <el-row>
-                <el-col :span="17">
-                <el-button style="width: 100%; border-radius: 0px; padding: 9px 15px; border-color: rgb(102, 177, 255); color: rgb(102, 177, 255)" plain size="mini" 
-                  @click="dialogData.sources.push({type: 'code', branch_type: 'branch', operator: 'equal', branch: ''})" icon="el-icon-plus">添加匹配</el-button>
-                </el-col>
-              </el-row>
-            </el-form-item>
-            <el-form-item label="自动触发" prop="">
-              <div slot="label">
-                自动触发
-                <span>
-                  <el-popover placement="top-start" title="" width="500" trigger="hover">
-                    <div style="line-height: 20px;">
-                        代码提交到当前流水线匹配的分支后，是否自动触发该流水线
+          <el-form :model="dialogData" label-position="left" label-width="105px">
+            <template v-if="workspace.type == 'code'">
+              <el-form-item label="代码库源" prop="" :required="true">
+                <el-input :disabled="true" style="width: 450px;" v-model="workspace.code.clone_url" size="small"></el-input>
+              </el-form-item>
+              <el-form-item label="构建分支" prop="" :required="true">
+                <el-row style="margin-bottom: 5px; margin-top: 8px;">
+                  <el-col :span="7" style="background-color: #F5F7FA; padding-left: 10px;">
+                    <div class="border-span-header">
+                      <span  class="border-span-content">*</span>匹配方式
                     </div>
-                    <i slot="reference" class="el-icon-question"></i>
-                  </el-popover>
-                </span>
-              </div>
-              <el-switch v-model="dialogData.code_trigger" ></el-switch>
-            </el-form-item>
-          </el-form>
+                  </el-col>
+                  <el-col :span="10" style="background-color: #F5F7FA">
+                    <div class="border-span-header">
+                      分支
+                    </div>
+                  </el-col>
+                  <!-- <el-col :span="5"><div style="width: 100px;"></div></el-col> -->
+                </el-row>
+                <el-row style="padding-bottom: 5px;" v-for="(d, i) in dialogData.sources" :key="i">
+                  <el-col :span="7">
+                    <div class="border-span-header" style="margin-right: 10px;">
+                      <el-select v-model="d.operator" placeholder="匹配方式" size="small" style="width: 100%;">
+                        <el-option label="精确匹配" value="equal"></el-option>
+                        <el-option label="精确排除" value="exclude"></el-option>
+                        <el-option label="正则匹配" value="regex"></el-option>
+                      </el-select>
+                    </div>
+                  </el-col>
+                  <el-col :span="10">
+                    <div class="border-span-header">
+                      <el-input style="border-radius: 0px;" v-model="d.branch" size="small" placeholder="匹配分支，空表示所有分支"></el-input>
+                    </div>
+                  </el-col>
+                  <el-col :span="2" style="padding-left: 10px">
+                    <el-button circle size="mini" style="padding: 5px;" 
+                      @click="dialogData.sources.splice(i, 1)" icon="el-icon-close"></el-button>
+                  </el-col>
+                </el-row>
+                <el-row>
+                  <el-col :span="17">
+                  <el-button style="width: 100%; border-radius: 0px; padding: 9px 15px; border-color: rgb(102, 177, 255); color: rgb(102, 177, 255)" plain size="mini" 
+                    @click="dialogData.sources.push({type: 'code', branch_type: 'branch', operator: 'equal', branch: ''})" icon="el-icon-plus">添加匹配</el-button>
+                  </el-col>
+                </el-row>
+              </el-form-item>
+              <el-form-item label="自动触发" prop="">
+                <div slot="label">
+                  自动触发
+                  <span>
+                    <el-popover placement="top-start" title="" width="500" trigger="hover">
+                      <div style="line-height: 20px;">
+                          代码提交到当前流水线匹配的分支后，是否自动触发该流水线
+                      </div>
+                      <i slot="reference" class="el-icon-question"></i>
+                    </el-popover>
+                  </span>
+                </div>
+                <el-switch v-model="dialogData.code_trigger" ></el-switch>
+              </el-form-item>
+            </template>
 
-          <el-form :model="dialogData" label-position="left" label-width="105px" v-if="workspace.type == 'custom'">
-            <el-form-item label="代码流水线" prop="" :required="true">
-              <el-row style="margin-bottom: 5px; margin-top: 8px;">
-                <el-col :span="12" style="background-color: #F5F7FA; padding-left: 10px;">
-                  <div class="border-span-header">
-                    <span  class="border-span-content">*</span>流水线空间
-                  </div>
-                </el-col>
-                <el-col :span="7" style="background-color: #F5F7FA">
-                  <div class="border-span-header">
-                    流水线
-                  </div>
-                </el-col>
-                <!-- <el-col :span="5"><div style="width: 100px;"></div></el-col> -->
-              </el-row>
-              <el-row style="padding-bottom: 5px;" v-for="(d, i) in dialogData.sources" :key="i">
-                <el-col :span="12">
-                  <div class="border-span-header" style="margin-right: 10px;">
-                    <el-select v-model="d.workspace" placeholder="流水线空间" size="small" style="width: 100%;" @change="changePipeline">
-                      <el-option v-for="w in workspaces" :key="w.id" :label="w.name" :value="w.id"></el-option>
-                    </el-select>
-                  </div>
-                </el-col>
-                <el-col :span="7">
-                  <div class="border-span-header">
-                    <el-select v-model="d.pipeline" placeholder="代码流水线" size="small" style="width: 100%;">
-                      <el-option v-for="p in workspacesDict[d.workspace] ? workspacesDict[d.workspace].pipelines : []" :key="p.id" :label="p.name" :value="p.id"></el-option>
-                    </el-select>
-                  </div>
-                </el-col>
-                <el-col :span="2" style="padding-left: 10px">
-                  <el-button circle size="mini" style="padding: 5px;" 
-                    @click="dialogData.sources.splice(i, 1)" icon="el-icon-close"></el-button>
-                </el-col>
-              </el-row>
-              <el-row>
-                <el-col :span="19">
-                <el-button style="width: 100%; border-radius: 0px; padding: 9px 15px; border-color: rgb(102, 177, 255); color: rgb(102, 177, 255)" plain size="mini" 
-                  @click="dialogData.sources.push({type: 'pipeline'})" icon="el-icon-plus">添加流水线源</el-button>
-                </el-col>
-              </el-row>
-            </el-form-item>
+            <template v-if="workspace.type == 'custom'">
+              <el-form-item label="代码流水线" prop="" :required="true">
+                <el-row style="margin-bottom: 5px; margin-top: 8px;">
+                  <el-col :span="12" style="background-color: #F5F7FA; padding-left: 10px;">
+                    <div class="border-span-header">
+                      <span  class="border-span-content">*</span>流水线空间
+                    </div>
+                  </el-col>
+                  <el-col :span="8" style="background-color: #F5F7FA">
+                    <div class="border-span-header">
+                      流水线
+                    </div>
+                  </el-col>
+                  <!-- <el-col :span="5"><div style="width: 100px;"></div></el-col> -->
+                </el-row>
+                <el-row style="padding-bottom: 5px;" v-for="(d, i) in dialogData.sources" :key="i">
+                  <el-col :span="12">
+                    <div class="border-span-header" style="margin-right: 10px;">
+                      <el-select v-model="d.workspace" placeholder="流水线空间" size="small" style="width: 100%;" @change="changePipeline">
+                        <el-option v-for="w in workspaces" :key="w.id" :label="w.name" :value="w.id"></el-option>
+                      </el-select>
+                    </div>
+                  </el-col>
+                  <el-col :span="8">
+                    <div class="border-span-header">
+                      <el-select v-model="d.pipeline" placeholder="代码流水线" size="small" style="width: 100%;">
+                        <el-option v-for="p in workspacesDict[d.workspace] ? workspacesDict[d.workspace].pipelines : []" :key="p.id" :label="p.name" :value="p.id"></el-option>
+                      </el-select>
+                    </div>
+                  </el-col>
+                  <el-col :span="2" style="padding-left: 10px">
+                    <el-button circle size="mini" style="padding: 5px;" 
+                      @click="dialogData.sources.splice(i, 1)" icon="el-icon-close"></el-button>
+                  </el-col>
+                </el-row>
+                <el-row>
+                  <el-col :span="20">
+                  <el-button style="width: 100%; border-radius: 0px; padding: 9px 15px; border-color: rgb(102, 177, 255); color: rgb(102, 177, 255)" plain size="mini" 
+                    @click="dialogData.sources.push({type: 'pipeline'})" icon="el-icon-plus">添加流水线源</el-button>
+                  </el-col>
+                </el-row>
+              </el-form-item>
+            </template>
+              <el-form-item label="定时触发" prop="">
+                <el-switch v-model="dialogData.cron_trigger" ></el-switch>
+                <div v-if="dialogData.cron_trigger">
+                  <!-- <el-input v-model="dialogData.cron" size="small" placeholder="定时策略"></el-input> -->
+                  <el-row style="margin-bottom: 5px; margin-top: 8px;">
+                    <el-col :span="3" style="background-color: #F5F7FA; padding-left: 10px;">
+                      <div class="border-span-header">
+                        <span  class="border-span-content">*</span>分
+                      </div>
+                    </el-col>
+                    <el-col :span="3" style="background-color: #F5F7FA">
+                      <div class="border-span-header">
+                        <span  class="border-span-content">*</span>时
+                      </div>
+                    </el-col>
+                    <el-col :span="3" style="background-color: #F5F7FA">
+                      <div class="border-span-header">
+                        <span  class="border-span-content">*</span>日
+                      </div>
+                    </el-col>
+                    <el-col :span="3" style="background-color: #F5F7FA">
+                      <div class="border-span-header">
+                        <span  class="border-span-content">*</span>月
+                      </div>
+                    </el-col>
+                    <el-col :span="3" style="background-color: #F5F7FA">
+                      <div class="border-span-header">
+                        <span  class="border-span-content">*</span>周
+                      </div>
+                    </el-col>
+                    <!-- <el-col :span="5"><div style="width: 100px;"></div></el-col> -->
+                  </el-row>
+                  <el-row style="padding-bottom: 5px;">
+                    <el-col :span="3" style="padding-right: 10px;">
+                      <div class="border-span-header" >
+                        <el-input v-model="dialogData.cron_min" size="small"></el-input>
+                      </div>
+                    </el-col>
+                    <el-col :span="3" style="padding-right: 10px;">
+                      <div class="border-span-header">
+                        <el-input v-model="dialogData.cron_hour" size="small"></el-input>
+                      </div>
+                    </el-col>
+                    <el-col :span="3" style="padding-right: 10px;">
+                      <div class="border-span-header">
+                        <el-input v-model="dialogData.cron_day" size="small"></el-input>
+                      </div>
+                    </el-col>
+                    <el-col :span="3" style="padding-right: 10px;">
+                      <div class="border-span-header">
+                        <el-input v-model="dialogData.cron_mon" size="small"></el-input>
+                      </div>
+                    </el-col>
+                    <el-col :span="3" style="padding-right: 10px;">
+                      <div class="border-span-header">
+                        <el-input v-model="dialogData.cron_week" size="small"></el-input>
+                      </div>
+                    </el-col>
+                  </el-row>
+                </div>
+              </el-form-item>
           </el-form>
         </template>
         <div style="display: block; padding: 25px 0px; text-align: center;">
@@ -384,18 +447,6 @@ export default {
       }
       return null
     },
-    hasCodeTrigger() {
-      if(!this.editPipeline) return false
-      if(!this.editPipeline.triggers) {
-        return false
-      }
-      for(let t of this.editPipeline.triggers) {
-        if (t.type == "code") {
-          return true
-        }
-      }
-      return false
-    },
   },
   methods: {
     fetchWorkspace() {
@@ -436,10 +487,11 @@ export default {
             workspace_id: this.pipeline.workspace.id,
             name: this.pipeline.pipeline.name,
             sources: this.pipeline.pipeline.sources,
-            triggers: this.pipeline.triggers,
             stages: [],
           }
-          if (!this.editPipeline.triggers) {
+          if(this.pipeline.triggers) {
+            this.editPipeline.triggers = JSON.parse(JSON.stringify(this.pipeline.triggers))
+          } else {
             this.editPipeline.triggers = []
           }
           for(let stage of this.pipeline.stages) {
@@ -464,7 +516,6 @@ export default {
         Message.error("请输入流水线名称")
         return
       }
-      console.log(this.editPipeline)
       this.loading = true
       if(this.pipelineId) {
         updatePipeline(this.editPipeline).then((response) => {
@@ -524,13 +575,14 @@ export default {
       } else if(this.dialogType == 'source') {
         // this.editPipeline.sources = this.dialogData.sources
         this.$set(this.editPipeline, 'sources', this.dialogData.sources)
-        if(this.dialogData.code_trigger && !this.hasCodeTrigger) {
+        let hasCodeTrigger = this.hasCodeTrigger()
+        if(this.dialogData.code_trigger && !hasCodeTrigger) {
           if(this.originCodeTrigger) {
             this.editPipeline.triggers.push(this.originCodeTrigger)
           } else {
             this.editPipeline.triggers.push({type: "code"})
           }
-        } else if(!this.dialogData.code_trigger && this.hasCodeTrigger) {
+        } else if(!this.dialogData.code_trigger && hasCodeTrigger) {
           let triggers = []
           for(let t of this.editPipeline.triggers) {
             if (t.type != "code") {
@@ -539,9 +591,42 @@ export default {
           }
           this.editPipeline.triggers = triggers
         }
-        console.log(this.editPipeline)
+        let originCron = this.originCronTrigger()
+        let editCron = this.editCronTrigger()
+        if (this.dialogData.cron_trigger) {
+          let cronStr = this.getCron()
+          if(editCron) {
+            editCron['cron'] = cronStr
+          } else {
+            let cron = {type: "cron", cron: cronStr}
+            if(originCron) {
+              cron["id"] = originCron.id
+            }
+            this.editPipeline.triggers.push(cron)
+          }
+        } else if(!this.dialogData.cron_trigger && editCron) {
+          let triggers = []
+          for(let t of this.editPipeline.triggers) {
+            if (t.type != "cron") {
+              triggers.push(t)
+            }
+          }
+          this.editPipeline.triggers = triggers
+        }
       }
+      console.log(this.editPipeline.triggers)
       this.dialogVisible = false
+    },
+    getCron() {
+      let crons = []
+      for(let i of ["cron_min", "cron_hour", "cron_day", "cron_mon", "cron_week"]) {
+        if(this.dialogData[i]) {
+          crons.push(this.dialogData[i])
+        } else {
+          crons.push('*')
+        }
+      }
+      return crons.join(' ')
     },
     dialogDelete() {
       if(this.dialogType == 'edit_stage') {
@@ -566,7 +651,6 @@ export default {
         stage,
         idx
       }
-      console.log(stage)
       var custom_params = []
       if(stage.custom_params) {
         for(let k in stage.custom_params) {
@@ -617,8 +701,29 @@ export default {
       // }
       
       this.$set(this.dialogData, 'sources', JSON.parse(JSON.stringify(this.editPipeline.sources)))
-      this.$set(this.dialogData, "code_trigger", this.hasCodeTrigger)
+      this.$set(this.dialogData, "code_trigger", this.hasCodeTrigger())
+      let editCron = this.editCronTrigger()
+      this.$set(this.dialogData, "cron_trigger", !!editCron)
+      if(editCron) {
+        let crons = this.splitCron(editCron.cron)
+        this.$set(this.dialogData, "cron_min", crons[0])
+        this.$set(this.dialogData, "cron_hour", crons[1])
+        this.$set(this.dialogData, "cron_day", crons[2])
+        this.$set(this.dialogData, "cron_mon", crons[3])
+        this.$set(this.dialogData, "cron_week", crons[4])
+      }
       this.dialogVisible = true
+    },
+    splitCron(cronStr) {
+      console.log(cronStr)
+      let crons = cronStr.split(" ")
+      console.log(crons)
+      for(let i in crons) {
+        if(!crons[i]) {
+          crons[i] = '*'
+        }
+      }
+      return crons
     },
     fetchWorkspaces() {
       listWorkspaces({"with_pipeline": true, "type": "code"})
@@ -663,7 +768,45 @@ export default {
           if(d.pipeline_name) d.pipeline_name = ''
         }
       }
-    }
+    },
+    originCronTrigger() {
+      if(!this.pipeline) {
+        return null
+      }
+      if(!this.pipeline.triggers) {
+        return null
+      }
+      for(let t of this.pipeline.triggers) {
+        if(t.type == "cron") {
+          return t
+        }
+      }
+      return null
+    },
+    editCronTrigger() {
+      if(!this.editPipeline) return null
+      if(!this.editPipeline.triggers) {
+        return null
+      }
+      for(let t of this.editPipeline.triggers) {
+        if (t.type == "cron") {
+          return t
+        }
+      }
+      return null
+    },
+    hasCodeTrigger() {
+      if(!this.editPipeline) return false
+      if(!this.editPipeline.triggers) {
+        return false
+      }
+      for(let t of this.editPipeline.triggers) {
+        if (t.type == "code") {
+          return true
+        }
+      }
+      return false
+    },
   }
 }
 </script>

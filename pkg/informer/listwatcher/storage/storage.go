@@ -1,6 +1,7 @@
 package storage
 
 type Storage interface {
+	Key() string
 	Stop() error
 	Run()
 	Result() <-chan interface{}

@@ -3,7 +3,7 @@ package pipeline_trigger
 import (
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/model/types"
-	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
+	"k8s.io/klog/v2"
 	"time"
 )
 
@@ -42,35 +42,14 @@ func (p *PipelineTriggerController) eventHandle(obj interface{}) error {
 		event = *eventObj
 	}
 	if event.Status != types.PipelineTriggerEventStatusNew {
+		klog.Infof("pipeline trigger event id=%d status=%s, status is not new and do not execute")
 		return nil
 	}
 
-	pipeline, err := p.models.PipelineManager.Get(event.PipelineId)
-	if err != nil {
-		return err
-	}
-	pipelineWorkspace, err := p.models.PipelineWorkspaceManager.Get(pipeline.WorkspaceId)
-	if err != nil {
-		return err
-	}
-	if pipelineWorkspace.Type == types.WorkspaceTypeCode {
-		// 触发代码流水线构建
-		codeCommitConfig := event.EventConfig.CodeCommit
-		buildResp := p.pipelineRunService.Build(&schemas.PipelineBuildParams{
-			PipelineId: pipeline.ID,
-			CodeBranch: &schemas.PipelineBuildCodeBranch{
-				Branch:     codeCommitConfig.Branch,
-				CommitId:   codeCommitConfig.CommitId,
-				Author:     codeCommitConfig.Author,
-				Message:    codeCommitConfig.Message,
-				CommitTime: codeCommitConfig.CommitTime,
-			},
-		}, codeCommitConfig.Author)
-		return p.models.PipelineTriggerEventManager.Update(event.ID, &types.PipelineTriggerEvent{
-			EventResult: buildResp,
-			Status:      types.PipelineTriggerEventStatusConsumed,
-			UpdateTime:  time.Now(),
-		})
-	}
-	return nil
+	buildResp := p.pipelineRunService.Build(event.PipelineId, &event.EventConfig, event.TriggerUser)
+	return p.models.PipelineTriggerEventManager.Update(event.ID, &types.PipelineTriggerEvent{
+		EventResult: buildResp,
+		Status:      types.PipelineTriggerEventStatusConsumed,
+		UpdateTime:  time.Now(),
+	})
 }

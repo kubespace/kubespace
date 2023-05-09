@@ -46,6 +46,10 @@ func NewRedisStorage(redisClient *redis.Client, watchKey string, listFunc ListFu
 	}
 }
 
+func (r *RedisStorage) Key() string {
+	return r.watchKey
+}
+
 func (r *RedisStorage) Id() string {
 	return r.id
 }
@@ -82,6 +86,7 @@ func (r *RedisStorage) list() {
 	for {
 		select {
 		case <-ticker.C:
+			ticker.Stop()
 			objects, err := r.listFunc()
 			if err != nil {
 				klog.Errorf("list")
@@ -89,6 +94,7 @@ func (r *RedisStorage) list() {
 			for i, _ := range objects {
 				r.resultChan <- objects[i]
 			}
+			ticker.Reset(time.Second * time.Duration(r.resyncSec))
 		case <-r.stopCh:
 			return
 		}
