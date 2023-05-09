@@ -126,19 +126,24 @@ func (p *ServicePipeline) GetPipelineTrigger(pipelineId uint, triggers []*schema
 			}
 		}
 		if triggerObj == nil {
-			var triggerConf types.PipelineTriggerConfig
-			if trig.Type == types.PipelineTriggerTypeCron {
-				triggerConf.Cron = &types.PipelineTriggerConfigCron{Cron: trig.Cron}
-			}
 			triggerObj = &types.PipelineTrigger{
 				ID:         0,
 				PipelineId: pipelineId,
 				Type:       trig.Type,
-				Config:     triggerConf,
+				Config:     types.PipelineTriggerConfig{},
 				UpdateUser: username,
 				CreateTime: time.Now(),
 				UpdateTime: time.Now(),
 			}
+			if trig.Type == types.PipelineTriggerTypeCron {
+				triggerObj.Config.Cron = &types.PipelineTriggerConfigCron{Cron: trig.Cron}
+				nextTriggerTime, err := utils.NextTriggerTime(trig.Cron)
+				if err != nil {
+					return nil, err
+				}
+				triggerObj.NextTriggerTime = &sql.NullTime{Time: nextTriggerTime}
+			}
+
 			if trig.Type == types.PipelineTriggerTypeCode {
 				// 第一次立即触发并初始化分支配置
 				triggerObj.NextTriggerTime = &sql.NullTime{Time: time.Now(), Valid: true}

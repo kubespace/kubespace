@@ -130,7 +130,7 @@ type BuildForPipelineParams struct {
 	BuildIds []*BuildForPipelineParamsBuilds `json:"build_ids"`
 }
 
-func (r *ServicePipelineRun) InitialEnvs(pipeline *types.Pipeline, workspace *types.PipelineWorkspace, params *schemas.PipelineBuildParams) (map[string]interface{}, error) {
+func (r *ServicePipelineRun) InitialEnvs(pipeline *types.Pipeline, workspace *types.PipelineWorkspace, params *types.PipelineBuildConfig) (map[string]interface{}, error) {
 	envs := map[string]interface{}{}
 	envs[types.PipelineEnvWorkspaceId] = workspace.ID
 	envs[types.PipelineEnvWorkspaceName] = workspace.Name
@@ -141,14 +141,7 @@ func (r *ServicePipelineRun) InitialEnvs(pipeline *types.Pipeline, workspace *ty
 			return nil, err
 		}
 	} else if workspace.Type == types.WorkspaceTypeCustom {
-		//paramsBytes, err := json.Marshal(params)
-		//if err != nil {
-		//	return nil, err
-		//}
-		//var buildPipelineParams BuildForPipelineParams
-		//if err = json.Unmarshal(paramsBytes, &buildPipelineParams); err != nil {
-		//	return nil, err
-		//}
+		// 合并构建源流水线时要删除的变量
 		delPipelineEnvs := []string{
 			types.PipelineEnvWorkspaceId,
 			types.PipelineEnvWorkspaceName,
@@ -162,40 +155,44 @@ func (r *ServicePipelineRun) InitialEnvs(pipeline *types.Pipeline, workspace *ty
 			if !buildInfo.IsBuild {
 				continue
 			}
+			build, err := r.models.PipelineRunManager.Get(buildInfo.BuildId)
+			if err != nil {
+				return nil, fmt.Errorf("获取流水线构建源失败：%s", err.Error())
+			}
+			pipelineSrc, err := r.models.PipelineManager.Get(build.PipelineId)
+			if err != nil {
+				return nil, fmt.Errorf("获取流水线源失败：%s", err.Error())
+			}
+			if build.Status != types.PipelineStatusOK {
+				return nil, fmt.Errorf("构建源流水线%s执行状态未完成", pipelineSrc.Name)
+			}
 			find := false
 			for _, source := range pipeline.Sources {
-				if buildInfo.PipelineId == source.Pipeline {
-					find = true
-					build, err := r.models.PipelineRunManager.Get(buildInfo.BuildId)
-					if err != nil {
-						return nil, fmt.Errorf("获取流水线构建源失败：%s", err.Error())
-					}
-					pipelineSrc, err := r.models.PipelineManager.Get(buildInfo.PipelineId)
-					if err != nil {
-						return nil, fmt.Errorf("获取流水线源失败：%s", err.Error())
-					}
-					if build.Status != types.PipelineStatusOK {
-						return nil, fmt.Errorf("构建源流水线%s执行状态未完成", pipelineSrc.Name)
-					}
-					stageRuns, err := r.models.PipelineRunManager.StagesRun(buildInfo.BuildId)
-					if err != nil {
-						return nil, fmt.Errorf("获取流水线构建源阶段失败：%s", err.Error())
-					}
-					if len(stageRuns) > 0 {
-						lastStage := stageRuns[len(stageRuns)-1]
-						for k := range lastStage.Env {
-							if utils.Contains(delPipelineEnvs, k) {
-								delete(lastStage.Env, k)
-							}
-						}
-						envs = utils.MergeMap(envs, lastStage.Env)
-					}
-					pipelineBuildId = append(pipelineBuildId, fmt.Sprintf("%d", buildInfo.BuildId))
+				if pipelineSrc.ID != source.Pipeline {
+					continue
 				}
+				find = true
+				break
 			}
 			if !find {
-				return nil, fmt.Errorf("构建参数错误，流水线id=%d不在触发源", buildInfo.PipelineId)
+				return nil, fmt.Errorf("构建参数错误，流水线id=%d不在触发源", build.PipelineId)
 			}
+			stageRuns, err := r.models.PipelineRunManager.StagesRun(buildInfo.BuildId)
+			if err != nil {
+				return nil, fmt.Errorf("获取流水线构建源阶段失败：%s", err.Error())
+			}
+			if len(stageRuns) > 0 {
+				lastStage := stageRuns[len(stageRuns)-1]
+				for k := range lastStage.Env {
+					if utils.Contains(delPipelineEnvs, k) {
+						delete(lastStage.Env, k)
+					}
+				}
+				// 合并流水线源变量
+				envs = utils.MergeMap(envs, lastStage.Env)
+			}
+			pipelineBuildId = append(pipelineBuildId, fmt.Sprintf("%d", buildInfo.BuildId))
+
 		}
 		envs[types.PipelineEnvPipelineBuildId] = strings.Join(pipelineBuildId, ",")
 	}
@@ -206,7 +203,7 @@ func (r *ServicePipelineRun) InitialEnvs(pipeline *types.Pipeline, workspace *ty
 func (r *ServicePipelineRun) InitialCodeEnvs(
 	pipeline *types.Pipeline,
 	workspace *types.PipelineWorkspace,
-	codeBranch *schemas.PipelineBuildCodeBranch,
+	codeBranch *types.PipelineBuildCodeBranch,
 	envs map[string]interface{}) error {
 
 	if workspace.Code == nil {
@@ -250,8 +247,8 @@ func (r *ServicePipelineRun) InitialCodeEnvs(
 	return nil
 }
 
-func (r *ServicePipelineRun) Build(buildParams *schemas.PipelineBuildParams, username string) *utils.Response {
-	pipelineObj, err := r.models.PipelineManager.Get(buildParams.PipelineId)
+func (r *ServicePipelineRun) Build(pipelineId uint, buildConfig *types.PipelineBuildConfig, username string) *utils.Response {
+	pipelineObj, err := r.models.PipelineManager.Get(pipelineId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
@@ -259,14 +256,14 @@ func (r *ServicePipelineRun) Build(buildParams *schemas.PipelineBuildParams, use
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
-	stages, err := r.models.PipelineManager.Stages(buildParams.PipelineId)
+	stages, err := r.models.PipelineManager.Stages(pipelineId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
 	if len(stages) == 0 {
 		return &utils.Response{Code: code.DataNotExists, Msg: "当前流水线未配置阶段"}
 	}
-	envs, err := r.InitialEnvs(pipelineObj, workspace, buildParams)
+	envs, err := r.InitialEnvs(pipelineObj, workspace, buildConfig)
 	if err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
@@ -296,11 +293,11 @@ func (r *ServicePipelineRun) Build(buildParams *schemas.PipelineBuildParams, use
 		stagesRun = append(stagesRun, &stageRun)
 	}
 	var paramsMap = make(types.Map)
-	if err = utils.ConvertTypeByJson(buildParams, &paramsMap); err != nil {
+	if err = utils.ConvertTypeByJson(buildConfig, &paramsMap); err != nil {
 		return &utils.Response{Code: code.UnMarshalError, Msg: err.Error()}
 	}
 	pipelineRun := &types.PipelineRun{
-		PipelineId: buildParams.PipelineId,
+		PipelineId: pipelineId,
 		Status:     types.PipelineStatusWait,
 		Operator:   username,
 		Params:     paramsMap,

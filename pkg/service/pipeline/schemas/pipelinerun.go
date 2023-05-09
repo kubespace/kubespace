@@ -2,7 +2,6 @@ package schemas
 
 import (
 	"github.com/kubespace/kubespace/pkg/model/types"
-	"time"
 )
 
 // JobCallbackParams 任务执行完成回调参数
@@ -30,37 +29,8 @@ type PipelineStageReexecParams struct {
 
 // PipelineBuildParams 流水线构建参数
 type PipelineBuildParams struct {
-	PipelineId    uint                         `json:"pipeline_id"`
-	CodeBranch    *PipelineBuildCodeBranch     `json:"code_branch"`
-	CustomSources []*PipelineBuildCustomSource `json:"custom_sources"`
-	//Params        map[string]interface{}       `json:"params"`
-}
-
-// PipelineBuildCodeBranch 流水线代码空间构建参数
-type PipelineBuildCodeBranch struct {
-	Branch     string    `json:"branch"`
-	CommitId   string    `json:"commit_id"`
-	Author     string    `json:"author"`
-	Message    string    `json:"message"`
-	CommitTime time.Time `json:"commit_time"`
-}
-
-// PipelineBuildCustomSource 流水线自定义空间构建参数，当前流水线绑定的每个源
-type PipelineBuildCustomSource struct {
-	WorkspaceId         uint   `json:"workspace_id"`
-	WorkspaceName       string `json:"workspace_name"`
-	PipelineId          uint   `json:"pipeline_id"`
-	PipelineName        string `json:"pipeline_name"`
-	BuildReleaseVersion string `json:"build_release_version"`
-	BuildId             uint   `json:"build_id"`
-	BuildNumber         uint   `json:"build_number"`
-	BuildOperator       string `json:"build_operator"`
-	CodeAuthor          string `json:"code_author"`
-	CodeBranch          string `json:"code_branch"`
-	CodeComment         string `json:"code_comment"`
-	CodeCommit          string `json:"code_commit"`
-	CodeCommitTime      string `json:"code_commit_time"`
-	IsBuild             bool   `json:"is_build" default:"true"`
+	*types.PipelineBuildConfig `json:",inline"`
+	PipelineId                 uint `json:"pipeline_id"`
 }
 
 type PipelineParams struct {

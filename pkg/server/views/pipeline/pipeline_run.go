@@ -54,7 +54,7 @@ func (p *PipelineRun) build(c *views.Context) *utils.Response {
 	if err := c.ShouldBind(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	return p.pipelineRunService.Build(&ser, c.User.Name)
+	return p.pipelineRunService.Build(ser.PipelineId, ser.PipelineBuildConfig, c.User.Name)
 }
 
 func (p *PipelineRun) list(c *views.Context) *utils.Response {

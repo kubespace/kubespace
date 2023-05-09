@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	pipelineservice "github.com/kubespace/kubespace/pkg/service/pipeline"
+	"github.com/kubespace/kubespace/pkg/utils"
 	"k8s.io/klog/v2"
 	"time"
 )
@@ -105,7 +106,8 @@ func (p *PipelineTriggerController) triggerCodePipeline(
 					From:        types.PipelineTriggerEventFromTrigger,
 					TriggerId:   trigger.ID,
 					Status:      types.PipelineTriggerEventStatusNew,
-					EventConfig: types.PipelineTriggerEventConfig{CodeCommit: commitCache[branch]},
+					EventConfig: types.PipelineBuildConfig{CodeBranch: commitCache[branch]},
+					TriggerUser: commit.Author,
 					CreateTime:  time.Now(),
 					UpdateTime:  time.Now(),
 				}); err != nil {
@@ -123,6 +125,106 @@ func (p *PipelineTriggerController) triggerCodePipeline(
 			Config:          types.PipelineTriggerConfig{Code: triggerCodeConfig},
 			UpdateTime:      time.Now(),
 			NextTriggerTime: &sql.NullTime{},
+		})
+	}
+	return nil
+}
+
+// 定时触发
+func (p *PipelineTriggerController) cronTrigger(
+	workspace *types.PipelineWorkspace,
+	pipeline *types.Pipeline,
+	trigger *types.PipelineTrigger) (err error) {
+	nextTriggerTime, err := utils.NextTriggerTime(trigger.Config.Cron.Cron)
+	if err != nil {
+		return err
+	}
+	if workspace.Type == types.WorkspaceTypeCode {
+		err = p.cronTriggerCodePipeline(workspace, pipeline, trigger)
+	} else if workspace.Type == types.WorkspaceTypeCustom {
+		err = p.cronTriggerCustomPipeline(workspace, pipeline, trigger)
+	}
+	if err != nil {
+		return err
+	}
+	// 修改下次触发时间
+	return p.models.PipelineTriggerManager.Update(trigger.ID, &types.PipelineTrigger{
+		UpdateTime:      time.Now(),
+		NextTriggerTime: &sql.NullTime{Time: nextTriggerTime},
+	})
+}
+
+// 代码流水线定时触发，获取流水线所有分支最新的一个提交作为触发源
+func (p *PipelineTriggerController) cronTriggerCodePipeline(
+	workspace *types.PipelineWorkspace,
+	pipeline *types.Pipeline,
+	trigger *types.PipelineTrigger) error {
+	codeCache, err := p.models.PipelineCodeCacheManager.GetByWorkspaceId(workspace.ID)
+	if err != nil {
+		return err
+	}
+	if codeCache == nil {
+		klog.Infof("not found code cache with workspace id=%d", workspace.ID)
+		return nil
+	}
+	if codeCache.CommitCache == nil || codeCache.CommitCache.BranchLatestCommit == nil {
+		klog.Infof("code cache is empty and retry next time")
+		return nil
+	}
+	commitCache := codeCache.CommitCache.BranchLatestCommit
+	var latestCommit *types.PipelineBuildCodeBranch
+	for branch, commit := range commitCache {
+		if pipelineservice.MatchBranchSource(pipeline.Sources, branch) {
+			if latestCommit == nil || latestCommit.CommitTime.Before(commit.CommitTime) {
+				latestCommit = commitCache[branch]
+			}
+		}
+	}
+	if latestCommit == nil {
+		klog.Infof("not found pipeline branch sources commits")
+		return nil
+	}
+	if err = p.models.PipelineTriggerEventManager.Create(&types.PipelineTriggerEvent{
+		PipelineId:  pipeline.ID,
+		From:        types.PipelineTriggerEventFromTrigger,
+		TriggerId:   trigger.ID,
+		Status:      types.PipelineTriggerEventStatusNew,
+		EventConfig: types.PipelineBuildConfig{CodeBranch: latestCommit},
+		TriggerUser: latestCommit.Author,
+		CreateTime:  time.Now(),
+		UpdateTime:  time.Now(),
+	}); err != nil {
+		klog.Errorf("create pipeline trigger event error: %s", err.Error())
+		return err
+	}
+	return nil
+}
+
+// 自定义流水线定时触发，获取源流水线最新构建作为触发源
+func (p *PipelineTriggerController) cronTriggerCustomPipeline(
+	workspace *types.PipelineWorkspace,
+	pipeline *types.Pipeline,
+	trigger *types.PipelineTrigger) error {
+	var buildSources []*types.PipelineBuildCustomSource
+	for _, source := range pipeline.Sources {
+		pipelineBuilds, err := p.models.PipelineRunManager.ListPipelineRun(source.Pipeline, 0, types.PipelineStatusOK, 1)
+		if err != nil {
+			return err
+		}
+		if len(pipelineBuilds) <= 0 {
+			// 没有成功的构建记录
+			continue
+		}
+		buildSources = append(buildSources, &types.PipelineBuildCustomSource{
+			WorkspaceId:         ,
+			WorkspaceName:       "",
+			PipelineId:          0,
+			PipelineName:        "",
+			BuildReleaseVersion: "",
+			BuildId:             0,
+			BuildNumber:         0,
+			BuildOperator:       "",
+			IsBuild:             false,
 		})
 	}
 	return nil

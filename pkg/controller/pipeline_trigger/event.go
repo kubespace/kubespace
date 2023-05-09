@@ -3,7 +3,6 @@ package pipeline_trigger
 import (
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/model/types"
-	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
 	"time"
 )
 
@@ -55,17 +54,10 @@ func (p *PipelineTriggerController) eventHandle(obj interface{}) error {
 	}
 	if pipelineWorkspace.Type == types.WorkspaceTypeCode {
 		// 触发代码流水线构建
-		codeCommitConfig := event.EventConfig.CodeCommit
-		buildResp := p.pipelineRunService.Build(&schemas.PipelineBuildParams{
-			PipelineId: pipeline.ID,
-			CodeBranch: &schemas.PipelineBuildCodeBranch{
-				Branch:     codeCommitConfig.Branch,
-				CommitId:   codeCommitConfig.CommitId,
-				Author:     codeCommitConfig.Author,
-				Message:    codeCommitConfig.Message,
-				CommitTime: codeCommitConfig.CommitTime,
-			},
-		}, codeCommitConfig.Author)
+		codeCommitConfig := event.EventConfig.CodeBranch
+		buildResp := p.pipelineRunService.Build(pipeline.ID, &types.PipelineBuildConfig{
+			CodeBranch: codeCommitConfig,
+		}, event.TriggerUser)
 		return p.models.PipelineTriggerEventManager.Update(event.ID, &types.PipelineTriggerEvent{
 			EventResult: buildResp,
 			Status:      types.PipelineTriggerEventStatusConsumed,
