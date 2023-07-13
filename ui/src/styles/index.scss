@@ -83,10 +83,15 @@ div:focus {
     border-radius: 30px;
     padding: 3px 6px;
     margin-right: 2px;
+    line-height: 26px;
   }
   .dashboard {
     &-container {
-      margin: 2px 30px 5px;
+      margin: 15px 20px 5px;
+
+      .el-table {
+        border-radius: 10px;
+      }
     }
     &-text {
       font-size: 30px;
@@ -188,10 +193,13 @@ div:focus {
     }
     
     .pod-item {
-      margin: 20px 5px 30px 5px;
+      margin: 20px 10px;
       padding: 10px 20px;
       font-size: 0;
+      border-radius: 10px;
+      background-color: #fff;
       box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+      //box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
     }
     .pod-item label {
       /* width: 90px; */
@@ -202,6 +210,9 @@ div:focus {
       margin-right: 0;
       margin-bottom: 0;
       width: 33%;
+    }
+    .pod-item-all .el-form-item {
+      width: 100%;
     }
     .pod-item span {
       color: #606266;
@@ -221,11 +232,10 @@ div:focus {
     .el-dialog__body {
       padding-top: 5px;
     }
-    /* .msgClass {
-      margin: 0px 25px;
-    } */
     .msgClass {
+      background-color: #fff;
       margin: 8px 10px 15px 10px;
+      border-radius: 10px;
       box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
     }
     .msgClass .el-table::before {

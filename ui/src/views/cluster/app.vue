@@ -527,19 +527,6 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.dashboard {
-  &-container {
-    margin: 10px 30px;
-  }
-  &-text {
-    font-size: 30px;
-    line-height: 46px;
-  }
-
-  .table-fix {
-    height: calc(100% - 100px);
-  }
-}
 
 .name-class {
   cursor: pointer;

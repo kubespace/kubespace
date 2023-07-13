@@ -31,10 +31,7 @@ export default {
 }
 
 .navbar-logo-container {
-  // position: relative;
-  // float: left;
   display: inline-block;
-  // width: 100%;
   height: 50px;
   line-height: 50px;
   overflow: hidden;
@@ -43,17 +40,13 @@ export default {
 
   & .navbar-logo-link {
     height: 100%;
-    // width: 100%;
 
     & .navbar-title {
       margin: 0px 0px 0px 25px;
       font-weight: 500;
       font-size: 20px;
-      font-family: Chalkduster, Avenir, Helvetica Neue, Arial, Helvetica, sans-serif;
+      font-family: Helvetica Neue, Arial, Helvetica, sans-serif;
       vertical-align: top;
-      // background: linear-gradient(to right,#F56C6C, rgb(110, 147, 184));
-      // -webkit-background-clip: text;
-      // color: transparent;
     }
   }
 

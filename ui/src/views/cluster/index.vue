@@ -45,11 +45,13 @@
         >
           <template slot-scope="scope">
             <span :style="{'color': (scope.row.status === 'Connect' ? '#67c23a' : '#F56C6C')}">
-              {{scope.row.status}}
+              
               <template v-if="scope.row.status === 'Connect'">
+                <span class="correct">连接成功</span>
                 <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="correct" />
               </template>
               <template v-else>
+                <span class="wrong">未连接</span>
                 <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="wrong" />
               </template>
             </span>
@@ -69,34 +71,6 @@
                 v-if="scope.row.status === 'Connect'">集群详情</el-link>
               <el-link :disabled="!$adminRole()"  :underline="false" type="danger" @click="deleteClusters([{name: scope.row.name, name1: scope.row.name1}])">删除</el-link>
             </div>
-            <!-- <el-button
-              @click.native.prevent="deleteRow(scope.$index, tableData)"
-              type="text"
-              size="small">
-              删除
-            </el-button> -->
-            <!-- <el-link :underline="false" style="font-size: 13px">删除</el-link> -->
-            <!-- <el-dropdown size="medium" >
-              <el-link :underline="false"><svg-icon style="width: 1.3em; height: 1.3em;" icon-class="operate" /></el-link>
-              <el-dropdown-menu slot="dropdown">
-                <template v-if="$updatePerm()">
-                  <el-dropdown-item @click.native.prevent="clusterConnectToken=scope.row.token; clusterConnectDialog = true" 
-                    v-if="scope.row.status === 'Pending'">
-                    <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="link" />
-                    <span style="margin-left: 5px;">连接</span>
-                  </el-dropdown-item>
-                </template>
-                <el-dropdown-item v-if="$updatePerm()" @click.native.prevent="createClusterFormVisible = true; inviteForm=true; 
-                  form={name: scope.row.name, members: scope.row.members}">
-                  <svg-icon style="width: 1.2em; height: 1.2em; line-height: 40px; vertical-align: -0.25em" icon-class="invite" />
-                  <span style="margin-left: 5px;">邀请</span>
-                </el-dropdown-item>
-                <el-dropdown-item v-if="$deletePerm()" @click.native.prevent="deleteClusters([{name: scope.row.name}])">
-                  <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="delete" />
-                  <span style="margin-left: 5px;">删除</span>
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown> -->
           </template>
         </el-table-column>
       </el-table>
@@ -120,7 +94,6 @@
       
       <el-tabs v-model="activeName" type="border-card" >
         <el-tab-pane label="KubeConfig" name="KubeConfig">
-          <!-- <el-input type="textarea" :rows="2" placeholder="请输入内容" v-model="kubeconfig"></el-input> -->
           <yaml v-model="kubeconfig" :loading="yamlLoading" :height="200"></yaml>
         </el-tab-pane>
         <el-tab-pane label="Agent" name="Agent" style="padding: 0px 0px;">
@@ -129,7 +102,6 @@
               <el-tag type="info" style="font-size: 14px; border-radius: 4px 0px 0px 4px;  border-right: 0px">
                 {{ copyCluster }}
               </el-tag>
-              <!-- <el-tag type="" style="font-size: 14px; border-radius: 0px 4px 4px 0px;">复制</el-tag> -->
               <el-button plain size="small" slot="append" 
                   style="height: 32px; border-radius: 0px 4px 4px 0px; padding: 10px 8px;"
                   v-clipboard:copy="copyCluster" v-clipboard:success="onCopy" v-clipboard:error="onError">
@@ -137,7 +109,7 @@
               </el-button>
             </div>
             <div style="font-size: 13px; margin-top: 8px; color: #e6a23c;">
-              *注意：请将上述访问地址「{{this.locationAddr}}」换为Kubernetes集群可以访问的地址。
+              *注意：请将上述访问地址「{{this.locationAddr}}」更改为Kubernetes集群可以访问的地址。
             </div>
         </el-tab-pane>
       </el-tabs>
@@ -367,16 +339,16 @@ export default {
     }
   }
 }
-.dashboard {
-  &-container {
-    margin: 10px 30px;
-    height: calc(100%);
-  }
-  &-text {
-    font-size: 30px;
-    line-height: 46px;
-  }
-}
+// .dashboard {
+//   &-container {
+//     margin: 10px 30px;
+//     height: calc(100%);
+//   }
+//   &-text {
+//     font-size: 30px;
+//     line-height: 46px;
+//   }
+// }
 
 .table-fix {
   height: calc(100% - 100px);

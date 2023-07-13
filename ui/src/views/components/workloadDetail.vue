@@ -1,10 +1,10 @@
 <template>
   <div>
     <clusterbar :titleName="titleName" :editFunc="getWorkloadYaml"/>
-    <div class="dashboard-container workload-container" style="margin: 10px 20px;">
-      <div style="padding: 10px 8px 0px;">
+    <div class="dashboard-container workload-container detail-dashboard">
+      <div style="padding: 10px 0px 0px;">
         <div>基本信息</div>
-        <el-form label-position="left" inline class="pod-item" label-width="90px" style="margin: 15px 10px 30px 10px;">
+        <el-form label-position="left" inline class="pod-item" label-width="90px" >
           <el-form-item label="名称">
             <span>{{ workload.name }}</span>
           </el-form-item>
@@ -41,9 +41,9 @@
         </el-form>
       </div>
 
-      <div style="padding: 0px 8px;">
+      <div>
         <div>Pods</div>
-        <div class="msgClass" style="margin: 15px 10px 20px 10px;">
+        <div class="msgClass" >
           <el-table
             ref="table"
             :data="pods"
@@ -174,7 +174,7 @@
         </div>
       </div>
 
-      <el-tabs value="containers" style="padding: 0px 8px;">
+      <el-tabs value="containers">
         <el-tab-pane label="容器" name="containers">
           <div class="msgClass">
             <el-table
@@ -625,7 +625,6 @@ export default {
         }
         let newRv = newObj.resource.metadata.resourceVersion
         if (this.workload.resource_version < newRv) {
-          // this.$set(this.originPod, newPod)
           this.originWorkload = newObj.resource
         }
       }

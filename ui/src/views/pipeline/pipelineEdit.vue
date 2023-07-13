@@ -7,7 +7,7 @@
       </div>
     </clusterbar>
     <div v-loading="loading" class="dashboard-container" :style="{height: maxHeight + 'px'}" :max-height="maxHeight">
-      <div style="padding: 10px 8px 0px;">
+      <div style="padding: 10px 0px 0px;">
         <div>基本信息</div>
         <el-form label-position="left" class="pipeline-form-item" label-width="80px">
           <el-form-item label="名称">
@@ -15,7 +15,7 @@
           </el-form-item>
         </el-form>
       </div>
-      <div style="padding: 10px 8px 0px;" >
+      <div style="padding: 10px 0px 0px;" >
         <div>阶段任务</div>
         <div class="stage-job-outer">
           <div class="stage-job-line">
@@ -116,8 +116,16 @@
       </div>
     </div>
 
-    <el-dialog :title="dialogTitleMap[dialogType]" :visible.sync="dialogVisible" :destroy-on-close="true" 
-      @close="dialogType=''; dialogData={}" top="3vh" width="70%" :close-on-click-modal="false">
+    <el-drawer :title="dialogTitleMap[dialogType]" :visible.sync="dialogVisible" :destroy-on-close="true"
+      @close="dialogType=''; dialogData={}" top="3vh" size="60%" :close-on-click-modal="false" style="scroll-behavior: auto;">
+      <div slot="title">
+        <span>{{ dialogTitleMap[dialogType] }}</span>
+        <div style="display: inline; ">
+          <template v-if="dialogType == 'edit_job' || dialogType == 'edit_stage'">
+            <el-link type="danger" icon="el-icon-delete" @click="dialogDelete" style="margin-left: 5px; font-size: 18px" ></el-link>
+          </template>
+        </div>
+      </div>
       <div class="dialogContent" style="padding: 0px 30px;">
         <template v-if="dialogType == 'edit_stage' || dialogType == 'add_stage'">
           <pipeline-stage :stage="dialogData"></pipeline-stage>
@@ -249,15 +257,12 @@
             </el-form-item>
           </el-form>
         </template>
+        <div style="display: block; padding: 25px 0px; text-align: center;">
+          <el-button type="primary" @click="dialogSave" style="margin-right: 25px;">保 存</el-button>
+          <el-button @click="dialogVisible = false">取 消</el-button>
+        </div>
       </div>
-      <div slot="footer" class="dialogFooter">
-        <el-button @click="dialogVisible = false" style="margin-right: 20px;" >取 消</el-button>
-        <template v-if="dialogType == 'edit_job' || dialogType == 'edit_stage'">
-        <el-button type="danger" @click="dialogDelete" style="margin-right: 20px;" >删 除</el-button>
-        </template>
-        <el-button type="primary" @click="dialogSave">确 定</el-button>
-      </div>
-    </el-dialog>
+    </el-drawer>
 
   </div>
 </template>
@@ -673,7 +678,10 @@ export default {
   display: flex; 
   height: 500px; 
   max-height: 500px; 
-  overflow-x: scroll;
+  overflow-x: auto;
+  background-color: #fff;
+  border-radius: 10px;
+  margin: 15px 0px;
 
   .stage-job-line {
     display:inline-block;
@@ -841,6 +849,9 @@ export default {
 .pipeline-form-item {
   padding: 10px 20px;
   font-size: 0;
+  background-color: #fff;
+  border-radius: 10px;
+  margin: 15px 0px 5px;
   
   label {
     width: 90px;

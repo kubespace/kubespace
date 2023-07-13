@@ -1,11 +1,11 @@
 <template>
   <div>
     <clusterbar :titleName="titleName" :delFunc="deleteRoles" :editFunc="getRoleYaml"/>
-    <div class="dashboard-container" v-loading="loading">
+    <div class="dashboard-container detail-dashboard" v-loading="loading">
 
-      <div style="padding: 10px 8px 0px;">
+      <div style="padding: 10px 0px 0px;">
         <div>基本信息</div>
-        <el-form label-position="left" class="pod-item" label-width="120px" style="margin: 15px 10px 20px 10px;">
+        <el-form label-position="left" class="pod-item pod-item-all" label-width="120px">
           <el-form-item label="名称">
             <span>{{ role.name }}</span>
           </el-form-item>
@@ -37,7 +37,7 @@
         </el-form>
       </div>
 
-      <div style="padding: 0px 8px;">
+      <div>
         <div>Rules</div>
         <div class="msgClass" style="margin: 15px 10px 30px 10px;">
           <el-table
@@ -269,19 +269,6 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.dashboard {
-  &-container {
-    margin: 10px 30px;
-  }
-  &-text {
-    font-size: 30px;
-    line-height: 46px;
-  }
-
-  .table-fix {
-    height: calc(100% - 100px);
-  }
-}
 .name-class {
   cursor: pointer;
 }

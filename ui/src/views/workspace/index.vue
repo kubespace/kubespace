@@ -129,14 +129,14 @@ export default {
     const that = this;
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 135;
+        let heightStyle = window.innerHeight - this.$contentHeight;
         that.maxHeight = heightStyle;
       })();
     };
   },
   data() {
     return {
-      maxHeight: window.innerHeight - 135,
+      maxHeight: window.innerHeight - this.$contentHeight,
       cellStyle: { border: 0 },
       titleName: ["工作空间"],
       loading: true,
@@ -391,13 +391,3 @@ export default {
   },
 };
 </script>
-
-
-<style lang="scss" scoped>
-@import "~@/styles/variables.scss";
-
-.table-fix {
-  height: calc(100% - 100px);
-}
-
-</style>

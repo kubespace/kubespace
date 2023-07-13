@@ -209,7 +209,7 @@
           <el-button style="border-radius:0px;" type="primary" @click="fetchBuilds()" size="small">加 载 更 多</el-button>
       </div>
 
-      <div v-if="builds && builds.length == 0" style="text-align: center; margin-top: 30px; margin-left: -100px; color: #606266; font-size: 14px;">
+      <div v-if="builds && builds.length == 0" style="text-align: center; margin: 30px 0px 30px -100px; color: #606266; font-size: 14px;">
         暂无流水线构建记录，<span @click="openBuildParams" class="build-span" style="color:#409EFF">执行流水线</span>
       </div>
     </div>
@@ -344,7 +344,7 @@ export default {
       search_name: '',
       users: [],
       cellStyle: {border: 0, padding: '1px 0', 'line-height': '35px'},
-      maxHeight: window.innerHeight - this.$contentHeight,
+      maxHeight: window.innerHeight - 140,
       loading: true,
       dialogVisible: false,
       pipeline: {},
@@ -394,7 +394,7 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - this.$contentHeight
+        let heightStyle = window.innerHeight - 140
         that.maxHeight = heightStyle
       })()
     }
@@ -857,8 +857,11 @@ export default {
 }
 
 .dashboard-container-build {
-  margin: 10px 20px;
-  overflow:scroll;
+  margin: 15px 20px 10px 20px;
+  background-color: #fff;
+  border-radius: 10px;
+  border: 1px solid rgb(235, 238, 245);
+  overflow:auto;
 }
 
 .build-list {

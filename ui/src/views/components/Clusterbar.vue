@@ -200,6 +200,8 @@ export default {
   // box-shadow: inset 0 0 4px rgba(0, 21, 41, 0.1);
   border: 1px solid #EBEEF5;
   margin: 15px 20px 0px;
+  background-color: #fff;
+  border-radius: 10px;
 
   .app-breadcrumb.el-breadcrumb {
     display: inline-block;
@@ -254,18 +256,4 @@ export default {
     cursor: pointer;
   }
 }
-</style>
-<style >
-/* .right .el-button.is-plain {
-  border-color: #f78989;
-  color: #f78989;
-}
-.right .el-button.is-plain:hover {
-  border-color: #f56c6c;
-  color: #f56c6c;
-}
-.right .el-button.is-plain:focus {
-  border-color: #f56c6c;
-  color: #f56c6c;
-} */
 </style>

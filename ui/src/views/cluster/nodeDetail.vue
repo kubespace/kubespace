@@ -1,10 +1,10 @@
 <template>
   <div>
     <clusterbar :titleName="titleName" :editFunc="getNodeYaml" />
-    <div class="dashboard-container" v-loading="loading" v-if="node">
-      <div style="padding: 10px 8px 0px;">
+    <div class="dashboard-container detail-dashboard" v-loading="loading" v-if="node">
+      <div style="padding: 10px 0px 0px;">
         <div>基本信息</div>
-        <el-form label-position="left" class="pod-item" label-width="120px" style="margin: 15px 10px 20px 10px;">
+        <el-form label-position="left" class="pod-item pod-item-all" label-width="120px" style="">
           <el-form-item label="名称">
             <span>{{ node.metadata.name }}</span>
           </el-form-item>
@@ -26,7 +26,7 @@
         </el-form>
       </div>
 
-      <el-tabs value="conditions" style="padding: 0px 8px;">
+      <el-tabs value="conditions" >
         <el-tab-pane label="状态" name="conditions">
           <div class="msgClass">
             <el-table
@@ -111,8 +111,8 @@
           </div>
         </el-tab-pane>
         <el-tab-pane label="信息" name="nodeInfo">
-          <div class="msgClass">
-            <el-form label-position="left" class="pod-item" label-width="180px" style="box-shadow: 0 0 0 0; margin-top: 0px;">
+          <div class="" style="margin: 0px 0px 10px 0px">
+            <el-form label-position="left" class="pod-item pod-item-all" label-width="180px" style="margin-top: 8px; width: 100%">
               <template v-for="(val, key) in node.status.nodeInfo">
                 <el-form-item :label="key" :key="key">
                   <span>{{ val }}</span>
@@ -402,19 +402,6 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.dashboard {
-  &-container {
-    margin: 10px 30px;
-  }
-  &-text {
-    font-size: 30px;
-    line-height: 46px;
-  }
-
-  .table-fix {
-    height: calc(100% - 100px);
-  }
-}
 .name-class {
   cursor: pointer;
 }
@@ -457,10 +444,6 @@ export default {
   }
 }
 
-.msgClass {
-  margin: 8px 10px 15px 10px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-}
 </style>
 
 <style>
@@ -480,37 +463,7 @@ export default {
   margin-bottom: 0;
   width: 100%;
 }
-/* 
-.item-class {
-  padding: 20px 20px 20px 5px;
-  font-size: 0;
-}
 
-.item-class  */
-
-.pod-item {
-  margin: 20px 5px 30px 5px;
-  padding: 10px 20px;
-  font-size: 0;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-}
-.pod-item label {
-  /* width: 120px; */
-  color: #99a9bf;
-  font-weight: 400;
-  /* display: inline-block; */
-}
-.pod-item .el-form-item {
-  margin-right: 0;
-  margin-bottom: 0;
-  /* width: 50%; */
-}
-/* .pod-item .el-form-item__content{
-  float: left;
-} */
-.pod-item span {
-  color: #606266;
-}
 /* .el-collapse {
   border-top: 0px;
 } */
@@ -526,10 +479,5 @@ export default {
 .el-dialog__body {
   padding-top: 5px;
 }
-/* .msgClass {
-  margin: 0px 25px;
-} */
-.msgClass .el-table::before {
-  height: 0px;
-}
+
 </style>

@@ -2,6 +2,8 @@
   <div>
     <clusterbar :titleName="titleName" :nameFunc="nameSearch" :createFunc="openCreateFormDialog" createDisplay="创建空间"/>
     <div class="dashboard-container" ref="tableCot">
+
+  <el-scrollbar>
       <el-table
         :data="workspaces"
         class="table-fix"
@@ -48,6 +50,7 @@
           </template>
         </el-table-column>
       </el-table>
+      </el-scrollbar>
 
       <el-dialog :title="updateFormVisible ? '修改流水线空间' : '创建流水线空间'" :visible.sync="createFormVisible"
         @close="closeFormDialog" :destroy-on-close="true">
@@ -484,16 +487,16 @@ export default {
     }
   }
 }
-.dashboard {
-  &-container {
-    margin: 10px 30px;
-    height: calc(100%);
-  }
-  &-text {
-    font-size: 30px;
-    line-height: 46px;
-  }
-}
+// .dashboard {
+//   &-container {
+//     margin: 10px 30px;
+//     height: calc(100%);
+//   }
+//   &-text {
+//     font-size: 30px;
+//     line-height: 46px;
+//   }
+// }
 
 .table-fix {
   height: calc(100% - 100px);

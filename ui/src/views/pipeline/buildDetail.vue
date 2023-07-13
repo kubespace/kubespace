@@ -2,10 +2,10 @@
   <div>
     <clusterbar :titleName="titleName" :titleLink="['pipeline', 'pipelineBuilds']"/>
     <div v-loading="loading" class="dashboard-container detail-dashboard dashboard-container-build-detail" style="margin-left: 20px; margin-right: 20px;" :style="{height: maxHeight + 'px', }" :max-height="maxHeight">
-      <div style="padding: 5px 0px 0px;">
+      <div>
         <!-- <div>构建信息</div> -->
         <el-form label-position="left" inline class="pod-item" label-width="80px" 
-          style="margin: 3px 0px 10px 0px; border: 1px solid #EBEEF5; box-shadow: none; padding: 5px 20px;">
+          style="margin: 0px 0px 15px 0px; border: 1px solid #EBEEF5; box-shadow: none; padding: 5px 20px;">
           <el-form-item label="构建号">
             <span :style="{color: statusColorMap[build.pipeline_run.status], 'font-size': '16px'}">
               <status-icon :status="build.pipeline_run.status"></status-icon>
@@ -135,7 +135,7 @@ export default {
       search_name: '',
       users: [],
       cellStyle: {border: 0, padding: '6px 0',},
-      maxHeight: window.innerHeight - 130,
+      maxHeight: window.innerHeight - 135,
       loading: true,
       build: {pipeline_run: {}},
       buildSSE: null,
@@ -173,7 +173,7 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 130
+        let heightStyle = window.innerHeight - 135
         that.maxHeight = heightStyle
       })()
     }

@@ -10,7 +10,7 @@
   "dependencies": {
     "axios": "^0.21.4",
     "codemirror": "^5.65.0",
-    "core-js": "^3.6.5",
+    "core-js": "^3.31.1",
     "element-ui": "^2.13.2",
     "highcharts": "^10.3.3",
     "http-proxy-middleware": "^2.0.6",

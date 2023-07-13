@@ -318,12 +318,12 @@ export default {
 .dashboard {
   &-container {
     // padding: 10px 30px;
-    margin-right: 15px;
-    padding-right: 15px;
-    margin-left: 15px;
-    padding-left: 15px;
-    padding-bottom: 10px;;
-    overflow: auto;
+    // margin-right: 15px;
+    // padding-right: 15px;
+    // margin-left: 15px;
+    // padding-left: 15px;
+    margin-bottom: 10px;
+    // overflow: auto;
   }
   &-text {
     font-size: 30px;

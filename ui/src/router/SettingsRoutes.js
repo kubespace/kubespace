@@ -21,12 +21,12 @@ const Routes = [
     component: () => import('@/views/settings/image_registry'),
     meta: { title: '镜像仓库', icon: 'docker', 'group': 'settings', object: 'cluster' }
   },
-  {
-    path: 'ldap',
-    name: 'settinsLdap',
-    component: () => import('@/views/settings/ldap'),
-    meta: { title: 'Ldap管理', icon: 'ldap', 'group': 'settings', object: 'cluster' }
-  },
+  // {
+  //   path: 'ldap',
+  //   name: 'settinsLdap',
+  //   component: () => import('@/views/settings/ldap'),
+  //   meta: { title: 'Ldap管理', icon: 'ldap', 'group': 'settings', object: 'cluster' }
+  // },
   {
     path: 'member',
     name: 'member',

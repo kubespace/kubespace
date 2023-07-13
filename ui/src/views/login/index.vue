@@ -1,5 +1,5 @@
 <template>
-<div style="width:100%; height: 100%;">
+<div style="background-color: #fff; width:100%; height: 100%;">
     <div style="background-color: #fbfbfb; width:55%; height: 100%;">
       <section class="section-class">
         <div class="center">
@@ -116,7 +116,7 @@ export default {
     right: 0;
     bottom: 0;
     left: 55%;
-    width: 450px;;
+    width: 450px;
 }
 .login-box {
     border-radius: 15px;
@@ -132,9 +132,9 @@ export default {
     font-size: 20px;
 }
 .login-title {
-    letter-spacing:4px;
+    letter-spacing:0px;
     font-size: 29px;
-    font-family: Chalkduster, Avenir, Helvetica Neue, Arial, Helvetica, sans-serif;
+    font-family: Helvetica Neue, Arial, Helvetica, sans-serif;
     /* background: linear-gradient(to right,#F56C6C, rgb(110, 147, 184)); */
     /* -webkit-background-clip: text; */
     /* color: transparent; */
@@ -145,7 +145,6 @@ export default {
     padding: 0;
     box-sizing: border-box;
     text-align: center;
-    background-color: #fbfbfb;
     z-index: 20;
     border-bottom: solid 1px #ddd;
     height: 100vh;

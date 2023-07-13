@@ -1,10 +1,10 @@
 <template>
   <div>
     <clusterbar :titleName="titleName" :delFunc="deletePods" :editFunc="getPodYaml"/>
-    <div class="dashboard-container pod-container" style="margin: 10px 20px;">
-      <div style="padding: 10px 8px 0px;">
+    <div class="dashboard-container pod-container detail-dashboard" >
+      <div style="padding: 10px 0px 0px;">
         <div>基本信息</div>
-        <el-form label-position="left" inline class="pod-item" style="margin: 15px 10px 20px 10px;">
+        <el-form label-position="left" inline class="pod-item" label-width="80px">
           <el-form-item label="名称">
             <span>{{ pod.name }}</span>
           </el-form-item>
@@ -47,7 +47,7 @@
         </el-form>
       </div>
 
-      <el-tabs value="containers" style="padding: 0px 8px;">
+      <el-tabs value="containers" >
         <el-tab-pane label="容器" name="containers">
           <div class="msgClass">
             <el-table
@@ -569,28 +569,11 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.dashboard {
-  &-container {
-    margin: 10px 30px;
-  }
-  &-text {
-    font-size: 30px;
-    line-height: 46px;
-  }
-
-  .table-fix {
-    height: calc(100% - 100px);
-  }
-}
 .name-class {
   cursor: pointer;
 }
 .name-class:hover {
   color: #409EFF;
-}
-.msgClass {
-  margin: 8px 10px 15px 10px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 }
 </style>
 
@@ -616,26 +599,6 @@ export default {
     width: 100%;
   }
 
-  .pod-item {
-    margin: 20px 5px 20px 5px;
-    padding: 10px 20px;
-    font-size: 0;
-    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  }
-  .pod-item label {
-    width: 90px;
-    color: #99a9bf;
-    font-weight: 400;
-  }
-  .pod-item .el-form-item {
-    margin-right: 0;
-    margin-bottom: 0;
-    width: 33%;
-  }
-  .pod-item span {
-    color: #606266;
-  }
-
   .el-form-item__label{
     line-height: 30px;
   }
@@ -656,9 +619,6 @@ export default {
   }
   .el-dialog__body {
     padding-top: 5px;
-  }
-  .msgClass .el-table::before {
-    height: 0px;
   }
 }
 </style>

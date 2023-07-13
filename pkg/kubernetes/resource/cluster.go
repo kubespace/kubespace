@@ -27,30 +27,35 @@ func NewCluster(config *config.KubeConfig) *Cluster {
 }
 
 type BuildCluster struct {
-	ClusterVersion  string `json:"cluster_version"`
-	ClusterCpu      string `json:"cluster_cpu"`
-	ClusterMemory   string `json:"cluster_memory"`
-	NodeNum         int    `json:"node_num"`
-	NamespaceNum    int    `json:"namespace_num"`
-	PodNum          int    `json:"pod_num"`
-	PodRunningNum   int    `json:"pod_running_num"`
-	PodSucceededNum int    `json:"pod_succeeded_num"`
-	PodPendingNum   int    `json:"pod_pending_num"`
-	PodFailedNum    int    `json:"pod_failed_num"`
-	DeploymentNum   int    `json:"deployment_num"`
-	StatefulSetNum  int    `json:"statefulset_num"`
-	DaemonSetNum    int    `json:"daemonset_num"`
-	ServiceNum      int    `json:"service_num"`
-	IngressNum      int    `json:"ingress_num"`
-	StorageClassNum int    `json:"storageclass_num"`
-	PVNum           int    `json:"pv_num"`
-	PVAvailableNum  int    `json:"pv_available_num"`
-	PVReleasedNum   int    `json:"pv_released_num"`
-	PVBoundNum      int    `json:"pv_bound_num"`
-	PVFailedNum     int    `json:"pv_failed_num"`
-	PVCNum          int    `json:"pvc_num"`
-	ConfigMapNum    int    `json:"config_map_num"`
-	SecretNum       int    `json:"secret_num"`
+	ClusterVersion    string `json:"cluster_version"`
+	ClusterCpu        string `json:"cluster_cpu"`
+	ClusterMemory     string `json:"cluster_memory"`
+	NodeNum           int    `json:"node_num"`
+	NamespaceNum      int    `json:"namespace_num"`
+	EventNum          int    `json:"event_num"`
+	CrdNum            int    `json:"crd_num"`
+	ServiceaccountNum int    `json:"serviceaccount_num"`
+	PodNum            int    `json:"pod_num"`
+	PodRunningNum     int    `json:"pod_running_num"`
+	PodSucceededNum   int    `json:"pod_succeeded_num"`
+	PodPendingNum     int    `json:"pod_pending_num"`
+	PodFailedNum      int    `json:"pod_failed_num"`
+	DeploymentNum     int    `json:"deployment_num"`
+	StatefulSetNum    int    `json:"statefulset_num"`
+	DaemonSetNum      int    `json:"daemonset_num"`
+	JobNum            int    `json:"job_num"`
+	CronjobNum        int    `json:"cronjob_num"`
+	ServiceNum        int    `json:"service_num"`
+	IngressNum        int    `json:"ingress_num"`
+	StorageClassNum   int    `json:"storageclass_num"`
+	PVNum             int    `json:"pv_num"`
+	PVAvailableNum    int    `json:"pv_available_num"`
+	PVReleasedNum     int    `json:"pv_released_num"`
+	PVBoundNum        int    `json:"pv_bound_num"`
+	PVFailedNum       int    `json:"pv_failed_num"`
+	PVCNum            int    `json:"pvc_num"`
+	ConfigMapNum      int    `json:"config_map_num"`
+	SecretNum         int    `json:"secret_num"`
 }
 
 type ClusterQueryParams struct {
@@ -101,6 +106,29 @@ func (c *Cluster) Get(params interface{}) *utils.Response {
 		return &utils.Response{Code: code.RequestError, Msg: err.Error()}
 	}
 	bc.NamespaceNum = len(namespaces.Items)
+	sa, err := c.client.CoreV1().ServiceAccounts("").List(ctx, listOptions)
+	if err != nil {
+		return &utils.Response{Code: code.RequestError, Msg: err.Error()}
+	}
+	bc.ServiceaccountNum = len(sa.Items)
+	events, err := c.client.CoreV1().Events("").List(ctx, listOptions)
+	if err != nil {
+		return &utils.Response{Code: code.RequestError, Msg: err.Error()}
+	}
+	bc.EventNum = len(events.Items)
+	if c.client.VersionGreaterThan(types.ServerVersion16) {
+		crds, err := c.client.Dynamic().Resource(*CustomResourceDefinitionGVR).Namespace(query.Namespace).List(ctx, listOptions)
+		if err != nil {
+			return &utils.Response{Code: code.RequestError, Msg: err.Error()}
+		}
+		bc.CrdNum = len(crds.Items)
+	} else {
+		crds, err := c.client.Dynamic().Resource(*CustomResourceDefinitionV1beta1GVR).Namespace(query.Namespace).List(ctx, listOptions)
+		if err != nil {
+			return &utils.Response{Code: code.RequestError, Msg: err.Error()}
+		}
+		bc.CrdNum = len(crds.Items)
+	}
 	pods, err := c.client.CoreV1().Pods("").List(ctx, listOptions)
 	if err != nil {
 		return &utils.Response{Code: code.RequestError, Msg: err.Error()}
@@ -132,6 +160,34 @@ func (c *Cluster) Get(params interface{}) *utils.Response {
 		return &utils.Response{Code: code.RequestError, Msg: err.Error()}
 	}
 	bc.DaemonSetNum = len(daemonsets.Items)
+	jobs, err := c.client.BatchV1().Jobs("").List(ctx, listOptions)
+	if err != nil {
+		return &utils.Response{Code: code.RequestError, Msg: err.Error()}
+	}
+	bc.JobNum = len(jobs.Items)
+	if c.client.VersionGreaterThan(types.ServerVersion21) {
+		cronjobs, err := c.client.BatchV1().CronJobs("").List(ctx, listOptions)
+		if err != nil {
+			return &utils.Response{Code: code.RequestError, Msg: err.Error()}
+		}
+		bc.CronjobNum = len(cronjobs.Items)
+	} else {
+		cronjobs, err := c.client.BatchV1beta1().CronJobs("").List(ctx, listOptions)
+		if err != nil {
+			return &utils.Response{Code: code.RequestError, Msg: err.Error()}
+		}
+		bc.CronjobNum = len(cronjobs.Items)
+	}
+	configmaps, err := c.client.CoreV1().ConfigMaps("").List(ctx, listOptions)
+	if err != nil {
+		return &utils.Response{Code: code.RequestError, Msg: err.Error()}
+	}
+	bc.ConfigMapNum = len(configmaps.Items)
+	secrets, err := c.client.CoreV1().Secrets("").List(ctx, listOptions)
+	if err != nil {
+		return &utils.Response{Code: code.RequestError, Msg: err.Error()}
+	}
+	bc.SecretNum = len(secrets.Items)
 	services, err := c.client.CoreV1().Services("").List(ctx, listOptions)
 	if err != nil {
 		return &utils.Response{Code: code.RequestError, Msg: err.Error()}

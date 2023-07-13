@@ -6,6 +6,7 @@
         ref="multipleTable"
         :data="originResources"
         class="table-fix"
+        :max-height="maxHeight"
         :cell-style="cellStyle"
         v-loading="loading"
         :default-sort = "{prop: 'name'}"
@@ -111,14 +112,14 @@ export default {
     const that = this;
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150;
+        let heightStyle = window.innerHeight - this.$contentHeight;
         that.maxHeight = heightStyle;
       })();
     };
   },
   data() {
     return {
-      maxHeight: window.innerHeight - 150,
+      maxHeight: window.innerHeight - this.$contentHeight,
       cellStyle: { border: 0 },
       titleName: ["资源管理"],
       loading: true,
@@ -304,13 +305,3 @@ export default {
   },
 };
 </script>
-
-
-<style lang="scss" scoped>
-@import "~@/styles/variables.scss";
-
-.table-fix {
-  height: calc(100% - 100px);
-}
-
-</style>

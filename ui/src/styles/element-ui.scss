@@ -64,3 +64,11 @@
   flex-wrap: nowrap;
 }
 
+.el-drawer__body {
+  overflow: auto;
+}
+
+.el-drawer__header {
+  margin-bottom: 15px;
+}
+

@@ -9,7 +9,8 @@
     <div v-loading="loading" class="dashboard-container app-create-container" :style="{margin: '0px', 'height': maxHeight + 'px'}" :max-height="maxHeight">
       <div style="padding: 10px 8px 0px;">
         <div>基本信息</div>
-        <el-form label-position="left" class="base-info-class" :model="form" :rules="rules" style="padding: 10px 20px 0px" label-width="100px">
+        <el-form label-position="left" class="base-info-class" :model="form" :rules="rules" 
+          style="padding: 10px 20px; background-color: #fff; margin: 15px 0px; border-radius: 10px; border: 1px solid #DCDFE6;" label-width="100px">
           <el-form-item label="应用名称" style="width: 500px" prop="name">
             <el-input v-model="form.name" :disabled="appVersionId?true:false" @input="appFormNameChange" placeholder="请输入应用名称" size="small"></el-input>
           </el-form-item>
@@ -462,6 +463,9 @@ export default {
   .app-template-class {
     .el-tabs--border-card>.el-tabs__content {
       padding: 0px;
+    }
+    .el-tabs--border-card {
+      box-shadow: none;
     }
   }
 }

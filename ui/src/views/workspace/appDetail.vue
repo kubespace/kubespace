@@ -3,30 +3,30 @@
     <clusterbar :titleName="titleName" :titleLink="['workspaceApp']"/>
     <div class="dashboard-container detail-dashboard" ref="tableCot" v-loading="loading">
       <div style="padding: 10px 0px 0px;" class="appDetailBaseInfo">
-        <div>基本信息</div>
-        <el-form label-position="left" inline class="pod-item" label-width="80px" style="margin: 15px 10px 20px 10px;">
-          <el-form-item label="应用名称">
-            <span>{{ originApp.name }}</span>
-          </el-form-item>
-          <el-form-item label="状态">
-            <span :style="{color: statusColorMap[originApp.status]}">{{ statusNameMap[originApp.status] }}</span>
-          </el-form-item>
-          <el-form-item label="绑定集群">
-            <span>{{ originApp.cluster ? originApp.cluster.name1 : '' }}</span>
-          </el-form-item>
-          <el-form-item label="应用版本">
-            <span>{{ originApp.from == 'space' ? originApp.package_version : originApp.package_version + " / " + originApp.app_version }}</span>
-          </el-form-item>
-          <el-form-item label="更新时间">
-            <span>{{ originApp.update_time ? $dateFormat(originApp.update_time) : '' }}</span>
-          </el-form-item>
-          <el-form-item label="命名空间">
-            <span>{{ originApp.namespace }}</span>
-          </el-form-item>
-        </el-form>
+          <div slot="header" style="">基本信息</div>
+          <el-form label-position="left" inline class="pod-item" label-width="80px" style="">
+            <el-form-item label="应用名称">
+              <span>{{ originApp.name }}</span>
+            </el-form-item>
+            <el-form-item label="状态">
+              <span :style="{color: statusColorMap[originApp.status]}">{{ statusNameMap[originApp.status] }}</span>
+            </el-form-item>
+            <el-form-item label="绑定集群">
+              <span>{{ originApp.cluster ? originApp.cluster.name1 : '' }}</span>
+            </el-form-item>
+            <el-form-item label="应用版本">
+              <span>{{ originApp.from == 'space' ? originApp.package_version : originApp.package_version + " / " + originApp.app_version }}</span>
+            </el-form-item>
+            <el-form-item label="更新时间">
+              <span>{{ originApp.update_time ? $dateFormat(originApp.update_time) : '' }}</span>
+            </el-form-item>
+            <el-form-item label="命名空间">
+              <span>{{ originApp.namespace }}</span>
+            </el-form-item>
+          </el-form>
       </div>
 
-      <div style="padding: 0px 0px;" v-if="['Running', 'RunningFault', 'NotReady'].indexOf(originApp.status) > -1">
+      <div v-if="['Running', 'RunningFault', 'NotReady'].indexOf(originApp.status) > -1">
         <div>Pods</div>
         <div class="msgClass" style="margin: 15px 10px 20px 10px;">
             <el-table
@@ -277,6 +277,7 @@
                 prop=""
                 label="ClusterIP"
                 min-width="9"
+                v-if="originApp.status != 'UnInstall'"
                 show-overflow-tooltip>
                 <template slot-scope="scope">
                   <template v-if="originApp.status != 'UnInstall'">

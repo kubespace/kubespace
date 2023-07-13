@@ -32,7 +32,7 @@ Vue.prototype.$editorRole = editorRole
 Vue.prototype.$adminRole = adminRole
 Vue.prototype.$hasScopePermission = hasScopePermission
 
-Vue.prototype.$contentHeight = 135
+Vue.prototype.$contentHeight = 140
 
 Vue.use(VueClipboard)
 

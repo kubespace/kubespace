@@ -1,10 +1,10 @@
 <template>
   <div>
     <clusterbar :titleName="titleName" :delFunc="deleteCronJobs" :editFunc="getCronJobYaml"/>
-    <div class="dashboard-container workload-container" style="margin: 10px 20px;">
-      <div style="padding: 10px 8px 0px;">
+    <div class="dashboard-container workload-container detail-dashboard" >
+      <div style="padding: 10px 0px 0px;">
         <div>基本信息</div>
-        <el-form label-position="left" inline class="pod-item" label-width="90px" style="margin: 15px 10px 30px 10px;">
+        <el-form label-position="left" inline class="pod-item" label-width="90px">
           <el-form-item label="名称">
             <span>{{ cronjob.name }}</span>
           </el-form-item>
@@ -39,9 +39,9 @@
         </el-form>
       </div>
 
-      <div style="padding: 0px 8px;">
+      <div>
         <div>Jobs</div>
-        <div class="msgClass" style="margin: 15px 10px 30px 10px;">
+        <div class="msgClass">
           <el-table
             ref="table"
             :data="jobs"
@@ -139,7 +139,7 @@
         </div>
       </div>
 
-      <el-tabs value="containers" style="padding: 0px 8px;">
+      <el-tabs value="containers">
         <el-tab-pane label="容器" name="containers">
           <div class="msgClass">
             <el-table
@@ -402,74 +402,6 @@ export default {
   created() {
     this.fetchData()
   },
-  watch: {
-    cronjobWatch: function (newObj) {
-      if (newObj && this.originCronJob) {
-        let newUid = newObj.resource.metadata.uid
-        if (newUid !== this.cronjob.uid) {
-          return
-        }
-        let newRv = newObj.resource.metadata.resourceVersion
-        if (this.cronjob.resource_version < newRv) {
-          this.originCronJob = newObj.resource
-        }
-      }
-    },
-    eventWatch: function (newObj) {
-      if (newObj && this.originCronJob) {
-        let event = newObj.resource
-        if (event.involvedObject.namespace !== this.cronjob.namespace) return
-        if (event.involvedObject.uid !== this.cronjob.uid) return
-        let newUid = newObj.resource.metadata.uid
-        if (newObj.event === 'add') {
-          this.cronjobEvents.push(buildEvent(event))
-        } else if (newObj.event == 'update') {
-          let newRv = newObj.resource.metadata.resourceVersion
-          for (let i in this.cronjobEvents) {
-            let d = this.cronjobEvents[i]
-            if (d.uid === newUid) {
-              if (d.resource_version < newRv){
-                let newEvent = buildEvent(newObj.resource)
-                this.$set(this.cronjobEvents, i, newEvent)
-              }
-              break
-            }
-          }
-        } else if (newObj.event === 'delete') {
-          this.cronjobEvents = this.cronjobEvents.filter(( { uid } ) => uid !== newUid)
-        }
-      }
-    },
-    jobsWatch: function (newObj) {
-      if (newObj && this.originCronJob) {
-        let ref = newObj.resource.metadata.ownerReferences
-        if (ref) {
-          for (let r of ref) {
-            if (r.uid === this.originCronJob.metadata.uid && r.kind === 'CronJob') {
-              let newUid = newObj.resource.metadata.uid
-              let newRv = newObj.resource.metadata.resourceVersion
-              if (newObj.event === 'add') {
-                this.jobs.push(buildJobs(newObj.resource))
-              } else if (newObj.event === 'update') {
-                for (let i in this.jobs) {
-                  let p = this.jobs[i]
-                  if (p.uid === newUid && p.resource_version < newRv) {
-                    let newPod = buildJobs(newObj.resource)
-                    this.$set(this.jobs, i, newPod)
-                    break
-                  }
-                }
-              } else if (newObj.event === 'delete') {
-                this.jobs = this.jobs.filter(( { uid } ) => uid !== newUid)
-              }
-              return
-            }
-          }
-        }
-        
-      }
-    }
-  },
   computed: {
     titleName: function() {
       return ['CronJobs', this.cronjobName]
@@ -678,19 +610,6 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.dashboard {
-  &-container {
-    margin: 10px 30px;
-  }
-  &-text {
-    font-size: 30px;
-    line-height: 46px;
-  }
-
-  .table-fix {
-    height: calc(100% - 100px);
-  }
-}
 .name-class {
   cursor: pointer;
 }
