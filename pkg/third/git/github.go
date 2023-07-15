@@ -8,6 +8,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/google/go-github/v50/github"
 	"github.com/kubespace/kubespace/pkg/utils"
+	"strings"
 )
 
 type Github struct {
@@ -71,7 +72,17 @@ func (g *Github) ListRepoRefs(ctx context.Context, codeUrl, matchRef string) ([]
 }
 
 func (g *Github) ListRepoBranches(ctx context.Context, codeUrl string) ([]*Reference, error) {
-	return g.ListRepoRefs(ctx, codeUrl, "refs/heads")
+	if refs, err := g.ListRepoRefs(ctx, codeUrl, "refs/heads"); err != nil {
+		return nil, err
+	} else {
+		for _, r := range refs {
+			n, f := strings.CutPrefix(r.Name, "refs/heads/")
+			if f {
+				r.Name = n
+			}
+		}
+		return refs, nil
+	}
 }
 
 func (g *Github) ListRepoPullRequests(ctx context.Context, codeUrl string) ([]*PullRequest, error) {
@@ -128,6 +139,7 @@ func (g *Github) GetBranchLatestCommit(ctx context.Context, codeUrl, branch stri
 	}
 	commit := &Commit{
 		Branch:     branch,
+		CommitId:   repoCommit.GetSHA(),
 		Author:     repoCommit.Commit.Author.GetName(),
 		Message:    repoCommit.Commit.GetMessage(),
 		CommitTime: repoCommit.Commit.Author.Date.Time.In(utils.CSTZone),

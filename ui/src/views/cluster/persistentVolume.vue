@@ -211,7 +211,7 @@ export default {
       }
       this.yamlLoading = true;
       this.yamlDialog = true;
-      getResource(cluster, ResType.PersistentVolume, name, "yaml")
+      getResource(cluster, ResType.PersistentVolume, '', name, "yaml")
         .then((response) => {
           this.yamlLoading = false;
           this.yamlValue = response.data;

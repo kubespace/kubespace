@@ -190,6 +190,7 @@ func (g *Git) GetBranchLatestCommit(ctx context.Context, codeUrl, branch string)
 		return nil, err
 	}
 	return &Commit{
+		Branch:     branch,
 		CommitId:   commit.Hash.String(),
 		Author:     commit.Author.Name,
 		Message:    commit.Message,

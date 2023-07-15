@@ -1,7 +1,7 @@
 <template>
   <div>
     <clusterbar :titleName="titleName" :titleLink="['workspaceApp']"/>
-    <div class="dashboard-container detail-dashboard" ref="tableCot" v-loading="loading">
+    <div class="dashboard-container detail-dashboard" ref="tableCot" v-loading="loading" :style="{'max-height': maxHeight + 'px', overflow: 'auto'}">
       <div style="padding: 10px 0px 0px;" class="appDetailBaseInfo">
           <div slot="header" style="">基本信息</div>
           <el-form label-position="left" inline class="pod-item" label-width="80px" style="">

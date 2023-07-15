@@ -1,11 +1,10 @@
 <template>
   <div>
     <clusterbar :titleName="titleName" :editFunc="getPersistentVolumeYaml" />
-    <div class="dashboard-container">
-      <div style="padding: 10px 8px 0px;">
+    <div class="dashboard-container detail-dashboard" v-loading="loading" :style="{'max-height': maxHeight + 'px', overflow: 'auto'}">
+      <div style="padding: 10px 0px 0px;">
         <div>基本信息</div>
-        <el-form label-position="left" class="pod-item" label-width="120px" v-if="persistentVolume.metadata"
-        style="margin: 15px 10px 20px 10px;">
+        <el-form label-position="left" class="pod-item pod-item-all" label-width="120px" v-if="persistentVolume.metadata">
           <el-form-item label="名称">
             <span>{{ persistentVolume.metadata.name }}</span>
           </el-form-item>
@@ -46,7 +45,7 @@
         </el-form>
       </div>
 
-      <el-tabs value="back" style="padding: 0px 8px;">
+      <el-tabs value="back">
         <el-tab-pane label="后端存储" name="back">
           <div v-for="(val, key) in persistentVolume.spec" :key="key">
             <template v-if="pvSpec.indexOf(key) < 0">
@@ -172,6 +171,7 @@ export default {
   },
   data() {
     return {
+      maxHeight: window.innerHeight - this.$contentHeight,
       yamlDialog: false,
       yamlValue: '',
       yamlLoading: true,

@@ -1,7 +1,7 @@
 <template>
   <div>
     <clusterbar :titleName="titleName" :delFunc="deletePods" :editFunc="getPodYaml"/>
-    <div class="dashboard-container pod-container detail-dashboard" >
+    <div class="dashboard-container pod-container detail-dashboard" :style="{'max-height': maxHeight + 'px', overflow: 'auto'}">
       <div style="padding: 10px 0px 0px;">
         <div>基本信息</div>
         <el-form label-position="left" inline class="pod-item" label-width="80px">
@@ -380,6 +380,7 @@ export default {
   },
   data() {
     return {
+      maxHeight: window.innerHeight - this.$contentHeight,
       yamlDialog: false,
       yamlValue: "",
       yamlLoading: true,

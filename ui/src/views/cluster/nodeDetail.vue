@@ -1,7 +1,8 @@
 <template>
   <div>
     <clusterbar :titleName="titleName" :editFunc="getNodeYaml" />
-    <div class="dashboard-container detail-dashboard" v-loading="loading" v-if="node">
+    <div class="dashboard-container detail-dashboard" v-loading="loading" v-if="node" 
+      :style="{'max-height': maxHeight + 'px', overflow: 'auto'}">
       <div style="padding: 10px 0px 0px;">
         <div>基本信息</div>
         <el-form label-position="left" class="pod-item pod-item-all" label-width="120px" style="">
@@ -277,6 +278,7 @@ export default {
   },
   data() {
     return {
+      maxHeight: window.innerHeight - this.$contentHeight,
       yamlDialog: false,
       yamlValue: '',
       yamlLoading: true,
@@ -303,7 +305,6 @@ export default {
       return this.$store.state.cluster
     },
     node: function() {
-      console.log(this.originNode)
       return this.originNode
     },
   },

@@ -204,6 +204,7 @@ func (g *Gitee) GetBranchLatestCommit(ctx context.Context, codeUrl, branch strin
 		return nil, err
 	}
 	commit := &Commit{
+		CommitId:   repoCommit.SHA,
 		Branch:     branch,
 		Author:     repoCommit.Commit.Author.Name,
 		Message:    repoCommit.Commit.Message,
