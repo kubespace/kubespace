@@ -195,7 +195,7 @@
                         <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.2em" icon-class="log" /> 
                         <span style="margin-left: 5px;">日志</span>
                       </el-dropdown-item>
-                      <el-dropdown-item @click.native.prevent="selectContainer = scope.row.name; terminal = true">
+                      <el-dropdown-item :disabled="!$editorRole()" @click.native.prevent="selectContainer = scope.row.name; terminal = true">
                         <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.2em" icon-class="terminal" /> 
                         <span style="margin-left: 5px;">终端</span>
                       </el-dropdown-item>

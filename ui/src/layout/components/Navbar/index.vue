@@ -4,7 +4,7 @@
     <navbar-item />
 
     <div class="right-menu">
-       <el-button v-if="importYaml" plain size="small" @click="openYamlDialog"
+       <el-button v-if="importYaml" :disabled="!$editorRole()" plain size="small" @click="openYamlDialog"
         style="margin-right: 25px; padding: 8px 10px;" type="info">导入YAML</el-button>
       <el-dropdown placement="bottom">
         <span class="el-dropdown-link">

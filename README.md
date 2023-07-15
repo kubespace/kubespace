@@ -38,6 +38,14 @@ helm repo update
 helm upgrade -n kubespace kubespace kubespace/kubespace
 ```
 
+### 体验环境
+
+```
+访问地址：http://8.130.176.106:30639
+用户名：test
+密码：123456
+```
+
 ### [文档](https://kubespace.cn/docs/)
 
 ### [如何贡献](CONTRIBUTION.md)
