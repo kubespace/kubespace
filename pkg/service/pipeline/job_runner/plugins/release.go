@@ -3,23 +3,16 @@ package plugins
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
 	utilgit "github.com/kubespace/kubespace/pkg/third/git"
 	"github.com/kubespace/kubespace/pkg/third/httpclient"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"k8s.io/klog/v2"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 const PipelineRunAddReleaseVersionUri = "/api/v1/spacelet/pipeline/add_release"
@@ -115,7 +108,7 @@ func (r *releaserExecutor) Execute() (interface{}, error) {
 		return nil, fmt.Errorf("add release version error: %s", addVersionResp.Msg)
 	}
 	if r.Params.CodeUrl != "" {
-		if err := r.clone(); err != nil {
+		if err := r.tagCode(); err != nil {
 			return nil, err
 		}
 	}
@@ -135,68 +128,17 @@ func (r *releaserExecutor) Cancel() error {
 	return nil
 }
 
-func (r *releaserExecutor) clone() error {
-	os.RemoveAll(r.CodeDir)
+func (r *releaserExecutor) tagCode() error {
 	r.Log("git clone %v", r.Params.CodeUrl)
 	gitcli, err := utilgit.NewClient(r.Params.CodeType, r.Params.CodeApiUrl, r.Params.CodeSecret)
 	if err != nil {
 		return err
 	}
-	auth, err := gitcli.Auth()
-	if err != nil {
+	r.Log("git tag %s && git push --tags", r.Params.Version)
+	if err = gitcli.CreateTag(r.ctx, r.Params.CodeUrl, r.Params.CodeCommitId, r.Params.Version); err != nil {
+		r.Log("create tag error: %s", err.Error())
 		return err
 	}
-	repo, err := gitcli.Clone(r.ctx, r.CodeDir, false, &git.CloneOptions{
-		URL:      r.Params.CodeUrl,
-		Progress: r.Logger,
-	})
-	if err != nil {
-		r.Log("克隆代码仓库失败：%v", err)
-		klog.Errorf("job=%d clone %s error: %v", r.Params.JobId, r.Params.CodeUrl, err)
-		return fmt.Errorf("git clone %s error: %v", r.Params.CodeUrl, err)
-	}
-	w, err := repo.Worktree()
-	if err != nil {
-		r.Log("克隆代码仓库失败：%v", err)
-		klog.Errorf("job=%d clone %s error: %v", r.Params.JobId, r.Params.CodeUrl, err)
-		return fmt.Errorf("git clone %s error: %v", r.Params.CodeUrl, err)
-	}
-	err = w.Checkout(&git.CheckoutOptions{
-		Hash: plumbing.NewHash(r.Params.CodeCommitId),
-	})
-	if err != nil {
-		r.Log("git checkout %s 失败：%v", r.Params.CodeCommitId, err)
-		klog.Errorf("job=%d git checkout %s error: %v", r.Params.JobId, r.Params.CodeCommitId, err)
-		return fmt.Errorf("git checkout %s error: %v", r.Params.CodeCommitId, err)
-	}
-	r.Log("git tag %s", r.Params.Version)
-	_, err = repo.CreateTag(r.Params.Version, plumbing.NewHash(r.Params.CodeCommitId), &git.CreateTagOptions{
-		Message: r.Params.Version,
-		Tagger: &object.Signature{
-			Name:  "kubespace",
-			Email: "kubespace@kubespace.cn",
-			When:  time.Now(),
-		},
-	})
-	if err != nil {
-		r.Log("git tag error: %s", err.Error())
-		if !errors.Is(err, git.ErrTagExists) {
-			return fmt.Errorf("git tag error: %s", err.Error())
-		}
-	}
-	po := &git.PushOptions{
-		RemoteName: "origin",
-		Progress:   r.Logger,
-		RefSpecs:   []config.RefSpec{config.RefSpec("refs/tags/*:refs/tags/*")},
-		Auth:       auth,
-	}
-	r.Log("git push --tags")
-	err = repo.PushContext(r.ctx, po)
-	if err != nil {
-		r.Log("git push error: %s", err.Error())
-		return err
-	}
-
 	return nil
 }
 

@@ -2,10 +2,12 @@ package git
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	sshgit "github.com/go-git/go-git/v5/plumbing/transport/ssh"
@@ -16,6 +18,7 @@ import (
 	"k8s.io/klog/v2"
 	"net/url"
 	"os"
+	"path"
 	"strings"
 	"time"
 )
@@ -209,5 +212,55 @@ func (g *Git) Clone(ctx context.Context, repoDir string, isBare bool, options *g
 }
 
 func (g *Git) CreateTag(ctx context.Context, codeUrl, commitId, tagName string) error {
+	codeDir := path.Join("/tmp", utils.ShortUUID())
+	repo, err := g.Clone(ctx, codeDir, false, &git.CloneOptions{
+		URL:      codeUrl,
+		Progress: os.Stdout,
+	})
+	if err != nil {
+		klog.Errorf("create tag %s clone %s error: %v", tagName, codeUrl, err)
+		return fmt.Errorf("git clone %s error: %v", codeUrl, err)
+	}
+	defer os.RemoveAll(codeDir)
+	w, err := repo.Worktree()
+	if err != nil {
+		klog.Errorf("create tag %s clone %s error: %v", tagName, codeUrl, err)
+		return fmt.Errorf("git clone %s error: %v", codeUrl, err)
+	}
+	err = w.Checkout(&git.CheckoutOptions{
+		Hash: plumbing.NewHash(commitId),
+	})
+	if err != nil {
+		klog.Errorf("git checkout %s error: %v", commitId, err)
+		return fmt.Errorf("git url %s checkout %s error: %v", codeUrl, commitId, err)
+	}
+	_, err = repo.CreateTag(tagName, plumbing.NewHash(commitId), &git.CreateTagOptions{
+		Message: tagName,
+		Tagger: &object.Signature{
+			Name:  "kubespace",
+			Email: "kubespace@kubespace.cn",
+			When:  time.Now(),
+		},
+	})
+	if err != nil {
+		if !errors.Is(err, git.ErrTagExists) {
+			return fmt.Errorf("git tag error: %s", err.Error())
+		}
+	}
+	auth, err := g.Auth()
+	if err != nil {
+		return err
+	}
+	po := &git.PushOptions{
+		RemoteName: "origin",
+		Progress:   os.Stdout,
+		RefSpecs:   []config.RefSpec{config.RefSpec("refs/tags/*:refs/tags/*")},
+		Auth:       auth,
+	}
+	err = repo.PushContext(ctx, po)
+	if err != nil {
+		return fmt.Errorf("push tag %s error: %s", tagName, err.Error())
+	}
+
 	return nil
 }
