@@ -129,7 +129,6 @@ func (r *releaserExecutor) Cancel() error {
 }
 
 func (r *releaserExecutor) tagCode() error {
-	r.Log("git clone %v", r.Params.CodeUrl)
 	gitcli, err := utilgit.NewClient(r.Params.CodeType, r.Params.CodeApiUrl, r.Params.CodeSecret)
 	if err != nil {
 		return err
