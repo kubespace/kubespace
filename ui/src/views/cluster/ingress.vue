@@ -328,10 +328,14 @@ export default {
       return this.$store.state.namespace || ''
     },
     namespaceService: function() {
-      if(!this.ingress.metadata.namespace) return []
+      let namespace = this.namespace
+      if (namespace == '') {
+        namespace = this.ingress.metadata.namespace
+      }
+      if(!namespace) return []
       let services = []
       for(let s of this.services) {
-        if(s.namespace == this.ingress.metadata.namespace) {
+        if(s.namespace == namespace) {
           services.push(s)
         }
       }

@@ -459,7 +459,7 @@
 
 <script>
 import { Clusterbar, Yaml } from '@/views/components'
-import { ResType, listResource, getResource, watchResource, updateResource, deleteResource,
+import { ResType, listResource, getResource, watchResource, updateResource, delResource,
          containerClass, buildContainer, podMatch, resourceFor, envStr,
          buildDeployment, buildStatefulSet, buildDaemonSet, buildJobs } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
@@ -748,7 +748,7 @@ export default {
       let params = {
         resources: pods
       }
-      deleteResource(this.cluster, ResType.Pod, params).then(() => {
+      delResource(this.cluster, ResType.Pod, params).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)

@@ -42,7 +42,7 @@ helm upgrade -n kubespace kubespace kubespace/kubespace
 
 ```
 访问地址：http://8.130.176.106:30639
-用户名：test
+用户名：demo
 密码：123456
 ```
 
