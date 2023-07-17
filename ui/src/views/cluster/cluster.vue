@@ -279,14 +279,23 @@ export default {
       this.originCronJobs = []
       const cluster = this.$store.state.cluster
       if (cluster) {
+        let clusterOk, eventOk = false
         getResource(cluster, ResType.Cluster).then(response => {
-          this.loading = false
+          // this.loading = false
           this.cluster_detail = response.data
+          clusterOk = true
+          if (clusterOk && eventOk) {
+            this.loading = false
+          }
         }).catch(() => {
           this.loading = false
         })
         listResource(cluster, ResType.Event).then(response => {
           this.originEvents = response.data ? response.data : []
+          eventOk = true
+          if (clusterOk && eventOk) {
+            this.loading = false
+          }
         }).catch(() => {
         })
       } else {
