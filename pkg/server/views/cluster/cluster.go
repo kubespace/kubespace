@@ -66,6 +66,9 @@ func (clu *Cluster) list(c *views.Context) *utils.Response {
 				status = types.ClusterConnect
 				clusterVersion, _ = res.Data.(string)
 			} else {
+				if du.KubeConfig != "" {
+					status = types.ClusterFailed
+				}
 				connectErr = res.Msg
 			}
 			data = append(data, map[string]interface{}{

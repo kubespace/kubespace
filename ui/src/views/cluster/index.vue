@@ -47,12 +47,19 @@
             <span :style="{'color': (scope.row.status === 'Connect' ? '#67c23a' : '#F56C6C')}">
               
               <template v-if="scope.row.status === 'Connect'">
+                <i class="el-icon-success" style="font-size: 16px;" ></i> 
                 <span class="correct">连接成功</span>
-                <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="correct" />
+                <!-- <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="correct" /> -->
               </template>
-              <template v-else>
-                <span class="wrong">未连接</span>
-                <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="wrong" />
+              <template v-else-if="scope.row.status === 'Pending'">
+                <i class="el-icon-warning" style="font-size: 16px; color: #E6A23C" ></i> 
+                <span class="wrong" style="color: #E6A23C">未连接</span>
+                <!-- <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="wrong" /> -->
+              </template>
+              <template v-else-if="scope.row.status === 'Failed'">
+                <i class="el-icon-error" style="font-size: 16px;" ></i>
+                <span class="wrong">连接失败：{{ scope.row.connect_error }}</span>
+                <!-- <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="wrong" /> -->
               </template>
             </span>
           </template>
@@ -63,7 +70,7 @@
             <div class="tableOperate">
               <el-link :disabled="!$editorRole()" :underline="false" type="primary" style="margin-right: 15px;" 
                 @click="cluster=scope.row; clusterConnectToken=scope.row.token; clusterConnectDialog = true" 
-                v-if="scope.row.status === 'Pending'">
+                v-if="scope.row.status !== 'Connect'">
                 导入集群
               </el-link>
               <el-link :underline="false" type='primary' style="margin-right: 15px;" 

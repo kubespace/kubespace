@@ -3,6 +3,7 @@ package types
 import "time"
 
 const (
+	ClusterFailed  = "Failed"
 	ClusterPending = "Pending"
 	ClusterConnect = "Connect"
 )
