@@ -704,14 +704,16 @@ export default {
       this.$set(this.dialogData, "code_trigger", this.hasCodeTrigger())
       let editCron = this.editCronTrigger()
       this.$set(this.dialogData, "cron_trigger", !!editCron)
+      let crons = ['*', '*', '*', '*', '*']
       if(editCron) {
-        let crons = this.splitCron(editCron.cron)
-        this.$set(this.dialogData, "cron_min", crons[0])
-        this.$set(this.dialogData, "cron_hour", crons[1])
-        this.$set(this.dialogData, "cron_day", crons[2])
-        this.$set(this.dialogData, "cron_mon", crons[3])
-        this.$set(this.dialogData, "cron_week", crons[4])
+        crons = this.splitCron(editCron.cron)
       }
+      this.$set(this.dialogData, "cron_min", crons[0])
+      this.$set(this.dialogData, "cron_hour", crons[1])
+      this.$set(this.dialogData, "cron_day", crons[2])
+      this.$set(this.dialogData, "cron_mon", crons[3])
+      this.$set(this.dialogData, "cron_week", crons[4])
+      
       this.dialogVisible = true
     },
     splitCron(cronStr) {

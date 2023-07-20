@@ -4,8 +4,12 @@
     <navbar-item />
 
     <div class="right-menu">
-       <el-button v-if="importYaml" :disabled="!$editorRole()" plain size="small" @click="openYamlDialog"
-        style="margin-right: 25px; padding: 8px 10px;" type="info">导入YAML</el-button>
+       <!-- <el-button v-if="importYaml" :disabled="!$editorRole()" plain size="small" @click="openYamlDialog"
+        style="margin-right: 15px; padding: 8px 10px;" type="info">导入YAML</el-button> -->
+      <el-link icon="el-icon-download" v-if="importYaml" :disabled="!$editorRole()" @click="openYamlDialog"
+        style="margin-right: 15px; padding-top: 2px;">导入Yaml</el-link>
+      <el-link icon="el-icon-document" href="https://kubespace.cn/docs" target="_blank"
+        style="margin-right: 15px; padding-top: 2px;">文档</el-link>
       <el-dropdown placement="bottom">
         <span class="el-dropdown-link">
           <img class="avatar-class" src="@/assets/user.png" />

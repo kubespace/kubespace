@@ -328,7 +328,11 @@ export default {
       this.namespaces = []
       listCluster()
         .then((response) => {
-          this.clusters = response.data || [];
+          let clusters = response.data || [];
+          clusters.sort(function(a,b) {
+            return a.status.localeCompare(b.status)
+          })
+          this.clusters = clusters
         }).catch(() => {
         })
     },
