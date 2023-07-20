@@ -322,7 +322,7 @@ export default {
     // padding-right: 15px;
     // margin-left: 15px;
     // padding-left: 15px;
-    margin-bottom: 10px;
+    margin-bottom: 0px;
     // overflow: auto;
   }
   &-text {
