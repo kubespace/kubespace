@@ -1,7 +1,7 @@
 <template>
   <div>
     <clusterbar :titleName="titleName" :nameFunc="nameSearch" :createFunc="openImportAppDialog" createDisplay="导入应用"/>
-    <div class="dashboard-container" :style="{'max-height': maxHeight + 'px'}" :max-height="maxHeight">
+    <div class="dashboard-container" :style="{'max-height': maxHeight + 'px', 'overflow': 'auto',}">
       <el-row :gutter="28" v-for="row of appRow" :key="row" style="margin-top: 15px;">
         <el-col :span="8" v-for="col of (row==appRow ? appCol : 3)" :key="row*3+col">
           <a @click="versionClick(apps[index(row, col)])">
@@ -138,7 +138,7 @@ export default {
       return {
         cellStyle: {border: 0},
         titleName: ["应用商店"],
-        maxHeight: window.innerHeight - 135,
+        maxHeight: window.innerHeight - this.$contentHeight,
         loading: true,
         search_name: '',
         originApps: [],
@@ -163,7 +163,7 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 135
+        let heightStyle = window.innerHeight - this.$contentHeight
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()

@@ -127,24 +127,16 @@ func (a *AppStoreManager) GetLatestVersion(appId uint) (*types.AppVersion, error
 }
 
 func (a *AppStoreManager) Init() {
-	apps, err := a.ListStoreApps()
+	pwd, _ := os.Getwd()
+	//获取文件或目录相关信息
+	appDir := filepath.Join(pwd, "apps")
+	fileInfoList, err := ioutil.ReadDir(appDir)
 	if err != nil {
-		klog.Errorf("list store apps error: %s", err)
-		return
+		klog.Errorf("read dir error: %v", err)
 	}
-	if len(apps) == 0 {
-		pwd, _ := os.Getwd()
-		//获取文件或目录相关信息
-		appDir := filepath.Join(pwd, "apps")
-		fileInfoList, err := ioutil.ReadDir(appDir)
-		if err != nil {
-			klog.Errorf("read dir error: %v", err)
-		}
-		for i := range fileInfoList {
-			klog.Infof("start load %s", fileInfoList[i].Name())
-			a.loadApp(filepath.Join(appDir, fileInfoList[i].Name()))
-
-		}
+	for i := range fileInfoList {
+		klog.Infof("start load %s", fileInfoList[i].Name())
+		a.loadApp(filepath.Join(appDir, fileInfoList[i].Name()))
 	}
 }
 
@@ -180,14 +172,22 @@ func (a *AppStoreManager) loadApp(appPath string) {
 	}
 	icon, err := ioutil.ReadFile(filepath.Join(appPath, "icon.png"))
 
-	app := &types.AppStore{
-		Name:       metadata.Name,
-		Type:       metadata.Type,
-		Icon:       icon,
-		CreateUser: "admin",
-		UpdateUser: "admin",
-		CreateTime: time.Now(),
-		UpdateTime: time.Now(),
+	var app types.AppStore
+	if err = a.DB.First(&app, "name=?", metadata.Name).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			app = types.AppStore{
+				Name:       metadata.Name,
+				Type:       metadata.Type,
+				Icon:       icon,
+				CreateUser: "admin",
+				UpdateUser: "admin",
+				CreateTime: time.Now(),
+				UpdateTime: time.Now(),
+			}
+		} else {
+			klog.Errorf("get app store name=%s error: %s", metadata.Name, err.Error())
+			return
+		}
 	}
 	for _, appVersion := range metadata.Versions {
 		versionPath := filepath.Join(appPath, appVersion)
@@ -206,6 +206,19 @@ func (a *AppStoreManager) loadApp(appPath string) {
 		if app.Description == "" {
 			app.Description = charts.Metadata.Description
 		}
+		if app.ID != 0 {
+			var existsVersion types.AppVersion
+			if err = a.DB.First(&existsVersion, "scope=? and scope_id=? and package_name=? and package_version=?",
+				types.AppVersionScopeStoreApp, app.ID, charts.Name(), charts.Metadata.Version).Error; err != nil {
+				if !errors.Is(err, gorm.ErrRecordNotFound) {
+					klog.Errorf("get store app exist package name=%s version=%s error: %s", charts.Name(), charts.Metadata.Version)
+				}
+			}
+			if existsVersion.ID != 0 {
+				klog.Infof("store app already exists name=%s, version=%s", charts.Name(), charts.Metadata.Version)
+				continue
+			}
+		}
 		newAppVersion := &types.AppVersion{
 			PackageName:    charts.Name(),
 			PackageVersion: charts.Metadata.Version,
@@ -218,7 +231,7 @@ func (a *AppStoreManager) loadApp(appPath string) {
 			UpdateTime:     time.Now(),
 		}
 		chartByte, _ := ioutil.ReadFile(versionPath)
-		_, err = a.CreateStoreApp(chartByte, app, newAppVersion)
+		_, err = a.CreateStoreApp(chartByte, &app, newAppVersion)
 		if err != nil {
 			klog.Errorf("create app %s-%s error: %s", app.Name, newAppVersion.PackageVersion, err)
 		}
