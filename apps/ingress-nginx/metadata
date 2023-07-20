@@ -1,0 +1,5 @@
+{
+    "name": "ingress-nginx",
+    "versions": ["ingress-nginx-4.7.1.tgz"],
+    "type": "component"
+}
