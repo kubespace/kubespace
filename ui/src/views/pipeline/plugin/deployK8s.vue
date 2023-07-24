@@ -7,6 +7,7 @@
             v-for="res in clusters"
             :key="res.name"
             :label="res.name1"
+            :disabled="res.status != 'Connect'"
             :value="res.name">
           </el-option>
         </el-select>
@@ -81,7 +82,11 @@ export default {
     fetchClusters() {
       this.namespaces = []
       listCluster().then((response) => {
-          this.clusters = response.data || [];
+          let clusters = response.data || [];
+          clusters.sort(function(a,b) {
+            return a.status.localeCompare(b.status)
+          })
+          this.clusters = clusters
           if(this.params.cluster) this.fetchNamespace()
         }).catch(() => {
         })

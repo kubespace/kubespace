@@ -107,7 +107,9 @@ export default {
       maxHeight: window.innerHeight - this.$contentHeight,
       loading: true,
       project: {},
-      originApps: []
+      originApps: [],
+      projectLoadingOk: false,
+      appLoadingOk: false,
     }
   },
   created() {
@@ -150,7 +152,10 @@ export default {
       this.loading = true
       getProject(this.projectId,).then((resp) => {
         this.project = resp.data ? resp.data : {}
-        this.loading = false
+        this.projectLoadingOk = true
+        if(this.projectLoadingOk && this.appLoadingOk) {
+          this.loading = false
+        }
       }).catch((err) => {
         this.loading = false
       })
@@ -160,7 +165,10 @@ export default {
       listApps({scope_id: this.projectId, scope: "project_app"}).then((resp) => {
         let originApps = resp.data ? resp.data : []
         this.originApps = originApps
-        // this.loading = false
+        this.appLoadingOk = true
+        if(this.projectLoadingOk && this.appLoadingOk) {
+          this.loading = false
+        }
       }).catch((err) => {
         this.loading = false
       })

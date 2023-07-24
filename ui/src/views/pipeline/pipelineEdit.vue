@@ -6,7 +6,7 @@
         <el-button size="small" class="bar-btn" type="primary" @click="savePipeline">保存</el-button>
       </div>
     </clusterbar>
-    <div v-loading="loading" class="dashboard-container" :style="{height: maxHeight + 'px'}" :max-height="maxHeight">
+    <div v-loading="loading" class="dashboard-container">
       <div style="padding: 10px 0px 0px;">
         <div>基本信息</div>
         <el-form label-position="left" class="pipeline-form-item" label-width="80px">
@@ -17,7 +17,7 @@
       </div>
       <div style="padding: 10px 0px 0px;" >
         <div>阶段任务</div>
-        <div class="stage-job-outer">
+        <div class="stage-job-outer" :style="{height: maxHeight + 'px'}">
           <div class="stage-job-line">
             <div class="pipeline-source-outer" style="display:inline-block" @click="openEditSource()">
               <div v-if="workspace.type == 'code'">
@@ -54,8 +54,8 @@
               </div>
             </div>
           </div>
-          <div style="display: inline-block;">
-            <div style="margin-top: 43px; width: 38px;">
+          <div >
+            <div style="margin-top: 43px; width: 38px; display: inline-block;">
               <div class="stage-job-line__inner" style="width: 20px;"></div>
               <div class="stage-job-line__add" @click="openAddStageDialog(0); dialogVisible=true;">
                 <el-tooltip class="item" effect="light" content="添加阶段" placement="top" :hide-after="2000">
@@ -64,48 +64,58 @@
               </div>
             </div>
           </div>
-          <div v-for="(stage, i) in editPipeline.stages" :key="i">
-            <div class="stage-job-line">
-              <div class="stage-job-block">
+          <div v-for="(stage, i) in editPipeline.stages" :key="i" style="">
+            <div class="stage-job-line" style="margin-top: 38px;">
+              <!-- <div class="stage-job-block">
                 <div class="stage-job-block__stage" @click="openEditStageDialog(stage, i); dialogVisible=true;">
                   <span>#{{ i + 1 }} {{ stage.name }}</span>
                 </div>
-              </div>
-              <div>
-                <div class="stage-job-line__inner"></div>
-                <a :class="checkJobError(stage.jobs[0]) ? 'stage-job-line__circle' : 'stage-job-line__circle-error'" @click="openEditJobDialog(stage, 0); dialogVisible=true;">
-                  {{ checkJobError(stage.jobs[0]) ? '' : '!' }}
-                </a>
-                <div class="stage-job-line__inner"></div>
-                <div class="stage-job-line__add" @click="openAddStageDialog(i+1); dialogVisible=true;">
-                  <el-tooltip class="item" effect="light" content="添加阶段" placement="top" :hide-after="2000">
-                    <i class="el-icon-circle-plus"></i>
-                  </el-tooltip>
+              </div> -->
+              <div style="display: inline-flex;">
+                <div>
+                  <div class="stage-job-line__inner" style="width: 30px;" ></div>
+                  <div class="stage-job-block" style="display: inline-block;">
+                    <div class="stage-job-block__stage" @click="openEditStageDialog(stage, i); dialogVisible=true;">
+                      <span>#{{ i + 1 }} {{ stage.name }}</span>
+                    </div>
+                  </div>
+                  <!-- <a :class="checkJobError(stage.jobs[0]) ? 'stage-job-line__circle' : 'stage-job-line__circle-error'" @click="openEditJobDialog(stage, 0); dialogVisible=true;">
+                    {{ checkJobError(stage.jobs[0]) ? '' : '!' }}
+                  </a> -->
+                  <div class="stage-job-line__inner" style="width: 30px;"></div>
+                  <div class="stage-job-line__add" @click="openAddStageDialog(i+1); dialogVisible=true;">
+                    <el-tooltip class="item" effect="light" content="添加阶段" placement="top" :hide-after="2000">
+                      <i class="el-icon-circle-plus"></i>
+                    </el-tooltip>
+                  </div>
                 </div>
               </div>
-              <div class="stage-job-block">
+              <!-- <div class="stage-job-block">
                 <div class="stage-job-block__job-name">{{ stage.jobs[0].name }}</div>
-              </div>
-              <div class="stage-job-block">
-                <template  v-if="stage.jobs && stage.jobs.length > 1" >
+              </div> -->
+              <div class="stage-job-block" style="margin-left: 25px; ">
+                <template  v-if="stage.jobs" >
                   <div v-for="(job, ji) in stage.jobs" :key="ji">
-                    <template v-if="ji >0">
+                    <!-- <template v-if="ji >0"> -->
                       <div class="stage-job-block__job">
                         <div class="stage-job-block__job-circle">
-                           <div :class="checkJobError(job) ? 'stage-job-line__circle' : 'stage-job-line__circle-error'" 
+                            <span class="stage-job-block__job-add__inner-name stage-job-block__job-add__inner-name-hover" 
+                              @click="openEditJobDialog(stage, ji); dialogVisible=true;">{{ job.name }}</span>
+                           <!-- <div :class="checkJobError(job) ? 'stage-job-line__circle' : 'stage-job-line__circle-error'" 
                             @click="openEditJobDialog(stage, ji); dialogVisible=true;">
                             <span style="margin-top: -5px;">{{ checkJobError(job) ? '' : '!' }}</span>
-                          </div>
+                          </div> -->
                         </div>
                       </div>
-                      <div class="stage-job-block__job-name" style="margin-top: 18px;">{{ job.name }}</div>
-                    </template>
+                      <!-- <div class="stage-job-block__job-name" style="margin-top: 18px;">{{ job.name }}</div> -->
+                    <!-- </template> -->
                   </div>
                 </template>
 
                 <div class="stage-job-block__job-add">
                   <div class="stage-job-block__job-add__inner">
-                    <span class="stage-job-block__job-add__inner-name" @click="openAddJobDialog(stage); dialogVisible=true;">+ 新建并行任务</span>
+                    <span class="stage-job-block__job-add__inner-name stage-job-block__job-add__inner-ex" 
+                    @click="openAddJobDialog(stage); dialogVisible=true;">+ 新建并行任务</span>
                   </div>
                 </div>
               </div>
@@ -332,7 +342,7 @@
 
 <script>
 import { Clusterbar } from '@/views/components'
-import { PipelineStage, CodeToImage, ExecuteShell, AppDeploy, Release, DeployK8s } from '@/views/pipeline/plugin'
+import { PipelineStage, CodeToImage, ExecuteShell, AppDeploy, Release, DeployK8s, checkPluginJob } from '@/views/pipeline/plugin'
 import { getPipeline, updatePipeline, createPipeline } from '@/api/pipeline/pipeline'
 import { listWorkspaces } from '@/api/pipeline/workspace'
 import { getWorkspace } from '@/api/pipeline/workspace'
@@ -367,7 +377,7 @@ export default {
       titleName: ["流水线"],
       users: [],
       cellStyle: {border: 0, padding: '1px 0', 'line-height': '35px'},
-      maxHeight: window.innerHeight - 145,
+      maxHeight: window.innerHeight - 295,
       loading: true,
       pipeline: {},
       workspace: {},
@@ -411,7 +421,7 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 145
+        let heightStyle = window.innerHeight - 295
         that.maxHeight = heightStyle
       })()
     }
@@ -539,82 +549,97 @@ export default {
       this.$router.push({name: 'pipeline', params: {'workspaceId': this.workspaceId}})
     },
     dialogSave() {
-      var custom_params = {}
-      if(this.dialogType == 'edit_stage' || this.dialogType == 'add_stage') {
-        if(this.dialogData.custom_params) {
-          for(let p of this.dialogData.custom_params) {
-            if(!p.param) {
-              Message.error("阶段参数值不能为空")
-              return
+      switch(this.dialogType) {
+        case 'edit_stage':
+        case 'add_stage':
+          var custom_params = {}
+          if(this.dialogData.custom_params) {
+            for(let p of this.dialogData.custom_params) {
+              if(!p.param) {
+                Message.error("阶段参数不能为空")
+                return
+              }
+              custom_params[p.param] = p.value || ''
             }
-            custom_params[p.param] = p.value || ''
           }
-        }
-      }
-      if (this.dialogType == 'edit_stage') {
-        this.dialogOriginData.stage.name = this.dialogData.name
-        this.dialogOriginData.stage.trigger_mode = this.dialogData.trigger_mode
-        this.$set(this.dialogOriginData.stage, 'custom_params', custom_params)
-      } else if(this.dialogType == 'edit_job') {
-        let idx = this.dialogOriginData.idx
-        this.dialogOriginData.stage.jobs[idx] = this.dialogData
-      } else if(this.dialogType == 'add_stage') {
-        let newStage = {
-          name: this.dialogData.name || '未命名',
-          trigger_mode: this.dialogData.trigger_mode,
-          custom_params: custom_params,
-          jobs: [{
-            name: "未命名",
-            plugin_key: "",
-            params: {},
-          }]
-        }
-        this.editPipeline.stages.splice(this.dialogOriginData, 0, newStage)
-      } else if(this.dialogType == 'add_job') {
-        this.dialogOriginData.jobs.push(this.dialogData)
-      } else if(this.dialogType == 'source') {
-        // this.editPipeline.sources = this.dialogData.sources
-        this.$set(this.editPipeline, 'sources', this.dialogData.sources)
-        let hasCodeTrigger = this.hasCodeTrigger()
-        if(this.dialogData.code_trigger && !hasCodeTrigger) {
-          if(this.originCodeTrigger) {
-            this.editPipeline.triggers.push(this.originCodeTrigger)
+          if (this.dialogType == 'edit_stage') {
+            this.dialogOriginData.stage.name = this.dialogData.name
+            this.dialogOriginData.stage.trigger_mode = this.dialogData.trigger_mode
+            this.$set(this.dialogOriginData.stage, 'custom_params', custom_params)
           } else {
-            this.editPipeline.triggers.push({type: "code"})
-          }
-        } else if(!this.dialogData.code_trigger && hasCodeTrigger) {
-          let triggers = []
-          for(let t of this.editPipeline.triggers) {
-            if (t.type != "code") {
-              triggers.push(t)
+            let newStage = {
+              name: this.dialogData.name || '未命名',
+              trigger_mode: this.dialogData.trigger_mode,
+              custom_params: custom_params,
+              jobs: [],
+              // jobs: [{
+              //   name: "未命名",
+              //   plugin_key: "",
+              //   params: {},
+              // }]
             }
+            this.editPipeline.stages.splice(this.dialogOriginData, 0, newStage)
           }
-          this.editPipeline.triggers = triggers
-        }
-        let originCron = this.originCronTrigger()
-        let editCron = this.editCronTrigger()
-        if (this.dialogData.cron_trigger) {
-          let cronStr = this.getCron()
-          if(editCron) {
-            editCron['cron'] = cronStr
+          break
+        
+        case "edit_job":
+        case "add_job":
+          let checkRes = checkPluginJob(this.dialogData)
+          if(!checkRes.checked) {
+            Message.error(checkRes.errorMsg)
+            return
+          }
+          if(this.dialogType == 'edit_job') {
+            let idx = this.dialogOriginData.idx
+            this.dialogOriginData.stage.jobs[idx] = this.dialogData
           } else {
-            let cron = {type: "cron", cron: cronStr}
-            if(originCron) {
-              cron["id"] = originCron.id
-            }
-            this.editPipeline.triggers.push(cron)
+            this.dialogOriginData.jobs.push(this.dialogData)
           }
-        } else if(!this.dialogData.cron_trigger && editCron) {
-          let triggers = []
-          for(let t of this.editPipeline.triggers) {
-            if (t.type != "cron") {
-              triggers.push(t)
+          break
+
+        case "source":
+          this.$set(this.editPipeline, 'sources', this.dialogData.sources)
+          let hasCodeTrigger = this.hasCodeTrigger()
+          if(this.dialogData.code_trigger && !hasCodeTrigger) {
+            if(this.originCodeTrigger) {
+              this.editPipeline.triggers.push(this.originCodeTrigger)
+            } else {
+              this.editPipeline.triggers.push({type: "code"})
             }
+          } else if(!this.dialogData.code_trigger && hasCodeTrigger) {
+            let triggers = []
+            for(let t of this.editPipeline.triggers) {
+              if (t.type != "code") {
+                triggers.push(t)
+              }
+            }
+            this.editPipeline.triggers = triggers
           }
-          this.editPipeline.triggers = triggers
-        }
+          let originCron = this.originCronTrigger()
+          let editCron = this.editCronTrigger()
+          if (this.dialogData.cron_trigger) {
+            let cronStr = this.getCron()
+            if(editCron) {
+              editCron['cron'] = cronStr
+            } else {
+              let cron = {type: "cron", cron: cronStr}
+              if(originCron) {
+                cron["id"] = originCron.id
+              }
+              this.editPipeline.triggers.push(cron)
+            }
+          } else if(!this.dialogData.cron_trigger && editCron) {
+            let triggers = []
+            for(let t of this.editPipeline.triggers) {
+              if (t.type != "cron") {
+                triggers.push(t)
+              }
+            }
+            this.editPipeline.triggers = triggers
+          }
+          break
       }
-      console.log(this.editPipeline.triggers)
+      
       this.dialogVisible = false
     },
     getCron() {
@@ -717,9 +742,7 @@ export default {
       this.dialogVisible = true
     },
     splitCron(cronStr) {
-      console.log(cronStr)
       let crons = cronStr.split(" ")
-      console.log(crons)
       for(let i in crons) {
         if(!crons[i]) {
           crons[i] = '*'
@@ -815,18 +838,18 @@ export default {
 
 <style lang="scss" scoped>
 .bar-btn {
-  padding: 9px 25px
+  padding: 9px 25px;
 }
 
 .stage-job-outer {
   padding: 10px 20px;
-  display: flex; 
-  height: 500px; 
-  max-height: 500px; 
-  overflow-x: auto;
+  display: -webkit-box;
+  // height: 500px;
+  // max-height: 500px;
+  overflow: auto;
   background-color: #fff;
   border-radius: 10px;
-  margin: 15px 0px;
+  margin: 15px 0px 0px;
 
   .stage-job-line {
     display:inline-block;
@@ -834,16 +857,16 @@ export default {
 
   .stage-job-block {
     font-size: 14px;
-    width: 269px;
+    //width: 269px;
 
     .stage-job-block__stage {
-      text-align: center; 
+      text-align: center;
       display: inline-block;
-      border-radius: 15px; 
-      padding: 8px 15px; 
-      margin: 0px 0px 10px 30px; 
+      border-radius: 10px;
+      padding: 8px 15px;
       background-color: #EBEEF5;
       height: 32px;
+      min-width: 120px;
     }
 
     .stage-job-block__stage:hover{
@@ -852,59 +875,67 @@ export default {
     }
 
     .stage-job-block__job-name {
-      width: 250px; 
-      text-align: center; 
-      color: #606266; 
+      width: 250px;
+      text-align: center;
+      color: #606266;
       margin-top: 5px;
     }
 
     .stage-job-block__job {
-      width: 210px; 
-      height: 80px; 
-      text-align: center; 
-      border-left: 1px solid #c0c4cc; 
-      border-right: 1px solid #c0c4cc; 
-      border-bottom: 1px solid #c0c4cc;  
-      margin: -35px 20px 0px;
+      width: 20px;
+      height: 40px;
+      border-left: 1px solid #c0c4cc;
+      border-bottom: 1px solid #c0c4cc;
+      margin: 0px 20px 0px;
 
       .stage-job-block__job-circle {
         font-size: 14px;
-        line-height: 25px; 
+        line-height: 25px;
         width: 210px;
-        text-align: center;
-        padding-top: 66px;
+        padding-top: 26px;
       }
+    }
+    .stage-job-block__job-add__inner-name-hover:hover {
+      border-color: #409EFF;
+      color: #409EFF;
+    }
+    .stage-job-block__job-add__inner-name {
+      margin-left: 20px;
+      background-color: white;
+      margin-top: 36px; 
+      border-radius: 15px; 
+      border:1px solid #C0C4CC;
+      padding: 4px 8px;
+    }
+
+    .stage-job-block__job-add__inner-name:hover{
+      cursor: pointer;
     }
 
     .stage-job-block__job-add {
-      width: 210px; 
-      height: 80px; 
-      text-align: center; 
-      border-left: 1px dashed #c0c4cc; 
-      border-right: 1px dashed #c0c4cc; 
-      border-bottom: 1px dashed #c0c4cc;  
-      margin: -35px 20px;
+      width: 20px;
+      height: 40px;
+      border-left: 1px dashed #c0c4cc;
+      border-bottom: 1px dashed #c0c4cc;
+      margin: 0px 20px;
+      opacity: 0.6;
 
       .stage-job-block__job-add__inner {
         font-size: 14px;
-        line-height: 25px; 
+        line-height: 25px;
         width: 210px;
-        text-align: center;
-        padding-top: 66px;
+        padding-top: 26px;
+
+        .stage-job-block__job-add__inner-ex {
+          border:1px dashed #C0C4CC;
+          color: #909399;
+        }
+        .stage-job-block__job-add__inner-ex:hover {
+          border-color: #409EFF;
+          color: #409EFF;
+        }
       }
 
-      .stage-job-block__job-add__inner-name {
-        background-color: white;
-        margin-top: 66px; 
-        border-radius: 15px; 
-        border:1px dashed #C0C4CC; 
-        padding: 4px 8px; 
-        color: #909399
-      }
-
-      .stage-job-block__job-add__inner-name:hover{
-        cursor: pointer;
-      }
     }
   }
 

@@ -14,7 +14,7 @@
           </el-option>
         </el-select>
       </el-form-item>
-      <el-form-item label="应用" prop="">
+      <el-form-item label="应用" prop="" :required="true">
         <el-select v-model="params.apps" placeholder="请选择要更新的应用" size="small" style="width: 320px" multiple>
           <el-option
             v-for="res in apps"
