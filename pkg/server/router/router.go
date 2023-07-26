@@ -25,7 +25,6 @@ type Router struct {
 }
 
 func NewRouter(conf *config.ServerConfig) (*Router, error) {
-	//redisOptions := serverConfig.RedisOptions
 	models := conf.Models
 
 	engine := gin.Default()
@@ -36,7 +35,7 @@ func NewRouter(conf *config.ServerConfig) (*Router, error) {
 	t, _ := template.New("").New("/index.html").Parse(string(indexHtml))
 	engine.SetHTMLTemplate(t)
 	engine.StaticFS("/static", Assets)
-	engine.StaticFile("/favicon.ico", "./favicon.ico")
+	engine.StaticFile("/favicon.svg", "./favicon.svg")
 
 	engine.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "/index.html", nil)

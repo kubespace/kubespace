@@ -17,18 +17,18 @@ import (
 	"time"
 )
 
-type ServicePipelineRun struct {
+type PipelineRunService struct {
 	models *model.Models
 }
 
-func NewPipelineRunService(models *model.Models) *ServicePipelineRun {
-	r := &ServicePipelineRun{
+func NewPipelineRunService(models *model.Models) *PipelineRunService {
+	r := &PipelineRunService{
 		models: models,
 	}
 	return r
 }
 
-func (r *ServicePipelineRun) ListPipelineRun(pipelineId uint, lastBuildNumber int, status string, limit int) *utils.Response {
+func (r *PipelineRunService) ListPipelineRun(pipelineId uint, lastBuildNumber int, status string, limit int) *utils.Response {
 	pipelineRuns, err := r.models.PipelineRunManager.ListPipelineRun(pipelineId, lastBuildNumber, status, limit)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
@@ -48,7 +48,7 @@ func (r *ServicePipelineRun) ListPipelineRun(pipelineId uint, lastBuildNumber in
 	return &utils.Response{Code: code.Success, Data: retData}
 }
 
-func (r *ServicePipelineRun) GetPipelineRun(pipelineRunId uint) *utils.Response {
+func (r *PipelineRunService) GetPipelineRun(pipelineRunId uint) *utils.Response {
 	pipelineRun, err := r.models.PipelineRunManager.Get(pipelineRunId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
@@ -130,7 +130,7 @@ type BuildForPipelineParams struct {
 	BuildIds []*BuildForPipelineParamsBuilds `json:"build_ids"`
 }
 
-func (r *ServicePipelineRun) InitialEnvs(pipeline *types.Pipeline, workspace *types.PipelineWorkspace, params *types.PipelineBuildConfig) (map[string]interface{}, error) {
+func (r *PipelineRunService) InitialEnvs(pipeline *types.Pipeline, workspace *types.PipelineWorkspace, params *types.PipelineBuildConfig) (map[string]interface{}, error) {
 	envs := map[string]interface{}{}
 	envs[types.PipelineEnvWorkspaceId] = workspace.ID
 	envs[types.PipelineEnvWorkspaceName] = workspace.Name
@@ -200,7 +200,7 @@ func (r *ServicePipelineRun) InitialEnvs(pipeline *types.Pipeline, workspace *ty
 	return envs, nil
 }
 
-func (r *ServicePipelineRun) InitialCodeEnvs(
+func (r *PipelineRunService) InitialCodeEnvs(
 	pipeline *types.Pipeline,
 	workspace *types.PipelineWorkspace,
 	codeBranch *types.PipelineBuildCodeBranch,
@@ -247,7 +247,7 @@ func (r *ServicePipelineRun) InitialCodeEnvs(
 	return nil
 }
 
-func (r *ServicePipelineRun) Build(pipelineId uint, buildConfig *types.PipelineBuildConfig, username string) *utils.Response {
+func (r *PipelineRunService) Build(pipelineId uint, buildConfig *types.PipelineBuildConfig, username string) *utils.Response {
 	pipelineObj, err := r.models.PipelineManager.Get(pipelineId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
@@ -312,7 +312,7 @@ func (r *ServicePipelineRun) Build(pipelineId uint, buildConfig *types.PipelineB
 	return &utils.Response{Code: code.Success, Data: pipelineRun}
 }
 
-func (r *ServicePipelineRun) ManualExecuteStage(manualSer *serializers.PipelineStageManualSerializer) *utils.Response {
+func (r *PipelineRunService) ManualExecuteStage(manualSer *serializers.PipelineStageManualSerializer) *utils.Response {
 	stageRun, err := r.models.PipelineRunManager.GetStageRun(manualSer.StageRunId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
@@ -338,7 +338,7 @@ func (r *ServicePipelineRun) ManualExecuteStage(manualSer *serializers.PipelineS
 	return &utils.Response{Code: code.Success}
 }
 
-func (r *ServicePipelineRun) RetryStage(retrySer *serializers.PipelineStageRetrySerializer) *utils.Response {
+func (r *PipelineRunService) RetryStage(retrySer *serializers.PipelineStageRetrySerializer) *utils.Response {
 	stageRun, err := r.models.PipelineRunManager.GetStageRun(retrySer.StageRunId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
@@ -359,7 +359,7 @@ func (r *ServicePipelineRun) RetryStage(retrySer *serializers.PipelineStageRetry
 	return &utils.Response{Code: code.Success}
 }
 
-func (r *ServicePipelineRun) CancelStage(cancelParams *schemas.PipelineStageCancelParams) *utils.Response {
+func (r *PipelineRunService) CancelStage(cancelParams *schemas.PipelineStageCancelParams) *utils.Response {
 	stageRun, err := r.models.PipelineRunManager.GetStageRun(cancelParams.StageRunId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
@@ -380,7 +380,7 @@ func (r *ServicePipelineRun) CancelStage(cancelParams *schemas.PipelineStageCanc
 }
 
 // ReExecStage 取消之后重新执行
-func (r *ServicePipelineRun) ReExecStage(retrySer *schemas.PipelineStageReexecParams) *utils.Response {
+func (r *PipelineRunService) ReExecStage(retrySer *schemas.PipelineStageReexecParams) *utils.Response {
 	stageRun, err := r.models.PipelineRunManager.GetStageRun(retrySer.StageRunId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
@@ -402,7 +402,7 @@ func (r *ServicePipelineRun) ReExecStage(retrySer *schemas.PipelineStageReexecPa
 }
 
 // JobCallback spacelet节点执行完成任务后进行回调，不写数据库，通知controller-manager
-func (r *ServicePipelineRun) JobCallback(params *schemas.JobCallbackParams) *utils.Response {
+func (r *PipelineRunService) JobCallback(params *schemas.JobCallbackParams) *utils.Response {
 	jobRun, err := r.models.PipelineRunManager.GetJobRun(params.JobId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}

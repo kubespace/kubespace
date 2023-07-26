@@ -58,7 +58,7 @@ export default {
   height: 50px;
   line-height: 50px;
   overflow: hidden;
-  margin-left: 90px;
+  margin-left: 80px;
 
 }
 </style>

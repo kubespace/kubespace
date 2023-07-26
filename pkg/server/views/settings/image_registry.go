@@ -21,13 +21,12 @@ func NewImageRegistry(models *model.Models) *ImageRegistry {
 	settings := &ImageRegistry{
 		models: models,
 	}
-	vs := []*views.View{
+	settings.Views = []*views.View{
 		views.NewView(http.MethodGet, "", settings.list),
 		views.NewView(http.MethodPost, "", settings.create),
 		views.NewView(http.MethodPut, "/:id", settings.update),
 		views.NewView(http.MethodDelete, "/:id", settings.delete),
 	}
-	settings.Views = vs
 	return settings
 }
 

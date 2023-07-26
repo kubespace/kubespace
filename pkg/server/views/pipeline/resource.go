@@ -22,13 +22,12 @@ func NewPipelineResource(config *config.ServerConfig) *PipelineResource {
 	pipelineWs := &PipelineResource{
 		models: config.Models,
 	}
-	vs := []*views.View{
+	pipelineWs.Views = []*views.View{
 		views.NewView(http.MethodGet, "/:workspaceId", pipelineWs.list),
 		views.NewView(http.MethodPost, "", pipelineWs.create),
 		views.NewView(http.MethodPut, "/:id", pipelineWs.update),
 		views.NewView(http.MethodDelete, "/:id", pipelineWs.delete),
 	}
-	pipelineWs.Views = vs
 	return pipelineWs
 }
 

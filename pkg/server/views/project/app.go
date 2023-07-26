@@ -26,7 +26,7 @@ func NewProjectApp(config *config.ServerConfig) *ProjectApp {
 		AppService: config.ServiceFactory.Project.AppService,
 		models:     config.Models,
 	}
-	vs := []*views.View{
+	app.Views = []*views.View{
 		views.NewView(http.MethodGet, "", app.listApps),
 		views.NewView(http.MethodGet, "/versions", app.listAppVersions),
 		views.NewView(http.MethodGet, "/version/:id", app.getAppVersion),
@@ -43,7 +43,6 @@ func NewProjectApp(config *config.ServerConfig) *ProjectApp {
 		views.NewView(http.MethodDelete, "/version/:id", app.deleteAppVersion),
 		views.NewView(http.MethodDelete, "/:id", app.deleteApp),
 	}
-	app.Views = vs
 	return app
 }
 

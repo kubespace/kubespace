@@ -20,12 +20,11 @@ func NewUserRole(models *model.Models) *UserRole {
 	role := &UserRole{
 		models: models,
 	}
-	views := []*views.View{
+	role.Views = []*views.View{
 		views.NewView(http.MethodGet, "", role.list),
 		views.NewView(http.MethodPost, "", role.update),
 		views.NewView(http.MethodDelete, "/:id", role.delete),
 	}
-	role.Views = views
 	role.models.RoleManager.Init()
 	return role
 }

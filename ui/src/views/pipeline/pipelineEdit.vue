@@ -526,6 +526,16 @@ export default {
         Message.error("请输入流水线名称")
         return
       }
+      if(!this.editPipeline.stages || this.editPipeline.stages.length == 0) {
+        Message.error("流水线阶段不能为空")
+        return
+      }
+      for(let s of this.editPipeline.stages) {
+        if(!s.jobs || s.jobs.length == 0 ) {
+          Message.error(`流水线阶段"${s.name}"任务不能为空`)
+          return
+        }
+      }
       this.loading = true
       if(this.pipelineId) {
         updatePipeline(this.editPipeline).then((response) => {
@@ -657,16 +667,17 @@ export default {
       if(this.dialogType == 'edit_stage') {
         this.editPipeline.stages.splice(this.dialogOriginData.idx, 1)
       } else if (this.dialogType == 'edit_job') {
-        if(this.dialogOriginData.stage.jobs.length == 1) {
-          let newJob = {
-            name: "未命名",
-            plugin_key: "",
-            params: {},
-          }
-          this.dialogOriginData.stage.jobs[0] = newJob
-        } else {
-          this.dialogOriginData.stage.jobs.splice(this.dialogOriginData.idx, 1)
-        }
+        this.dialogOriginData.stage.jobs.splice(this.dialogOriginData.idx, 1)
+        // if(this.dialogOriginData.stage.jobs.length == 1) {
+        //   let newJob = {
+        //     name: "未命名",
+        //     plugin_key: "",
+        //     params: {},
+        //   }
+        //   this.dialogOriginData.stage.jobs[0] = newJob
+        // } else {
+          
+        // }
       }
       this.dialogVisible = false
     },

@@ -21,6 +21,12 @@ const Routes = [
     component: () => import('@/views/settings/image_registry'),
     meta: { title: '镜像仓库', icon: 'docker', 'group': 'settings', object: 'cluster' }
   },
+  {
+    path: 'spacelet',
+    name: 'settinsSpacelet',
+    component: () => import('@/views/settings/spacelet'),
+    meta: { title: 'Spacelet', icon: 'spacelet', 'group': 'settings', object: 'cluster' }
+  },
   // {
   //   path: 'ldap',
   //   name: 'settinsLdap',

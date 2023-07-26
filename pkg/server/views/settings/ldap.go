@@ -28,14 +28,13 @@ func NewSettingsLdap(models *model.Models) *SettingsLdap {
 	ldap := &SettingsLdap{
 		models: models,
 	}
-	vs := []*views.View{
+	ldap.Views = []*views.View{
 		views.NewView(http.MethodGet, "", ldap.list),
 		views.NewView(http.MethodPost, "", ldap.create),
 		views.NewView(http.MethodPut, "/:id", ldap.update),
 		views.NewView(http.MethodDelete, "/:id", ldap.delete),
 		views.NewView(http.MethodGet, "/sync_progress/:id/:timeStamp", ldap.SyncLdap2Db),
 	}
-	ldap.Views = vs
 	return ldap
 }
 

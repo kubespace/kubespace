@@ -15,7 +15,7 @@ type Spacelet struct {
 	Hostname   string    `gorm:"size:255;not null;" json:"hostname"`
 	HostIp     string    `gorm:"size:255;not null;uniqueIndex:HostPortUnique" json:"hostip"`
 	Port       int       `gorm:"not null;uniqueIndex:HostPortUnique" json:"port"`
-	Token      string    `gorm:"size:255;not null;" json:"token"`
+	Token      string    `gorm:"size:255;not null;" json:"token,omitempty"`
 	Status     string    `gorm:"size:50;not null" json:"status"`
 	CreateTime time.Time `gorm:"column:create_time;not null;autoCreateTime" json:"create_time"`
 	UpdateTime time.Time `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`

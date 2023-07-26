@@ -17,17 +17,17 @@ import (
 	"time"
 )
 
-type ServicePipeline struct {
+type PipelineService struct {
 	models *model.Models
 }
 
-func NewPipelineService(models *model.Models) *ServicePipeline {
-	return &ServicePipeline{
+func NewPipelineService(models *model.Models) *PipelineService {
+	return &PipelineService{
 		models: models,
 	}
 }
 
-func (p *ServicePipeline) Create(params *schemas.PipelineParams, user *types.User) *utils.Response {
+func (p *PipelineService) Create(params *schemas.PipelineParams, user *types.User) *utils.Response {
 	workspace, err := p.models.PipelineWorkspaceManager.Get(params.WorkspaceId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
@@ -80,7 +80,7 @@ func (p *ServicePipeline) Create(params *schemas.PipelineParams, user *types.Use
 	return &utils.Response{Code: code.Success, Data: pipeline}
 }
 
-func (p *ServicePipeline) CheckSource(workspace *types.PipelineWorkspace, sources types.PipelineSources) *utils.Response {
+func (p *PipelineService) CheckSource(workspace *types.PipelineWorkspace, sources types.PipelineSources) *utils.Response {
 	triggerWorkspaceIdMap := make(map[uint]struct{})
 	for _, source := range sources {
 		if workspace.Type == types.WorkspaceTypeCode && source.Type != types.PipelineSourceTypeCode {
@@ -111,7 +111,7 @@ func (p *ServicePipeline) CheckSource(workspace *types.PipelineWorkspace, source
 	return &utils.Response{Code: code.Success}
 }
 
-func (p *ServicePipeline) GetPipelineTrigger(pipelineId uint, triggers []*schemas.PipelineTrigger, username string) ([]*types.PipelineTrigger, error) {
+func (p *PipelineService) GetPipelineTrigger(pipelineId uint, triggers []*schemas.PipelineTrigger, username string) ([]*types.PipelineTrigger, error) {
 	var triggerObjs []*types.PipelineTrigger
 	var err error
 	for _, trig := range triggers {
@@ -151,7 +151,7 @@ func (p *ServicePipeline) GetPipelineTrigger(pipelineId uint, triggers []*schema
 	return triggerObjs, nil
 }
 
-func (p *ServicePipeline) Update(params *schemas.PipelineParams, user *types.User) *utils.Response {
+func (p *PipelineService) Update(params *schemas.PipelineParams, user *types.User) *utils.Response {
 	workspace, err := p.models.PipelineWorkspaceManager.Get(params.WorkspaceId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
@@ -194,7 +194,7 @@ func (p *ServicePipeline) Update(params *schemas.PipelineParams, user *types.Use
 	return &utils.Response{Code: code.Success, Data: pipeline}
 }
 
-func (p *ServicePipeline) GetPipeline(pipelineId uint) *utils.Response {
+func (p *PipelineService) GetPipeline(pipelineId uint) *utils.Response {
 	pipeline, err := p.models.PipelineManager.Get(pipelineId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
@@ -257,7 +257,7 @@ func (p *ServicePipeline) GetPipeline(pipelineId uint) *utils.Response {
 	return &utils.Response{Code: code.Success, Data: data}
 }
 
-func (p *ServicePipeline) ListPipeline(workspaceId uint) *utils.Response {
+func (p *PipelineService) ListPipeline(workspaceId uint) *utils.Response {
 	pipelines, err := p.models.PipelineManager.List(workspaceId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: fmt.Sprintf("获取流水线列表错误: %v", err)}
@@ -277,7 +277,7 @@ func (p *ServicePipeline) ListPipeline(workspaceId uint) *utils.Response {
 	return &utils.Response{Code: code.Success, Data: retData}
 }
 
-func (p *ServicePipeline) ListRepoBranches(pipelineId uint) *utils.Response {
+func (p *PipelineService) ListRepoBranches(pipelineId uint) *utils.Response {
 	pipelineObj, err := p.models.PipelineManager.Get(pipelineId)
 	if err != nil {
 		return &utils.Response{Code: code.GetError, Msg: err.Error()}

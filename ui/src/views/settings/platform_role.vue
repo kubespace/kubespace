@@ -16,7 +16,7 @@ export default {
     return {
       scope: "platform",
       scopeId: 0,
-      maxHeight: window.innerHeight - 135,
+      maxHeight: window.innerHeight - this.$contentHeight,
 
     };
   },

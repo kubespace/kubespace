@@ -26,7 +26,7 @@ func NewPipelineWorkspace(config *config.ServerConfig) *PipelineWorkspace {
 		models:           config.Models,
 		workspaceService: config.ServiceFactory.Pipeline.WorkspaceService,
 	}
-	vs := []*views.View{
+	pipelineWs.Views = []*views.View{
 		views.NewView(http.MethodGet, "", pipelineWs.list),
 		views.NewView(http.MethodGet, "/latest_release", pipelineWs.latestReleaseVersion),
 		views.NewView(http.MethodGet, "/exists_release", pipelineWs.existsReleaseVersion),
@@ -36,7 +36,6 @@ func NewPipelineWorkspace(config *config.ServerConfig) *PipelineWorkspace {
 		views.NewView(http.MethodDelete, "/:id", pipelineWs.delete),
 		views.NewView(http.MethodGet, "/list_git_repos", pipelineWs.listGitRepos),
 	}
-	pipelineWs.Views = vs
 	return pipelineWs
 }
 

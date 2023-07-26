@@ -21,13 +21,12 @@ func NewSettingsSecret(models *model.Models) *SettingsSecret {
 	secret := &SettingsSecret{
 		models: models,
 	}
-	vs := []*views.View{
+	secret.Views = []*views.View{
 		views.NewView(http.MethodGet, "", secret.list),
 		views.NewView(http.MethodPost, "", secret.create),
 		views.NewView(http.MethodPut, "/:id", secret.update),
 		views.NewView(http.MethodDelete, "/:id", secret.delete),
 	}
-	secret.Views = vs
 	return secret
 }
 

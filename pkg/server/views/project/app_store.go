@@ -25,14 +25,13 @@ func NewAppStore(config *config.ServerConfig) *AppStore {
 		AppStoreService: config.ServiceFactory.Project.AppStoreService,
 		models:          config.Models,
 	}
-	vs := []*views.View{
+	app.Views = []*views.View{
 		views.NewView(http.MethodGet, "", app.list),
 		views.NewView(http.MethodGet, "/:id", app.get),
 		views.NewView(http.MethodPost, "/resolve", app.resolveChart),
 		views.NewView(http.MethodPost, "/create", app.create),
 		views.NewView(http.MethodDelete, "/:appId/:versionId", app.deleteVersion),
 	}
-	app.Views = vs
 	return app
 }
 

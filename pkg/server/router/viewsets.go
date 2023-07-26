@@ -7,6 +7,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/server/views/pipeline"
 	"github.com/kubespace/kubespace/pkg/server/views/project"
 	"github.com/kubespace/kubespace/pkg/server/views/settings"
+	"github.com/kubespace/kubespace/pkg/server/views/spacelet"
 	"github.com/kubespace/kubespace/pkg/server/views/user"
 )
 
@@ -29,6 +30,7 @@ func NewViewSets(conf *config.ServerConfig) *ViewSets {
 	pipelineViews := pipeline.NewPipeline(conf)
 	pipelineRun := pipeline.NewPipelineRun(conf)
 	pipelineResource := pipeline.NewPipelineResource(conf)
+	spaceletViews := spacelet.NewSpaceletViews(conf)
 
 	// 配置
 	settingsSecret := settings.NewSettingsSecret(models)
@@ -51,6 +53,8 @@ func NewViewSets(conf *config.ServerConfig) *ViewSets {
 		"pipeline/pipeline":  pipelineViews.Views,
 		"pipeline/build":     pipelineRun.Views,
 		"pipeline/resource":  pipelineResource.Views,
+
+		"spacelet": spaceletViews.Views,
 
 		"settings/secret":         settingsSecret.Views,
 		"settings/image_registry": imageRegistry.Views,

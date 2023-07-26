@@ -19,8 +19,8 @@ import (
 type Pipeline struct {
 	Views              []*views.View
 	models             *model.Models
-	pipelineService    *pipelineservice.ServicePipeline
-	pipelineRunService *pipelineservice.ServicePipelineRun
+	pipelineService    *pipelineservice.PipelineService
+	pipelineRunService *pipelineservice.PipelineRunService
 	informerFactory    informer.Factory
 }
 
@@ -31,7 +31,7 @@ func NewPipeline(config *config.ServerConfig) *Pipeline {
 		pipelineRunService: config.ServiceFactory.Pipeline.PipelineRunService,
 		informerFactory:    config.InformerFactory,
 	}
-	vs := []*views.View{
+	pw.Views = []*views.View{
 		views.NewView(http.MethodGet, "", pw.list),
 		views.NewView(http.MethodGet, "/:pipelineId", pw.get),
 		views.NewView(http.MethodGet, "/:pipelineId/sse", pw.watch),
@@ -40,7 +40,6 @@ func NewPipeline(config *config.ServerConfig) *Pipeline {
 		views.NewView(http.MethodDelete, "/:pipelineId", pw.delete),
 		views.NewView(http.MethodGet, "/:pipelineId/list_repo_branch", pw.listRepoBranch),
 	}
-	pw.Views = vs
 	return pw
 }
 

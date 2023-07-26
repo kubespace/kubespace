@@ -5,6 +5,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/service/cluster"
 	"github.com/kubespace/kubespace/pkg/service/pipeline"
 	"github.com/kubespace/kubespace/pkg/service/project"
+	"github.com/kubespace/kubespace/pkg/service/spacelet"
 )
 
 type Config struct {
@@ -42,22 +43,35 @@ func NewServiceFactory(config *Config) *Factory {
 			WorkspaceService:   pipeline.NewWorkspaceService(config.models),
 			PipelineService:    pipeline.NewPipelineService(config.models),
 			PipelineRunService: pipeline.NewPipelineRunService(config.models),
+			SpaceletService:    spacelet.NewSpaceletService(config.models),
 		},
 	}
 }
 
+// ClusterFactory 集群相关service
 type ClusterFactory struct {
+	// 集群资源操作客户端
 	KubeClient *cluster.KubeClient
 }
 
+// ProjectFactory 工作空间相关service
 type ProjectFactory struct {
-	ProjectService  *project.ProjectService
-	AppService      *project.AppService
+	// 工作空间
+	ProjectService *project.ProjectService
+	// 应用
+	AppService *project.AppService
+	// 应用商店
 	AppStoreService *project.AppStoreService
 }
 
+// PipelineFactory 流水线相关service
 type PipelineFactory struct {
-	WorkspaceService   *pipeline.WorkspaceService
-	PipelineService    *pipeline.ServicePipeline
-	PipelineRunService *pipeline.ServicePipelineRun
+	// 流水线空间
+	WorkspaceService *pipeline.WorkspaceService
+	// 流水线
+	PipelineService *pipeline.PipelineService
+	// 流水线构建
+	PipelineRunService *pipeline.PipelineRunService
+	// spacelet
+	SpaceletService *spacelet.SpaceletService
 }

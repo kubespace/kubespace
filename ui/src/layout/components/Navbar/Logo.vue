@@ -3,7 +3,8 @@
     <transition name="navbarLogoFade">
       <router-link key="logo" class="navbar-logo-link" to="/">
         <!-- <img v-if="logo" :src="logo" class="navbar-logo"> -->
-        <h1 class="navbar-title"><span style="color:#409eff">Kube</span>Space</h1>
+        <svg-icon icon-class="spacelet"  class="navbarLogoIcon" style="width: 1.5em; height: 1.5em; vertical-align: -0.42em;"/>
+        <h1 class="navbar-title"><span style="color:#409eff">Kube</span><span>Space</span></h1>
       </router-link>
     </transition>
   </div>
@@ -30,6 +31,17 @@ export default {
   opacity: 0;
 }
 
+.navbarLogoIcon {
+  width: 1.5em; 
+  height: 1.5em; 
+  display: inline-block; 
+  margin-left: 25px; 
+  vertical-align: -0.42em;
+  // background-image: linear-gradient(to right, #eea2a2 0%, #bbc1bf 19%, #57c6e1 42%, #b49fda 79%, #7ac5d8 100%);
+}
+
+
+
 .navbar-logo-container {
   display: inline-block;
   height: 50px;
@@ -42,11 +54,12 @@ export default {
     height: 100%;
 
     & .navbar-title {
-      margin: 0px 0px 0px 25px;
+      margin: 0px 0px 0px 5px;
       font-weight: 500;
       font-size: 20px;
       font-family: Helvetica Neue, Arial, Helvetica, sans-serif;
       vertical-align: top;
+      display: inline-block;
     }
   }
 

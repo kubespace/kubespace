@@ -19,7 +19,7 @@ type PipelineTriggerController struct {
 	pipelineCodeCacheInformer    informer.Informer
 	// 流水线构建时对其进行加锁，保证只有一个进行处理
 	lock               lock.Lock
-	pipelineRunService *pipeline.ServicePipelineRun
+	pipelineRunService *pipeline.PipelineRunService
 }
 
 func NewPipelineTriggerController(config *controller.Config) *PipelineTriggerController {

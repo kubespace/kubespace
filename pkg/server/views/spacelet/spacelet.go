@@ -6,8 +6,10 @@ import (
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/config"
+	"github.com/kubespace/kubespace/pkg/server/views"
 	"github.com/kubespace/kubespace/pkg/service/pipeline"
 	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
+	spaceletservice "github.com/kubespace/kubespace/pkg/service/spacelet"
 	"github.com/kubespace/kubespace/pkg/spacelet"
 	"github.com/kubespace/kubespace/pkg/third/httpclient"
 	"github.com/kubespace/kubespace/pkg/utils"
@@ -17,15 +19,26 @@ import (
 )
 
 type SpaceletViews struct {
+	Views              []*views.View
 	models             *model.Models
-	pipelineRunService *pipeline.ServicePipelineRun
+	pipelineRunService *pipeline.PipelineRunService
+	spaceletService    *spaceletservice.SpaceletService
 }
 
 func NewSpaceletViews(config *config.ServerConfig) *SpaceletViews {
-	return &SpaceletViews{
+	s := &SpaceletViews{
 		models:             config.Models,
 		pipelineRunService: config.ServiceFactory.Pipeline.PipelineRunService,
+		spaceletService:    config.ServiceFactory.Pipeline.SpaceletService,
 	}
+	s.Views = []*views.View{
+		views.NewView(http.MethodGet, "", s.list),
+	}
+	return s
+}
+
+func (s *SpaceletViews) list(c *views.Context) *utils.Response {
+	return s.spaceletService.List()
 }
 
 // Register spacelet调用该接口进行注册入库
