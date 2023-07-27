@@ -15,6 +15,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -33,12 +34,21 @@ func NewSpaceletViews(config *config.ServerConfig) *SpaceletViews {
 	}
 	s.Views = []*views.View{
 		views.NewView(http.MethodGet, "", s.list),
+		views.NewView(http.MethodDelete, "/:id", s.delete),
 	}
 	return s
 }
 
 func (s *SpaceletViews) list(c *views.Context) *utils.Response {
 	return s.spaceletService.List()
+}
+
+func (s *SpaceletViews) delete(c *views.Context) *utils.Response {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	return s.spaceletService.Delete(uint(id))
 }
 
 // Register spacelet调用该接口进行注册入库

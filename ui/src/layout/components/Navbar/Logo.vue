@@ -3,7 +3,7 @@
     <transition name="navbarLogoFade">
       <router-link key="logo" class="navbar-logo-link" to="/">
         <!-- <img v-if="logo" :src="logo" class="navbar-logo"> -->
-        <svg-icon icon-class="spacelet"  class="navbarLogoIcon" style="width: 1.5em; height: 1.5em; vertical-align: -0.42em;"/>
+        <svg-icon icon-class="spacelet"  class="navbarLogoIcon" style="width: 1.5em; height: 1.5em; vertical-align: -0.44em;"/>
         <h1 class="navbar-title"><span style="color:#409eff">Kube</span><span>Space</span></h1>
       </router-link>
     </transition>

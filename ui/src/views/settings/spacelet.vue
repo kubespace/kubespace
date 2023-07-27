@@ -29,16 +29,17 @@
             {{ $dateFormat(scope.row.update_time) }}
           </template>
         </el-table-column>
-        <!-- <el-table-column label="操作" width="120">
+        <el-table-column label="操作" width="120">
           <template slot-scope="scope">
             <div class="tableOperate">
-              <el-link :disabled="!$editorRole()" :underline="false" type="primary" style="margin-right: 15px;"  @click="updateSecretFormDialog(scope.row)">编辑</el-link>
-              <el-link :disabled="!$editorRole()" :underline="false" type="danger" @click="handleDeleteSecret(scope.row.id, scope.row.name)">删除</el-link>
+              <!-- <el-link :disabled="!$editorRole()" :underline="false" type="primary" style="margin-right: 15px;"  @click="updateSecretFormDialog(scope.row)">编辑</el-link> -->
+              <el-link v-if="scope.row.status=='offline'" :disabled="!$editorRole()" :underline="false" type="danger" 
+                @click="handleDeleteSpacelet(scope.row.id, scope.row.hostname)">删除</el-link>
             </div>
           </template>
-        </el-table-column> -->
+        </el-table-column>
       </el-table>
-      <el-dialog title="添加Spacelet节点" :visible.sync="createDialogVisible" :destroy-on-close="true" width="60%">
+      <el-dialog title="添加Spacelet节点" :visible.sync="createDialogVisible" width="60%" @close="createDialogVisible=false;">
         <div style="margin-bottom: 15px;">
           <div>
             <span>Spacelet节点是用来执行流水线构建任务的， 如代码编译、发布等。通过添加Spacelet节点可以降低每个节点的负载，同时能够并发处理更多的构建任务。</span>
@@ -53,10 +54,21 @@
                 # helm upgrade --set spacelet.replicaCount=&lt;num&gt; -n kubespace kubespace kubespace/kubespace
               </p>
               <p>
-                如上，通过升级KubeSpace，并设置spacelet.replicaCount参数为&lt;num&gt;，该值默认为1，&lt;num&gt;值不能超过当前集群的节点数。
+                如上，通过升级KubeSpace，并设置 spacelet.replicaCount 参数为&lt;num&gt;，该值默认为1，&lt;num&gt;值不能超过当前集群的节点数。
+              </p>
+              <p>
+                同时，也可以通过 spacelet.nodeSelector 设置节点调度策略，将spacelet调度到相应节点上。
               </p>
             </el-tab-pane>
-            <el-tab-pane label="物理节点">配置管理</el-tab-pane>
+            <el-tab-pane label="物理节点">
+              <div>Spacelet也可以单独部署在物理服务器上，登陆到机器，执行如下命令：</div>
+              <p style="background-color: #fafafa; padding: 15px;" class="add-spacelt-p">
+                # curl -sk {{ locationAddr }}/api/v1/spacelet/install.sh | sh -x
+              </p>
+              <p>
+                *注意：请将上述访问地址「{{this.locationAddr}}」更改为机器可以访问的地址。
+              </p>
+            </el-tab-pane>
           </el-tabs>
         </div>
       </el-dialog>
@@ -65,7 +77,7 @@
 </template>
 <script>
 import { Clusterbar } from "@/views/components";
-import { listSpacelet } from "@/api/spacelet/spacelet";
+import { listSpacelet, deleteSpacelet } from "@/api/spacelet/spacelet";
 import { Message } from "element-ui";
 
 export default {
@@ -86,6 +98,7 @@ export default {
         offline: "已下线"
       },
       createDialogVisible: false,
+      locationAddr: window.location.origin,
     };
   },
   created() {
@@ -118,6 +131,28 @@ export default {
     },
     openCreateDialog() {
       this.createDialogVisible = true;
+    },
+    handleDeleteSpacelet(id, name) {
+      if(!id) {
+        Message.error("获取id参数异常，请刷新重试");
+        return
+      }
+      this.$confirm(`请确认是否删除「${name}」此Spacelet节点?`, '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        this.loading = true
+        deleteSpacelet(id).then(() => {
+          this.loading = false
+          Message.success("删除Spacelet节点成功")
+          this.fetchSpacelets()
+        }).catch((err) => {
+          console.log(err)
+          this.loading = false
+        });
+      }).catch(() => {       
+      });
     }
   },
 };

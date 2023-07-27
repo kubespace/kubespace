@@ -39,17 +39,23 @@ func (s SpaceletJob) getSpaceletClient(jobId uint) (spacelet.Client, error) {
 		return nil, err
 	}
 	var sp *types.Spacelet
-	if job.SpaceletId == 0 {
+	if job.SpaceletId != 0 {
+		oldSp, err := s.models.SpaceletManager.Get(job.SpaceletId);
+		if err != nil {
+			return nil, err
+		}
+		// 如果原先分配的spacelet节点已下线，则重新分配一个
+		if oldSp.Status == types.SpaceletStatusOnline {
+			sp = oldSp
+		}
+	}
+	if sp == nil {
 		// 分配一个执行任务数最少的spacelet节点
 		if sp, err = s.chooseSpacelet(); err != nil {
 			return nil, err
 		}
 		// 更新jobRun spaceletId
 		if err = s.models.PipelineRunManager.UpdateJobRun(jobId, &types.PipelineRunJob{SpaceletId: sp.ID}); err != nil {
-			return nil, err
-		}
-	} else {
-		if sp, err = s.models.SpaceletManager.Get(job.SpaceletId); err != nil {
 			return nil, err
 		}
 	}

@@ -159,3 +159,16 @@ func GetImageName(img string) string {
 	}
 	return name
 }
+
+func RequestHost(r *http.Request) (host string) {
+	switch {
+	case r.Header.Get("X-Host") != "":
+		return r.Header.Get("X-Host")
+	case r.Host != "":
+		return r.Host
+	case r.URL.Host != "":
+		return r.URL.Host
+	default:
+		return r.Host
+	}
+}

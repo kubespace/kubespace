@@ -6,3 +6,10 @@ export function listSpacelet() {
     method: 'get',
   })
 }
+
+export function deleteSpacelet(id) {
+  return request({
+    url: `/spacelet/${id}`,
+    method: 'delete',
+  })
+}

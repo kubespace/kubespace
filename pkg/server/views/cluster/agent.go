@@ -11,6 +11,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/config"
+	"github.com/kubespace/kubespace/pkg/utils"
 	"k8s.io/klog/v2"
 	"net/http"
 )
@@ -46,7 +47,7 @@ func NewAgentViews(conf *config.ServerConfig) *AgentViews {
 
 func (a *AgentViews) AgentYaml(c *gin.Context) {
 	token := c.Param("token")
-	serverUrl := resolveHost(c.Request)
+	serverUrl := utils.RequestHost(c.Request)
 	agentYaml := fmt.Sprintf(clusterAgentYaml, a.AgentRepository, a.AgentVersion, token, serverUrl)
 	c.String(200, agentYaml)
 }

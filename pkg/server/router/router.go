@@ -70,9 +70,13 @@ func NewRouter(conf *config.ServerConfig) (*Router, error) {
 
 	// spacelet注册接口
 	spaceletView := spacelet.NewSpaceletViews(conf)
+	apiGroup.GET("/spacelet/install.sh", spaceletView.InstallSpacelet)
 	apiGroup.POST("/spacelet/register", spaceletView.Register)
 	apiGroup.POST("/spacelet/pipeline/callback", spaceletView.PipelineJobCallback)
 	apiGroup.POST("/spacelet/pipeline/add_release", spaceletView.PipelineAddReleaseVersion)
+
+	// 静态资源，包括spacelet二进制
+	apiGroup.StaticFS("/assets", gin.Dir("./assets", true))
 	return &Router{
 		Engine: engine,
 	}, nil
