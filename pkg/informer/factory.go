@@ -4,15 +4,19 @@ import (
 	"github.com/kubespace/kubespace/pkg/informer/listwatcher/cluster"
 	"github.com/kubespace/kubespace/pkg/informer/listwatcher/config"
 	"github.com/kubespace/kubespace/pkg/informer/listwatcher/pipeline"
+	"github.com/kubespace/kubespace/pkg/informer/listwatcher/spacelet"
 )
 
 type Factory interface {
 	ClusterAgentInformer(token string) Informer
+
 	PipelineRunInformer(cond *pipeline.PipelineRunWatchCondition) Informer
 	PipelineRunJobInformer(cond *pipeline.PipelineRunJobWatchCondition) Informer
 	PipelineTriggerInformer(cond *pipeline.PipelineTriggerWatchCondition) Informer
 	PipelineTriggerEventInformer(cond *pipeline.PipelineTriggerEventWatchCondition) Informer
 	PipelineCodeCacheInformer(cond *pipeline.PipelineCodeCacheWatchCondition) Informer
+
+	SpaceletInformer(cond *spacelet.SpaceletWatchCondition) Informer
 }
 
 type informerFactory struct {
@@ -48,4 +52,8 @@ func (s *informerFactory) PipelineTriggerEventInformer(cond *pipeline.PipelineTr
 
 func (s *informerFactory) PipelineCodeCacheInformer(cond *pipeline.PipelineCodeCacheWatchCondition) Informer {
 	return NewInformer(pipeline.NewPipelineCodeCacheListWatcher(s.config, cond))
+}
+
+func (s *informerFactory) SpaceletInformer(cond *spacelet.SpaceletWatchCondition) Informer {
+	return NewInformer(spacelet.NewSpaceletListWatcher(s.config, cond))
 }

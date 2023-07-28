@@ -5,6 +5,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/controller"
 	"github.com/kubespace/kubespace/pkg/controller/pipeline_run"
 	"github.com/kubespace/kubespace/pkg/controller/pipeline_trigger"
+	"github.com/kubespace/kubespace/pkg/controller/spacelet"
 	"github.com/kubespace/kubespace/pkg/core/db"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"k8s.io/klog/v2"
@@ -54,6 +55,9 @@ func main() {
 	// 流水线自动触发controller
 	pipelineTriggerController := pipeline_trigger.NewPipelineTriggerController(controllerConfig)
 	pipelineTriggerController.Run(stopCh)
+
+	spaceletController := spacelet.NewSpaceletController(controllerConfig)
+	spaceletController.Run(stopCh)
 
 	<-stopCh
 }

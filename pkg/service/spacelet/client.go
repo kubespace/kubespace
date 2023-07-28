@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/model/types"
+	"github.com/kubespace/kubespace/pkg/spacelet"
 	"github.com/kubespace/kubespace/pkg/spacelet/pipeline_job"
 	"github.com/kubespace/kubespace/pkg/third/httpclient"
 	"github.com/kubespace/kubespace/pkg/utils"
@@ -15,6 +16,8 @@ type Client interface {
 	PipelineJobStatus(params *pipeline_job.JobStatusParams) (*pipeline_job.StatusLog, error)
 	PipelineJobCleanup(params *pipeline_job.JobCleanParams) error
 	PipelineJobCancel(params *pipeline_job.JobCancelParams) error
+
+	Exec(params *spacelet.ExecRequest) (*spacelet.ExecResponse, error)
 }
 
 func NewClient(spacelet *types.Spacelet) (Client, error) {
@@ -95,4 +98,22 @@ func (c *client) PipelineJobCancel(params *pipeline_job.JobCancelParams) error {
 		return errors.New(resp.Msg)
 	}
 	return nil
+}
+
+func (c *client) Exec(req *spacelet.ExecRequest) (*spacelet.ExecResponse, error) {
+	var resp utils.Response
+	options := httpclient.RequestOptions{}
+	options.WithHeader("token", c.spacelet.Token)
+	_, err := c.httpclient.Post("/v1/exec", req, &resp, options)
+	if err != nil {
+		return nil, err
+	}
+	if !resp.IsSuccess() {
+		return nil, errors.New(resp.Msg)
+	}
+	var execResp spacelet.ExecResponse
+	if err = utils.ConvertTypeByJson(resp.Data, &execResp); err != nil {
+		return nil, err
+	}
+	return &execResp, nil
 }

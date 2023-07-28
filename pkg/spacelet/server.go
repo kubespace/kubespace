@@ -28,6 +28,8 @@ func NewServer(config *Config) (*Server, error) {
 	authGroup := engine.Group("/v1")
 	authGroup.Use(s.AuthMiddleware())
 
+	authGroup.POST("/exec", s.Exec)
+
 	jobExecutor := pipeline_job.NewJobExecutor(config.DataDir, config.Client)
 	authGroup.POST("/pipeline_job/execute", jobExecutor.Execute)
 	authGroup.GET("/pipeline_job/status", jobExecutor.Status)
