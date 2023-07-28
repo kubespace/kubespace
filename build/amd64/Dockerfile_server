@@ -4,6 +4,6 @@ FROM $BASEIMAGE
 COPY bin/amd64/kubespace-server /
 COPY assets /assets
 COPY apps /apps
-COPY ui/dist/favicon.svg /favicon.svg
+COPY ui/dist/favicon.png /favicon.png
 
 CMD ["/kubespace-server"]

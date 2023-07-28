@@ -35,7 +35,7 @@ func NewRouter(conf *config.ServerConfig) (*Router, error) {
 	t, _ := template.New("").New("/index.html").Parse(string(indexHtml))
 	engine.SetHTMLTemplate(t)
 	engine.StaticFS("/static", Assets)
-	engine.StaticFile("/favicon.svg", "./favicon.svg")
+	engine.StaticFile("/favicon.png", "./favicon.png")
 
 	engine.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "/index.html", nil)
