@@ -126,6 +126,8 @@ func (b *SpaceletJobRun) Execute(jobId uint, pluginKey string, params map[string
 
 func (b *SpaceletJobRun) execute(executorF plugins.ExecutorFactory, params *plugins.ExecutorParams, jobStatus *JobStatus) {
 	// 执行任务
+	hostname, _ := os.Hostname()
+	params.Logger.Log("current node: %s", hostname)
 	result, err := b.jobRunner.Execute(executorF, params)
 	if errors.Is(err, types.JobAlreadyRunningError) {
 		return

@@ -5,7 +5,6 @@ import (
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/service/pipeline/job_runner/plugins"
 	"k8s.io/klog/v2"
-	"os"
 	"runtime"
 	"sync"
 )
@@ -56,9 +55,6 @@ func (j *jobRunner) delJob(jobId uint) bool {
 func (j *jobRunner) Execute(executorF plugins.ExecutorFactory, params *plugins.ExecutorParams) (res interface{}, err error) {
 	// 退出时关闭日志
 	defer params.Logger.Close()
-
-	hostname, _ := os.Hostname()
-	params.Logger.Log("current node: %s", hostname)
 
 	if params.JobId == 0 {
 		return nil, fmt.Errorf("params error: job id is empty")
