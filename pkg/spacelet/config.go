@@ -5,6 +5,7 @@ import (
 	"github.com/google/gopacket/routing"
 	"github.com/kubespace/kubespace/pkg/third/httpclient"
 	"github.com/kubespace/kubespace/pkg/utils"
+	"k8s.io/klog/v2"
 	"net"
 	"net/url"
 	"strings"
@@ -56,17 +57,21 @@ func getSpaceletHostIp(options *Options) string {
 	if err != nil {
 		return ""
 	}
+	klog.Infof("get kubespace server ip: %s", serverIp.String())
 	if serverIp == nil {
 		return ""
 	}
 	router, err := routing.New()
 	if err != nil {
+		klog.Warningf("get spacelet route error: %s", err.Error())
 		return ""
 	}
 	_, _, srcIp, err := router.Route(serverIp)
 	if err != nil {
+		klog.Warningf("get spacelet route src ip error: %s", err.Error())
 		return ""
 	}
+	klog.Infof("get spacelet route src ip: %s", srcIp.String())
 	return srcIp.String()
 }
 

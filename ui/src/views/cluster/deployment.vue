@@ -135,7 +135,7 @@
       </el-form>
       <el-form ref="form" label-position="left" label-width="100px">
         <el-form-item label="期望副本数">
-          <el-input-number size="medium" v-model="update_replicas" :min="1" :max="100"></el-input-number>
+          <el-input-number size="medium" v-model="update_replicas" :min="0" :max="100"></el-input-number>
         </el-form-item>
       </el-form>
       <span slot="footer" class="dialog-footer">
@@ -168,7 +168,7 @@ export default {
         yamlLoading: true,
         cellStyle: {border: 0},
         titleName: ["Deployments"],
-        maxHeight: window.innerHeight - 135,
+        maxHeight: window.innerHeight - this.$contentHeight,
         loading: true,
         originDeployments: [],
         search_ns: [],
@@ -192,7 +192,7 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 135
+        let heightStyle = window.innerHeight - this.$contentHeight
         // console.log(heightStyle)
         that.maxHeight = heightStyle
       })()
