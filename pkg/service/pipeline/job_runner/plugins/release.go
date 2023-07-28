@@ -167,6 +167,17 @@ func (r *releaserExecutor) loginDocker(user string, password string, server stri
 	return cmd.Run()
 }
 
+func (r *releaserExecutor) getReleaseImage(img, version string) string {
+	imgSplit := strings.Split(img, ":")
+	imgName := ""
+	if len(imgSplit) == 1 || (len(imgSplit) == 2 && !strings.Contains(imgSplit[0], "/")) {
+		imgName = img
+	} else {
+		imgName = strings.Join(imgSplit[0:len(imgSplit)-1], ":")
+	}
+	return imgName + ":" + version
+}
+
 func (r *releaserExecutor) tagAndPushImage(image string) error {
 	dockerBuildCmd := fmt.Sprintf("docker pull %s", image)
 	cmd := exec.CommandContext(r.ctx, "bash", "-xc", dockerBuildCmd)
@@ -177,7 +188,7 @@ func (r *releaserExecutor) tagAndPushImage(image string) error {
 		klog.Errorf("pull image error: %v", err)
 		return fmt.Errorf("拉取镜像%s错误：%v", image, err)
 	}
-	newImage := strings.Split(image, ":")[0] + ":" + r.Params.Version
+	newImage := r.getReleaseImage(image, r.Params.Version)
 	cmd = exec.Command("bash", "-xc", "docker tag "+image+" "+newImage)
 	cmd.Stdout = r.Logger
 	cmd.Stderr = r.Logger
