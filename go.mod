@@ -9,7 +9,6 @@ require (
 	github.com/go-redis/redis/v8 v8.11.4
 	github.com/google/go-github/v50 v50.0.0
 	github.com/google/go-querystring v1.1.0
-	github.com/google/gopacket v1.1.19
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/jessevdk/go-assets v0.0.0-20160921144138-4f4301a06e15

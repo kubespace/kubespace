@@ -2,12 +2,12 @@ package spacelet
 
 import (
 	"fmt"
-	"github.com/google/gopacket/routing"
 	"github.com/kubespace/kubespace/pkg/third/httpclient"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"k8s.io/klog/v2"
 	"net"
 	"net/url"
+	"os/exec"
 	"strings"
 )
 
@@ -61,18 +61,13 @@ func getSpaceletHostIp(options *Options) string {
 	if serverIp == nil {
 		return ""
 	}
-	router, err := routing.New()
+	ipCmd := fmt.Sprintf("ip -o route get %s | awk -F ' ' '{print $7}'", serverIp.String())
+	out, err := exec.Command("sh", "-c", ipCmd).Output()
 	if err != nil {
-		klog.Warningf("get spacelet route error: %s", err.Error())
+		klog.Warningf("get spacelet ip route error: %s", err)
 		return ""
 	}
-	_, _, srcIp, err := router.Route(serverIp)
-	if err != nil {
-		klog.Warningf("get spacelet route src ip error: %s", err.Error())
-		return ""
-	}
-	klog.Infof("get spacelet route src ip: %s", srcIp.String())
-	return srcIp.String()
+	return string(out)
 }
 
 func NewConfig(options *Options) (*Config, error) {
