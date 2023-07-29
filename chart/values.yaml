@@ -128,7 +128,16 @@ spacelet:
 
   nodeSelector: {}
   tolerations: []
-  affinity: {}
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+              - key: kubespace-app
+                operator: In
+                values:
+                  - kubespace-spacelet
+          topologyKey: "kubernetes.io/hostname"
 
 mysql:
   ## @param architecture MySQL architecture (`standalone` or `replication`)
