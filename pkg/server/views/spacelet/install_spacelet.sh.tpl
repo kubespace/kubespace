@@ -11,6 +11,11 @@ readonly SPACELET_PORT={{ .Port }}
 readonly SPACELET_DATADIR={{ .DataDir }}
 readonly SPACELET_HOSTIP={{ .HostIp }}
 
+HostIpVar=
+if [ ${SPACELET_HOSTIP} != '' ]; then
+  HostIpVar="--host-ip ${SPACELET_HOSTIP}"
+fi
+
 EXIT_CODE=0
 
 # 检查端口是否被占用
@@ -42,7 +47,7 @@ Group=root
 # Limit the number of open files to avoid exhaustion
 LimitNOFILE=4096
 
-ExecStart=/usr/local/bin/spacelet --server-url ${HTTP_SERVER} --port ${SPACELET_PORT} --data-dir ${SPACELET_DATADIR} --host-ip ${SPACELET_HOSTIP}
+ExecStart=/usr/local/bin/spacelet --server-url ${HTTP_SERVER} --port ${SPACELET_PORT} --data-dir ${SPACELET_DATADIR} ${HostIpVar}
 # When kill the service timeout, it will be kill -9
 # TimeoutSec = TimeoutStartSec and TimeoutStopSec
 TimeoutSec=10

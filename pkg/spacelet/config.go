@@ -61,13 +61,20 @@ func getSpaceletHostIp(options *Options) string {
 	if serverIp == nil {
 		return ""
 	}
-	ipCmd := fmt.Sprintf("ip -o route get %s | awk -F ' ' '{print $7}'", serverIp.String())
+	ipCmd := fmt.Sprintf("ip -o route get %s", serverIp.String())
 	out, err := exec.Command("sh", "-c", ipCmd).Output()
 	if err != nil {
 		klog.Warningf("get spacelet ip route error: %s", err)
 		return ""
 	}
-	hostIp := strings.TrimSpace(string(out))
+	ipout := string(out)
+	hostIp := ""
+	if strings.Contains(ipout, "via") {
+		hostIp = strings.Split(ipout, " ")[6]
+	} else {
+		hostIp = strings.Split(ipout, " ")[4]
+	}
+	hostIp = strings.TrimSpace(hostIp)
 	klog.Infof("get spacelet host ip: %s", hostIp)
 	return hostIp
 }
