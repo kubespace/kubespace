@@ -242,12 +242,26 @@ export default {
         resource: this.resource,
         namespace
       }
-      delResource(cluster, ResType.CR, namespace, name, params).then(() => {
-        Message.success("删除成功")
-        this.fetchData()
-      }).catch(() => {
-        // console.log(e)
-      })
+      // delResource(cluster, ResType.CR, namespace, name, params).then(() => {
+      //   Message.success("删除成功")
+      //   this.fetchData()
+      // }).catch(() => {
+      //   // console.log(e)
+      // })
+
+      this.$confirm(`请确认是否删除 ${namespace}/${name} ?`, '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        delResource(this.cluster, ResType.CR, namespace, name, params).then(() => {
+          Message.success("删除成功")
+          this.fetchData()
+        }).catch((err) => {
+          console.log(err)
+        });
+      }).catch(() => {       
+      });
     },
   }
 }

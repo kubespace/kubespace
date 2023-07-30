@@ -224,23 +224,23 @@ export default {
       })
     },
     deleteServiceAccounts: function(serviceaccounts) {
-      const cluster = this.$store.state.cluster
-      if (!cluster) {
-        Message.error("获取集群参数异常，请刷新重试")
-        return
+      let cs = ''
+      for(let c of serviceaccounts) {
+        cs += `${c.namespace}/${c.name}, `
       }
-      if ( serviceaccounts.length <= 0 ){
-        Message.error("请选择要删除的ServiceAccounts")
-        return
-      }
-      let params = {
-        resources: serviceaccounts
-      }
-      delResource(cluster, ResType.ServiceAccount, params).then(() => {
-        Message.success("删除成功")
-      }).catch(() => {
-        // console.log(e)
-      })
+      cs = cs.substr(0, cs.length - 2)
+      this.$confirm(`请确认是否删除「${cs}」ServiceAccount?`, '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        delResource(this.cluster, ResType.ServiceAccount, {resources: serviceaccounts}).then(() => {
+          Message.success("删除成功")
+        }).catch((err) => {
+          console.log(err)
+        });
+      }).catch(() => {       
+      });
     },
     updateServiceAccount: function() {
       const cluster = this.$store.state.cluster

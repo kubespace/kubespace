@@ -309,23 +309,23 @@ export default {
       })
     },
     deleteStatefulSets: function(statefulsets) {
-      const cluster = this.$store.state.cluster
-      if (!cluster) {
-        Message.error("获取集群参数异常，请刷新重试")
-        return
+      let cs = ''
+      for(let c of statefulsets) {
+        cs += `${c.namespace}/${c.name}, `
       }
-      if ( statefulsets.length <= 0 ){
-        Message.error("请选择要删除的StatefulSets")
-        return
-      }
-      let params = {
-        resources: statefulsets
-      }
-      delResource(cluster, ResType.Statefulset, params).then(() => {
-        Message.success("删除成功")
-      }).catch(() => {
-        // console.log(e)
-      })
+      cs = cs.substr(0, cs.length - 2)
+      this.$confirm(`请确认是否删除「${cs}」StatefulSets?`, '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        delResource(this.cluster, ResType.Statefulset, {resources: statefulsets}).then(() => {
+          Message.success("删除成功")
+        }).catch((err) => {
+          console.log(err)
+        });
+      }).catch(() => {       
+      });
     },
     updateStatefulSet: function() {
       const cluster = this.$store.state.cluster

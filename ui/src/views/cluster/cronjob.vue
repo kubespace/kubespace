@@ -270,23 +270,23 @@ export default {
       })
     },
     deleteCronJobs: function(cronjobs) {
-      const cluster = this.$store.state.cluster
-      if (!cluster) {
-        Message.error("获取集群参数异常，请刷新重试")
-        return
+      let cs = ''
+      for(let c of cronjobs) {
+        cs += `${c.namespace}/${c.name}, `
       }
-      if ( cronjobs.length <= 0 ){
-        Message.error("请选择要删除的CronJobs")
-        return
-      }
-      let params = {
-        resources: cronjobs
-      }
-      delResource(cluster, ResType.CronJob, params).then(() => {
-        Message.success("删除成功")
-      }).catch(() => {
-        // console.log(e)
-      })
+      cs = cs.substr(0, cs.length - 2)
+      this.$confirm(`请确认是否删除「${cs}」CronJob?`, '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        delResource(this.cluster, ResType.CronJob, {resources: cronjobs}).then(() => {
+          Message.success("删除成功")
+        }).catch((err) => {
+          console.log(err)
+        });
+      }).catch(() => {       
+      });
     },
     updateCronJob: function() {
       const cluster = this.$store.state.cluster

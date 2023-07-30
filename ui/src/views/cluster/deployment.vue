@@ -308,23 +308,42 @@ export default {
       })
     },
     deleteDeployments: function(deployments) {
-      const cluster = this.$store.state.cluster
-      if (!cluster) {
-        Message.error("获取集群参数异常，请刷新重试")
-        return
+      // const cluster = this.$store.state.cluster
+      // if (!cluster) {
+      //   Message.error("获取集群参数异常，请刷新重试")
+      //   return
+      // }
+      // if ( deployments.length <= 0 ){
+      //   Message.error("请选择要删除的Deployment")
+      //   return
+      // }
+      // let params = {
+      //   resources: deployments
+      // }
+      // delResource(cluster, ResType.Deployment, params).then(() => {
+      //   Message.success("删除成功")
+      // }).catch(() => {
+      //   // console.log(e)
+      // })
+
+
+      let cs = ''
+      for(let c of deployments) {
+        cs += `${c.namespace}/${c.name}, `
       }
-      if ( deployments.length <= 0 ){
-        Message.error("请选择要删除的Deployment")
-        return
-      }
-      let params = {
-        resources: deployments
-      }
-      delResource(cluster, ResType.Deployment, params).then(() => {
-        Message.success("删除成功")
-      }).catch(() => {
-        // console.log(e)
-      })
+      cs = cs.substr(0, cs.length - 2)
+      this.$confirm(`请确认是否删除「${cs}」Deployments?`, '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        delResource(this.cluster, ResType.Deployment, {resources: deployments}).then(() => {
+          Message.success("删除成功")
+        }).catch((err) => {
+          console.log(err)
+        });
+      }).catch(() => {       
+      });
     },
     updateDeployment: function() {
       const cluster = this.$store.state.cluster

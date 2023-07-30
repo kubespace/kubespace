@@ -103,6 +103,9 @@ export default {
       this.topSelectorLoading = true;
       listCluster().then(response => {
         var clusters = response.data ? response.data : []
+        clusters.sort(function(a,b) {
+          return a.status.localeCompare(b.status)
+        })
         var cur_cluster = this.$route.params.clusterId
         for (let cluster of clusters) {
           let x = {'value': cluster.name, 'label': cluster.name1}

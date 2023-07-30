@@ -201,50 +201,7 @@ export default {
       let params = {
         resources: nodes
       }
-      // deleteNodes(cluster, params).then(() => {
-      //   Message.success("删除成功")
-      // }).catch(() => {
-      //   // console.log(e)
-      // })
     },
-    // updateNode: function() {
-    //   const cluster = this.$store.state.cluster
-    //   if (!cluster) {
-    //     Message.error("获取集群参数异常，请刷新重试")
-    //     return
-    //   }
-    //   if (!this.yamlNamespace) {
-    //     Message.error("获取命名空间参数异常，请刷新重试")
-    //     return
-    //   }
-    //   if (!this.yamlName) {
-    //     Message.error("获取Node参数异常，请刷新重试")
-    //     return
-    //   }
-    //   console.log(this.yamlValue)
-    //   updateNode(cluster, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
-    //     Message.success("更新成功")
-    //   }).catch(() => {
-    //     // console.log(e) 
-    //   })
-    // },
-    // _delNodesFunc: function() {
-    //   if (this.delNodes.length > 0){
-    //     let delNodes = []
-    //     for (var p of this.delNodes) {
-    //       delNodes.push({namespace: p.namespace, name: p.name})
-    //     }
-    //     this.deleteNodes(delNodes)
-    //   }
-    // },
-    // handleSelectionChange(val) {
-    //   this.delNodes = val;
-    //   if (val.length > 0){
-    //     this.delFunc = this._delNodesFunc
-    //   } else {
-    //     this.delFunc = undefined
-    //   }
-    // }
   }
 }
 </script>

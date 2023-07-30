@@ -55,7 +55,7 @@
       @close="closeImportAppDialog" :destroy-on-close="true" :close-on-click-modal="false" v-loading="dialogLoading">
       <div class="dialogContent" style="">
         <el-form :model="form" :rules="rules" ref="form" label-position="left" label-width="105px">
-          <el-form-item label="charts包" prop="" required>
+          <el-form-item label="Charts包" prop="" required>
             <el-upload
               class="appStoreUpload"
               drag
@@ -66,7 +66,7 @@
               :on-remove="fileRemove"
               action="/api/v1/appstore/resolve">
               <i class="el-icon-upload"></i>
-              <div class="el-upload__text">将charts包文件拖到此处，或<em>点击上传</em></div>
+              <div class="el-upload__text">将Charts包文件拖到此处，或<em>点击上传</em></div>
             </el-upload>
             <span style="line-height: 20px;" v-if="resolveErrMsg">{{ resolveErrMsg }}</span>
           </el-form-item>

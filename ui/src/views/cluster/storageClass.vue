@@ -212,24 +212,23 @@ export default {
       })
     },
     deleteScs: function(scs) {
-      const cluster = this.$store.state.cluster
-      if (!cluster) {
-        Message.error("获取集群参数异常，请刷新重试")
-        return
+      let cs = ''
+      for(let c of scs) {
+        cs += `${c.name}, `
       }
-      if ( scs.length <= 0 ){
-        Message.error("请选择要删除的存储类")
-        return
-      }
-      let params = {
-        resources: scs
-      }
-      delResource(cluster, ResType.StorageClass, params).then(() => {
-        Message.success("删除成功")
-        this.fetchData()
-      }).catch(() => {
-        // console.log(e)
-      })
+      cs = cs.substr(0, cs.length - 2)
+      this.$confirm(`请确认是否删除「${cs}」StorageClass?`, '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        delResource(this.cluster, ResType.StorageClass, {resources: scs}).then(() => {
+          Message.success("删除成功")
+        }).catch((err) => {
+          console.log(err)
+        });
+      }).catch(() => {       
+      });
     },
     _delScsFunc: function() {
       if (this.delScs.length > 0){

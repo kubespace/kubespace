@@ -49,20 +49,11 @@
                 v-if="scope.row.status=='UnInstall'" @click="openInstallFormDialog(scope.row)">安装</el-link>
               <el-link :disabled="!$editorRole()" :underline="false" type="primary" style="margin-right: 15px;" 
                 v-if="scope.row.status!='UnInstall'" @click="openInstallFormDialog(scope.row, true)">升级</el-link>
+              <el-link :disabled="!$editorRole()" :underline="false" type="danger" style="font-weight: 400"
+                v-if="scope.row.status!='UnInstall'" @click="handleDestroyApp(scope.row.id, scope.row.name)">销毁</el-link>
+              <el-link :disabled="!$editorRole()" :underline="false" type="danger" style="font-weight: 400" v-if="scope.row.status=='UnInstall'"
+                @click="handleDeleteApp(scope.row.id, scope.row.name)">删除</el-link>
               
-              <el-dropdown style="font-size: 13px;">
-                <span class="el-dropdown-link operator-btn" :style="{color: !$editorRole() ? '#a0cfff' : ''}">
-                  更多操作
-                </span>
-                <el-dropdown-menu slot="dropdown">
-                  <el-dropdown-item>
-                    <el-link :disabled="!$editorRole()" :underline="false" type="danger" style="font-weight: 400"
-                      v-if="scope.row.status!='UnInstall'" @click="handleDestroyApp(scope.row.id, scope.row.name)">销毁</el-link>
-                    <el-link :disabled="!$editorRole()" :underline="false" type="danger" style="font-weight: 400" v-if="scope.row.status=='UnInstall'"
-                      @click="handleDeleteApp(scope.row.id, scope.row.name)">删除</el-link>
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </el-dropdown>
             </div>
           </template>
         </el-table-column>
@@ -528,34 +519,16 @@ export default {
 
 <style lang="scss" scoped>
 
-.name-class {
-  cursor: pointer;
-}
-.name-class:hover {
-  color: #409EFF;
-}
-
-.scrollbar-wrapper {
-  overflow-x: hidden !important;
-}
-.el-scrollbar__bar.is-vertical {
-  right: 0px;
-}
-
-.el-scrollbar {
-  height: 100%;
-}
-
-.running-class {
-  color: #67C23A;
-}
-
-.terminate-class {
-  color: #909399;
-}
-
-.waiting-class {
-  color: #E6A23C;
+.status-class {
+  height: 13px; 
+  width: 13px; 
+  border: 1px solid; 
+  border-color:rgb(121, 123, 129); 
+  background-color: rgb(121, 123, 129);  
+  display: inline-block;
+  vertical-align: middle; 
+  border-radius: 25px; 
+  margin: 0px 5px 3px 0px;
 }
 
 </style>

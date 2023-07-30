@@ -4,7 +4,7 @@
       <section class="section-class">
         <div class="center">
           <div style="font-size: 48px; font-weight: 400; margin: 30px 0px 20px;">
-            KubeSp<svg-icon class="icon-class" icon-class="kubespace"/>ce
+            KubeSp<svg-icon class="icon-class" icon-class="cluster"/>ce
           </div>
           <p class="center-content">致力于提升DevOps效能的Kubernetes多集群管理平台</p>
         </div>
@@ -14,6 +14,7 @@
         <div class="login-box">
             <el-row style="margin-bottom: 25px;">
                 <el-col :span="16" :offset="4" align="center">
+                    <svg-icon icon-class="spacelet" style="width: 2em; height: 2em; vertical-align: -0.35em; margin-right: 6px;"/>
                     <span class='login-title'><span style="color: #409eff">Kube</span>Space</span>
                 </el-col>
             </el-row>
@@ -170,7 +171,8 @@ export default {
     text-align: center;
 }
 .icon-class {
-    font-size: 34px;
+    vertical-align: -1px;
+    font-size: 26px;
     animation: loading-rotate 5s linear infinite;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;

@@ -422,7 +422,7 @@ export default {
       search_name: '',
       users: [],
       cellStyle: {border: 0},
-      maxHeight: window.innerHeight - 135,
+      maxHeight: window.innerHeight - this.$contentHeight,
       loading: true,
       originApp: {},
       // pods: [],
@@ -452,7 +452,7 @@ export default {
     const that = this
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 135
+        let heightStyle = window.innerHeight - this.$contentHeight
         that.maxHeight = heightStyle
       })()
     }
@@ -535,6 +535,9 @@ export default {
       this.loading = true
       getApp(this.appId).then((response) => {
         this.originApp = response.data || {};
+        if(this.originApp.release && !this.originApp.release.objects) {
+          this.originApp.release.objects = []
+        }
         this.titleName = ["应用管理", this.originApp.name]
         this.loading = false
       }).catch(() => {
