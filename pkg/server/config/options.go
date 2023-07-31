@@ -15,4 +15,5 @@ type ServerOptions struct {
 	ListWatcherResyncSec int
 	AgentVersion         string
 	AgentRepository      string
+	ReleaseVersion       string
 }

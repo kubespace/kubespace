@@ -22,6 +22,7 @@ var (
 	mysqlDbName     = flag.String("mysql-dbname", utils.LookupEnvOrString("MYSQL_DBNAME", "kubespace"), "mysql db used.")
 	agentVersion    = flag.String("agent-version", utils.LookupEnvOrString("AGENT_VERSION", "latest"), "kubespace agent version.")
 	agentRepository = flag.String("agent-repository", utils.LookupEnvOrString("AGENT_REPOSITORY", "kubespace/kubespace-agent"), "kubespace agent version.")
+	releaseVersion  = flag.String("release-version", utils.LookupEnvOrString("RELEASE_VERSION", ""), "kubespace release version.")
 )
 
 func createServerOptions() *config.ServerOptions {
@@ -39,6 +40,7 @@ func createServerOptions() *config.ServerOptions {
 		MysqlDbName:     *mysqlDbName,
 		AgentVersion:    *agentVersion,
 		AgentRepository: *agentRepository,
+		ReleaseVersion:  *releaseVersion,
 	}
 }
 

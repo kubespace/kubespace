@@ -45,10 +45,28 @@
         <el-button type="primary" @click="changePwd()" size="small">确 定</el-button>
       </span>
     </el-dialog>
+
+    <el-dialog title="关于" :visible.sync="nav.aboutDialog" :close-on-click-modal="false" width="60%" top="55px">
+      <div style="margin-top: -20px;">
+        KubeSpace是一个致力于提升DevOps效能的Kubernetes多集群管理平台。KubeSpace可以兼容不同云厂商的Kubernetes集群，极大的方便了集群的管理工作。
+      </div>
+
+      <p>KubeSpace平台当前包括如下功能：</p>
+      <ul>
+        <li style="margin-bottom: 3px;">集群管理：Kubernetes集群原生资源的管理；</li>
+        <li style="margin-bottom: 3px;">工作空间：以环境（测试、生产等）以及应用为视角的工作空间管理；</li>
+        <li style="margin-bottom: 3px;">流水线：通过多种任务插件支持CICD，快速发布代码并部署到不同的工作空间；</li>
+        <li style="margin-bottom: 3px;">应用商店：内置丰富的中间件（mysql、redis等），以及支持导入发布自定义应用；</li>
+        <li>平台配置：密钥、镜像仓库管理，以及不同模块的权限管理。</li>
+      </ul>
+      <el-divider></el-divider>
+      <p>当前版本：<span style="font-weight: 550;">{{ releaseVersion }}</span></p>
+    </el-dialog>
   </div>
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
 import { Navbar, Sidebar, AppMain} from './components'
 import { Yaml } from '@/views/components'
 import { Message } from 'element-ui'
@@ -68,11 +86,14 @@ export default {
   data() {
     return {
       yamlValue: "",
-      nav: {dialog: false, yamlValue: '', changePwdDialog: false},
+      nav: {dialog: false, yamlValue: '', changePwdDialog: false, aboutDialog: false},
       form: {}
     }
   },
   computed: {
+    ...mapGetters([
+      'releaseVersion',
+    ]),
     hasSideBar() {
       const route = this.$route
       const { meta } = route

@@ -22,6 +22,7 @@ type ServerConfig struct {
 	Models          *model.Models
 	InformerFactory informer.Factory
 	ServiceFactory  *service.Factory
+	ReleaseVersion  string
 }
 
 func NewServerConfig(op *ServerOptions) (*ServerConfig, error) {
@@ -82,5 +83,6 @@ func NewServerConfig(op *ServerOptions) (*ServerConfig, error) {
 		Models:          models,
 		InformerFactory: informerFactory,
 		ServiceFactory:  serviceFactory,
+		ReleaseVersion:  op.ReleaseVersion,
 	}, nil
 }

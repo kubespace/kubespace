@@ -79,6 +79,8 @@ spec:
               value: {{ .Values.mysql.auth.rootPassword }}
             - name: MYSQL_DBNAME
               value: {{ .Values.mysql.auth.database }}
+            - name: RELEASE_VERSION
+              value: {{ $.Chart.AppVersion }}
           {{- if .Values.server.extraEnvs }}
 {{ toYaml .Values.server.extraEnvs | indent 12 }}
           {{- end }}

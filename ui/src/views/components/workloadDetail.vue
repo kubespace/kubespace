@@ -1,6 +1,6 @@
 <template>
   <div>
-    <clusterbar :titleName="titleName" :editFunc="getWorkloadYaml"/>
+    <clusterbar :titleName="titleName" :editFunc="getWorkloadYaml"  :titleLink="[titleLink]"/>
     <div class="dashboard-container workload-container detail-dashboard" :style="{'max-height': maxHeight + 'px', overflow: 'auto'}">
       <div style="padding: 10px 0px 0px;">
         <div>基本信息</div>
@@ -513,6 +513,15 @@ export default {
     if(this.podSSE) this.podSSE.disconnect()
   },
   computed: {
+    titleLink: function() {
+      let linkMap = {
+        'deployment': 'deployments',
+        'statefulset': 'statefulsets',
+        'daemonset': 'daemonsets',
+        'job': "job"
+      }
+      return linkMap[this.kind]
+    },
     titleName: function() {
       let titleMap = {
         'deployment': 'Deployments',

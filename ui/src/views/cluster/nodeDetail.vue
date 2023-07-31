@@ -1,6 +1,6 @@
 <template>
   <div>
-    <clusterbar :titleName="titleName" :editFunc="getNodeYaml" />
+    <clusterbar :titleName="titleName" :editFunc="getNodeYaml" :titleLink="['node']"/>
     <div class="dashboard-container detail-dashboard" v-loading="loading" v-if="node" 
       :style="{'max-height': maxHeight + 'px', overflow: 'auto'}">
       <div style="padding: 10px 0px 0px;">

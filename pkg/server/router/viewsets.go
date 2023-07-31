@@ -33,6 +33,7 @@ func NewViewSets(conf *config.ServerConfig) *ViewSets {
 	spaceletViews := spacelet.NewSpaceletViews(conf)
 
 	// 配置
+	settingsViews := settings.NewSettings(conf)
 	settingsSecret := settings.NewSettingsSecret(models)
 	imageRegistry := settings.NewImageRegistry(models)
 	settingLdap := settings.NewSettingsLdap(models)
@@ -56,6 +57,7 @@ func NewViewSets(conf *config.ServerConfig) *ViewSets {
 
 		"spacelet": spaceletViews.Views,
 
+		"settings":                settingsViews.Views,
 		"settings/secret":         settingsSecret.Views,
 		"settings/image_registry": imageRegistry.Views,
 		"settings/ldap":           settingLdap.Views,

@@ -1,6 +1,6 @@
 <template>
   <div>
-    <clusterbar :titleName="titleName" :delFunc="deleteCronJobs" :editFunc="getCronJobYaml"/>
+    <clusterbar :titleName="titleName" :delFunc="deleteCronJobs" :editFunc="getCronJobYaml" :titleLink="['cronjob']"/>
     <div class="dashboard-container workload-container detail-dashboard" :style="{'max-height': maxHeight + 'px', overflow: 'auto'}">
       <div style="padding: 10px 0px 0px;">
         <div>基本信息</div>

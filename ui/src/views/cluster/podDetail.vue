@@ -1,6 +1,6 @@
 <template>
   <div>
-    <clusterbar :titleName="titleName" :delFunc="deletePods" :editFunc="getPodYaml"/>
+    <clusterbar :titleName="titleName" :delFunc="deletePods" :editFunc="getPodYaml" :titleLink="['pods']"/>
     <div class="dashboard-container pod-container detail-dashboard" :style="{'max-height': maxHeight + 'px', overflow: 'auto'}">
       <div style="padding: 10px 0px 0px;">
         <div>基本信息</div>

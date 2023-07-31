@@ -18,6 +18,7 @@
         <el-dropdown-menu slot="dropdown">
           <el-dropdown-item @click.native="logout">登出</el-dropdown-item>
           <el-dropdown-item @click.native="openChgPwdDialog">修改密码</el-dropdown-item>
+          <el-dropdown-item @click.native="openAboutDialog">关于</el-dropdown-item>
         </el-dropdown-menu>
       </el-dropdown>
     </div>
@@ -79,7 +80,9 @@ export default {
     },
     openChgPwdDialog() {
       this.nav.changePwdDialog = true
-      console.log(this.nav)
+    },
+    openAboutDialog() {
+      this.nav.aboutDialog = true
     }
   }
 }

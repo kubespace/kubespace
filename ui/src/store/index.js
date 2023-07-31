@@ -1,6 +1,7 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
 import user from './modules/user'
+import globalSettings from './modules/globalSettings'
 
 Vue.use(Vuex)
 
@@ -9,6 +10,7 @@ const getters = {
   username: state => state.user.name,
   permissions: state => state.user.permissions,
   userInfo: state => state.user.userInfo,
+  releaseVersion: state => state.globalSettings.releaseVersion
 }
 
 const state = {
@@ -40,6 +42,7 @@ const actions = {
 const store = new Vuex.Store({
   modules: {
     user,
+    globalSettings,
   },
   getters,
   state,

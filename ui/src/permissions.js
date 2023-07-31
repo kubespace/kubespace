@@ -22,6 +22,9 @@ router.beforeEach(async(to, from, next) => {
         // if is logged in, redirect to the home page
         next({ path: '/' })
       } else {
+        if(!store.getters.releaseVersion) {
+          await store.dispatch('globalSettings/getGlobalSettings')
+        }
         const hasGetUserInfo = store.getters.username
         if (hasGetUserInfo) {
           next()

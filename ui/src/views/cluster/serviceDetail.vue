@@ -1,6 +1,6 @@
 <template>
   <div>
-    <clusterbar :titleName="titleName" :delFunc="deleteServices" :editFunc="getServiceYaml"/>
+    <clusterbar :titleName="titleName" :delFunc="deleteServices" :editFunc="getServiceYaml" :titleLink="[titleLink]"/>
     <div class="dashboard-container detail-dashboard" v-loading="loading" :style="{'max-height': maxHeight + 'px', overflow: 'auto'}">
       <div style="padding: 10px 0px 0px;">
         <div>基本信息</div>
@@ -249,6 +249,12 @@ export default {
     if(this.podSSE) this.podSSE.disconnect()
   },
   computed: {
+    titleLink() {
+      if(this.projectId) {
+        return 'workspaceServices'
+      }
+      return 'services'
+    },
     titleName: function() {
       return ['Services', this.serviceName]
     },
