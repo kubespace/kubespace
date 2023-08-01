@@ -126,7 +126,7 @@
       </div>
     </div>
 
-    <el-drawer :title="dialogTitleMap[dialogType]" :visible.sync="dialogVisible" :destroy-on-close="true"
+    <el-drawer :title="dialogTitleMap[dialogType]" :visible.sync="dialogVisible" :destroy-on-close="true" :wrapperClosable="false"
       @close="dialogType=''; dialogData={}" top="3vh" size="60%" :close-on-click-modal="false" style="scroll-behavior: auto;">
       <div slot="title">
         <span>{{ dialogTitleMap[dialogType] }}</span>

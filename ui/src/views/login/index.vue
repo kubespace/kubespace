@@ -172,7 +172,8 @@ export default {
 }
 .icon-class {
     vertical-align: -1px;
-    font-size: 26px;
+    font-size: 25px;
+    margin: 0px 1px;
     animation: loading-rotate 5s linear infinite;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;

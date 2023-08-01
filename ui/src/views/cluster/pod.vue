@@ -108,6 +108,44 @@
                   <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="edit" />
                   <span style="margin-left: 5px;">修改</span>
                 </el-dropdown-item>
+
+                <div @mouseover="logContainerShow = true;" @mouseout="logContainerShow = false;">
+                  <el-dropdown-item @click.native.prevent="namespace=scope.row.namespace; selectContainer = scope.row.containers[0].name; selectPodName = scope.row.name; logDialog = true;">
+                    <div class="download">
+                      <div>
+                        <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="log" />
+                        <span style="margin-left: 5px;">日志</span>
+                      </div>
+                      <div class="download-right" v-show="scope.row.containerNum > 1 && logContainerShow">
+                        <div class="download-item" v-for="c in scope.row.init_containers" :key="c.name"
+                            @click="namespace=scope.row.namespace; selectContainer = c.name; selectPodName = scope.row.name; logDialog = true;">
+                            {{ c.name }}
+                        </div>
+                        <div class="download-item" v-for="c in scope.row.containers" :key="c.name"
+                            @click="namespace=scope.row.namespace; selectContainer = c.name; selectPodName = scope.row.name; logDialog = true;">
+                            {{ c.name }}
+                        </div>
+                      </div>
+                    </div>
+                  </el-dropdown-item>
+                </div>
+                <div @mouseover="termContainerShow = true;" @mouseout="termContainerShow = false;">
+                  <el-dropdown-item :disabled="!$editorRole()" @click.native.prevent="namespace=scope.row.namespace; selectContainer = scope.row.containers[0].name; selectPodName = scope.row.name; terminalDialog = true;">
+                    <div class="download">
+                      <div>
+                        <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="terminal" />
+                        <span style="margin-left: 5px;">终端</span>
+                      </div>
+                      <div class="download-right" v-show="scope.row.containers.length > 1 && termContainerShow">
+                        <div class="download-item" v-for="c in scope.row.containers" :key="c.name"
+                            @click="namespace=scope.row.namespace; selectContainer = c.name; selectPodName = scope.row.name; terminalDialog = true;">
+                            {{ c.name }}
+                        </div>
+                      </div>
+                    </div>
+                  </el-dropdown-item>
+                </div>
+
                 <el-dropdown-item v-if="$editorRole()" @click.native.prevent="deletePods([{namespace: scope.row.namespace, name: scope.row.name}])">
                   <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="delete" />
                   <span style="margin-left: 5px;">删除</span>
@@ -125,6 +163,14 @@
         <el-button plain @click="updatePod()" size="small">确 定</el-button>
       </span>
     </el-dialog>
+
+    <el-dialog title="终端" :visible.sync="terminalDialog" :close-on-click-modal="false" width="80%" top="55px">
+      <terminal v-if="terminalDialog" :cluster="cluster" :namespace="namespace" :pod="selectPodName" :container="selectContainer"></terminal>
+    </el-dialog>
+
+    <el-dialog title="日志" :visible.sync="logDialog" :close-on-click-modal="false" width="80%" top="55px">
+      <log v-if="logDialog" :cluster="cluster" :namespace="namespace" :pod="selectPodName" :container="selectContainer"></log>
+    </el-dialog>
   </div>
 </template>
 
@@ -133,31 +179,43 @@ import { Clusterbar } from '@/views/components'
 import { ResType, listResource, getResource, delResource, updateResource, watchResource } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
 import { Yaml } from '@/views/components'
+import { Terminal } from '@/views/components'
+import { Log } from '@/views/components'
 
 export default {
   name: 'Pod',
   components: {
     Clusterbar,
-    Yaml
+    Yaml,
+    Terminal,
+    Log,
   },
   data() {
-      return {
-        yamlDialog: false,
-        yamlNamespace: "",
-        yamlName: "",
-        yamlValue: "",
-        yamlLoading: true,
-        cellStyle: {border: 0},
-        titleName: ["Pods"],
-        maxHeight: window.innerHeight - this.$contentHeight,
-        loading: true,
-        originPods: [],
-        search_ns: [],
-        search_name: '',
-        delFunc: undefined,
-        delPods: [],
-        clusterSSE: undefined
-      }
+    return {
+      yamlDialog: false,
+      yamlNamespace: "",
+      yamlName: "",
+      yamlValue: "",
+      yamlLoading: true,
+      cellStyle: {border: 0},
+      titleName: ["Pods"],
+      maxHeight: window.innerHeight - this.$contentHeight,
+      loading: true,
+      originPods: [],
+      search_ns: [],
+      search_name: '',
+      delFunc: undefined,
+      delPods: [],
+      clusterSSE: undefined,
+
+      logContainerShow: false,
+      termContainerShow: false,
+      selectContainer: '',
+      selectPodName: '',
+      namespace: '',
+      logDialog: false,
+      terminalDialog: false,
+    }
   },
   created() {
     this.fetchData()
@@ -392,6 +450,42 @@ export default {
 
 .succeeded-class {
   color: #409EFF;
+}
+
+.download {
+  // width: 70px;
+  // height: 40px;
+  position: relative;
+
+  .download-right {
+    position: absolute;
+    right: 70px;
+    top: 0px;
+    background: #FFF;
+    box-shadow: 0 2px 12px 0 rgba(0,0,0,.1);
+    border: 1px solid #EBEEF5;
+    .download-item {
+      display: inline-block;
+      margin-right: -8px;
+      white-space: nowrap;
+      width: auto;
+      padding: 0px 12px;
+      cursor: pointer;
+      color: #606266;
+      .item-txt {
+        flex: 1;
+        display: flex;
+        // flex-wrap: nowrap;
+        align-items:center;
+        font-size: 14px;
+      }
+    }
+    .download-item:hover {
+      // background: #1f2326;
+      color: #66b1ff;
+      // border-radius: 6px;
+    }
+  }
 }
 </style>
 
