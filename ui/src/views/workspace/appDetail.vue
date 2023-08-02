@@ -138,6 +138,12 @@
                           </div>
                         </el-dropdown-item>
                       </div>
+
+                      <el-dropdown-item @click.native.prevent="openEventDialog(scope.row)">
+                        <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="event_dialog" />
+                        <span style="margin-left: 5px;">事件</span>
+                      </el-dropdown-item>
+
                       <el-dropdown-item @click.native.prevent="deletePods([{namespace: scope.row.namespace, name: scope.row.name}])">
                         <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="delete" />
                         <span style="margin-left: 5px;">删除</span>
@@ -399,6 +405,62 @@
       <el-dialog title="日志" :visible.sync="logDialog" :close-on-click-modal="false" width="80%" top="55px">
         <log v-if="logDialog" :cluster="originApp.cluster_id" :namespace="originApp.namespace" :pod="selectPodName" :container="selectContainer"></log>
       </el-dialog>
+
+      <el-dialog :title="'事件:'+eventPodName" :visible.sync="eventDialog" width="60%" top="55px">
+        <div class="">
+          <el-table
+            v-if="podEvents && podEvents.length > 0"
+            :data="podEvents"
+            class="table-fix"
+            tooltip-effect="dark"
+            style="width: 100%"
+            v-loading="eventLoading"
+            :cell-style="cellStyle"
+            :default-sort = "{prop: 'event_time', order: 'descending'}"
+            >
+            <el-table-column
+              prop="type"
+              label="类型"
+              min-width="30"
+              show-overflow-tooltip>
+            </el-table-column>
+            <el-table-column
+              prop="reason"
+              label="原因"
+              min-width="30"
+              show-overflow-tooltip>
+              <template slot-scope="scope">
+                <span>
+                  {{ scope.row.reason ? scope.row.reason : "—" }}
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column
+              prop="message"
+              label="信息"
+              min-width="120"
+              >
+              <template slot-scope="scope">
+                <span>
+                  {{ scope.row.message ? scope.row.message : "—" }}
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column
+              prop="event_time"
+              label="触发时间"
+              min-width="50"
+              show-overflow-tooltip>
+              <template slot-scope="scope">
+                <span>
+                  {{ $dateFormat(scope.row.event_time) }}
+                </span>
+              </template>
+            </el-table-column>
+          </el-table>
+          <div v-else style="padding: 25px 15px ; color: #909399; text-align: center">暂无事件发生</div>
+        </div>
+      </el-dialog>
     </div>
   </div>
 </template>
@@ -406,7 +468,7 @@
 <script>
 import { Clusterbar, Log, Terminal } from '@/views/components'
 import { getApp } from '@/api/project/apps'
-import { ResType, containerClass, buildPods, delResource } from '@/api/cluster/resource'
+import { ResType, containerClass, buildPods, delResource, listResource } from '@/api/cluster/resource'
 import { Message } from 'element-ui'
 
 export default {
@@ -443,6 +505,11 @@ export default {
       selectorPod: "",
       logDialog: false,
       terminalDialog: false,
+
+      podEvents: [],
+      eventPodName: '',
+      eventDialog: false,
+      eventLoading: false,
     }
   },
   created() {
@@ -563,6 +630,20 @@ export default {
         // console.log(e)
       })
     },
+    openEventDialog(pod) {
+      this.podEvents = []
+      this.eventPodName = pod.name
+      this.eventLoading = true
+      listResource(this.originApp.cluster_id, ResType.Event, {kind: "Pod", namespace: pod.namespace, name: pod.name}).then(response => {
+        this.eventLoading = false
+        if (response.data) {
+          this.podEvents = response.data.length > 0 ? response.data : []
+        }
+      }).catch(() => {
+        this.eventLoading = false
+      })
+      this.eventDialog = true
+    }
   },
 }
 </script>
