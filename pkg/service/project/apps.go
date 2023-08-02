@@ -227,6 +227,8 @@ type AppRuntimeStatus struct {
 	Name          string                       `json:"name"`
 	RuntimeStatus string                       `json:"runtime_status"`
 	Objects       []*unstructured.Unstructured `json:"objects"`
+	PodsNum       int                          `json:"pods_num"`
+	ReadyPodsNum  int                          `json:"ready_pods_num"`
 }
 
 func (a *AppService) updateAppStatus(scope string, scopeId uint, projectApps []*types.ProjectApp) (map[string]*AppRuntimeStatus, error) {
@@ -285,6 +287,8 @@ func (a *AppService) ListApp(scope string, scopeId uint) ([]*types.ProjectApp, e
 		for idx, app := range projectApps {
 			if _, ok := nameStatusMap[app.Name]; ok {
 				projectApps[idx].Status = nameStatusMap[app.Name].RuntimeStatus
+				projectApps[idx].PodsNum = nameStatusMap[app.Name].PodsNum
+				projectApps[idx].ReadyPodsNum = nameStatusMap[app.Name].ReadyPodsNum
 			} else {
 				projectApps[idx].Status = types.AppStatusUninstall
 			}

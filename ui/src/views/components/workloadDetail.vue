@@ -162,6 +162,12 @@
                         </div>
                       </el-dropdown-item>
                     </div>
+
+                    <el-dropdown-item @click.native.prevent="openEventDialog(scope.row)">
+                      <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="event_dialog" />
+                      <span style="margin-left: 5px;">事件</span>
+                    </el-dropdown-item>
+
                     <el-dropdown-item :disabled="!$editorRole()" @click.native.prevent="deletePods([{namespace: scope.row.namespace, name: scope.row.name}])">
                       <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="delete" />
                       <span style="margin-left: 5px;">删除</span>
@@ -453,6 +459,61 @@
           <el-button plain @click="updateWorkload()" size="small">确 定</el-button>
         </span>
       </el-dialog>
+
+      <el-dialog :title="'事件:'+eventPodName" :visible.sync="eventDialog" width="60%" top="55px">
+        <div class="">
+          <el-table
+            v-if="podEvents && podEvents.length > 0"
+            :data="podEvents"
+            class="table-fix"
+            tooltip-effect="dark"
+            style="width: 100%"
+            v-loading="eventLoading"
+            :cell-style="cellStyle"
+            :default-sort = "{prop: 'event_time', order: 'descending'}"
+            >
+            <el-table-column
+              prop="type"
+              label="类型"
+              min-width="30"
+              show-overflow-tooltip>
+            </el-table-column>
+            <el-table-column
+              prop="reason"
+              label="原因"
+              min-width="30"
+              show-overflow-tooltip>
+              <template slot-scope="scope">
+                <span>
+                  {{ scope.row.reason ? scope.row.reason : "—" }}
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column
+              prop="message"
+              label="信息"
+              min-width="120">
+              <template slot-scope="scope">
+                <span>
+                  {{ scope.row.message ? scope.row.message : "—" }}
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column
+              prop="event_time"
+              label="触发时间"
+              min-width="50"
+              show-overflow-tooltip>
+              <template slot-scope="scope">
+                <span>
+                  {{ $dateFormat(scope.row.event_time) }}
+                </span>
+              </template>
+            </el-table-column>
+          </el-table>
+          <div v-else style="padding: 25px 15px ; color: #909399; text-align: center">暂无事件发生</div>
+        </div>
+      </el-dialog>
     </div>
   </div>
 </template>
@@ -502,7 +563,12 @@ export default {
         'statefulset': buildStatefulSet,
         'daemonset': buildDaemonSet,
         'job': buildJobs
-      }
+      },
+
+      podEvents: [],
+      eventPodName: '',
+      eventDialog: false,
+      eventLoading: false,
     }
   },
   created() {
@@ -746,23 +812,38 @@ export default {
       this.$router.push({name: 'podsDetail', params: {namespace: namespace, podName: name}})
     },
     deletePods: function(pods) {
-      if (!this.cluster) {
-        Message.error("获取集群参数异常，请刷新重试")
-        return
+      let cs = ''
+      for(let c of pods) {
+        cs += `${c.namespace}/${c.name}, `
       }
-      if ( pods.length <= 0 ){
-        Message.error("请选择要删除的Pod")
-        return
-      }
-      let params = {
-        resources: pods
-      }
-      delResource(this.cluster, ResType.Pod, params).then(() => {
-        Message.success("删除成功")
-      }).catch(() => {
-        // console.log(e)
-      })
+      cs = cs.substr(0, cs.length - 2)
+      this.$confirm(`请确认是否删除「${cs}」Pods?`, '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        delResource(this.cluster, ResType.Pod, {resources: pods}).then(() => {
+          Message.success("删除成功")
+        }).catch((err) => {
+          console.log(err)
+        });
+      }).catch(() => {       
+      });
     },
+    openEventDialog(pod) {
+      this.podEvents = []
+      this.eventPodName = pod.name
+      this.eventLoading = true
+      listResource(this.cluster, ResType.Event, {kind: "Pod", namespace: pod.namespace, name: pod.name}).then(response => {
+        this.eventLoading = false
+        if (response.data) {
+          this.podEvents = response.data.length > 0 ? response.data : []
+        }
+      }).catch(() => {
+        this.eventLoading = false
+      })
+      this.eventDialog = true
+    }
   }
 }
 </script>

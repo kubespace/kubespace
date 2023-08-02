@@ -57,7 +57,11 @@
         <el-table-column prop="status" label="状态" show-overflow-tooltip min-width="15">
           <template slot-scope="scope">
             <div class="status-class" :style="{'border-color': statusColorMap[scope.row.status], 'background-color': statusColorMap[scope.row.status]}"></div>
-            <span :style="{'font-weight': 430}">{{ statusNameMap[scope.row.status] }}</span>
+            <span :style="{'font-weight': 430}">{{ statusNameMap[scope.row.status] }} 
+              <span v-if="scope.row.status != 'UnInstall'">
+                ({{ scope.row.ready_pods_num || 0 }}/{{ scope.row.pods_num || 0 }})
+              </span>
+            </span>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="170">
@@ -629,6 +633,8 @@ export default {
               let app = this.originApps[i]
               if(app.name in mapStatus) {
                 this.$set(app, 'status', mapStatus[app.name].runtime_status)
+                this.$set(app, 'pods_num', mapStatus[app.name].pods_num)
+                this.$set(app, 'ready_pods_num', mapStatus[app.name].ready_pods_num)
                 // app.status = mapStatus[app.name].status
                 this.$set(this.originApps, i, app)
               }

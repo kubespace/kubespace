@@ -178,7 +178,7 @@
     </el-dialog>
 
     <el-dialog :title="'事件:'+eventPodName" :visible.sync="eventDialog" width="60%" top="55px">
-      <div class="msgClass">
+      <div class="">
         <el-table
           v-if="podEvents && podEvents.length > 0"
           :data="podEvents"

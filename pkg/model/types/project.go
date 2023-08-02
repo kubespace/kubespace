@@ -45,6 +45,9 @@ type ProjectApp struct {
 	UpdateUser   string      `gorm:"size:255;not null" json:"update_user"`
 	CreateTime   time.Time   `gorm:"column:create_time;not null;autoCreateTime" json:"create_time"`
 	UpdateTime   time.Time   `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`
+
+	PodsNum      int `gorm:"-" json:"pods_num"`
+	ReadyPodsNum int `gorm:"-" json:"ready_pods_num"`
 }
 
 type ProjectAppRevision struct {

@@ -92,14 +92,16 @@ func (h *Helm) List(params interface{}) *utils.Response {
 			continue
 		}
 		data := map[string]interface{}{
-			"name":          r.Name,
-			"namespace":     r.Namespace,
-			"version":       r.Version,
-			"status":        r.Info.Status,
-			"chart_name":    r.Chart.Name() + "-" + r.Chart.Metadata.Version,
-			"chart_version": r.Chart.Metadata.Version,
-			"app_version":   r.Chart.AppVersion(),
-			"last_deployed": r.Info.LastDeployed,
+			"name":           r.Name,
+			"namespace":      r.Namespace,
+			"version":        r.Version,
+			"status":         r.Info.Status,
+			"chart_name":     r.Chart.Name() + "-" + r.Chart.Metadata.Version,
+			"chart_version":  r.Chart.Metadata.Version,
+			"app_version":    r.Chart.AppVersion(),
+			"last_deployed":  r.Info.LastDeployed,
+			"pods_num":       0,
+			"ready_pods_num": 0,
 		}
 		if query.WithStatus {
 			wg.Add(1)
@@ -107,6 +109,8 @@ func (h *Helm) List(params interface{}) *utils.Response {
 				defer wg.Done()
 				state, _ := h.GetReleaseRuntimeState(releaseDetail, false)
 				data["runtime_status"] = state.Status
+				data["pods_num"] = state.PodsNum
+				data["ready_pods_num"] = state.ReadyPodsNum
 			}(r)
 		}
 		res = append(res, data)
@@ -170,10 +174,12 @@ const (
 )
 
 type ReleaseRuntimeState struct {
-	Name      string                       `json:"name"`
-	Namespace string                       `json:"namespace"`
-	Status    string                       `json:"status"`
-	Resources []*unstructured.Unstructured `json:"resources"`
+	Name         string                       `json:"name"`
+	Namespace    string                       `json:"namespace"`
+	Status       string                       `json:"status"`
+	Resources    []*unstructured.Unstructured `json:"resources"`
+	PodsNum      int                          `json:"pods_num"`
+	ReadyPodsNum int                          `json:"ready_pods_num"`
 }
 
 var WorkloadGVRMap = map[string]*schema.GroupVersionResource{
@@ -242,34 +248,41 @@ func (h *Helm) GetReleaseRuntimeState(rel *release.Release, withResource bool) (
 	if withResource {
 		state.Resources = resources
 	}
-	status, err := h.releaseRuntimeStatus(resources)
+	podsNum, readyNum, status, err := h.releaseRuntimeStatus(resources)
 	if err != nil {
 		return state, err
 	}
+	state.PodsNum = podsNum
+	state.ReadyPodsNum = readyNum
 	state.Status = status
 	return state, nil
 }
 
-func (h *Helm) releaseRuntimeStatus(releaseResources []*unstructured.Unstructured) (string, error) {
+func (h *Helm) releaseRuntimeStatus(releaseResources []*unstructured.Unstructured) (int, int, string, error) {
+	podsNum, readyNum := 0, 0
+	status := ReleaseStatusRunning
 	for _, object := range releaseResources {
 		if object.GetKind() == "Pod" {
+			podsNum++
 			pod := &corev1.Pod{}
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(object.Object, pod); err != nil {
-				return "", err
+				return 0, 0, "", err
 			}
 			if !h.isPodReady(pod) {
 				deltaSec := time.Now().Sub(pod.CreationTimestamp.Time).Seconds()
 				if deltaSec > 600 {
 					// 超过10分钟pod未就绪，则认为运行失败
-					return ReleaseStatusRunningFault, nil
-				} else {
+					status = ReleaseStatusRunningFault
+				} else if status != ReleaseStatusRunningFault {
 					// 10分钟内未就绪
-					return ReleaseStatusNotReady, nil
+					status = ReleaseStatusNotReady
 				}
+			} else {
+				readyNum++
 			}
 		}
 	}
-	return ReleaseStatusRunning, nil
+	return podsNum, readyNum, status, nil
 }
 
 func (h *Helm) isPodReady(pod *corev1.Pod) bool {
