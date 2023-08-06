@@ -419,6 +419,10 @@ export default {
       });
     },
     treeAddFile(type) {
+      if(typeof(this.treeAddObject.op_type) == 'string') {
+        Message.error(`当前有一个${this.treeAddObject.op_type=='add_dir' ? '文件夹': '文件'}正在新建`)
+        return
+      }
       let curNode = this.$refs['tree-menu'].getCurrentNode()
       // console.log(curNode)
       let parent
@@ -486,6 +490,7 @@ export default {
         this.handleNodeClick(this.treeAddObject)
         // this.handleNodeClick(this.treeAddObject)
       }
+      this.treeAddObject = {}
     },
   },
 };
