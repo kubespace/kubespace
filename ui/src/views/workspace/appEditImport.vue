@@ -67,7 +67,7 @@
       </div>
     </div>
     <el-dialog title="保存应用版本" :visible.sync="createFormVisible"
-       :destroy-on-close="true" :close-on-click-modal="false">
+       :destroy-on-close="true" :close-on-click-modal="false" v-loading="dialogLoading">
       <div>
         <div class="dialogContent" style="">
           <el-form :model="form" :rules="rules" ref="form" label-position="left" label-width="105px">
@@ -141,6 +141,7 @@ export default {
       cellStyle: { border: 0 },
       titleName: ["应用管理", "编辑"],
       loading: true,
+      dialogLoading: false,
       treeId: 0,
       app: {},
       appVersion: {},
@@ -342,13 +343,13 @@ export default {
         description: this.form.description,
         version_description: this.form.version_description
       }
-      this.loading = true
+      this.dialogLoading = true
       createApp(data).then(() => {
-        this.loading = false
+        this.dialogLoading = false
         Message.success("创建应用成功")
         this.$router.push({name: 'workspaceApp'})
       }).catch((err) => {
-        this.loading = false
+        this.dialogLoading = false
       });
     },
     removeTab(targetName) {
