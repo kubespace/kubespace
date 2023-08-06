@@ -39,7 +39,7 @@
           <template slot-scope="scope">
             <div class="tableOperate">
               <!-- <el-link :underline="false" style="margin-right: 13px; color:#409EFF" @click="nameClick(scope.row.id)">详情</el-link> -->
-              <el-link v-if="scope.row.from=='space'" :disabled="!$editorRole(scope.row.id)" :underline="false" type="primary" style="margin-right: 13px" @click="openEditApp(scope.row.id)">编辑</el-link>
+              <el-link :disabled="!$editorRole(scope.row.id)" :underline="false" type="primary" style="margin-right: 13px" @click="openEditApp(scope.row)">编辑</el-link>
               <el-link v-if="originApp.app_version_id && scope.row.id != originApp.app_version_id" :disabled="!$editorRole(scope.row.id)" :underline="false" type="danger" @click="handleDeleteAppVersion(scope.row.id, scope.row.package_version)">删除</el-link>
             </div>
           </template>
@@ -63,14 +63,14 @@ export default {
     const that = this;
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 135;
+        let heightStyle = window.innerHeight - this.$contentHeight;
         that.maxHeight = heightStyle;
       })();
     };
   },
   data() {
     return {
-      maxHeight: window.innerHeight - 135,
+      maxHeight: window.innerHeight - this.$contentHeight,
       cellStyle: { border: 0 },
       titleName: ["应用管理"],
       loading: true,
@@ -113,8 +113,14 @@ export default {
     nameSearch(val) {
       this.search_name = val;
     },
-    openEditApp(id) {
-      this.$router.push({name: 'workspaceEditApp', params: {appVersionId: id}})
+    openEditApp(appVersion) {
+
+      if(appVersion.from == 'space') {
+        this.$router.push({name: 'workspaceEditApp', params: {appVersionId: appVersion.id}})
+      } else {
+        this.$router.push({name: 'workspaceEditImportApp', params: {appVersionId: appVersion.id}})
+      }
+      // this.$router.push({name: 'workspaceEditApp', params: {appVersionId: id}})
     },
     handleDeleteAppVersion(id, package_version) {
       if(!id) {

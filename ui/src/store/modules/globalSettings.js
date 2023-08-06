@@ -32,7 +32,7 @@ const actions = {
         
         commit('SET_RELEASE_VERSION', data.release_version)
         commit('SET_GLOBALSETTINGS', data)
-        console.log(data)
+        // console.log(data)
         resolve(data)
       }).catch(error => {
         reject(error)

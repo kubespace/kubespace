@@ -115,3 +115,10 @@ export function downloadChart(path) {
     params: {path}
   })
 }
+
+export function getAppChartFiles(versionId) {
+  return request({
+    url: `project/apps/version/${versionId}/chartfiles`,
+    method: 'get'
+  })
+}

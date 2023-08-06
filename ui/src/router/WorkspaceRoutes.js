@@ -30,6 +30,13 @@ const Routes = [
     meta: { title: '应用管理', icon: 'workspace_app', 'group': 'workspace', sideName: 'workspaceApp',  object: 'pipeline' }
   },
   {
+    path: 'edit_import_app/:appVersionId',
+    name: 'workspaceEditImportApp',
+    hidden: true,
+    component: () => import('@/views/workspace/appEditImport'),
+    meta: { title: '应用管理', icon: 'workspace_app', 'group': 'workspace', sideName: 'workspaceApp',  object: 'pipeline' }
+  },
+  {
     path: 'detail_app/:appId',
     name: 'workspaceAppDetail',
     hidden: true,

@@ -34,6 +34,7 @@ func NewProjectApp(config *config.ServerConfig) *ProjectApp {
 		views.NewView(http.MethodGet, "/status_sse", app.statusSSE),
 		views.NewView(http.MethodGet, "/download", app.downloadChart),
 		views.NewView(http.MethodGet, "/:id", app.getApp),
+		views.NewView(http.MethodGet, "/version/:id/chartfiles", app.getChartFiles),
 		views.NewView(http.MethodPost, "", app.create),
 		views.NewView(http.MethodPost, "/install", app.install),
 		views.NewView(http.MethodPost, "/destroy", app.destroy),
@@ -223,4 +224,21 @@ func (a *ProjectApp) downloadChart(c *views.Context) *utils.Response {
 	c.Header("Content-Disposition", fileContentDisposition)
 	c.Data(http.StatusOK, "application/x-tar", appChart.Content)
 	return nil
+}
+
+func (a *ProjectApp) getChartFiles(c *views.Context) *utils.Response {
+	appVersionId, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+	}
+	app, appVersion, chartFiles, err := a.AppService.GetAppChartFiles(uint(appVersionId))
+	if err != nil {
+		return &utils.Response{Code: code.GetError, Msg: err.Error()}
+	}
+	data := map[string]interface{}{
+		"chart_files": chartFiles,
+		"app":         app,
+		"app_version": appVersion,
+	}
+	return &utils.Response{Code: code.Success, Data: data}
 }

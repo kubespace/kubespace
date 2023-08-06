@@ -39,7 +39,7 @@
         </el-table-column>
         <el-table-column prop="package_version" label="版本" show-overflow-tooltip min-width="15">
           <template slot-scope="scope">
-            {{ scope.row.app_version.from == 'space' ? scope.row.app_version.package_version : scope.row.app_version.package_version + ' / ' + scope.row.app_version.app_version }}
+            {{ showVersion(scope.row.app_version) }}
           </template>
         </el-table-column>
         <el-table-column prop="type" label="类型" show-overflow-tooltip min-width="15">
@@ -72,7 +72,7 @@
               <el-link :disabled="!$editorRole()" :underline="false" type="primary" style="margin-right: 10px"
                 v-if="scope.row.status!='UnInstall'" @click="openInstallFormDialog(scope.row, true)">升级</el-link>
               <el-link :disabled="!$editorRole()" :underline="false" type="primary" style="margin-right: 10px"
-                v-if="scope.row.app_version.from=='space'" @click="openEditApp(scope.row.app_version_id)">编辑</el-link>
+                 @click="openEditApp(scope.row)">编辑</el-link>
               
               <el-dropdown style="font-size: 13px;">
                 <span class="el-dropdown-link operator-btn" :style="{color: !$editorRole() ? '#a0cfff' : ''}">
@@ -431,6 +431,12 @@ export default {
     },
   },
   methods: {
+    showVersion(appVersion) {
+      if(appVersion.from == 'space' || appVersion.package_version == appVersion.app_version) {
+        return appVersion.package_version
+      }
+      return appVersion.package_version + ' / ' + appVersion.app_version
+    },
     nameClick: function(id) {
       this.$router.push({name: 'workspaceAppDetail', params: {'appId': id}})
     },
@@ -611,8 +617,13 @@ export default {
     openCreateApp() {
       this.$router.push({name: 'workspaceCreateApp'})
     },
-    openEditApp(id) {
-      this.$router.push({name: 'workspaceEditApp', params: {appVersionId: id}})
+    openEditApp(app) {
+      // console.log(app)
+      if(app.app_version.from == 'space') {
+        this.$router.push({name: 'workspaceEditApp', params: {appVersionId: app.app_version_id}})
+      } else {
+        this.$router.push({name: 'workspaceEditImportApp', params: {appVersionId: app.app_version_id}})
+      }
     },
     fetchAppStatusSSE() {
       let url = `/api/v1/project/apps/status_sse?scope=project_app&scope_id=${this.projectId}`

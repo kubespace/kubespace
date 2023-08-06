@@ -255,15 +255,20 @@ export default {
         description: this.form.description,
       }
       let chartYaml = yaml.dump(chartDict)
+      let chartFiles = {
+        "Chart.yaml": chartYaml,
+        "values.yaml": this.chart.values,
+        "templates": this.chart.templates,
+      }
       let data = {
         scope: "project_app",
         scope_id: parseInt(this.projectId), 
         name: this.form.name, 
         type: this.form.type,
+        from: "space",
         version: version,
-        chart: chartYaml,
-        templates: this.chart.templates,
         values: this.chart.values,
+        chart_files: chartFiles,
         description: this.form.description,
         version_description: this.form.version_description
       }

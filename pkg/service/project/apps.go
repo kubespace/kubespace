@@ -2,11 +2,13 @@ package project
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	kubetypes "github.com/kubespace/kubespace/pkg/kubernetes/types"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	"github.com/kubespace/kubespace/pkg/service/cluster"
+	"github.com/kubespace/kubespace/pkg/third/helm"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"github.com/kubespace/kubespace/pkg/utils/code"
 	"helm.sh/helm/v3/pkg/action"
@@ -85,25 +87,21 @@ func (a *AppService) CreateProjectApp(user *types.User, serializer serializers.P
 	if err != nil {
 		return &utils.Response{Code: code.CreateError, Msg: err.Error()}
 	}
-	if err = a.WriteFile(tmpChartDir+"/Chart.yaml", serializer.Chart); err != nil {
-		return &utils.Response{Code: code.CreateError, Msg: err.Error()}
+	chartGen := &helm.ChartGeneration{
+		NeedModifyVersion: false,
+		PackageVersion:    serializer.Version,
+		AppVersion:        serializer.Version,
+		Files:             serializer.ChartFiles,
+		Base64Encoded:     false,
 	}
-	if err = a.WriteFile(tmpChartDir+"/values.yaml", serializer.Values); err != nil {
-		return &utils.Response{Code: code.CreateError, Msg: err.Error()}
+	if serializer.From == types.AppVersionFromImport {
+		chartGen.NeedModifyVersion = true
+		chartGen.Base64Encoded = true
 	}
-	tmpTempDir := tmpChartDir + "/templates"
-	err = os.MkdirAll(tmpTempDir, 0755)
-	if err != nil {
-		return &utils.Response{Code: code.CreateError, Msg: err.Error()}
+	chartDir, chartPath, err := chartGen.GenerateChart()
+	if chartDir != "" {
+		defer os.RemoveAll(chartDir)
 	}
-	for name, value := range serializer.Templates {
-		if err = a.WriteFile(tmpTempDir+"/"+name, value); err != nil {
-			return &utils.Response{Code: code.CreateError, Msg: err.Error()}
-		}
-	}
-	pack := action.NewPackage()
-	pack.Destination = tmpChartDir
-	tgzPath, err := pack.Run(tmpChartDir, nil)
 	if err != nil {
 		return &utils.Response{Code: code.HelmError, Msg: err.Error()}
 	}
@@ -113,12 +111,12 @@ func (a *AppService) CreateProjectApp(user *types.User, serializer serializers.P
 		AppVersion:     serializer.Version,
 		Values:         serializer.Values,
 		Description:    serializer.VersionDescription,
-		From:           types.AppVersionFromSpace,
+		From:           serializer.From,
 		CreateUser:     user.Name,
 		CreateTime:     time.Now(),
 		UpdateTime:     time.Now(),
 	}
-	_, err = a.models.ProjectAppManager.CreateProjectApp(tgzPath, app, appVersion)
+	_, err = a.models.ProjectAppManager.CreateProjectApp(chartPath, app, appVersion)
 	if err != nil {
 		return &utils.Response{Code: code.CreateError, Msg: err.Error()}
 	}
@@ -681,4 +679,46 @@ func (a *AppService) ImportCustomApp(user *types.User, serializer serializers.Im
 		return &utils.Response{Code: code.CreateError, Msg: err.Error()}
 	}
 	return &utils.Response{Code: code.Success}
+}
+
+func (a *AppService) GetAppChartFiles(appVersionId uint) (*types.ProjectApp, *types.AppVersion, map[string]interface{}, error) {
+	appVersion, err := a.models.ProjectAppVersionManager.GetAppVersion(appVersionId)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	app, err := a.models.ProjectAppManager.GetProjectApp(appVersion.ScopeId)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	appChart, err := a.models.ProjectAppVersionManager.GetAppVersionChart(appVersion.ChartPath)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	files, err := utils.ExtractTgzBytes(appChart.Content)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	chartfiles := map[string]interface{}{}
+	// 平铺目录处理为层级结构
+	for path, content := range files {
+		parts := strings.Split(path, "/")
+		node := chartfiles
+		// 从 1 开始，去除第一层目录
+		for i := 1; i < len(parts)-1; i += 1 {
+			if sub, ok := node[parts[i]]; !ok {
+				newNode := map[string]interface{}{}
+				node[parts[i]] = newNode
+				node = newNode
+			} else {
+				node = sub.(map[string]interface{})
+			}
+		}
+		node[parts[len(parts)-1]] = base64.StdEncoding.EncodeToString(content)
+	}
+	if app.AppVersionId == appVersionId {
+		// 如果要编辑的版本是当前应用的版本，替换最新的values.yaml
+		chartfiles["values.yaml"] = base64.StdEncoding.EncodeToString([]byte(appVersion.Values))
+	}
+	return app, appVersion, chartfiles, nil
 }
