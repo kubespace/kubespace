@@ -38,8 +38,8 @@
         <el-table-column label="操作" width="150">
           <template slot-scope="scope">
             <div class="tableOperate">
-              <!-- <el-link :underline="false" style="margin-right: 13px; color:#409EFF" @click="nameClick(scope.row.id)">详情</el-link> -->
               <el-link :disabled="!$editorRole(scope.row.id)" :underline="false" type="primary" style="margin-right: 13px" @click="openEditApp(scope.row)">编辑</el-link>
+              <el-link :underline="false" type="primary" style="margin-right: 13px" :href="'/api/v1/project/apps/download?path='+scope.row.chart_path">下载</el-link>
               <el-link v-if="originApp.app_version_id && scope.row.id != originApp.app_version_id" :disabled="!$editorRole(scope.row.id)" :underline="false" type="danger" @click="handleDeleteAppVersion(scope.row.id, scope.row.package_version)">删除</el-link>
             </div>
           </template>
