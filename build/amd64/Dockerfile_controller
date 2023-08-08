@@ -1,4 +1,4 @@
-ARG BASEIMAGE=registry.cn-hangzhou.aliyuncs.com/kubespace/bash:5.2.15
+ARG BASEIMAGE=registry.cn-hangzhou.aliyuncs.com/kubespace/bash-tz:5.2.15
 FROM $BASEIMAGE
 
 COPY bin/amd64/controller-manager /

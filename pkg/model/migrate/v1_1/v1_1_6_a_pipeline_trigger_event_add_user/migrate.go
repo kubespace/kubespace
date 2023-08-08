@@ -1,4 +1,4 @@
-package v1_1_3_b_add_ldap
+package v1_1_6_a_pipeline_trigger_event_add_user
 
 import (
 	"github.com/kubespace/kubespace/pkg/model/migrate/migration"

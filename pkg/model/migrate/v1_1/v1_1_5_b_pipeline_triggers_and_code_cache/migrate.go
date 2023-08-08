@@ -1,4 +1,4 @@
-package v1_1_3_b_add_ldap
+package v1_1_5_b_pipeline_triggers_and_code_cache
 
 import (
 	"github.com/kubespace/kubespace/pkg/model/migrate/migration"

@@ -1,4 +1,4 @@
-ARG BASEIMAGE=registry.cn-hangzhou.aliyuncs.com/kubespace/alpine:3.17.1
+ARG BASEIMAGE=registry.cn-hangzhou.aliyuncs.com/kubespace/alpine-tz:3.17.1
 FROM $BASEIMAGE
 
 COPY bin/amd64/kube-agent /

@@ -8,6 +8,7 @@ import (
 	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_1/v1_1_5_a_chg_pipeline_source_column"
 	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_1/v1_1_5_b_pipeline_triggers_and_code_cache"
 	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_1/v1_1_6_a_pipeline_trigger_event_add_user"
+	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_2/v1_2_5_a_add_audit_operation"
 	"github.com/kubespace/kubespace/pkg/model/types"
 )
 
@@ -42,4 +43,6 @@ var initTypes = []interface{}{
 	&types.ProjectAppRevision{},
 	&types.Spacelet{},
 	&types.Ldap{},
+
+	&types.AuditOperation{},
 }

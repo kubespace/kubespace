@@ -28,6 +28,8 @@ server:
       value: "registry.cn-hangzhou.aliyuncs.com/kubespace/kube-agent"
     - name: AGENT_VERSION
       value: "1.2.4"
+    - name: TZ
+      value: Asia/Shanghai
 
   ingress:
     enabled: false
@@ -78,6 +80,9 @@ controller_manager:
   nodeSelector: {}
   tolerations: []
   affinity: {}
+  extraEnvs:
+    - name: TZ
+      value: Asia/Shanghai
 
 spacelet:
   replicaCount: 1
@@ -96,6 +101,8 @@ spacelet:
       value: "7520"
     - name: SERVER_URL
       value: "http://kubespace"
+    - name: TZ
+      value: Asia/Shanghai
   dataDir: /data/kubespace
   extraVolumeMounts:
     - name: docker-bin
