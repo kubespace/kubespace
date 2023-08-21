@@ -1,10 +1,69 @@
 # CONTRIBUTION
 
-### 整体架构
+### 一、开发流程
 
-### 本地运行
+#### 1. Fork
 
-#### 启动数据库
+访问https://github.com/kubespace/kubespace，点击`Fork`在自己的账号仓库创建一份项目代码。
+
+#### 2. 克隆代码到本地
+
+```bash
+export user={你自己的github仓库账号}
+git clone https://github.com/$user/kubespace
+cd kubespace
+git remote add upstream https://github.com/kubespace/kubespace
+
+git remote set-url --push upstream no_push
+git remote -v
+```
+
+#### 3. 与远程代码库同步
+
+```bash
+git fetch upstream
+git checkout master
+git rebase upstream/master
+```
+
+#### 4. 本地开发
+
+```bash
+# 本地创建分支，并在该分支进行开发
+git checkout -b feature
+```
+
+#### 5. 推送代码
+
+```bash
+# 先同步下远程代码，以免有冲突
+git checkout master
+git fetch upstream
+git rebase upstream/master
+
+git checkout feature
+git rebase -i master
+
+# 提交本地修改
+git add <file>
+git commit -s -m "add code modify message"
+
+# 推送到Fork远程仓库
+git push -f origin feature
+```
+
+#### 6. 创建PR
+
+* 访问你的Fork仓库 https://github.com/$user/kubespace
+* 在`Pull requests`中点击`New pull request`创建PR
+* 在PR中选择推送的分支feature，查看提交信息，确认无误后点击`Create pull request`
+* 输入PR标题，并填写该PR修改的具体内容，点击`Create pull request`
+
+### 二、整体架构
+
+### 三、本地运行
+
+#### 1. 启动数据库
 
 KubeSpace依赖Mysql以及Redis数据库，其中：
 * Mysql用来存储如工作空间、应用、流水线等非Kubernetes数据；
@@ -21,7 +80,7 @@ docker run --name kubespace-redis -p 6379:6379 -v ~/kubespace/redis:/data -d red
 
 如果已有mysql，需要创建kubespace数据库。
 
-#### 运行KubeSpace相关服务
+#### 2. 运行KubeSpace相关服务
 
 克隆代码到本地目录：
 ```
@@ -53,13 +112,22 @@ MYSQL_HOST=localhost:3306 MYSQL_PASSWORD=kubespace@2022 go run cmd/server
 
 ##### Controller-manager
 
-Controller-manager是用来监听发送的事件，后台执行一些异步任务，当前主要是用来执行流水线构建任务。
+Controller-manager是用来监听发送的事件，后台执行一些异步任务。
 ```bash
 # 启动controller-manager
 MYSQL_HOST=localhost:3306 MYSQL_PASSWORD=kubespace@2022 DATA_DIR=./data go run cmd/server
 ```
 
-### 代码模块
+##### Spacelet
+
+Spacelet节点是用来执行流水线构建任务的， 如代码编译、发布等。通过添加Spacelet节点可以降低每个节点的负载，同时能够并发处理更多的构建任务。
+
+```bash
+# 启动spacelet
+DATA_DIR=./data SERVER_URL=http://127.0.0.1 go run cmd/spacelet
+```
+
+### 3. 代码模块
 
 ```
 kubespace
