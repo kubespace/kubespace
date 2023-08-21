@@ -56,7 +56,7 @@ git push -f origin feature
 
 * 访问你的Fork仓库 https://github.com/$user/kubespace
 * 在`Pull requests`中点击`New pull request`创建PR
-* 在PR中选择推送的分支feature
+* 在PR中选择推送的分支feature，查看提交信息，确认无误后点击`Create pull request`
 
 ### 二、整体架构
 
