@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"github.com/kubespace/kubespace/pkg/core/code"
 	kubetypes "github.com/kubespace/kubespace/pkg/kubernetes/types"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	"github.com/kubespace/kubespace/pkg/service/cluster"
 	"github.com/kubespace/kubespace/pkg/third/helm"
 	"github.com/kubespace/kubespace/pkg/utils"
-	"github.com/kubespace/kubespace/pkg/utils/code"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/release"
@@ -49,27 +49,27 @@ func (a *AppService) WriteFile(fileName, content string) error {
 	return nil
 }
 
-func (a *AppService) CreateProjectApp(user *types.User, serializer serializers.ProjectCreateAppSerializer) *utils.Response {
-	app, err := a.models.ProjectAppManager.GetByName(serializer.Scope, serializer.ScopeId, serializer.Name)
+func (a *AppService) CreateProjectApp(user *types.User, serializer serializers.CreateAppSerializer) (*types.App, *utils.Response) {
+	app, err := a.models.AppManager.GetByName(serializer.Scope, serializer.ScopeId, serializer.Name)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+		return nil, &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
 	if app != nil {
-		sameVersion, err := a.models.ProjectAppManager.GetAppVersion(types.AppVersionScopeProjectApp, app.ID, serializer.Name, serializer.Version)
+		sameVersion, err := a.models.AppVersionManager.GetByPackageNameVersion(types.AppVersionScopeProjectApp, app.ID, serializer.Name, serializer.Version)
 		if err != nil {
-			return &utils.Response{Code: code.DBError, Msg: err.Error()}
+			return nil, &utils.Response{Code: code.DBError, Msg: err.Error()}
 		}
 		if sameVersion != nil {
-			return &utils.Response{Code: code.ParamsError, Msg: "该应用已存在相同版本，请重新输入版本号"}
+			return nil, &utils.Response{Code: code.ParamsError, Msg: "该应用已存在相同版本，请重新输入版本号"}
 		}
 		app.UpdateUser = user.Name
 		app.UpdateTime = time.Now()
 		app.Description = serializer.Description
 	} else {
 		if serializer.Type != types.AppTypeOrdinaryApp && serializer.Type != types.AppTypeMiddleware {
-			return &utils.Response{Code: code.ParamsError, Msg: "应用类型参数错误"}
+			return nil, &utils.Response{Code: code.ParamsError, Msg: "应用类型参数错误"}
 		}
-		app = &types.ProjectApp{
+		app = &types.App{
 			Scope:       serializer.Scope,
 			ScopeId:     serializer.ScopeId,
 			Name:        serializer.Name,
@@ -85,7 +85,7 @@ func (a *AppService) CreateProjectApp(user *types.User, serializer serializers.P
 	tmpChartDir, err := os.MkdirTemp("/tmp", "")
 	defer os.RemoveAll(tmpChartDir)
 	if err != nil {
-		return &utils.Response{Code: code.CreateError, Msg: err.Error()}
+		return nil, &utils.Response{Code: code.CreateError, Msg: err.Error()}
 	}
 	chartGen := &helm.ChartGeneration{
 		NeedModifyVersion: false,
@@ -103,7 +103,7 @@ func (a *AppService) CreateProjectApp(user *types.User, serializer serializers.P
 		defer os.RemoveAll(chartDir)
 	}
 	if err != nil {
-		return &utils.Response{Code: code.HelmError, Msg: err.Error()}
+		return nil, &utils.Response{Code: code.HelmError, Msg: err.Error()}
 	}
 	appVersion := &types.AppVersion{
 		PackageName:    serializer.Name,
@@ -116,48 +116,44 @@ func (a *AppService) CreateProjectApp(user *types.User, serializer serializers.P
 		CreateTime:     time.Now(),
 		UpdateTime:     time.Now(),
 	}
-	_, err = a.models.ProjectAppManager.CreateProjectApp(chartPath, app, appVersion)
+	_, err = a.models.AppManager.CreateApp(chartPath, app, appVersion)
 	if err != nil {
-		return &utils.Response{Code: code.CreateError, Msg: err.Error()}
+		return nil, &utils.Response{Code: code.CreateError, Msg: err.Error()}
 	}
-	return &utils.Response{Code: code.Success}
+	return app, &utils.Response{Code: code.Success}
 }
 
-func (a *AppService) InstallApp(user *types.User, serializer serializers.ProjectInstallAppSerializer) *utils.Response {
-	versionApp, err := a.models.ProjectAppVersionManager.GetAppVersion(serializer.AppVersionId)
+func (a *AppService) InstallApp(user *types.User, serializer serializers.InstallAppSerializer) *utils.Response {
+	versionApp, err := a.models.AppVersionManager.GetById(serializer.AppVersionId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
-	if versionApp.Scope != types.AppVersionScopeProjectApp && versionApp.ScopeId != serializer.ProjectAppId {
+	if versionApp.Scope != types.AppVersionScopeProjectApp && versionApp.ScopeId != serializer.AppId {
 		return &utils.Response{Code: code.ParamsError, Msg: "当前应用不存在该版本，请重新选择"}
 	}
-	projectApp, err := a.models.ProjectAppManager.GetProjectApp(serializer.ProjectAppId)
+	app, err := a.models.AppManager.Get(serializer.AppId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
 	var clusterId string
 	var namespace string
-	if projectApp.Scope == types.AppVersionScopeProjectApp {
-		project, err := a.models.ProjectManager.Get(projectApp.ScopeId)
+	if app.Scope == types.AppVersionScopeProjectApp {
+		project, err := a.models.ProjectManager.Get(app.ScopeId)
 		if err != nil {
 			return &utils.Response{Code: code.DBError, Msg: err.Error()}
 		}
 		clusterId = project.ClusterId
 		namespace = project.Namespace
 	} else {
-		clusterId = fmt.Sprintf("%d", projectApp.ScopeId)
-		namespace = projectApp.Namespace
+		clusterId = fmt.Sprintf("%d", app.ScopeId)
+		namespace = app.Namespace
 	}
-	appChart, err := a.models.ProjectAppVersionManager.GetAppVersionChart(versionApp.ChartPath)
+	appChart, err := a.models.AppVersionManager.GetChart(versionApp.ChartPath)
 	if err != nil {
 		return &utils.Response{Code: code.GetError, Msg: "not found chart path=" + versionApp.ChartPath}
 	}
-	//chartBytes, err := base64.StdEncoding.DecodeString(string(appChart.Content))
-	//if err != nil {
-	//	return &utils.Response{Code: code.GetError, Msg: err.Error()}
-	//}
 	installParams := map[string]interface{}{
-		"name":        projectApp.Name,
+		"name":        app.Name,
 		"namespace":   namespace,
 		"chart_bytes": appChart.Content,
 		"values":      serializer.Values,
@@ -171,51 +167,51 @@ func (a *AppService) InstallApp(user *types.User, serializer serializers.Project
 	if !resp.IsSuccess() {
 		return resp
 	}
-	projectApp.AppVersionId = serializer.AppVersionId
-	projectApp.UpdateUser = user.Name
-	projectApp.Status = types.AppStatusNotReady
-	if err = a.models.ProjectAppManager.UpdateProjectApp(projectApp, "status", "app_version_id", "update_user", "update_time"); err != nil {
+	app.AppVersionId = serializer.AppVersionId
+	app.UpdateUser = user.Name
+	app.Status = types.AppStatusNotReady
+	if err = a.models.AppManager.UpdateApp(app, "status", "app_version_id", "update_user", "update_time"); err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
 	versionApp.Values = serializer.Values
-	if err = a.models.ProjectAppVersionManager.UpdateAppVersion(versionApp, "values"); err != nil {
+	if err = a.models.AppVersionManager.UpdateAppVersion(versionApp, "values"); err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
-	if _, err = a.models.ProjectAppManager.CreateRevision(versionApp, projectApp); err != nil {
-		klog.Errorf("create project app id=%s, name=%s revision error: %s", projectApp.ID, projectApp.Name, err)
+	if _, err = a.models.AppManager.CreateRevision(versionApp, app); err != nil {
+		klog.Errorf("create project app id=%s, name=%s revision error: %s", app.ID, app.Name, err)
 	}
 	return &utils.Response{Code: code.Success}
 }
 
-func (a *AppService) DestroyApp(user *types.User, serializer serializers.ProjectInstallAppSerializer) *utils.Response {
-	projectApp, err := a.models.ProjectAppManager.GetProjectApp(serializer.ProjectAppId)
+func (a *AppService) DestroyApp(user *types.User, serializer serializers.InstallAppSerializer) *utils.Response {
+	app, err := a.models.AppManager.GetAppWithVersion(serializer.AppId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
 	var clusterId string
 	var namespace string
-	if projectApp.Scope == types.AppVersionScopeProjectApp {
-		project, err := a.models.ProjectManager.Get(projectApp.ScopeId)
+	if app.Scope == types.AppVersionScopeProjectApp {
+		project, err := a.models.ProjectManager.Get(app.ScopeId)
 		if err != nil {
 			return &utils.Response{Code: code.DBError, Msg: err.Error()}
 		}
 		clusterId = project.ClusterId
 		namespace = project.Namespace
 	} else {
-		clusterId = fmt.Sprintf("%d", projectApp.ScopeId)
-		namespace = projectApp.Namespace
+		clusterId = fmt.Sprintf("%d", app.ScopeId)
+		namespace = app.Namespace
 	}
 	destroyParams := map[string]interface{}{
 		"namespace": namespace,
-		"name":      projectApp.Name,
+		"name":      app.Name,
 	}
 	resp := a.kubeClient.Delete(clusterId, kubetypes.HelmType, destroyParams)
 	if !resp.IsSuccess() {
 		return resp
 	}
-	projectApp.UpdateUser = user.Name
-	projectApp.Status = types.AppStatusUninstall
-	if err = a.models.ProjectAppManager.UpdateProjectApp(projectApp, "status", "update_user", "update_time"); err != nil {
+	app.UpdateUser = user.Name
+	app.Status = types.AppStatusUninstall
+	if err = a.models.AppManager.UpdateApp(app, "status", "update_user", "update_time"); err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
 	return &utils.Response{Code: code.Success}
@@ -229,7 +225,7 @@ type AppRuntimeStatus struct {
 	ReadyPodsNum  int                          `json:"ready_pods_num"`
 }
 
-func (a *AppService) updateAppStatus(scope string, scopeId uint, projectApps []*types.ProjectApp) (map[string]*AppRuntimeStatus, error) {
+func (a *AppService) updateAppStatus(scope string, scopeId uint, projectApps []*types.App) (map[string]*AppRuntimeStatus, error) {
 	var clusterId string
 	var namespaceApps = map[string][]string{}
 	if scope == types.AppVersionScopeProjectApp {
@@ -272,8 +268,8 @@ func (a *AppService) updateAppStatus(scope string, scopeId uint, projectApps []*
 	return nameStatusMap, nil
 }
 
-func (a *AppService) ListApp(scope string, scopeId uint) ([]*types.ProjectApp, error) {
-	projectApps, err := a.models.ProjectAppManager.ListProjectApps(scope, scopeId)
+func (a *AppService) ListApp(scope string, scopeId uint) ([]*types.App, error) {
+	projectApps, err := a.models.AppManager.ListApps(scope, scopeId)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +292,7 @@ func (a *AppService) ListApp(scope string, scopeId uint) ([]*types.ProjectApp, e
 }
 
 func (a *AppService) GetApp(appId uint) *utils.Response {
-	projectApp, err := a.models.ProjectAppManager.GetProjectApp(appId)
+	projectApp, err := a.models.AppManager.GetAppWithVersion(appId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
@@ -334,7 +330,7 @@ func (a *AppService) GetApp(appId uint) *utils.Response {
 		"package_name":    projectApp.AppVersion.PackageName,
 		"package_version": projectApp.AppVersion.PackageVersion,
 	}
-	appCharts, err := a.models.ProjectAppVersionManager.GetAppVersionChart(projectApp.AppVersion.ChartPath)
+	appCharts, err := a.models.AppVersionManager.GetChart(projectApp.AppVersion.ChartPath)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
@@ -411,17 +407,17 @@ func (a *AppService) GetReleaseObjects(release *release.Release) []*unstructured
 	return objects
 }
 
-func (a *AppService) ListAppStatus(serializer serializers.ProjectAppListSerializer) *utils.Response {
-	var projectApps []*types.ProjectApp
+func (a *AppService) ListAppStatus(serializer serializers.AppListSerializer) *utils.Response {
+	var projectApps []*types.App
 	var err error
 	if serializer.Name != "" {
-		app, err := a.models.ProjectAppManager.GetProjectAppByName(serializer.Scope, serializer.ScopeId, serializer.Name)
+		app, err := a.models.AppManager.GetByName(serializer.Scope, serializer.ScopeId, serializer.Name)
 		if err != nil {
 			return &utils.Response{Code: code.DBError, Msg: err.Error()}
 		}
 		projectApps = append(projectApps, app)
 	} else {
-		projectApps, err = a.models.ProjectAppManager.ListProjectApps(serializer.Scope, serializer.ScopeId)
+		projectApps, err = a.models.AppManager.ListApps(serializer.Scope, serializer.ScopeId)
 		if err != nil {
 			return &utils.Response{Code: code.DBError, Msg: err.Error()}
 		}
@@ -440,7 +436,7 @@ func (a *AppService) ListAppStatus(serializer serializers.ProjectAppListSerializ
 			}
 			if status != "" && app.Status != status {
 				app.Status = status
-				err = a.models.ProjectAppManager.UpdateProjectApp(app, "status")
+				err = a.models.AppManager.UpdateApp(app, "status")
 				if err != nil {
 					klog.Error("update project app status error: ", err.Error())
 				}
@@ -451,15 +447,15 @@ func (a *AppService) ListAppStatus(serializer serializers.ProjectAppListSerializ
 }
 
 func (a *AppService) GetAppVersion(appVersionId uint) *utils.Response {
-	appVersion, err := a.models.ProjectAppVersionManager.GetAppVersion(appVersionId)
+	appVersion, err := a.models.AppVersionManager.GetById(appVersionId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
-	app, err := a.models.ProjectAppManager.GetProjectApp(appVersion.ScopeId)
+	app, err := a.models.AppManager.GetAppWithVersion(appVersion.ScopeId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
-	appCharts, err := a.models.ProjectAppVersionManager.GetAppVersionChart(appVersion.ChartPath)
+	appCharts, err := a.models.AppVersionManager.GetChart(appVersion.ChartPath)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
@@ -480,30 +476,31 @@ func (a *AppService) GetAppVersion(appVersionId uint) *utils.Response {
 	return &utils.Response{Code: code.Success, Data: res}
 }
 
-func (a *AppService) ImportStoreApp(ser serializers.ImportStoreAppSerializers, user *types.User) *utils.Response {
-	storeApp, err := a.models.AppStoreManager.GetStoreApp(ser.StoreAppId)
+// ImportStoreApp 从应用商店导入应用
+func (a *AppService) ImportStoreApp(ser serializers.ImportStoreAppSerializers, user *types.User) (*types.App, *types.AppVersion, *utils.Response) {
+	storeApp, err := a.models.AppStoreManager.GetById(ser.StoreAppId)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: "获取商店应用失败: " + err.Error()}
+		return nil, nil, &utils.Response{Code: code.DBError, Msg: "获取商店应用失败: " + err.Error()}
 	}
-	storeAppVersion, err := a.models.ProjectAppVersionManager.GetAppVersion(ser.AppVersionId)
+	storeAppVersion, err := a.models.AppVersionManager.GetById(ser.AppVersionId)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: "获取商店应用版本失败: " + err.Error()}
+		return nil, nil, &utils.Response{Code: code.DBError, Msg: "获取商店应用版本失败: " + err.Error()}
 	}
-	app, err := a.models.ProjectAppManager.GetByName(ser.Scope, ser.ScopeId, storeApp.Name)
+	app, err := a.models.AppManager.GetByName(ser.Scope, ser.ScopeId, storeApp.Name)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+		return nil, nil, &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
 	if app != nil {
-		sameVersion, err := a.models.ProjectAppManager.GetAppVersion(types.AppVersionScopeProjectApp, app.ID, storeAppVersion.PackageName, storeAppVersion.PackageVersion)
+		sameVersion, err := a.models.AppVersionManager.GetByPackageNameVersion(types.AppVersionScopeProjectApp, app.ID, storeAppVersion.PackageName, storeAppVersion.PackageVersion)
 		if err != nil {
-			return &utils.Response{Code: code.DBError, Msg: err.Error()}
+			return nil, nil, &utils.Response{Code: code.DBError, Msg: err.Error()}
 		}
 		if sameVersion != nil {
-			return &utils.Response{Code: code.ParamsError, Msg: "该应用已存在相同版本，请重新选择应用版本"}
+			return app, storeAppVersion, &utils.Response{Code: code.ParamsError, Msg: "该应用已存在相同版本，请重新选择应用版本"}
 		}
 		app.UpdateUser = user.Name
 	} else {
-		app = &types.ProjectApp{
+		app = &types.App{
 			Scope:      ser.Scope,
 			ScopeId:    ser.ScopeId,
 			Name:       storeApp.Name,
@@ -518,20 +515,20 @@ func (a *AppService) ImportStoreApp(ser serializers.ImportStoreAppSerializers, u
 	}
 	storeAppVersion.ID = 0
 	storeAppVersion.ScopeId = app.ID
-	storeAppVersion.Scope = types.AppVersionScopeProjectApp
-	if err := a.models.ProjectAppManager.ImportApp(app, storeAppVersion); err != nil {
-		return &utils.Response{Code: code.DBError, Msg: "导入应用失败: " + err.Error()}
+	storeAppVersion.Scope = ser.Scope
+	if err := a.models.AppManager.ImportApp(app, storeAppVersion); err != nil {
+		return app, storeAppVersion, &utils.Response{Code: code.DBError, Msg: "导入应用失败: " + err.Error()}
 	}
-	return &utils.Response{Code: code.Success}
+	return app, storeAppVersion, &utils.Response{Code: code.Success}
 }
 
-func (a *AppService) ImportProjectApp(originApp *types.ProjectApp, version *types.AppVersion, destProjectId uint, destAppName string, user *types.User) *utils.Response {
-	app, err := a.models.ProjectAppManager.GetByName(types.AppVersionScopeProjectApp, destProjectId, destAppName)
+func (a *AppService) ImportProjectApp(originApp *types.App, version *types.AppVersion, destProjectId uint, destAppName string, user *types.User) *utils.Response {
+	app, err := a.models.AppManager.GetByName(types.AppVersionScopeProjectApp, destProjectId, destAppName)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
 	if app != nil {
-		sameVersion, err := a.models.ProjectAppManager.GetAppVersion(types.AppVersionScopeProjectApp, app.ID, version.PackageName, version.PackageVersion)
+		sameVersion, err := a.models.AppVersionManager.GetByPackageNameVersion(types.AppVersionScopeProjectApp, app.ID, version.PackageName, version.PackageVersion)
 		if err != nil {
 			return &utils.Response{Code: code.DBError, Msg: err.Error()}
 		}
@@ -540,7 +537,7 @@ func (a *AppService) ImportProjectApp(originApp *types.ProjectApp, version *type
 		}
 		app.UpdateUser = user.Name
 	} else {
-		app = &types.ProjectApp{
+		app = &types.App{
 			Scope:      types.AppVersionScopeProjectApp,
 			ScopeId:    destProjectId,
 			Name:       destAppName,
@@ -555,19 +552,20 @@ func (a *AppService) ImportProjectApp(originApp *types.ProjectApp, version *type
 	version.ID = 0
 	version.ScopeId = app.ID
 	version.Scope = types.AppVersionScopeProjectApp
-	if err := a.models.ProjectAppManager.ImportApp(app, version); err != nil {
+	if err := a.models.AppManager.ImportApp(app, version); err != nil {
 		return &utils.Response{Code: code.DBError, Msg: "克隆应用失败: " + err.Error()}
 	}
 	return &utils.Response{Code: code.Success}
 }
 
-func (a *AppService) ImportToStore(originApp *types.ProjectApp, version *types.AppVersion, destAppName string, user *types.User) *utils.Response {
-	app, err := a.models.AppStoreManager.GetStoreAppByName(destAppName)
+// ImportToStore 工作空间应用发布到应用商店
+func (a *AppService) ImportToStore(originApp *types.App, version *types.AppVersion, destAppName string, user *types.User) *utils.Response {
+	app, err := a.models.AppStoreManager.GetByName(destAppName)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
 	if app != nil {
-		sameVersion, err := a.models.ProjectAppManager.GetAppVersion(types.AppVersionScopeStoreApp, app.ID, version.PackageName, version.PackageVersion)
+		sameVersion, err := a.models.AppVersionManager.GetByPackageNameVersion(types.AppVersionScopeStoreApp, app.ID, version.PackageName, version.PackageVersion)
 		if err != nil {
 			return &utils.Response{Code: code.DBError, Msg: err.Error()}
 		}
@@ -596,45 +594,50 @@ func (a *AppService) ImportToStore(originApp *types.ProjectApp, version *types.A
 	return &utils.Response{Code: code.Success}
 }
 
-func (a *AppService) DuplicateApp(ser *serializers.DuplicateAppSerializer, user *types.User) *utils.Response {
-	originApp, err := a.models.ProjectAppManager.GetProjectApp(ser.AppId)
+// DuplicateApp 克隆应用到工作空间，或者发布到应用商店
+func (a *AppService) DuplicateApp(ser *serializers.DuplicateAppSerializer, user *types.User) (*types.App, *types.AppVersion, *utils.Response) {
+	originApp, err := a.models.AppManager.GetAppWithVersion(ser.AppId)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: "获取应用失败：" + err.Error()}
+		return nil, nil, &utils.Response{Code: code.DBError, Msg: "获取应用失败：" + err.Error()}
 	}
-	version, err := a.models.ProjectAppVersionManager.GetAppVersion(ser.VersionId)
+	version, err := a.models.AppVersionManager.GetById(ser.VersionId)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: "获取应用版本失败：" + err.Error()}
+		return nil, nil, &utils.Response{Code: code.DBError, Msg: "获取应用版本失败：" + err.Error()}
 	}
 	if ser.Scope == types.AppVersionScopeProjectApp {
-		return a.ImportProjectApp(originApp, version, ser.ScopeId, ser.Name, user)
+		return originApp, version, a.ImportProjectApp(originApp, version, ser.ScopeId, ser.Name, user)
 	} else if ser.Scope == types.AppVersionScopeStoreApp {
-		return a.ImportToStore(originApp, version, ser.Name, user)
+		return originApp, version, a.ImportToStore(originApp, version, ser.Name, user)
 	} else {
-		return &utils.Response{Code: code.ParamsError, Msg: "参数scope错误"}
+		return originApp, version, &utils.Response{Code: code.ParamsError, Msg: "参数scope错误"}
 	}
 }
 
-func (a *AppService) ImportCustomApp(user *types.User, serializer serializers.ImportCustomAppSerializer, chartIn io.Reader) *utils.Response {
-	app, err := a.models.ProjectAppManager.GetByName(serializer.Scope, serializer.ScopeId, serializer.Name)
+// ImportCustomApp 工作空间导入自定义应用
+func (a *AppService) ImportCustomApp(
+	user *types.User,
+	serializer serializers.ImportCustomAppSerializer,
+	chartIn io.Reader) (*types.App, *types.AppVersion, *utils.Response) {
+	app, err := a.models.AppManager.GetByName(serializer.Scope, serializer.ScopeId, serializer.Name)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+		return nil, nil, &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
 	if app != nil {
-		sameVersion, err := a.models.ProjectAppManager.GetAppVersion(types.AppVersionScopeProjectApp, app.ID, serializer.Name, serializer.PackageVersion)
+		sameVersion, err := a.models.AppVersionManager.GetByPackageNameVersion(types.AppVersionScopeProjectApp, app.ID, serializer.Name, serializer.PackageVersion)
 		if err != nil {
-			return &utils.Response{Code: code.DBError, Msg: err.Error()}
+			return app, nil, &utils.Response{Code: code.DBError, Msg: err.Error()}
 		}
 		if sameVersion != nil {
-			return &utils.Response{Code: code.ParamsError, Msg: "该应用已存在相同版本，请重新输入版本号"}
+			return app, nil, &utils.Response{Code: code.ParamsError, Msg: "该应用已存在相同版本，请重新输入版本号"}
 		}
 		app.UpdateUser = user.Name
 		app.UpdateTime = time.Now()
 		app.Description = serializer.Description
 	} else {
 		if serializer.Type != types.AppTypeOrdinaryApp && serializer.Type != types.AppTypeMiddleware {
-			return &utils.Response{Code: code.ParamsError, Msg: "应用类型参数错误"}
+			return nil, nil, &utils.Response{Code: code.ParamsError, Msg: "应用类型参数错误"}
 		}
-		app = &types.ProjectApp{
+		app = &types.App{
 			Scope:       serializer.Scope,
 			ScopeId:     serializer.ScopeId,
 			Name:        serializer.Name,
@@ -650,11 +653,11 @@ func (a *AppService) ImportCustomApp(user *types.User, serializer serializers.Im
 
 	chartBytes, err := ioutil.ReadAll(chartIn)
 	if err != nil {
-		return &utils.Response{Code: code.GetError, Msg: "获取chart文件失败: " + err.Error()}
+		return app, nil, &utils.Response{Code: code.GetError, Msg: "获取chart文件失败: " + err.Error()}
 	}
 	charts, err := loader.LoadArchive(bytes.NewBuffer(chartBytes))
 	if err != nil {
-		return &utils.Response{Code: code.GetError, Msg: err.Error()}
+		return app, nil, &utils.Response{Code: code.GetError, Msg: err.Error()}
 	}
 	values := ""
 	for _, rawFile := range charts.Raw {
@@ -674,23 +677,24 @@ func (a *AppService) ImportCustomApp(user *types.User, serializer serializers.Im
 		CreateTime:     time.Now(),
 		UpdateTime:     time.Now(),
 	}
-	_, err = a.models.ProjectAppManager.CreateProjectAppWithBytes(chartBytes, app, appVersion)
+	_, err = a.models.AppManager.CreateAppWithBytes(chartBytes, app, appVersion)
 	if err != nil {
-		return &utils.Response{Code: code.CreateError, Msg: err.Error()}
+		return app, appVersion, &utils.Response{Code: code.CreateError, Msg: err.Error()}
 	}
-	return &utils.Response{Code: code.Success}
+	return app, appVersion, &utils.Response{Code: code.Success}
 }
 
-func (a *AppService) GetAppChartFiles(appVersionId uint) (*types.ProjectApp, *types.AppVersion, map[string]interface{}, error) {
-	appVersion, err := a.models.ProjectAppVersionManager.GetAppVersion(appVersionId)
+// GetAppChartFiles 获取应用helm chart所有文件
+func (a *AppService) GetAppChartFiles(appVersionId uint) (*types.App, *types.AppVersion, map[string]interface{}, error) {
+	appVersion, err := a.models.AppVersionManager.GetById(appVersionId)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	app, err := a.models.ProjectAppManager.GetProjectApp(appVersion.ScopeId)
+	app, err := a.models.AppManager.GetAppWithVersion(appVersion.ScopeId)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	appChart, err := a.models.ProjectAppVersionManager.GetAppVersionChart(appVersion.ChartPath)
+	appChart, err := a.models.AppVersionManager.GetChart(appVersion.ChartPath)
 	if err != nil {
 		return nil, nil, nil, err
 	}

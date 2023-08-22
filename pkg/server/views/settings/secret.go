@@ -1,12 +1,14 @@
 package settings
 
 import (
+	"fmt"
+	"github.com/kubespace/kubespace/pkg/core/code"
+	"github.com/kubespace/kubespace/pkg/core/errors"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/views"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	"github.com/kubespace/kubespace/pkg/utils"
-	"github.com/kubespace/kubespace/pkg/utils/code"
 	"net/http"
 	"strconv"
 	"time"
@@ -32,11 +34,8 @@ func NewSettingsSecret(models *model.Models) *SettingsSecret {
 
 func (s *SettingsSecret) create(c *views.Context) *utils.Response {
 	var ser serializers.SecretsSerializers
-	resp := &utils.Response{Code: code.Success}
 	if err := c.ShouldBind(&ser); err != nil {
-		resp.Code = code.ParamsError
-		resp.Msg = err.Error()
-		return resp
+		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
 	secret := &types.SettingsSecret{
 		Name:        ser.Name,
@@ -53,30 +52,35 @@ func (s *SettingsSecret) create(c *views.Context) *utils.Response {
 	}
 	_, err := s.models.SettingsSecretManager.Create(secret)
 	if err != nil {
-		resp.Code = code.DBError
-		resp.Msg = "创建密钥失败: " + err.Error()
-		return resp
+		err = errors.New(code.DBError, err)
 	}
+	resp := c.GenerateResponse(err, nil)
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationCreate,
+		OperateDetail:        fmt.Sprintf("创建密钥：%s", ser.Name),
+		Scope:                types.ScopePlatform,
+		ResourceId:           secret.ID,
+		ResourceType:         types.AuditResourcePlatformSecret,
+		ResourceName:         ser.Name,
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: ser,
+	})
 	return resp
 }
 
 func (s *SettingsSecret) update(c *views.Context) *utils.Response {
 	var ser serializers.SecretsSerializers
-	resp := &utils.Response{Code: code.Success}
 	if err := c.ShouldBind(&ser); err != nil {
-		resp.Code = code.ParamsError
-		resp.Msg = err.Error()
-		return resp
+		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
 	secretId, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
 	secret, err := s.models.SettingsSecretManager.Get(uint(secretId))
 	if err != nil {
-		resp.Code = code.DBError
-		resp.Msg = "获取密钥失败: " + err.Error()
-		return resp
+		return c.GenerateResponseError(errors.New(code.DataNotExists, "获取密钥失败: "+err.Error()))
 	}
 	secret.Description = ser.Description
 	secret.Type = ser.SecretType
@@ -88,31 +92,48 @@ func (s *SettingsSecret) update(c *views.Context) *utils.Response {
 	secret.UpdateTime = time.Now()
 	_, err = s.models.SettingsSecretManager.Update(secret)
 	if err != nil {
-		resp.Code = code.DBError
-		resp.Msg = "更新密钥失败: " + err.Error()
-		return resp
+		err = errors.New(code.DBError, "更新密钥失败: "+err.Error())
 	}
+	resp := c.GenerateResponse(err, nil)
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationUpdate,
+		OperateDetail:        fmt.Sprintf("更新密钥：%s", secret.Name),
+		Scope:                types.ScopePlatform,
+		ResourceId:           secret.ID,
+		ResourceType:         types.AuditResourcePlatformSecret,
+		ResourceName:         secret.Name,
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: ser,
+	})
 	return resp
 }
 
 func (s *SettingsSecret) delete(c *views.Context) *utils.Response {
-	resp := &utils.Response{Code: code.Success}
 	secretId, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
 	secret, err := s.models.SettingsSecretManager.Get(uint(secretId))
 	if err != nil {
-		resp.Code = code.DBError
-		resp.Msg = "获取密钥失败: " + err.Error()
-		return resp
+		return c.GenerateResponseError(errors.New(code.DataNotExists, "获取密钥失败: "+err.Error()))
 	}
 	err = s.models.SettingsSecretManager.Delete(secret)
 	if err != nil {
-		resp.Code = code.DBError
-		resp.Msg = "删除密钥失败: " + err.Error()
-		return resp
+		err = errors.New(code.DBError, "删除密钥失败: "+err.Error())
 	}
+	resp := c.GenerateResponse(err, nil)
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationDelete,
+		OperateDetail:        fmt.Sprintf("删除密钥：%s", secret.Name),
+		Scope:                types.ScopePlatform,
+		ResourceId:           secret.ID,
+		ResourceType:         types.AuditResourcePlatformSecret,
+		ResourceName:         secret.Name,
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: nil,
+	})
 	return resp
 }
 

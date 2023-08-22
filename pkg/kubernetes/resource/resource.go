@@ -6,11 +6,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/kubespace/kubespace/pkg/core/code"
 	"github.com/kubespace/kubespace/pkg/kubernetes/config"
 	"github.com/kubespace/kubespace/pkg/kubernetes/kubeclient"
 	kubetypes "github.com/kubespace/kubespace/pkg/kubernetes/types"
 	"github.com/kubespace/kubespace/pkg/utils"
-	"github.com/kubespace/kubespace/pkg/utils/code"
 	"io"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -332,6 +332,12 @@ type ApplyParams struct {
 	YamlStr string `json:"yaml"`
 }
 
+type ApplyResource struct {
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
+	Kind      string `json:"kind"`
+}
+
 func (r *Resource) Apply(params interface{}) *utils.Response {
 	applyParams := &ApplyParams{}
 	if err := utils.ConvertTypeByJson(params, applyParams); err != nil {
@@ -339,6 +345,7 @@ func (r *Resource) Apply(params interface{}) *utils.Response {
 	}
 	multidocReader := utilyaml.NewYAMLReader(bufio.NewReader(bytes.NewReader([]byte(applyParams.YamlStr))))
 	var res []string
+	var applyResources []*ApplyResource
 	applyErr := false
 	for {
 		buf, err := multidocReader.Read()
@@ -369,11 +376,16 @@ func (r *Resource) Apply(params interface{}) *utils.Response {
 		} else {
 			res = append(res, obj.GetKind()+"/"+obj.GetName()+" applied successful.")
 		}
+		applyResources = append(applyResources, &ApplyResource{
+			Name:      obj.GetName(),
+			Namespace: obj.GetNamespace(),
+			Kind:      obj.GetKind(),
+		})
 	}
 	if applyErr {
-		return &utils.Response{Code: code.RequestError, Msg: strings.Join(res, "\n")}
+		return &utils.Response{Code: code.RequestError, Msg: strings.Join(res, "\n"), Data: applyResources}
 	}
-	return &utils.Response{Code: code.Success, Msg: strings.Join(res, "\n")}
+	return &utils.Response{Code: code.Success, Msg: strings.Join(res, "\n"), Data: applyResources}
 }
 
 func (r *Resource) buildDynamicResourceClient(data []byte) (obj *unstructured.Unstructured, dr dynamic.ResourceInterface, err error) {

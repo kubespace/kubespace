@@ -21,7 +21,7 @@ func NewUserManager(db *gorm.DB) *UserManager {
 	}
 }
 
-func (u *UserManager) Get(name string) (*types.User, error) {
+func (u *UserManager) GetByName(name string) (*types.User, error) {
 	var user types.User
 	if err := u.DB.First(&user, "name=?", name).Error; err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func (u *UserManager) Create(user *types.User) error {
 }
 
 func (u *UserManager) Delete(name string) error {
-	user, err := u.Get(name)
+	user, err := u.GetByName(name)
 	if err != nil {
 		return err
 	}
@@ -182,7 +182,7 @@ func (r *UserRoleManager) HasScopeRole(user *types.User, scope string, scopeId u
 		if scopeRole.Scope == scope && scopeRole.ScopeId == scopeId && utils.Contains(roleSet, scopeRole.Role) {
 			return true
 		}
-		if scopeRole.Scope == types.RoleScopePlatform && scopeRole.ScopeId == 0 && utils.Contains(roleSet, scopeRole.Role) {
+		if scopeRole.Scope == types.ScopePlatform && scopeRole.ScopeId == 0 && utils.Contains(roleSet, scopeRole.Role) {
 			return true
 		}
 	}

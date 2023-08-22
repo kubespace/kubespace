@@ -80,7 +80,7 @@ func (w *WorkspaceManager) Delete(workspace *types.PipelineWorkspace) error {
 			return err
 		}
 	}
-	if err := w.DB.Delete(&types.UserRole{}, "scope = ? and scope_id = ?", types.RoleScopePipeline, workspace.ID).Error; err != nil {
+	if err := w.DB.Delete(&types.UserRole{}, "scope = ? and scope_id = ?", types.ScopePipeline, workspace.ID).Error; err != nil {
 		return err
 	}
 	if err := w.DB.Delete(&types.PipelineCodeCache{}, "workspace_id = ?", workspace.ID).Error; err != nil {

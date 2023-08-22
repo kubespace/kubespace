@@ -447,7 +447,7 @@ export default {
         type: 'warning'
       }).then(() => {
         this.loading = true
-        delResource(this.cluster, ResType.Ingress, {resources: ingresses}).then(() => {
+        delResource(this.cluster, ResType.Ingress, {resources: ingresses}, {project_id: this.projectId}).then(() => {
           Message.success("删除Ingress成功")
           this.fetchData()
         }).catch(() => {
@@ -470,7 +470,7 @@ export default {
       }
       let yamlStr = yaml.dump(ingress)
       this.dialogLoading = true
-      updateResource(cluster, ResType.Ingress, ingress.metadata.namespace, ingress.metadata.name, yamlStr).then(() => {
+      updateResource(cluster, ResType.Ingress, ingress.metadata.namespace, ingress.metadata.name, yamlStr, {project_id: this.projectId}).then(() => {
         Message.success("更新Ingress成功")
         this.dialogLoading = false
         this.createFormVisible = false
@@ -571,14 +571,14 @@ export default {
         Message.error(err)
         return
       }
-      console.log(this.ingressGroup)
+      // console.log(this.ingressGroup)
       if(this.ingressGroup == 'networking.k8s.io') {
         ingress.apiVersion = 'networking.k8s.io/v1'
       }
       
       let yamlStr = yaml.dump(ingress)
       this.dialogLoading = true
-      createResource(cluster, yamlStr).then(() => {
+      createResource(cluster, yamlStr, {project_id: this.projectId}).then(() => {
         Message.success("创建Ingress成功")
         this.dialogLoading = false
         this.createFormVisible = false

@@ -2,6 +2,7 @@ package project
 
 import (
 	"fmt"
+	"github.com/kubespace/kubespace/pkg/core/code"
 	"github.com/kubespace/kubespace/pkg/kubernetes/resource"
 	kubetypes "github.com/kubespace/kubespace/pkg/kubernetes/types"
 	"github.com/kubespace/kubespace/pkg/model"
@@ -9,7 +10,6 @@ import (
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	"github.com/kubespace/kubespace/pkg/service/cluster"
 	"github.com/kubespace/kubespace/pkg/utils"
-	"github.com/kubespace/kubespace/pkg/utils/code"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/klog/v2"
@@ -64,7 +64,7 @@ func (p *ProjectService) Delete(projectId uint, delResource bool) *utils.Respons
 			}
 		}
 		if errs != "" {
-			return &utils.Response{Code: code.CreateError, Msg: "删除k8s以下资源失败：\n" + errs}
+			return &utils.Response{Code: code.DeleteError, Msg: "删除k8s以下资源失败：\n" + errs}
 		}
 	}
 	err = p.models.ProjectManager.Delete(project)

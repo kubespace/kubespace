@@ -20,10 +20,11 @@ type User struct {
 }
 
 const (
-	RoleScopePlatform = "platform"
-	RoleScopeCluster  = "cluster"
-	RoleScopePipeline = "pipeline"
-	RoleScopeProject  = "project"
+	ScopePlatform = "platform"
+	ScopeCluster  = "cluster"
+	ScopePipeline = "pipeline"
+	ScopeProject  = "project"
+	ScopeAppStore = "appstore"
 
 	RoleTypeViewer = "viewer"
 	RoleTypeEditor = "editor"

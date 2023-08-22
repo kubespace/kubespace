@@ -56,43 +56,48 @@ export function getResource(cluster, resType, namespace, name, output='', params
   })
 }
 
-export function delResource(cluster, resType, data) {
+export function delResource(cluster, resType, data, params) {
   return request({
     url: `cluster/${cluster}/${resType}/delete`,
     method: 'post',
-    data
+    data,
+    params
   })
 }
 
-export function updateResource(cluster, resType, namespace, name, yamlStr) {
+export function updateResource(cluster, resType, namespace, name, yamlStr, params) {
   return request({
     url: `cluster/${cluster}/${resType}/${namespace?"namespace/"+namespace+"/":""}${name}`,
     method: 'put',
     data: {yaml: yamlStr},
+    params
   })
 }
 
-export function patchResource(cluster, resType, data) {
+export function patchResource(cluster, resType, data, params) {
   return request({
     url: `cluster/${cluster}/${resType}/patch`,
     method: 'post',
-    data
+    data,
+    params
   })
 }
 
-export function createResource(cluster, yaml) {
+export function createResource(cluster, yaml, params) {
   return request({
     url: `cluster/${cluster}/apply`,
     method: 'post',
-    data: {yaml, create: true}
+    data: {yaml, create: true},
+    params,
   })
 }
 
-export function applyResource(cluster, yaml) {
+export function applyResource(cluster, yaml, params) {
   return request({
     url: `cluster/${cluster}/apply`,
     method: 'post',
-    data: {yaml}
+    data: {yaml},
+    params
   })
 }
 

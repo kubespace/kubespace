@@ -17,8 +17,6 @@ export default {
     return {
       scope: "pipeline",
       scopeId: workspaceId,
-      maxHeight: window.innerHeight - 135,
-
     };
   },
   computed: {

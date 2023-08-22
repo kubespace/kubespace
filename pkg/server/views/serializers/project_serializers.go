@@ -32,7 +32,7 @@ type ProjectDeleteSerializer struct {
 	DelResource bool `json:"del_resource" form:"del_resource"`
 }
 
-type ProjectCreateAppSerializer struct {
+type CreateAppSerializer struct {
 	Scope              string `json:"scope" form:"scope"`
 	ScopeId            uint   `json:"scope_id" form:"scope_id"`
 	Name               string `json:"name" form:"name"`
@@ -47,8 +47,8 @@ type ProjectCreateAppSerializer struct {
 	ChartFiles map[string]interface{} `json:"chart_files"`
 }
 
-type ProjectInstallAppSerializer struct {
-	ProjectAppId uint   `json:"project_app_id" form:"project_app_id"`
+type InstallAppSerializer struct {
+	AppId        uint   `json:"project_app_id" form:"project_app_id"`
 	Values       string `json:"values" form:"values"`
 	AppVersionId uint   `json:"app_version_id" form:"app_version_id"`
 	Upgrade      bool   `json:"upgrade" form:"upgrade"`
@@ -62,7 +62,7 @@ type ImportStoreAppSerializers struct {
 	AppVersionId uint   `json:"app_version_id" form:"app_version_id"`
 }
 
-type ProjectAppListSerializer struct {
+type AppListSerializer struct {
 	Scope         string `json:"scope" form:"scope"`
 	ScopeId       uint   `json:"scope_id" form:"scope_id"`
 	Name          string `json:"name" form:"name"`
@@ -70,12 +70,12 @@ type ProjectAppListSerializer struct {
 	WithWorkloads bool   `json:"with_workloads" form:"with_workloads"`
 }
 
-type ProjectAppVersionListSerializer struct {
+type AppVersionListSerializer struct {
 	Scope   string `json:"scope" form:"scope"`
 	ScopeId uint   `json:"scope_id" form:"scope_id"`
 }
 
-type ProjectAppVersionGetSerializer struct {
+type AppVersionGetSerializer struct {
 	AppVersionId string `json:"app_version_id" form:"app_version_id"`
 }
 

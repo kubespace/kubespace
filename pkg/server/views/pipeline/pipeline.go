@@ -1,6 +1,9 @@
 package pipeline
 
 import (
+	"fmt"
+	"github.com/kubespace/kubespace/pkg/core/code"
+	"github.com/kubespace/kubespace/pkg/core/errors"
 	"github.com/kubespace/kubespace/pkg/informer"
 	"github.com/kubespace/kubespace/pkg/informer/listwatcher/pipeline"
 	"github.com/kubespace/kubespace/pkg/model"
@@ -11,7 +14,6 @@ import (
 	pipelineservice "github.com/kubespace/kubespace/pkg/service/pipeline"
 	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
 	"github.com/kubespace/kubespace/pkg/utils"
-	"github.com/kubespace/kubespace/pkg/utils/code"
 	"net/http"
 	"strconv"
 )
@@ -107,30 +109,93 @@ func (p *Pipeline) create(c *views.Context) *utils.Response {
 	if err := c.ShouldBind(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	return p.pipelineService.Create(&ser, c.User)
+	workspace, err := p.models.PipelineWorkspaceManager.Get(ser.WorkspaceId)
+	if err != nil {
+		return c.GenerateResponse(errors.New(code.DataNotExists, "获取流水线空间失败："+err.Error()), nil)
+	}
+	pipelineObj, err := p.pipelineService.Create(&ser, c.User)
+	var resId uint
+	if pipelineObj != nil {
+		resId = pipelineObj.ID
+	}
+	resp := c.GenerateResponse(err, pipelineObj)
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationCreate,
+		OperateDetail:        "创建流水线:" + ser.Name,
+		Scope:                types.ScopePipeline,
+		ScopeId:              workspace.ID,
+		ScopeName:            workspace.Name,
+		ResourceId:           resId,
+		ResourceType:         types.AuditResourcePipeline,
+		ResourceName:         ser.Name,
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: ser,
+	})
+	return resp
 }
 
 func (p *Pipeline) update(c *views.Context) *utils.Response {
 	var ser schemas.PipelineParams
 	if err := c.ShouldBind(&ser); err != nil {
-		return &utils.Response{
-			Code: code.ParamsError,
-			Msg:  err.Error(),
-		}
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	return p.pipelineService.Update(&ser, c.User)
+	workspace, err := p.models.PipelineWorkspaceManager.Get(ser.WorkspaceId)
+	if err != nil {
+		return c.GenerateResponse(errors.New(code.DataNotExists, err), nil)
+	}
+	pipelineObj, err := p.pipelineService.Update(&ser, c.User)
+	resp := c.GenerateResponse(err, nil)
+	if pipelineObj == nil {
+		return resp
+	}
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationUpdate,
+		OperateDetail:        "更新流水线:" + ser.Name,
+		Scope:                types.ScopePipeline,
+		ScopeId:              workspace.ID,
+		ScopeName:            workspace.Name,
+		ResourceId:           pipelineObj.ID,
+		ResourceType:         types.AuditResourcePipeline,
+		ResourceName:         ser.Name,
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: ser,
+	})
+	return resp
 }
 
 func (p *Pipeline) delete(c *views.Context) *utils.Response {
-	resp := &utils.Response{Code: code.Success}
 	id, err := strconv.ParseUint(c.Param("pipelineId"), 10, 64)
 	if err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
+	pipelineObj, err := p.models.PipelineManager.Get(uint(id))
+	if err != nil {
+		return c.GenerateResponse(errors.New(code.DataNotExists, fmt.Sprintf("获取流水线id=%d失败：%s", id, err.Error())), nil)
+	}
+	workspace, err := p.models.PipelineWorkspaceManager.Get(pipelineObj.WorkspaceId)
+	if err != nil {
+		return c.GenerateResponse(errors.New(code.DataNotExists, fmt.Sprintf("获取流水线空间id=%d失败：%s", pipelineObj.WorkspaceId, err.Error())), nil)
+	}
 	err = p.models.PipelineManager.Delete(uint(id))
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: "删除流水线失败：" + err.Error()}
+		err = errors.New(code.DeleteError, "删除流水线失败："+err.Error())
 	}
+	resp := c.GenerateResponse(err, nil)
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationDelete,
+		OperateDetail:        "删除流水线:" + pipelineObj.Name,
+		Scope:                types.ScopePipeline,
+		ScopeId:              workspace.ID,
+		ScopeName:            workspace.Name,
+		ResourceId:           pipelineObj.ID,
+		ResourceType:         types.AuditResourcePipeline,
+		ResourceName:         pipelineObj.Name,
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: nil,
+	})
 	return resp
 }
 

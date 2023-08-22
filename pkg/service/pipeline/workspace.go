@@ -2,13 +2,14 @@ package pipeline
 
 import (
 	"context"
+	"github.com/kubespace/kubespace/pkg/core/code"
+	"github.com/kubespace/kubespace/pkg/core/errors"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
 	"github.com/kubespace/kubespace/pkg/third/git"
 	"github.com/kubespace/kubespace/pkg/utils"
-	"github.com/kubespace/kubespace/pkg/utils/code"
 	"regexp"
 	"time"
 )
@@ -118,16 +119,16 @@ func (w *WorkspaceService) defaultCodePipelines() ([]*types.Pipeline, error) {
 	return []*types.Pipeline{branchPipeline, masterPipeline}, nil
 }
 
-func (w *WorkspaceService) Create(workspaceSer *serializers.WorkspaceSerializer, user *types.User) *utils.Response {
+func (w *WorkspaceService) Create(workspaceSer *serializers.WorkspaceSerializer, user *types.User) (*types.PipelineWorkspace, error) {
 	var err error
 	if workspaceSer.Type == types.WorkspaceTypeCode {
 		if !w.checkCodeUrl(workspaceSer.CodeType, workspaceSer.CodeUrl) {
-			return &utils.Response{Code: code.ParamsError, Msg: "代码地址格式不正确"}
+			return nil, errors.New(code.ParamsError, "代码地址格式不正确")
 		}
 		workspaceSer.Name = w.getCodeName(workspaceSer.CodeType, workspaceSer.CodeUrl)
 		secret, err := w.models.SettingsSecretManager.Get(workspaceSer.CodeSecretId)
 		if err != nil {
-			return &utils.Response{Code: code.GetError, Msg: err.Error()}
+			return nil, errors.New(code.DataNotExists, err)
 		}
 		gitcli, err := git.NewClient(workspaceSer.CodeType, workspaceSer.ApiUrl, &types.Secret{
 			Type:        secret.Type,
@@ -137,15 +138,15 @@ func (w *WorkspaceService) Create(workspaceSer *serializers.WorkspaceSerializer,
 			AccessToken: secret.AccessToken,
 		})
 		if err != nil {
-			return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+			return nil, errors.New(code.GitError, err)
 		}
 		// 获取代码仓库分支，验证是否可以连通
 		if _, err = gitcli.ListRepoBranches(context.Background(), workspaceSer.CodeUrl); err != nil {
-			return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+			return nil, errors.New(code.GitError, err)
 		}
 	}
 	if workspaceSer.Name == "" {
-		return &utils.Response{Code: code.ParamsError, Msg: "解析代码地址失败，未获取到代码库名称"}
+		return nil, errors.New(code.ParamsError, "解析代码地址失败，未获取到代码库名称")
 	}
 	workspace := &types.PipelineWorkspace{
 		Name:        workspaceSer.Name,
@@ -162,22 +163,18 @@ func (w *WorkspaceService) Create(workspaceSer *serializers.WorkspaceSerializer,
 		CreateTime: time.Now(),
 		UpdateTime: time.Now(),
 	}
-	resp := &utils.Response{Code: code.Success}
 	var defaultPipeline []*types.Pipeline
 	if workspace.Type == types.WorkspaceTypeCode {
 		defaultPipeline, err = w.defaultCodePipelines()
 		if err != nil {
-			return &utils.Response{Code: code.CreateError, Msg: "创建默认流水线失败: " + err.Error()}
+			return nil, errors.New(code.CreateError, "创建默认流水线失败: "+err.Error())
 		}
 	}
 	workspace, err = w.models.PipelineWorkspaceManager.Create(workspace, defaultPipeline)
 	if err != nil {
-		resp.Code = code.DBError
-		resp.Msg = err.Error()
-		return resp
+		return nil, errors.New(code.DBError, err)
 	}
-	resp.Data = workspace
-	return resp
+	return workspace, nil
 }
 
 func (w *WorkspaceService) ListGitRepos(params *schemas.ListGitReposParams) *utils.Response {

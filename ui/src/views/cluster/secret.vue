@@ -332,7 +332,7 @@ export default {
       }
       let yamlStr = yaml.dump(secret)
       this.dialogLoading = true
-      createResource(this.cluster, yamlStr).then((response) => {
+      createResource(this.cluster, yamlStr, {project_id: this.projectId}).then((response) => {
         this.dialogLoading = false
         this.createFormVisible = false
         Message.success("创建Secret成功")
@@ -350,7 +350,7 @@ export default {
       }
       let yamlStr = yaml.dump(secret)
       this.dialogLoading = true
-      updateResource(this.cluster, ResType.Secret, this.secret.metadata.namespace, this.secret.metadata.name, yamlStr).then((response) => {
+      updateResource(this.cluster, ResType.Secret, this.secret.metadata.namespace, this.secret.metadata.name, yamlStr, {project_id: this.projectId}).then((response) => {
         this.dialogLoading = false
         this.createFormVisible = false
         Message.success("编辑Secret成功")
@@ -371,7 +371,7 @@ export default {
         type: 'warning'
       }).then(() => {
         this.loading = true
-        delResource(this.cluster, ResType.Secret, {resources: cms}).then(() => {
+        delResource(this.cluster, ResType.Secret, {resources: cms}, {project_id: this.projectId}).then(() => {
           Message.success("删除Secret成功")
           this.loading = false
           this.fetchData()

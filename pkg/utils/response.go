@@ -5,20 +5,20 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/kubespace/kubespace/pkg/utils/code"
+	"github.com/kubespace/kubespace/pkg/core/code"
 )
 
 type Response struct {
-	Code string      `json:"code"`
-	Msg  string      `json:"msg"`
-	Data interface{} `json:"data"`
+	Code string `json:"code"`
+	Msg  string `json:"msg"`
+	Data any    `json:"data"`
 }
 
 func (r *Response) IsSuccess() bool {
 	return r.Code == code.Success
 }
 
-func (r *Response) Scan(value interface{}) error {
+func (r *Response) Scan(value any) error {
 	bytes, ok := value.([]byte)
 	if !ok {
 		return errors.New(fmt.Sprint("Failed to convert to bytes:", value))
@@ -40,7 +40,7 @@ func (r Response) Value() (driver.Value, error) {
 }
 
 type WatchResponse struct {
-	Event    string      `json:"event"`
-	Obj      string      `json:"obj"`
-	Resource interface{} `json:"resource"`
+	Event    string `json:"event"`
+	Obj      string `json:"obj"`
+	Resource any    `json:"resource"`
 }

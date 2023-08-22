@@ -9,6 +9,7 @@ import (
 	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_1/v1_1_5_b_pipeline_triggers_and_code_cache"
 	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_1/v1_1_6_a_pipeline_trigger_event_add_user"
 	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_2/v1_2_5_a_add_audit_operation"
+	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_2/v1_2_5_b_alter_app_name"
 	"github.com/kubespace/kubespace/pkg/model/types"
 )
 
@@ -36,13 +37,13 @@ var initTypes = []interface{}{
 	&types.SettingsImageRegistry{},
 
 	&types.Project{},
-	&types.ProjectApp{},
+	&types.App{},
 	&types.AppVersion{},
 	&types.AppVersionChart{},
 	&types.AppStore{},
-	&types.ProjectAppRevision{},
+	&types.AppRevision{},
 	&types.Spacelet{},
 	&types.Ldap{},
 
-	&types.AuditOperation{},
+	&types.AuditOperate{},
 }

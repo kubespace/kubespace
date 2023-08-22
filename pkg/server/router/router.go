@@ -3,6 +3,7 @@ package router
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/kubespace/kubespace/pkg/core/code"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/config"
@@ -11,7 +12,6 @@ import (
 	"github.com/kubespace/kubespace/pkg/server/views/spacelet"
 	"github.com/kubespace/kubespace/pkg/server/views/user"
 	"github.com/kubespace/kubespace/pkg/utils"
-	"github.com/kubespace/kubespace/pkg/utils/code"
 	"html/template"
 	"io/ioutil"
 	"k8s.io/klog/v2"
@@ -88,7 +88,7 @@ func apiWrapper(m *model.Models, handler views.ViewHandler) gin.HandlerFunc {
 		if !authRes.IsSuccess() {
 			c.JSON(401, authRes)
 		} else {
-			context := &views.Context{Context: c, User: authRes.Data.(*types.User)}
+			context := &views.Context{Context: c, User: authRes.Data.(*types.User), Models: m}
 			res := handler(context)
 			if res != nil {
 				c.JSON(200, res)
@@ -125,7 +125,7 @@ func auth(m *model.Models, c *gin.Context) *utils.Response {
 		return &resp
 	}
 
-	u, err := m.UserManager.Get(tk.UserName)
+	u, err := m.UserManager.GetByName(tk.UserName)
 	if err != nil {
 		resp.Code = code.GetError
 		resp.Msg = err.Error()

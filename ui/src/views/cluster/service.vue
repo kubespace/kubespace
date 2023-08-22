@@ -396,7 +396,7 @@ export default {
         type: 'warning'
       }).then(() => {
         this.loading = true
-        delResource(this.cluster, ResType.Service, {resources: services}).then(() => {
+        delResource(this.cluster, ResType.Service, {resources: services}, {project_id: this.projectId}).then(() => {
           Message.success("删除Service成功")
           this.loading = false
           this.fetchData()
@@ -448,7 +448,7 @@ export default {
       }
       let yamlStr = yaml.dump(service)
       this.dialogLoading = true
-      createResource(cluster, yamlStr).then(() => {
+      createResource(cluster, yamlStr, {project_id: this.projectId}).then(() => {
         Message.success("创建Service成功")
         this.dialogLoading = false
         this.createFormVisible = false
@@ -485,7 +485,7 @@ export default {
       }
       let yamlStr = yaml.dump(service)
       this.dialogLoading = true
-      updateResource(cluster, ResType.Service, this.service.metadata.namespace, this.service.metadata.name, yamlStr).then(() => {
+      updateResource(cluster, ResType.Service, this.service.metadata.namespace, this.service.metadata.name, yamlStr, {project_id: this.projectId}).then(() => {
         this.dialogLoading = false
         this.createFormVisible = false
         Message.success("编辑Service成功")

@@ -109,6 +109,12 @@ const Routes = [
     component: () => import('@/views/workspace/workspaceRole'),
     meta: { title: '成员管理', icon: 'permission', 'group': 'workspace', object: 'pipeline' }
   },
+  {
+    path: 'audit',
+    name: 'workspaceAudit',
+    component: () => import('@/views/workspace/audit'),
+    meta: { title: '操作审计', icon: 'audit', 'group': 'workspace', object: 'pipeline' }
+  },
 ]
 
 const workspaceRoutes = [

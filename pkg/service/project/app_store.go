@@ -3,10 +3,11 @@ package project
 import (
 	"bytes"
 	"encoding/base64"
+	"github.com/kubespace/kubespace/pkg/core/code"
+	"github.com/kubespace/kubespace/pkg/core/errors"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	"github.com/kubespace/kubespace/pkg/utils"
-	"github.com/kubespace/kubespace/pkg/utils/code"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"io"
 	"io/ioutil"
@@ -23,18 +24,22 @@ func NewAppStoreService(appBaseService *AppBaseService) *AppStoreService {
 	}
 }
 
-func (s *AppStoreService) CreateStoreApp(user *types.User, serializer serializers.AppStoreCreateSerializer, chartIn io.Reader, icon io.Reader) *utils.Response {
-	app, err := s.models.AppStoreManager.GetStoreAppByName(serializer.Name)
+func (s *AppStoreService) CreateStoreApp(
+	user *types.User,
+	serializer serializers.AppStoreCreateSerializer,
+	chartIn io.Reader,
+	icon io.Reader) (*types.AppStore, *types.AppVersion, error) {
+	app, err := s.models.AppStoreManager.GetByName(serializer.Name)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+		return nil, nil, errors.New(code.DBError, err)
 	}
 	if app != nil {
-		sameVersion, err := s.models.ProjectAppManager.GetAppVersion(types.AppVersionScopeStoreApp, app.ID, serializer.Name, serializer.PackageVersion)
+		sameVersion, err := s.models.AppVersionManager.GetByPackageNameVersion(types.AppVersionScopeStoreApp, app.ID, serializer.Name, serializer.PackageVersion)
 		if err != nil {
-			return &utils.Response{Code: code.DBError, Msg: err.Error()}
+			return app, nil, errors.New(code.DBError, err)
 		}
 		if sameVersion != nil {
-			return &utils.Response{Code: code.ParamsError, Msg: "该应用已存在相同版本"}
+			return app, nil, errors.New(code.ParamsError, "该应用已存在相同版本")
 		}
 		app.UpdateUser = user.Name
 	} else {
@@ -55,11 +60,11 @@ func (s *AppStoreService) CreateStoreApp(user *types.User, serializer serializer
 	}
 	chartBytes, err := ioutil.ReadAll(chartIn)
 	if err != nil {
-		return &utils.Response{Code: code.GetError, Msg: "获取chart文件失败: " + err.Error()}
+		return app, nil, errors.New(code.ParamsError, "获取chart文件失败: "+err.Error())
 	}
 	charts, err := loader.LoadArchive(bytes.NewBuffer(chartBytes))
 	if err != nil {
-		return &utils.Response{Code: code.GetError, Msg: err.Error()}
+		return app, nil, errors.New(code.ParamsError, "加载chart文件失败: "+err.Error())
 	}
 	values := ""
 	for _, rawFile := range charts.Raw {
@@ -81,9 +86,9 @@ func (s *AppStoreService) CreateStoreApp(user *types.User, serializer serializer
 	}
 	app, err = s.models.AppStoreManager.CreateStoreApp(chartBytes, app, appVersion)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: "创建应用失败:" + err.Error()}
+		return app, appVersion, errors.New(code.DBError, "创建应用失败:"+err.Error())
 	}
-	return &utils.Response{Code: code.Success, Data: app}
+	return app, appVersion, nil
 }
 
 func (s *AppStoreService) ListStoreApp(ser *serializers.GetStoreAppSerializer) *utils.Response {
@@ -119,7 +124,7 @@ func (s *AppStoreService) ListStoreApp(ser *serializers.GetStoreAppSerializer) *
 		}
 		if ser.WithVersions {
 			var appVersions []map[string]interface{}
-			versions, err := s.models.ProjectAppVersionManager.ListAppVersions(types.AppVersionScopeStoreApp, app.ID)
+			versions, err := s.models.AppVersionManager.List(types.AppVersionScopeStoreApp, app.ID)
 			if err != nil {
 				return &utils.Response{Code: code.DBError, Msg: err.Error()}
 			}
@@ -139,7 +144,7 @@ func (s *AppStoreService) ListStoreApp(ser *serializers.GetStoreAppSerializer) *
 }
 
 func (s *AppStoreService) GetStoreApp(appId uint, ser serializers.GetStoreAppSerializer) *utils.Response {
-	app, err := s.models.AppStoreManager.GetStoreApp(appId)
+	app, err := s.models.AppStoreManager.GetById(appId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: "获取应用失败:" + err.Error()}
 	}
@@ -159,7 +164,7 @@ func (s *AppStoreService) GetStoreApp(appId uint, ser serializers.GetStoreAppSer
 		"update_time": app.UpdateTime,
 	}
 	if ser.WithVersions {
-		versions, err := s.models.ProjectAppVersionManager.ListAppVersions(types.AppVersionScopeStoreApp, appId)
+		versions, err := s.models.AppVersionManager.List(types.AppVersionScopeStoreApp, appId)
 		if err != nil {
 			return &utils.Response{Code: code.DBError, Msg: err.Error()}
 		}

@@ -3,6 +3,7 @@ package model
 import (
 	"github.com/kubespace/kubespace/pkg/core/db"
 	"github.com/kubespace/kubespace/pkg/informer/listwatcher/config"
+	"github.com/kubespace/kubespace/pkg/model/manager/audit"
 	"github.com/kubespace/kubespace/pkg/model/manager/cluster"
 	"github.com/kubespace/kubespace/pkg/model/manager/pipeline"
 	"github.com/kubespace/kubespace/pkg/model/manager/project"
@@ -39,16 +40,18 @@ type Models struct {
 	PipelineTriggerEventManager *pipeline.PipelineTriggerEventManager
 	PipelineCodeCacheManager    *pipeline.PipelineCodeCacheManager
 
-	ProjectAppManager        *project.AppManager
-	ProjectAppVersionManager *project.AppVersionManager
-	ProjectManager           *project.ManagerProject
-	AppStoreManager          *project.AppStoreManager
+	AppManager        *project.AppManager
+	AppVersionManager *project.AppVersionManager
+	ProjectManager    *project.ManagerProject
+	AppStoreManager   *project.AppStoreManager
 
 	SettingsSecretManager *settings.SettingsSecretManager
 	ImageRegistryManager  *settings.ImageRegistryManager
 
 	LdapManager     *settings.LdapManager
 	SpaceletManager *spacelet.SpaceletManager
+
+	AuditOperateManager *audit.AuditOperateManager
 }
 
 func NewModels(c *Config) (*Models, error) {
@@ -74,13 +77,15 @@ func NewModels(c *Config) (*Models, error) {
 	ldap := settings.NewLdapManager(c.DB.Instance)
 
 	appVersionMgr := project.NewAppVersionManager(c.DB.Instance)
-	projectAppMgr := project.NewAppManager(appVersionMgr, c.DB.Instance)
+	AppMgr := project.NewAppManager(appVersionMgr, c.DB.Instance)
 	appStoreMgr := project.NewAppStoreManager(appVersionMgr, c.DB.Instance)
-	projectMgr := project.NewManagerProject(c.DB.Instance, projectAppMgr)
+	projectMgr := project.NewManagerProject(c.DB.Instance, AppMgr)
 
-	cm := cluster.NewClusterManager(c.DB.Instance, c.ListWatcherConfig, projectAppMgr)
+	cm := cluster.NewClusterManager(c.DB.Instance, c.ListWatcherConfig, AppMgr)
 
 	sl := spacelet.NewSpaceletManager(c.DB.Instance)
+
+	auditOperateMgr := audit.NewAuditOperateManager(c.DB.Instance)
 
 	return &Models{
 		db:                          c.DB.Instance,
@@ -103,10 +108,11 @@ func NewModels(c *Config) (*Models, error) {
 		SettingsSecretManager:       secrets,
 		LdapManager:                 ldap,
 		ProjectManager:              projectMgr,
-		ProjectAppManager:           projectAppMgr,
-		ProjectAppVersionManager:    appVersionMgr,
+		AppManager:                  AppMgr,
+		AppVersionManager:           appVersionMgr,
 		ImageRegistryManager:        imageRegistry,
 		AppStoreManager:             appStoreMgr,
 		SpaceletManager:             sl,
+		AuditOperateManager:         auditOperateMgr,
 	}, nil
 }

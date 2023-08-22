@@ -2,6 +2,7 @@ package project
 
 import (
 	"fmt"
+	"github.com/kubespace/kubespace/pkg/core/code"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/config"
@@ -9,7 +10,6 @@ import (
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	projectservice "github.com/kubespace/kubespace/pkg/service/project"
 	"github.com/kubespace/kubespace/pkg/utils"
-	"github.com/kubespace/kubespace/pkg/utils/code"
 	"k8s.io/klog/v2"
 	"net/http"
 	"strconv"
@@ -65,6 +65,18 @@ func (p *Project) create(c *views.Context) *utils.Response {
 		return resp
 	}
 	resp.Data = project
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationCreate,
+		OperateDetail:        "创建工作空间，名称=" + project.Name,
+		Scope:                types.ScopeProject,
+		ScopeId:              project.ID,
+		ScopeName:            project.Name,
+		ResourceId:           project.ID,
+		ResourceType:         types.AuditResourceProject,
+		ResourceName:         project.Name,
+		Code:                 code.Success,
+		OperateDataInterface: project,
+	})
 	return resp
 }
 
@@ -95,6 +107,18 @@ func (p *Project) update(c *views.Context) *utils.Response {
 		resp.Msg = fmt.Sprintf("更新项目空间失败:%s", err.Error())
 		return resp
 	}
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationUpdate,
+		OperateDetail:        "更新工作空间，名称=" + project.Name,
+		Scope:                types.ScopeProject,
+		ScopeId:              project.ID,
+		ScopeName:            project.Name,
+		ResourceId:           project.ID,
+		ResourceType:         types.AuditResourceProject,
+		ResourceName:         project.Name,
+		Code:                 code.Success,
+		OperateDataInterface: ser,
+	})
 	resp.Data = project
 	return resp
 }
@@ -111,7 +135,7 @@ func (p *Project) list(c *views.Context) *utils.Response {
 	clusters := make(map[string]*types.Cluster)
 
 	for _, project := range projects {
-		if !p.models.UserRoleManager.HasScopeRole(c.User, types.RoleScopeProject, project.ID, types.RoleTypeViewer) {
+		if !p.models.UserRoleManager.HasScopeRole(c.User, types.ScopeProject, project.ID, types.RoleTypeViewer) {
 			continue
 		}
 		cluster, ok := clusters[project.ClusterId]
@@ -148,8 +172,26 @@ func (p *Project) delete(c *views.Context) *utils.Response {
 	if err = c.ShouldBind(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
+	project, err := p.models.ProjectManager.Get(uint(projectId))
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: "获取工作空间失败: " + err.Error()}
+	}
 
-	return p.projectService.Delete(uint(projectId), ser.DelResource)
+	resp := p.projectService.Delete(uint(projectId), ser.DelResource)
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationDelete,
+		OperateDetail:        "删除工作空间，名称=" + project.Name,
+		Scope:                types.ScopeProject,
+		ScopeId:              project.ID,
+		ScopeName:            project.Name,
+		ResourceId:           project.ID,
+		ResourceType:         types.AuditResourceProject,
+		ResourceName:         project.Name,
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: ser,
+	})
+	return resp
 }
 
 func (p *Project) get(c *views.Context) *utils.Response {
@@ -165,7 +207,25 @@ func (p *Project) clone(c *views.Context) *utils.Response {
 	if err := c.ShouldBind(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	return p.projectService.Clone(&ser, c.User)
+	oriProject, err := p.models.ProjectManager.Get(ser.OriginProjectId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: "获取工作空间失败:" + err.Error()}
+	}
+	resp := p.projectService.Clone(&ser, c.User)
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationClone,
+		OperateDetail:        fmt.Sprintf("克隆工作空间，源工作空间=%s，目标工作空间=%s", oriProject.Name, ser.Name),
+		Scope:                types.ScopeProject,
+		ScopeId:              oriProject.ID,
+		ScopeName:            oriProject.Name,
+		ResourceId:           oriProject.ID,
+		ResourceType:         types.AuditResourceProject,
+		ResourceName:         oriProject.Name,
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: ser,
+	})
+	return resp
 }
 
 func (p *Project) getProjectResources(c *views.Context) *utils.Response {

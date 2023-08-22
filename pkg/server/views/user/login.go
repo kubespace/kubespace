@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/kubespace/kubespace/pkg/core/code"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	"github.com/kubespace/kubespace/pkg/utils"
-	"github.com/kubespace/kubespace/pkg/utils/code"
 	"k8s.io/klog/v2"
 	"net/http"
 	"strings"
@@ -42,7 +42,7 @@ func (l Login) Login(c *gin.Context) {
 	}
 	password := utils.Encrypt(user.Password)
 
-	userObj, err := l.models.UserManager.Get(user.UserName)
+	userObj, err := l.models.UserManager.GetByName(user.UserName)
 	if err != nil {
 		resp.Code = code.GetError
 		resp.Msg = fmt.Sprintf("not found user by name:%s", user.UserName)
@@ -86,7 +86,7 @@ func (l Login) HasAdmin(c *gin.Context) {
 	data := map[string]interface{}{
 		"has": 1,
 	}
-	if _, err := l.models.UserManager.Get(types.ADMIN); err != nil {
+	if _, err := l.models.UserManager.GetByName(types.ADMIN); err != nil {
 		klog.Errorf("get admin err: %v", err)
 		data["has"] = 0
 	}

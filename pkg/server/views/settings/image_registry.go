@@ -1,12 +1,14 @@
 package settings
 
 import (
+	"fmt"
+	"github.com/kubespace/kubespace/pkg/core/code"
+	"github.com/kubespace/kubespace/pkg/core/errors"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/views"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	"github.com/kubespace/kubespace/pkg/utils"
-	"github.com/kubespace/kubespace/pkg/utils/code"
 	"net/http"
 	"strconv"
 	"time"
@@ -32,13 +34,10 @@ func NewImageRegistry(models *model.Models) *ImageRegistry {
 
 func (s *ImageRegistry) create(c *views.Context) *utils.Response {
 	var ser serializers.ImageRegistrySerializers
-	resp := &utils.Response{Code: code.Success}
 	if err := c.ShouldBind(&ser); err != nil {
-		resp.Code = code.ParamsError
-		resp.Msg = err.Error()
-		return resp
+		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
-	secret := &types.SettingsImageRegistry{
+	registry := &types.SettingsImageRegistry{
 		Registry:   ser.Registry,
 		User:       ser.User,
 		Password:   ser.Password,
@@ -47,32 +46,37 @@ func (s *ImageRegistry) create(c *views.Context) *utils.Response {
 		CreateTime: time.Time{},
 		UpdateTime: time.Time{},
 	}
-	_, err := s.models.ImageRegistryManager.Create(secret)
+	_, err := s.models.ImageRegistryManager.Create(registry)
 	if err != nil {
-		resp.Code = code.DBError
-		resp.Msg = "创建镜像仓库失败: " + err.Error()
-		return resp
+		err = errors.New(code.DBError, "创建镜像仓库失败: "+err.Error())
 	}
+	resp := c.GenerateResponse(err, nil)
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationCreate,
+		OperateDetail:        fmt.Sprintf("创建镜像仓库：%s", ser.Registry),
+		Scope:                types.ScopePlatform,
+		ResourceId:           registry.ID,
+		ResourceType:         types.AuditResourcePlatformRegistry,
+		ResourceName:         ser.Registry,
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: ser,
+	})
 	return resp
 }
 
 func (s *ImageRegistry) update(c *views.Context) *utils.Response {
 	var ser serializers.ImageRegistrySerializers
-	resp := &utils.Response{Code: code.Success}
 	if err := c.ShouldBind(&ser); err != nil {
-		resp.Code = code.ParamsError
-		resp.Msg = err.Error()
-		return resp
+		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
 	obj, err := s.models.ImageRegistryManager.Get(uint(id))
 	if err != nil {
-		resp.Code = code.DBError
-		resp.Msg = "获取镜像仓库失败: " + err.Error()
-		return resp
+		return c.GenerateResponseError(errors.New(code.DataNotExists, "获取镜像仓库失败: "+err.Error()))
 	}
 	obj.User = ser.User
 	obj.Password = ser.Password
@@ -80,41 +84,55 @@ func (s *ImageRegistry) update(c *views.Context) *utils.Response {
 	obj.UpdateTime = time.Now()
 	_, err = s.models.ImageRegistryManager.Update(obj)
 	if err != nil {
-		resp.Code = code.DBError
-		resp.Msg = "更新镜像仓库失败: " + err.Error()
-		return resp
+		err = errors.New(code.DBError, "更新镜像仓库失败: "+err.Error())
 	}
+	resp := c.GenerateResponse(err, nil)
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationUpdate,
+		OperateDetail:        fmt.Sprintf("更新镜像仓库：%s", ser.Registry),
+		Scope:                types.ScopePlatform,
+		ResourceId:           obj.ID,
+		ResourceType:         types.AuditResourcePlatformRegistry,
+		ResourceName:         ser.Registry,
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: ser,
+	})
 	return resp
 }
 
 func (s *ImageRegistry) delete(c *views.Context) *utils.Response {
-	resp := &utils.Response{Code: code.Success}
 	secretId, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
 	obj, err := s.models.ImageRegistryManager.Get(uint(secretId))
 	if err != nil {
-		resp.Code = code.DBError
-		resp.Msg = "获取镜像仓库失败: " + err.Error()
-		return resp
+		return c.GenerateResponseError(errors.New(code.DataNotExists, "获取镜像仓库失败: "+err.Error()))
 	}
 	err = s.models.ImageRegistryManager.Delete(obj)
 	if err != nil {
-		resp.Code = code.DBError
-		resp.Msg = "删除镜像参考失败: " + err.Error()
-		return resp
+		err = errors.New(code.DBError, "删除镜像仓库失败: "+err.Error())
 	}
+	resp := c.GenerateResponse(err, nil)
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationDelete,
+		OperateDetail:        fmt.Sprintf("删除镜像仓库：%s", obj.Registry),
+		Scope:                types.ScopePlatform,
+		ResourceId:           obj.ID,
+		ResourceType:         types.AuditResourcePlatformRegistry,
+		ResourceName:         obj.Registry,
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: nil,
+	})
 	return resp
 }
 
 func (s *ImageRegistry) list(c *views.Context) *utils.Response {
-	resp := &utils.Response{Code: code.Success}
 	objs, err := s.models.ImageRegistryManager.List()
 	if err != nil {
-		resp.Code = code.DBError
-		resp.Msg = err.Error()
-		return resp
+		return c.GenerateResponseError(errors.New(code.DBError, err))
 	}
 	var data []map[string]interface{}
 
@@ -129,6 +147,5 @@ func (s *ImageRegistry) list(c *views.Context) *utils.Response {
 			"update_time": obj.UpdateTime,
 		})
 	}
-	resp.Data = data
-	return resp
+	return c.GenerateResponseOK(data)
 }

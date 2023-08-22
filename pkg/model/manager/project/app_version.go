@@ -24,15 +24,17 @@ func (v *AppVersionManager) NewPackageFilenameFromNameVersion(name string, versi
 	return filename
 }
 
-func (v *AppVersionManager) CreateAppVersionWithChartPath(chartFilePath string, scope string, scopeId uint, appVersion *types.AppVersion) (*types.AppVersion, error) {
+// CreateWithChartPath 通过chart本地存储创建
+func (v *AppVersionManager) CreateWithChartPath(chartFilePath string, scope string, scopeId uint, appVersion *types.AppVersion) (*types.AppVersion, error) {
 	content, err := os.ReadFile(chartFilePath)
 	if err != nil {
 		return nil, err
 	}
-	return v.CreateAppVersionWithChartByte(content, scope, scopeId, appVersion)
+	return v.CreateWithChartByte(content, scope, scopeId, appVersion)
 }
 
-func (v *AppVersionManager) CreateAppVersionWithChartByte(chartBytes []byte, scope string, scopeId uint, appVersion *types.AppVersion) (*types.AppVersion, error) {
+// CreateWithChartByte 通过chart二进制内容创建
+func (v *AppVersionManager) CreateWithChartByte(chartBytes []byte, scope string, scopeId uint, appVersion *types.AppVersion) (*types.AppVersion, error) {
 	var err error
 	err = v.DB.Transaction(func(tx *gorm.DB) error {
 		path := v.NewPackageFilenameFromNameVersion(appVersion.PackageName, appVersion.PackageVersion)
@@ -69,15 +71,15 @@ func (v *AppVersionManager) CreateAppVersionWithChartByte(chartBytes []byte, sco
 	return appVersion, nil
 }
 
-func (v *AppVersionManager) GetAppVersion(appVersionId uint) (*types.AppVersion, error) {
+func (v *AppVersionManager) GetById(id uint) (*types.AppVersion, error) {
 	var appVersion types.AppVersion
-	if err := v.DB.First(&appVersion, "id = ?", appVersionId).Error; err != nil {
+	if err := v.DB.First(&appVersion, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
 	return &appVersion, nil
 }
 
-func (v *AppVersionManager) GetAppVersionChart(chartPath string) (*types.AppVersionChart, error) {
+func (v *AppVersionManager) GetChart(chartPath string) (*types.AppVersionChart, error) {
 	var appVersionChart types.AppVersionChart
 	if err := v.DB.First(&appVersionChart, "path = ?", chartPath).Error; err != nil {
 		return nil, err
@@ -98,7 +100,7 @@ func (v *AppVersionManager) UpdateAppVersion(appVersion *types.AppVersion, colum
 	return nil
 }
 
-func (v *AppVersionManager) ListAppVersions(scope string, scopeId uint) (*[]types.AppVersion, error) {
+func (v *AppVersionManager) List(scope string, scopeId uint) (*[]types.AppVersion, error) {
 	var appVersions []types.AppVersion
 	var err error
 	if err = v.DB.Where("scope = ? and scope_id = ?", scope, scopeId).Order("id desc").Find(&appVersions).Error; err != nil {
@@ -107,7 +109,8 @@ func (v *AppVersionManager) ListAppVersions(scope string, scopeId uint) (*[]type
 	return &appVersions, nil
 }
 
-func (v *AppVersionManager) DeleteVersion(id uint) error {
+// Delete 删除应用版本以及该版本构建历史，如果该版本没有其他应用使用，则同时删除chart
+func (v *AppVersionManager) Delete(id uint) error {
 	var appVersion types.AppVersion
 	if err := v.DB.First(&appVersion, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -127,8 +130,19 @@ func (v *AppVersionManager) DeleteVersion(id uint) error {
 			return err
 		}
 	}
-	if err := v.DB.Delete(&types.ProjectAppRevision{}, "app_version_id=?", appVersion.ID).Error; err != nil {
+	if err := v.DB.Delete(&types.AppRevision{}, "app_version_id=?", appVersion.ID).Error; err != nil {
 		return err
 	}
 	return nil
+}
+
+func (v *AppVersionManager) GetByPackageNameVersion(scope string, scopeId uint, packageName, packageVersion string) (*types.AppVersion, error) {
+	var version types.AppVersion
+	err := v.DB.First(&version, "scope = ? and scope_id = ? and package_name = ? and package_version = ?", scope, scopeId, packageName, packageVersion).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	return &version, nil
 }

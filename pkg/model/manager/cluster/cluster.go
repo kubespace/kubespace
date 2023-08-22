@@ -120,16 +120,16 @@ func (clu *ClusterManager) Delete(id uint) error {
 	if cnt > 0 {
 		return fmt.Errorf("当前集群存在工作空间绑定")
 	}
-	var apps []types.ProjectApp
+	var apps []types.App
 	if err := clu.DB.Find(&apps, "scope=? and scope_id=?", types.AppVersionScopeComponent, id).Error; err != nil {
 		return err
 	}
 	for _, app := range apps {
-		if err := clu.appManager.DeleteProjectApp(app.ID); err != nil {
+		if err := clu.appManager.DeleteApp(app.ID); err != nil {
 			return err
 		}
 	}
-	if err := clu.DB.Delete(&types.UserRole{}, "scope = ? and scope_id = ?", types.RoleScopeCluster, id).Error; err != nil {
+	if err := clu.DB.Delete(&types.UserRole{}, "scope = ? and scope_id = ?", types.ScopeCluster, id).Error; err != nil {
 		return err
 	}
 	if err := clu.DB.Delete(types.Cluster{}, "id = ?", id).Error; err != nil {

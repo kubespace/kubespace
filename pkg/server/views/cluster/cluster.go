@@ -2,6 +2,8 @@ package cluster
 
 import (
 	"fmt"
+	"github.com/kubespace/kubespace/pkg/core/code"
+	"github.com/kubespace/kubespace/pkg/core/errors"
 	kubetypes "github.com/kubespace/kubespace/pkg/kubernetes/types"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
@@ -10,7 +12,6 @@ import (
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	"github.com/kubespace/kubespace/pkg/service/cluster"
 	"github.com/kubespace/kubespace/pkg/utils"
-	"github.com/kubespace/kubespace/pkg/utils/code"
 	"k8s.io/klog/v2"
 	"net/http"
 	"strconv"
@@ -52,7 +53,7 @@ func (clu *Cluster) list(c *views.Context) *utils.Response {
 
 	var wg sync.WaitGroup
 	for _, du := range clus {
-		if !clu.models.UserRoleManager.HasScopeRole(c.User, types.RoleScopeCluster, du.ID, types.RoleTypeViewer) {
+		if !clu.models.UserRoleManager.HasScopeRole(c.User, types.ScopeCluster, du.ID, types.RoleTypeViewer) {
 			continue
 		}
 		wg.Add(1)
@@ -93,17 +94,11 @@ func (clu *Cluster) list(c *views.Context) *utils.Response {
 
 func (clu *Cluster) create(c *views.Context) *utils.Response {
 	var ser serializers.ClusterCreateSerializers
-	resp := &utils.Response{Code: code.Success}
-
 	if err := c.ShouldBind(&ser); err != nil {
-		resp.Code = code.ParamsError
-		resp.Msg = err.Error()
-		return resp
+		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
 	if ser.Name == "" {
-		resp.Code = code.ParamsError
-		resp.Msg = fmt.Sprintf("params cluster name:%s blank", ser.Name)
-		return resp
+		return c.GenerateResponseError(errors.New(code.ParamsError, "cluster name is blank"))
 	}
 	clusterObj := &types.Cluster{
 		Name1:      ser.Name,
@@ -114,21 +109,23 @@ func (clu *Cluster) create(c *views.Context) *utils.Response {
 		CreateTime: time.Now(),
 		UpdateTime: time.Now(),
 	}
-	if err := clu.models.ClusterManager.Create(clusterObj); err != nil {
-		resp.Code = code.CreateError
-		resp.Msg = err.Error()
-		return resp
+	err := clu.models.ClusterManager.Create(clusterObj)
+	if err != nil {
+		err = errors.New(code.CreateError, err)
 	}
-	d := map[string]interface{}{
-		"id":          clusterObj.ID,
-		"name1":       clusterObj.Name1,
-		"name":        clusterObj.Name,
-		"token":       clusterObj.Token,
-		"status":      clusterObj.Status,
-		"create_time": clusterObj.CreateTime,
-		"update_time": clusterObj.UpdateTime,
-	}
-	resp.Data = d
+	resp := c.GenerateResponse(err, clusterObj)
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationCreate,
+		OperateDetail:        "创建集群：" + clusterObj.Name1,
+		Scope:                types.ScopeCluster,
+		ScopeId:              clusterObj.ID,
+		ScopeName:            clusterObj.Name1,
+		ResourceId:           clusterObj.ID,
+		ResourceType:         types.AuditResourceCluster,
+		ResourceName:         clusterObj.Name1,
+		Code:                 code.Success,
+		OperateDataInterface: clusterObj,
+	})
 	return resp
 }
 
@@ -137,22 +134,31 @@ func (clu *Cluster) update(c *views.Context) *utils.Response {
 	resp := &utils.Response{Code: code.Success}
 
 	if err := c.ShouldBind(&ser); err != nil {
-		resp.Code = code.ParamsError
-		resp.Msg = err.Error()
-		return resp
+		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
 	clusterId, err := strconv.Atoi(c.Param("cluster"))
 	if err != nil {
-		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
-	_, err = clu.models.ClusterManager.Get(uint(clusterId))
+	clusterObj, err := clu.models.ClusterManager.Get(uint(clusterId))
 	if err != nil {
-		return &utils.Response{Code: code.DataNotExists, Msg: fmt.Sprintf("not found cluster id=%d", clusterId)}
+		return c.GenerateResponseError(errors.New(code.DataNotExists, fmt.Sprintf("not found cluster id=%d", clusterId)))
 	}
-	if err = clu.models.ClusterManager.UpdateByObject(
-		uint(clusterId), &types.Cluster{KubeConfig: ser.KubeConfig}); err != nil {
+	if err = clu.models.ClusterManager.UpdateByObject(uint(clusterId), &types.Cluster{KubeConfig: ser.KubeConfig}); err != nil {
 		return &utils.Response{Code: code.UpdateError, Msg: err.Error()}
 	}
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationUpdate,
+		OperateDetail:        "更新集群：" + clusterObj.Name1,
+		Scope:                types.ScopeCluster,
+		ScopeId:              clusterObj.ID,
+		ScopeName:            clusterObj.Name1,
+		ResourceId:           clusterObj.ID,
+		ResourceType:         types.AuditResourceCluster,
+		ResourceName:         clusterObj.Name1,
+		Code:                 code.Success,
+		OperateDataInterface: ser,
+	})
 	return resp
 }
 
@@ -197,18 +203,40 @@ func (clu *Cluster) members(c *views.Context) *utils.Response {
 func (clu *Cluster) delete(c *views.Context) *utils.Response {
 	var ser []serializers.DeleteClusterSerializers
 	if err := c.ShouldBind(&ser); err != nil {
-		klog.Errorf("bind params error: %s", err.Error())
-		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
-	for _, c := range ser {
-		id, err := strconv.ParseUint(c.Id, 10, 64)
+	for _, delCluster := range ser {
+		resp := &utils.Response{Code: code.Success}
+		id, err := strconv.ParseUint(delCluster.Id, 10, 64)
 		if err != nil {
 			return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+		}
+		clusterObj, err := clu.models.ClusterManager.Get(uint(id))
+		if err != nil {
+			return &utils.Response{Code: code.DataNotExists, Msg: fmt.Sprintf("not found cluster id=%d", id)}
 		}
 		err = clu.models.ClusterManager.Delete(uint(id))
 		if err != nil {
 			klog.Errorf("delete cluster %s error: %s", c, err.Error())
-			return &utils.Response{Code: code.DeleteError, Msg: err.Error()}
+			resp = &utils.Response{Code: code.DeleteError, Msg: err.Error()}
+		}
+		clusterObj.KubeConfig = ""
+
+		c.CreateAudit(&types.AuditOperate{
+			Operation:            types.AuditOperationDelete,
+			OperateDetail:        "删除集群：" + clusterObj.Name1,
+			Scope:                types.ScopeCluster,
+			ScopeId:              clusterObj.ID,
+			ScopeName:            clusterObj.Name1,
+			ResourceId:           clusterObj.ID,
+			ResourceType:         types.AuditResourceCluster,
+			ResourceName:         clusterObj.Name1,
+			Code:                 resp.Code,
+			Message:              resp.Msg,
+			OperateDataInterface: clusterObj,
+		})
+		if !resp.IsSuccess() {
+			return resp
 		}
 	}
 	return &utils.Response{Code: code.Success}

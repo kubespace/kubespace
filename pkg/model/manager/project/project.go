@@ -56,17 +56,17 @@ func (p *ManagerProject) List() ([]types.Project, error) {
 }
 
 func (p *ManagerProject) Delete(project *types.Project) error {
-	var apps []types.ProjectApp
+	var apps []types.App
 	var err error
 	if err = p.DB.Where("scope = ? and scope_id = ?", types.AppVersionScopeProjectApp, project.ID).Find(&apps).Error; err != nil {
 		return err
 	}
 	for _, app := range apps {
-		if err = p.ProjectAppManager.DeleteProjectApp(app.ID); err != nil {
+		if err = p.ProjectAppManager.DeleteApp(app.ID); err != nil {
 			return err
 		}
 	}
-	if err = p.DB.Delete(&types.UserRole{}, "scope = ? and scope_id = ?", types.RoleScopeProject, project.ID).Error; err != nil {
+	if err = p.DB.Delete(&types.UserRole{}, "scope = ? and scope_id = ?", types.ScopeProject, project.ID).Error; err != nil {
 		return err
 	}
 	result := p.DB.Delete(project)
@@ -81,7 +81,7 @@ func (p *ManagerProject) Clone(originProjectId uint, newProject *types.Project) 
 		if err := tx.Create(newProject).Error; err != nil {
 			return err
 		}
-		var originApps []types.ProjectApp
+		var originApps []types.App
 		var err error
 		if err = tx.Where("scope = ? and scope_id = ?", types.AppVersionScopeProjectApp, originProjectId).Find(&originApps).Error; err != nil {
 			return err

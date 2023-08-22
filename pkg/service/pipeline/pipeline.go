@@ -3,15 +3,16 @@ package pipeline
 import (
 	"context"
 	"database/sql"
-	"errors"
+	oerrors "errors"
 	"fmt"
+	"github.com/kubespace/kubespace/pkg/core/code"
+	"github.com/kubespace/kubespace/pkg/core/errors"
 	"github.com/kubespace/kubespace/pkg/model"
 	pipelinemgr "github.com/kubespace/kubespace/pkg/model/manager/pipeline"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
 	"github.com/kubespace/kubespace/pkg/third/git"
 	"github.com/kubespace/kubespace/pkg/utils"
-	"github.com/kubespace/kubespace/pkg/utils/code"
 	"gorm.io/gorm"
 	"k8s.io/klog/v2"
 	"time"
@@ -27,10 +28,10 @@ func NewPipelineService(models *model.Models) *PipelineService {
 	}
 }
 
-func (p *PipelineService) Create(params *schemas.PipelineParams, user *types.User) *utils.Response {
+func (p *PipelineService) Create(params *schemas.PipelineParams, user *types.User) (*types.Pipeline, error) {
 	workspace, err := p.models.PipelineWorkspaceManager.Get(params.WorkspaceId)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+		return nil, errors.New(code.DataNotExists, err)
 	}
 	pipeline := &types.Pipeline{
 		Name:        params.Name,
@@ -42,18 +43,15 @@ func (p *PipelineService) Create(params *schemas.PipelineParams, user *types.Use
 		UpdateTime:  time.Now(),
 	}
 	if len(params.Sources) == 0 {
-		return &utils.Response{Code: code.ParamsError, Msg: "流水线触发源不能为空"}
+		return nil, errors.New(code.ParamsError, "流水线触发源不能为空")
 	}
-	if resp := p.CheckSource(workspace, params.Sources); !resp.IsSuccess() {
-		return resp
+	if err = p.CheckSource(workspace, params.Sources); err != nil {
+		return nil, err
 	}
 	var stages []*types.PipelineStage
 	for _, stageSer := range params.Stages {
 		if stageSer.TriggerMode != types.StageTriggerModeAuto && stageSer.TriggerMode != types.StageTriggerModeManual {
-			return &utils.Response{
-				Code: code.ParamsError,
-				Msg:  fmt.Sprintf("trigger mode %s is unknown", stageSer.TriggerMode),
-			}
+			return nil, errors.New(code.ParamsError, fmt.Sprintf("trigger mode %s is unknown", stageSer.TriggerMode))
 		}
 		stage := &types.PipelineStage{
 			Name:         stageSer.Name,
@@ -65,50 +63,44 @@ func (p *PipelineService) Create(params *schemas.PipelineParams, user *types.Use
 	}
 	triggers, err := p.GetPipelineTrigger(0, params.Triggers, user.Name)
 	if err != nil {
-		return &utils.Response{Code: code.ParamsError, Msg: "获取触发配置失败: " + err.Error()}
+		return nil, errors.New(code.ParamsError, "获取触发配置失败: "+err.Error())
 	}
 	pipeline, err = p.models.PipelineManager.CreatePipeline(pipeline, stages, triggers)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+		return nil, errors.New(code.CreateError, err)
 	}
 	if err = p.models.PipelineCodeCacheManager.CreateOrUpdate(workspace); err != nil {
 		if delErr := p.models.PipelineManager.Delete(pipeline.ID); delErr != nil {
 			klog.Errorf("delete pipeline id=%d error: %s", pipeline.ID, err.Error())
 		}
-		return &utils.Response{Code: code.DBError, Msg: "更新代码分支缓存失败：" + err.Error()}
+		return nil, errors.New(code.DBError, "更新代码分支缓存失败："+err.Error())
 	}
-	return &utils.Response{Code: code.Success, Data: pipeline}
+	return pipeline, nil
 }
 
-func (p *PipelineService) CheckSource(workspace *types.PipelineWorkspace, sources types.PipelineSources) *utils.Response {
+func (p *PipelineService) CheckSource(workspace *types.PipelineWorkspace, sources types.PipelineSources) error {
 	triggerWorkspaceIdMap := make(map[uint]struct{})
 	for _, source := range sources {
 		if workspace.Type == types.WorkspaceTypeCode && source.Type != types.PipelineSourceTypeCode {
-			return &utils.Response{
-				Code: code.ParamsError,
-				Msg:  fmt.Sprintf("pipeline trigger type %s is wrong", source.Type),
-			}
+			return errors.New(code.ParamsError, fmt.Sprintf("pipeline trigger type %s is wrong", source.Type))
 		}
 		if workspace.Type == types.WorkspaceTypeCustom {
 			if source.Type != types.PipelineSourceTypePipeline {
-				return &utils.Response{
-					Code: code.ParamsError,
-					Msg:  fmt.Sprintf("pipeline trigger type %s is wrong", source.Type),
-				}
+				return errors.New(code.ParamsError, fmt.Sprintf("pipeline trigger type %s is wrong", source.Type))
 			}
 			if source.Workspace == 0 {
-				return &utils.Response{Code: code.ParamsError, Msg: "流水线触发空间不能为空"}
+				return errors.New(code.ParamsError, "流水线触发空间不能为空")
 			}
 			if source.Pipeline == 0 {
-				return &utils.Response{Code: code.ParamsError, Msg: "触发空间流水线不能为空"}
+				return errors.New(code.ParamsError, "触发空间流水线不能为空")
 			}
 			if _, ok := triggerWorkspaceIdMap[source.Workspace]; ok {
-				return &utils.Response{Code: code.ParamsError, Msg: "触发流水线空间源不能相同"}
+				return errors.New(code.ParamsError, "触发流水线空间源不能相同")
 			}
 			triggerWorkspaceIdMap[source.Workspace] = struct{}{}
 		}
 	}
-	return &utils.Response{Code: code.Success}
+	return nil
 }
 
 func (p *PipelineService) GetPipelineTrigger(pipelineId uint, triggers []*schemas.PipelineTrigger, username string) ([]*types.PipelineTrigger, error) {
@@ -151,25 +143,25 @@ func (p *PipelineService) GetPipelineTrigger(pipelineId uint, triggers []*schema
 	return triggerObjs, nil
 }
 
-func (p *PipelineService) Update(params *schemas.PipelineParams, user *types.User) *utils.Response {
+func (p *PipelineService) Update(params *schemas.PipelineParams, user *types.User) (*types.Pipeline, error) {
 	workspace, err := p.models.PipelineWorkspaceManager.Get(params.WorkspaceId)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+		return nil, errors.New(code.DBError, err)
 	}
 	pipeline, err := p.models.PipelineManager.Get(params.ID)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: fmt.Sprintf("获取流水线失败:%s", err.Error())}
+		return nil, errors.New(code.DataNotExists, fmt.Sprintf("获取流水线失败:%s", err.Error()))
 	}
 	pipeline.Name = params.Name
 	pipeline.Sources = params.Sources
 	pipeline.UpdateUser = user.Name
-	if resp := p.CheckSource(workspace, params.Sources); !resp.IsSuccess() {
-		return resp
+	if err = p.CheckSource(workspace, params.Sources); err != nil {
+		return pipeline, err
 	}
 	var stages []*types.PipelineStage
 	for _, stageSer := range params.Stages {
 		if stageSer.TriggerMode != types.StageTriggerModeAuto && stageSer.TriggerMode != types.StageTriggerModeManual {
-			return &utils.Response{Code: code.ParamsError, Msg: fmt.Sprintf("trigger mode %s is unknown", stageSer.TriggerMode)}
+			return pipeline, errors.New(code.ParamsError, fmt.Sprintf("trigger mode %s is unknown", stageSer.TriggerMode))
 		}
 		stage := &types.PipelineStage{
 			ID:           stageSer.ID,
@@ -182,16 +174,16 @@ func (p *PipelineService) Update(params *schemas.PipelineParams, user *types.Use
 	}
 	triggers, err := p.GetPipelineTrigger(pipeline.ID, params.Triggers, user.Name)
 	if err != nil {
-		return &utils.Response{Code: code.ParamsError, Msg: "获取触发配置失败: " + err.Error()}
+		return pipeline, errors.New(code.ParamsError, "获取触发配置失败: "+err.Error())
 	}
 	pipeline, err = p.models.PipelineManager.UpdatePipeline(pipeline, stages, triggers)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+		return pipeline, errors.New(code.DBError, err)
 	}
 	if err = p.models.PipelineCodeCacheManager.CreateOrUpdate(workspace); err != nil {
-		return &utils.Response{Code: code.DBError, Msg: "更新代码分支缓存失败：" + err.Error()}
+		return pipeline, errors.New(code.DBError, "更新代码分支缓存失败："+err.Error())
 	}
-	return &utils.Response{Code: code.Success, Data: pipeline}
+	return pipeline, nil
 }
 
 func (p *PipelineService) GetPipeline(pipelineId uint) *utils.Response {
@@ -213,7 +205,7 @@ func (p *PipelineService) GetPipeline(pipelineId uint) *utils.Response {
 			if t.Type == types.PipelineSourceTypePipeline {
 				w, err := p.models.PipelineWorkspaceManager.Get(t.Workspace)
 				if err != nil {
-					if !errors.Is(err, gorm.ErrRecordNotFound) {
+					if !oerrors.Is(err, gorm.ErrRecordNotFound) {
 						return &utils.Response{Code: code.DBError, Msg: err.Error()}
 					} else {
 						continue
@@ -223,7 +215,7 @@ func (p *PipelineService) GetPipeline(pipelineId uint) *utils.Response {
 				}
 				p, err := p.models.PipelineManager.Get(t.Pipeline)
 				if err != nil {
-					if !errors.Is(err, gorm.ErrRecordNotFound) {
+					if !oerrors.Is(err, gorm.ErrRecordNotFound) {
 						return &utils.Response{Code: code.DBError, Msg: err.Error()}
 					} else {
 						continue

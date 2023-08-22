@@ -296,7 +296,7 @@ export default {
       }
       let yamlStr = yaml.dump(configMap)
       this.dialogLoading = true
-      createResource(this.cluster, yamlStr).then((response) => {
+      createResource(this.cluster, yamlStr, {project_id: this.projectId}).then((response) => {
         this.dialogLoading = false
         this.createFormVisible = false
         Message.success("创建ConfigMap成功")
@@ -318,7 +318,7 @@ export default {
       configMap.data = data
       let yamlStr = yaml.dump(configMap)
       this.dialogLoading = true
-      updateResource(this.cluster, ResType.ConfigMap, configMap.metadata.namespace, configMap.metadata.name, yamlStr).then((response) => {
+      updateResource(this.cluster, ResType.ConfigMap, configMap.metadata.namespace, configMap.metadata.name, yamlStr, {project_id: this.projectId}).then((response) => {
         this.dialogLoading = false
         this.createFormVisible = false
         Message.success("编辑ConfigMap成功")
@@ -339,7 +339,7 @@ export default {
         type: 'warning'
       }).then(() => {
         this.loading = true
-        delResource(this.cluster, ResType.ConfigMap, {resources: cms}).then(() => {
+        delResource(this.cluster, ResType.ConfigMap, {resources: cms}, {project_id: this.projectId}).then(() => {
           Message.success("删除ConfigMap成功")
           this.loading = false
           this.fetchData()

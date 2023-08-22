@@ -29,6 +29,12 @@ const Routes = [
     meta: { title: '权限配置', icon: 'permission', 'group': 'pipeline', object: 'pipeline' }
   },
   {
+    path: 'audit',
+    name: 'pipelineAudit',
+    component: () => import('@/views/pipeline/audit'),
+    meta: { title: '操作审计', icon: 'audit', 'group': 'pipeline', object: 'pipeline' }
+  },
+  {
     path: 'pipeline/:pipelineId',
     component: Noop,
     hidden: true,

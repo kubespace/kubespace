@@ -1,12 +1,12 @@
 package user
 
 import (
+	"github.com/kubespace/kubespace/pkg/core/code"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/views"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	"github.com/kubespace/kubespace/pkg/utils"
-	"github.com/kubespace/kubespace/pkg/utils/code"
 	"net/http"
 	"strconv"
 )
@@ -37,10 +37,10 @@ func (r *UserRole) list(c *views.Context) *utils.Response {
 	if ser.Scope == "" {
 		return &utils.Response{Code: code.ParamsError, Msg: "scope参数错误"}
 	}
-	if ser.Scope == types.RoleScopePlatform {
+	if ser.Scope == types.ScopePlatform {
 		ser.ScopeId = 0
 	}
-	if ser.ScopeId == 0 && ser.Scope != types.RoleScopePlatform {
+	if ser.ScopeId == 0 && ser.Scope != types.ScopePlatform {
 		return &utils.Response{Code: code.ParamsError, Msg: "scopeId参数错误"}
 	}
 	userRoles, err := r.models.UserRoleManager.List(ser.Scope, ser.ScopeId)
@@ -61,10 +61,10 @@ func (r *UserRole) update(c *views.Context) *utils.Response {
 	if ser.Role == "" {
 		return &utils.Response{Code: code.ParamsError, Msg: "role参数错误"}
 	}
-	if ser.Scope == types.RoleScopePlatform {
+	if ser.Scope == types.ScopePlatform {
 		ser.ScopeId = 0
 	}
-	if ser.ScopeId == 0 && ser.Scope != types.RoleScopePlatform {
+	if ser.ScopeId == 0 && ser.Scope != types.ScopePlatform {
 		return &utils.Response{Code: code.ParamsError, Msg: "scopeId参数错误"}
 	}
 	if len(ser.UserIds) == 0 {

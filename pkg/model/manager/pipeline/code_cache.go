@@ -36,6 +36,7 @@ func (r *PipelineCodeCacheManager) GetByWorkspaceId(workspaceId uint) (*types.Pi
 	return &cache, nil
 }
 
+// CreateOrUpdate 根据流水线是否有代码自动触发，对代码仓库进行分支缓存
 func (r *PipelineCodeCacheManager) CreateOrUpdate(workspaceObj *types.PipelineWorkspace) error {
 	if workspaceObj.Type == types.WorkspaceTypeCustom {
 		return nil

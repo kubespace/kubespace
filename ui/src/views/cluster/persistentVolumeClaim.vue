@@ -262,7 +262,7 @@ export default {
       let pvc = JSON.parse(JSON.stringify(this.pvc))
       let yamlStr = yaml.dump(pvc)
       this.dialogLoading = true
-      updateResource(cluster, ResType.PersistentVolumeClaim, pvc.metadata.namespace, pvc.metadata.name, yamlStr).then(() => {
+      updateResource(cluster, ResType.PersistentVolumeClaim, pvc.metadata.namespace, pvc.metadata.name, yamlStr, {project_id: this.projectId}).then(() => {
         Message.success("更新PVC成功")
         this.dialogLoading = false
         this.fetchData()
@@ -283,7 +283,7 @@ export default {
         type: 'warning'
       }).then(() => {
         this.loading = true
-        delResource(this.cluster, ResType.PersistentVolumeClaim, {resources: pvcs}).then(() => {
+        delResource(this.cluster, ResType.PersistentVolumeClaim, {resources: pvcs}, {project_id: this.projectId}).then(() => {
           Message.success("删除PVC成功")
           this.loading = false
           this.fetchData()
@@ -348,7 +348,7 @@ export default {
       }
       let yamlStr = yaml.dump(pvc)
       this.dialogLoading = true
-      createResource(this.cluster, yamlStr).then((response) => {
+      createResource(this.cluster, yamlStr, {project_id: this.projectId}).then((response) => {
         this.dialogLoading = false
         this.createFormVisible = false
         Message.success("创建PVC成功")

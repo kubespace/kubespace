@@ -24,16 +24,15 @@ func NewAppStoreManager(versionManager *AppVersionManager, db *gorm.DB) *AppStor
 	return appStoreMgr
 }
 
-func (a *AppStoreManager) GetStoreApp(appId uint) (*types.AppStore, error) {
+func (a *AppStoreManager) GetById(appId uint) (*types.AppStore, error) {
 	var app types.AppStore
-	var err error
-	if err = a.DB.First(&app, "id = ?", appId).Error; err != nil {
+	if err := a.DB.First(&app, "id = ?", appId).Error; err != nil {
 		return nil, err
 	}
 	return &app, nil
 }
 
-func (a *AppStoreManager) GetStoreAppByName(name string) (*types.AppStore, error) {
+func (a *AppStoreManager) GetByName(name string) (*types.AppStore, error) {
 	var app types.AppStore
 	var err error
 	if err = a.DB.First(&app, "name = ?", name).Error; err != nil {
@@ -53,7 +52,7 @@ func (a *AppStoreManager) CreateStoreApp(chartBytes []byte, storeApp *types.AppS
 				return err
 			}
 		}
-		appVersion, err = a.AppVersionManager.CreateAppVersionWithChartByte(chartBytes, types.AppVersionScopeStoreApp, storeApp.ID, appVersion)
+		appVersion, err = a.AppVersionManager.CreateWithChartByte(chartBytes, types.AppVersionScopeStoreApp, storeApp.ID, appVersion)
 		if err != nil {
 			return err
 		}
@@ -70,11 +69,11 @@ func (a *AppStoreManager) UpdateStoreApp(appId uint, columns map[string]interfac
 }
 
 func (a *AppStoreManager) DeleteStoreAppVersion(appId, versionId uint, user *types.User) error {
-	err := a.AppVersionManager.DeleteVersion(versionId)
+	err := a.AppVersionManager.Delete(versionId)
 	if err != nil {
 		return err
 	}
-	versions, _ := a.AppVersionManager.ListAppVersions(types.AppVersionScopeStoreApp, appId)
+	versions, _ := a.AppVersionManager.List(types.AppVersionScopeStoreApp, appId)
 	if versions != nil && len(*versions) == 0 {
 		return a.DB.Delete(&types.AppStore{}, "id=?", appId).Error
 	} else {

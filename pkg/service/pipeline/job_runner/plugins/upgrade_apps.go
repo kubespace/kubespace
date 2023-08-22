@@ -103,7 +103,7 @@ func (u *upgradeApp) execute() error {
 }
 
 func (u *upgradeApp) upgrade(appId uint, withInstall bool) error {
-	app, err := u.models.ProjectAppManager.GetProjectApp(appId)
+	app, err := u.models.AppManager.GetAppWithVersion(appId)
 	if err != nil {
 		u.Log("获取空间应用（id=%s)失败：%s", appId, err.Error())
 		return err
@@ -119,13 +119,13 @@ func (u *upgradeApp) upgrade(appId uint, withInstall bool) error {
 	}
 	if upgradeValues != "" {
 		app.AppVersion.Values = upgradeValues
-		if err = u.models.ProjectAppVersionManager.UpdateAppVersion(app.AppVersion, "values"); err != nil {
+		if err = u.models.AppVersionManager.UpdateAppVersion(app.AppVersion, "values"); err != nil {
 			u.Log("更新应用「%s」版本values失败：%s", app.Name, err.Error())
 			return err
 		}
 		u.Log("更新应用「%s」values成功", app.Name)
 		if withInstall {
-			appChart, err := u.models.ProjectAppVersionManager.GetAppVersionChart(app.AppVersion.ChartPath)
+			appChart, err := u.models.AppVersionManager.GetChart(app.AppVersion.ChartPath)
 			if err != nil {
 				u.Log("not found chart path=%s", app.AppVersion.ChartPath)
 				return err

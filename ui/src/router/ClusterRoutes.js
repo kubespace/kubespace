@@ -355,6 +355,12 @@ const Routes = [
     component: () => import('@/views/cluster/clusterRole'),
     meta: { title: '成员管理', icon: 'cluster_perm', 'group': 'cluster', object: 'permission' }
   },
+  {
+    path: 'audit',
+    name: 'clusterAudit',
+    component: () => import('@/views/cluster/clusterAudit'),
+    meta: { title: '操作审计', icon: 'audit', 'group': 'cluster', object: 'audit' }
+  },
 ]
 
 const clusterRoutes = [

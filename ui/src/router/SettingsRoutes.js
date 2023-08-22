@@ -45,6 +45,12 @@ const Routes = [
     component: () => import('@/views/settings/platform_role'),
     meta: { title: '平台权限', icon: 'platform_perm', 'group': 'settings', object: 'role' }
   },
+  {
+    path: 'audit',
+    name: 'platform_audit',
+    component: () => import('@/views/settings/audit'),
+    meta: { title: '操作审计', icon: 'audit', 'group': 'settings', object: 'role' }
+  },
 ]
 
 const settingsRoutes = [{

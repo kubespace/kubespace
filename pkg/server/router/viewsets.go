@@ -3,6 +3,7 @@ package router
 import (
 	"github.com/kubespace/kubespace/pkg/server/config"
 	"github.com/kubespace/kubespace/pkg/server/views"
+	"github.com/kubespace/kubespace/pkg/server/views/audit"
 	"github.com/kubespace/kubespace/pkg/server/views/cluster"
 	"github.com/kubespace/kubespace/pkg/server/views/pipeline"
 	"github.com/kubespace/kubespace/pkg/server/views/project"
@@ -43,6 +44,8 @@ func NewViewSets(conf *config.ServerConfig) *ViewSets {
 	projectApps := project.NewProjectApp(conf)
 	appStore := project.NewAppStore(conf)
 
+	auditViews := audit.NewAuditOperate(conf.Models)
+
 	viewsets := &ViewSets{
 		"cluster":          clusterViews.Views,
 		"user":             userViews.Views,
@@ -65,6 +68,8 @@ func NewViewSets(conf *config.ServerConfig) *ViewSets {
 		"project/workspace": projectWorkspace.Views,
 		"project/apps":      projectApps.Views,
 		"appstore":          appStore.Views,
+
+		"audit": auditViews.Views,
 	}
 
 	return viewsets

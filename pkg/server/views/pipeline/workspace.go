@@ -1,6 +1,8 @@
 package pipeline
 
 import (
+	"github.com/kubespace/kubespace/pkg/core/code"
+	"github.com/kubespace/kubespace/pkg/core/errors"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/config"
@@ -9,7 +11,6 @@ import (
 	"github.com/kubespace/kubespace/pkg/service/pipeline"
 	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
 	"github.com/kubespace/kubespace/pkg/utils"
-	"github.com/kubespace/kubespace/pkg/utils/code"
 	"net/http"
 	"strconv"
 	"time"
@@ -41,13 +42,29 @@ func NewPipelineWorkspace(config *config.ServerConfig) *PipelineWorkspace {
 
 func (p *PipelineWorkspace) create(c *views.Context) *utils.Response {
 	var ser serializers.WorkspaceSerializer
-	resp := &utils.Response{Code: code.Success}
 	if err := c.ShouldBind(&ser); err != nil {
-		resp.Code = code.ParamsError
-		resp.Msg = err.Error()
-		return resp
+		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	return p.workspaceService.Create(&ser, c.User)
+	workspace, err := p.workspaceService.Create(&ser, c.User)
+	resp := c.GenerateResponse(err, workspace)
+	var scopeId uint
+	if workspace != nil {
+		scopeId = workspace.ID
+	}
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationCreate,
+		OperateDetail:        "创建流水线空间:" + ser.Name,
+		Scope:                types.ScopePipeline,
+		ScopeId:              scopeId,
+		ScopeName:            ser.Name,
+		ResourceId:           scopeId,
+		ResourceType:         types.AuditResourcePipeSpace,
+		ResourceName:         ser.Name,
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: ser,
+	})
+	return resp
 }
 
 func (p *PipelineWorkspace) update(c *views.Context) *utils.Response {
@@ -71,10 +88,25 @@ func (p *PipelineWorkspace) update(c *views.Context) *utils.Response {
 	}
 	workspace.UpdateUser = c.User.Name
 	workspace.UpdateTime = time.Now()
-	if _, err = p.models.PipelineWorkspaceManager.Update(workspace); err != nil {
-		return &utils.Response{Code: code.DBError, Msg: "更新流水线空间失败: " + err.Error()}
+	_, err = p.models.PipelineWorkspaceManager.Update(workspace)
+	if err != nil {
+		err = errors.New(code.DBError, "更新流水线空间失败: "+err.Error())
 	}
-	return &utils.Response{Code: code.Success}
+	resp := c.GenerateResponse(err, nil)
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationUpdate,
+		OperateDetail:        "更新流水线空间:" + workspace.Name,
+		Scope:                types.ScopePipeline,
+		ScopeId:              workspace.ID,
+		ScopeName:            workspace.Name,
+		ResourceId:           workspace.ID,
+		ResourceType:         types.AuditResourcePipeSpace,
+		ResourceName:         workspace.Name,
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: ser,
+	})
+	return resp
 }
 
 func (p *PipelineWorkspace) list(c *views.Context) *utils.Response {
@@ -91,7 +123,7 @@ func (p *PipelineWorkspace) list(c *views.Context) *utils.Response {
 	}
 	var data []types.PipelineWorkspace
 	for i, w := range workspaces {
-		if !p.models.UserRoleManager.HasScopeRole(c.User, types.RoleScopePipeline, w.ID, types.RoleTypeViewer) {
+		if !p.models.UserRoleManager.HasScopeRole(c.User, types.ScopePipeline, w.ID, types.RoleTypeViewer) {
 			continue
 		}
 		if ser.Type != "" && w.Type != ser.Type {
@@ -122,23 +154,32 @@ func (p *PipelineWorkspace) get(c *views.Context) *utils.Response {
 }
 
 func (p *PipelineWorkspace) delete(c *views.Context) *utils.Response {
-	resp := &utils.Response{Code: code.Success}
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+		return c.GenerateResponse(errors.New(code.ParamsError, err.Error()), nil)
 	}
 	workspace, err := p.models.PipelineWorkspaceManager.Get(uint(id))
 	if err != nil {
-		resp.Code = code.DBError
-		resp.Msg = "获取流水线空间失败: " + err.Error()
-		return resp
+		return c.GenerateResponse(errors.New(code.DataNotExists, "获取流水线空间失败: "+err.Error()), nil)
 	}
 	err = p.models.PipelineWorkspaceManager.Delete(workspace)
 	if err != nil {
-		resp.Code = code.DBError
-		resp.Msg = "删除流水线空间失败: " + err.Error()
-		return resp
+		err = errors.New(code.DeleteError, "删除流水线空间失败: "+err.Error())
 	}
+	resp := c.GenerateResponse(err, nil)
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationDelete,
+		OperateDetail:        "删除流水线空间:" + workspace.Name,
+		Scope:                types.ScopePipeline,
+		ScopeId:              workspace.ID,
+		ScopeName:            workspace.Name,
+		ResourceId:           workspace.ID,
+		ResourceType:         types.AuditResourcePipeSpace,
+		ResourceName:         workspace.Name,
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: nil,
+	})
 	return resp
 }
 

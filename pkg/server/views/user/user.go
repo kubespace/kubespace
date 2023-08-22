@@ -2,13 +2,13 @@ package user
 
 import (
 	"fmt"
+	"github.com/kubespace/kubespace/pkg/core/code"
+	"github.com/kubespace/kubespace/pkg/core/errors"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/views"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	"github.com/kubespace/kubespace/pkg/utils"
-	"github.com/kubespace/kubespace/pkg/utils/code"
-	"k8s.io/klog/v2"
 	"net/http"
 	"strconv"
 	"time"
@@ -66,19 +66,13 @@ func (u *User) update(c *views.Context) *utils.Response {
 	userName := c.Param("username")
 	var user serializers.UserSerializers
 
-	resp := &utils.Response{Code: code.Success}
-
 	if err := c.ShouldBindJSON(&user); err != nil {
-		resp.Code = code.ParamsError
-		resp.Msg = err.Error()
-		return resp
+		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
 
-	userObj, err := u.models.UserManager.Get(userName)
+	userObj, err := u.models.UserManager.GetByName(userName)
 	if err != nil {
-		resp.Code = code.GetError
-		resp.Msg = err.Error()
-		return resp
+		return c.GenerateResponseError(errors.New(code.DataNotExists, err))
 	}
 
 	if user.Status != "" {
@@ -89,24 +83,29 @@ func (u *User) update(c *views.Context) *utils.Response {
 		userObj.Password = utils.Encrypt(user.Password)
 	}
 
-	//if user.Roles != nil {
-	//	userObj.Roles = user.Roles
-	//}
-
 	if user.Email != "" {
 		if ok := utils.VerifyEmailFormat(user.Email); !ok {
-			resp.Code = code.ParamsError
-			resp.Msg = fmt.Sprintf("email:%s format error for user:%s", user.Email, userName)
-			return resp
+			return c.GenerateResponseError(errors.New(code.ParamsError, fmt.Sprintf("email:%s format error for user:%s", user.Email, userName)))
 		}
 		userObj.Email = user.Email
 	}
 
-	if err := u.models.UserManager.Update(userObj); err != nil {
-		resp.Code = code.UpdateError
-		resp.Msg = err.Error()
-		return resp
+	err = u.models.UserManager.Update(userObj)
+	if err != nil {
+		err = errors.New(code.UpdateError, err)
 	}
+	resp := c.GenerateResponse(err, nil)
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationUpdate,
+		OperateDetail:        fmt.Sprintf("更新用户：%s", userObj.Name),
+		Scope:                types.ScopePlatform,
+		ResourceId:           userObj.ID,
+		ResourceType:         types.AuditResourcePlatformUser,
+		ResourceName:         userObj.Name,
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: user,
+	})
 	return resp
 }
 
@@ -193,62 +192,77 @@ func (u *User) list(c *views.Context) *utils.Response {
 
 func (u *User) create(c *views.Context) *utils.Response {
 	var ser serializers.UserCreateSerializers
-	resp := &utils.Response{Code: code.Success}
 
 	if err := c.ShouldBind(&ser); err != nil {
-		resp.Code = code.ParamsError
-		resp.Msg = err.Error()
-		return resp
+		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
 	isSuper := false
 	if ser.Name == "" {
 		ser.Name = types.ADMIN
 		isSuper = true
-	} else {
-		if ok := utils.VerifyEmailFormat(ser.Email); !ok {
-			resp.Code = code.ParamsError
-			resp.Msg = fmt.Sprintf("email:%s format error for user:%s", ser.Email, ser.Name)
-			return resp
-		}
+	} else if ok := utils.VerifyEmailFormat(ser.Email); !ok {
+		return c.GenerateResponseError(errors.New(code.ParamsError, fmt.Sprintf("email:%s format error for user:%s", ser.Email, ser.Name)))
 	}
 
 	userObj := types.User{
-		Name:     ser.Name,
-		Password: utils.Encrypt(ser.Password),
-		Email:    ser.Email,
-		IsSuper:  isSuper,
-		Status:   "normal",
-		//Roles:    ser.Roles,
+		Name:       ser.Name,
+		Password:   utils.Encrypt(ser.Password),
+		Email:      ser.Email,
+		IsSuper:    isSuper,
+		Status:     "normal",
 		LastLogin:  time.Now(),
 		CreateTime: time.Now(),
 		UpdateTime: time.Now(),
 	}
 
-	if err := u.models.UserManager.Create(&userObj); err != nil {
-		resp.Code = code.CreateError
-		resp.Msg = err.Error()
-		return resp
+	err := u.models.UserManager.Create(&userObj)
+	if err != nil {
+		err = errors.New(code.CreateError, err)
 	}
+	resp := c.GenerateResponse(err, nil)
 
-	resp.Data = map[string]interface{}{
-		"name":     userObj.Name,
-		"password": userObj.Password,
-		"status":   userObj.Status,
-	}
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationCreate,
+		OperateDetail:        fmt.Sprintf("创建用户：%s", ser.Name),
+		Scope:                types.ScopePlatform,
+		ResourceId:           userObj.ID,
+		ResourceType:         types.AuditResourcePlatformUser,
+		ResourceName:         ser.Name,
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: ser,
+	})
 	return resp
 }
 
 func (u *User) delete(c *views.Context) *utils.Response {
 	var ser []serializers.DeleteUserSerializers
 	if err := c.ShouldBind(&ser); err != nil {
-		klog.Errorf("bind params error: %s", err.Error())
-		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
 	for _, du := range ser {
-		err := u.models.UserManager.Delete(du.Name)
+		user, err := u.models.UserManager.GetByName(du.Name)
 		if err != nil {
-			klog.Errorf("delete user %s error: %s", c, err.Error())
-			return &utils.Response{Code: code.DeleteError, Msg: err.Error()}
+			return c.GenerateResponseError(errors.New(code.DataNotExists, err))
+		}
+		err = u.models.UserManager.Delete(du.Name)
+		if err != nil {
+			err = errors.New(code.DeleteError, err)
+		}
+		resp := c.GenerateResponse(err, nil)
+		c.CreateAudit(&types.AuditOperate{
+			Operation:            types.AuditOperationDelete,
+			OperateDetail:        fmt.Sprintf("删除用户：%s", user.Name),
+			Scope:                types.ScopePlatform,
+			ResourceId:           user.ID,
+			ResourceType:         types.AuditResourcePlatformUser,
+			ResourceName:         user.Name,
+			Code:                 resp.Code,
+			Message:              resp.Msg,
+			OperateDataInterface: user,
+		})
+		if err != nil {
+			return c.GenerateResponseError(err)
 		}
 	}
 	return &utils.Response{Code: code.Success}

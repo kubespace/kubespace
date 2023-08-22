@@ -17,8 +17,6 @@ export default {
     return {
       scope: "project",
       scopeId: workspaceId,
-      maxHeight: window.innerHeight - 135,
-
     };
   },
   computed: {

@@ -3,6 +3,7 @@ package job_run
 import (
 	"bytes"
 	"fmt"
+	"github.com/kubespace/kubespace/pkg/core/code"
 	"github.com/kubespace/kubespace/pkg/informer"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
@@ -10,7 +11,6 @@ import (
 	"github.com/kubespace/kubespace/pkg/service/pipeline/job_runner"
 	"github.com/kubespace/kubespace/pkg/service/pipeline/job_runner/plugins"
 	"github.com/kubespace/kubespace/pkg/utils"
-	"github.com/kubespace/kubespace/pkg/utils/code"
 	"k8s.io/klog/v2"
 	"time"
 )

@@ -21,4 +21,5 @@ const (
 	HelmError      = "HelmError"
 	PluginError    = "PluginError"
 	JobCanceled    = "JobCanceled"
+	GitError       = "GitError"
 )

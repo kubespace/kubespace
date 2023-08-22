@@ -17,7 +17,7 @@ func NewAppManager(chartManager *AppVersionManager, db *gorm.DB) *AppManager {
 	return &AppManager{DB: db, AppVersionManager: chartManager}
 }
 
-func (a *AppManager) CreateProjectApp(chartFilePath string, app *types.ProjectApp, appVersion *types.AppVersion) (*types.ProjectApp, error) {
+func (a *AppManager) CreateApp(chartFilePath string, app *types.App, appVersion *types.AppVersion) (*types.App, error) {
 	var err error
 	err = a.DB.Transaction(func(tx *gorm.DB) error {
 		if app.ID == 0 {
@@ -29,7 +29,7 @@ func (a *AppManager) CreateProjectApp(chartFilePath string, app *types.ProjectAp
 				return err
 			}
 		}
-		appVersion, err = a.AppVersionManager.CreateAppVersionWithChartPath(chartFilePath, types.AppVersionScopeProjectApp, app.ID, appVersion)
+		appVersion, err = a.AppVersionManager.CreateWithChartPath(chartFilePath, app.Scope, app.ID, appVersion)
 		if err != nil {
 			return err
 		}
@@ -47,7 +47,7 @@ func (a *AppManager) CreateProjectApp(chartFilePath string, app *types.ProjectAp
 	return app, nil
 }
 
-func (a *AppManager) CreateProjectAppWithBytes(chartBytes []byte, app *types.ProjectApp, appVersion *types.AppVersion) (*types.ProjectApp, error) {
+func (a *AppManager) CreateAppWithBytes(chartBytes []byte, app *types.App, appVersion *types.AppVersion) (*types.App, error) {
 	var err error
 	err = a.DB.Transaction(func(tx *gorm.DB) error {
 		if app.ID == 0 {
@@ -59,7 +59,7 @@ func (a *AppManager) CreateProjectAppWithBytes(chartBytes []byte, app *types.Pro
 				return err
 			}
 		}
-		appVersion, err = a.AppVersionManager.CreateAppVersionWithChartByte(chartBytes, types.AppVersionScopeProjectApp, app.ID, appVersion)
+		appVersion, err = a.AppVersionManager.CreateWithChartByte(chartBytes, app.Scope, app.ID, appVersion)
 		if err != nil {
 			return err
 		}
@@ -77,8 +77,19 @@ func (a *AppManager) CreateProjectAppWithBytes(chartBytes []byte, app *types.Pro
 	return app, nil
 }
 
-func (a *AppManager) GetByName(scope string, projectId uint, name string) (*types.ProjectApp, error) {
-	var app types.ProjectApp
+func (a *AppManager) Get(id uint) (*types.App, error) {
+	var app types.App
+	err := a.DB.First(&app, "id = ?", id).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	return &app, nil
+}
+
+func (a *AppManager) GetByName(scope string, projectId uint, name string) (*types.App, error) {
+	var app types.App
 	err := a.DB.First(&app, "scope = ? and scope_id = ? and name = ?", scope, projectId, name).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
@@ -88,26 +99,15 @@ func (a *AppManager) GetByName(scope string, projectId uint, name string) (*type
 	return &app, nil
 }
 
-func (a *AppManager) GetAppVersion(scope string, scopeId uint, packageName, packageVersion string) (*types.AppVersion, error) {
-	var version types.AppVersion
-	err := a.DB.First(&version, "scope = ? and scope_id = ? and package_name = ? and package_version = ?", scope, scopeId, packageName, packageVersion).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
-	} else if err != nil {
-		return nil, err
-	}
-	return &version, nil
-}
-
-func (a *AppManager) ListProjectApps(scope string, scopeId uint) ([]*types.ProjectApp, error) {
-	var apps []types.ProjectApp
+func (a *AppManager) ListApps(scope string, scopeId uint) ([]*types.App, error) {
+	var apps []types.App
 	var err error
 	if err = a.DB.Where("scope = ? and scope_id = ?", scope, scopeId).Find(&apps).Error; err != nil {
 		return nil, err
 	}
-	var rets []*types.ProjectApp
+	var rets []*types.App
 	for i, app := range apps {
-		apps[i].AppVersion, err = a.AppVersionManager.GetAppVersion(app.AppVersionId)
+		apps[i].AppVersion, err = a.AppVersionManager.GetById(app.AppVersionId)
 		if err != nil {
 			return nil, err
 		}
@@ -116,31 +116,31 @@ func (a *AppManager) ListProjectApps(scope string, scopeId uint) ([]*types.Proje
 	return rets, nil
 }
 
-func (a *AppManager) GetProjectApp(appId uint) (*types.ProjectApp, error) {
-	var app types.ProjectApp
+func (a *AppManager) GetAppWithVersion(appId uint) (*types.App, error) {
+	var app types.App
 	var err error
 	if err = a.DB.First(&app, "id = ?", appId).Error; err != nil {
 		return nil, err
 	}
-	if app.AppVersion, err = a.AppVersionManager.GetAppVersion(app.AppVersionId); err != nil {
+	if app.AppVersion, err = a.AppVersionManager.GetById(app.AppVersionId); err != nil {
 		return nil, err
 	}
 	return &app, nil
 }
 
-func (a *AppManager) GetProjectAppByName(scope string, scopeId uint, name string) (*types.ProjectApp, error) {
-	var app types.ProjectApp
+func (a *AppManager) GetAppByNameWithVersion(scope string, scopeId uint, name string) (*types.App, error) {
+	var app types.App
 	var err error
 	if err = a.DB.First(&app, "scope = ? and scope_id = ? and name = ?", scope, scopeId, name).Error; err != nil {
 		return nil, err
 	}
-	if app.AppVersion, err = a.AppVersionManager.GetAppVersion(app.AppVersionId); err != nil {
+	if app.AppVersion, err = a.AppVersionManager.GetById(app.AppVersionId); err != nil {
 		return nil, err
 	}
 	return &app, nil
 }
 
-func (a *AppManager) UpdateProjectApp(app *types.ProjectApp, columns ...string) error {
+func (a *AppManager) UpdateApp(app *types.App, columns ...string) error {
 	if len(columns) == 0 {
 		columns = []string{"*"}
 	} else {
@@ -155,28 +155,32 @@ func (a *AppManager) UpdateProjectApp(app *types.ProjectApp, columns ...string) 
 	return nil
 }
 
-func (a *AppManager) DeleteProjectApp(appId uint) error {
+func (a *AppManager) DeleteApp(appId uint) error {
 	return a.DB.Transaction(func(tx *gorm.DB) error {
-		appVersions, err := a.ListAppVersions(types.AppVersionScopeProjectApp, appId)
+		appObj, err := a.Get(appId)
+		if err != nil {
+			return err
+		}
+		appVersions, err := a.List(appObj.Scope, appId)
 		if err != nil {
 			return err
 		}
 		for _, appVersion := range *appVersions {
-			if err = a.AppVersionManager.DeleteVersion(appVersion.ID); err != nil {
+			if err = a.AppVersionManager.Delete(appVersion.ID); err != nil {
 				return err
 			}
 		}
-		if err = tx.Delete(&types.ProjectAppRevision{}, "project_app_id=?", appId).Error; err != nil {
+		if err = tx.Delete(&types.AppRevision{}, "app_id=?", appId).Error; err != nil {
 			return err
 		}
-		if err = tx.Delete(&types.ProjectApp{}, "id = ?", appId).Error; err != nil {
+		if err = tx.Delete(&types.App{}, "id = ?", appId).Error; err != nil {
 			return err
 		}
 		return nil
 	})
 }
 
-func (a *AppManager) ImportApp(app *types.ProjectApp, appVersion *types.AppVersion) error {
+func (a *AppManager) ImportApp(app *types.App, appVersion *types.AppVersion) error {
 	return a.DB.Transaction(func(tx *gorm.DB) error {
 		if app.ID == 0 {
 			if err := tx.Create(app).Error; err != nil {
@@ -202,46 +206,43 @@ func (a *AppManager) ImportApp(app *types.ProjectApp, appVersion *types.AppVersi
 	})
 }
 
-func (a *AppManager) CreateRevision(appVersion *types.AppVersion, app *types.ProjectApp) (*types.ProjectAppRevision, error) {
-	if app.Scope == types.AppVersionScopeProjectApp {
-		var revision types.ProjectAppRevision
-		err := a.DB.Transaction(func(tx *gorm.DB) error {
-			var lastRevisionNumber uint = 1
-			var lastRevision types.ProjectAppRevision
-			if err := tx.Last(&lastRevision, "project_app_id = ?", app.ID).Error; err != nil {
-				if !errors.Is(err, gorm.ErrRecordNotFound) {
-					return err
-				}
-			} else {
-				lastRevisionNumber = lastRevision.BuildRevision + 1
-			}
-			revision = types.ProjectAppRevision{
-				ProjectAppId:  app.ID,
-				BuildRevision: lastRevisionNumber,
-				AppVersionId:  appVersion.ID,
-				Values:        appVersion.Values,
-				CreateUser:    app.UpdateUser,
-				CreateTime:    time.Now(),
-				UpdateTime:    time.Now(),
-			}
-			if err := tx.Create(&revision).Error; err != nil {
+func (a *AppManager) CreateRevision(appVersion *types.AppVersion, app *types.App) (*types.AppRevision, error) {
+	var revision types.AppRevision
+	err := a.DB.Transaction(func(tx *gorm.DB) error {
+		var lastRevisionNumber uint = 1
+		var lastRevision types.AppRevision
+		if err := tx.Last(&lastRevision, "app_id = ?", app.ID).Error; err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
 				return err
 			}
-			var cnt int64
-			if err := tx.Model(&types.ProjectAppRevision{}).Where("project_app_id=?", app.ID).Count(&cnt).Error; err != nil {
-				return err
-			}
-			if cnt > 50 {
-				if err := tx.Delete(&types.ProjectAppRevision{}, "project_app_id=? order by id limit ?", app.ID, cnt-50).Error; err != nil {
-					return err
-				}
-			}
-			return nil
-		})
-		if err != nil {
-			return nil, err
+		} else {
+			lastRevisionNumber = lastRevision.BuildRevision + 1
 		}
-		return &revision, nil
+		revision = types.AppRevision{
+			AppId:         app.ID,
+			BuildRevision: lastRevisionNumber,
+			AppVersionId:  appVersion.ID,
+			Values:        appVersion.Values,
+			CreateUser:    app.UpdateUser,
+			CreateTime:    time.Now(),
+			UpdateTime:    time.Now(),
+		}
+		if err := tx.Create(&revision).Error; err != nil {
+			return err
+		}
+		var cnt int64
+		if err := tx.Model(&types.AppRevision{}).Where("app_id=?", app.ID).Count(&cnt).Error; err != nil {
+			return err
+		}
+		if cnt > 50 {
+			if err := tx.Delete(&types.AppRevision{}, "app_id=? order by id limit ?", app.ID, cnt-50).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
-	return nil, nil
+	return &revision, nil
 }

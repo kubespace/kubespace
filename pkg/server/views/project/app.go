@@ -1,13 +1,15 @@
 package project
 
 import (
+	"fmt"
+	"github.com/kubespace/kubespace/pkg/core/code"
 	"github.com/kubespace/kubespace/pkg/model"
+	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/config"
 	"github.com/kubespace/kubespace/pkg/server/views"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	"github.com/kubespace/kubespace/pkg/service/project"
 	"github.com/kubespace/kubespace/pkg/utils"
-	"github.com/kubespace/kubespace/pkg/utils/code"
 	"k8s.io/klog/v2"
 	"net/http"
 	"strconv"
@@ -48,15 +50,42 @@ func NewProjectApp(config *config.ServerConfig) *ProjectApp {
 }
 
 func (a *ProjectApp) create(c *views.Context) *utils.Response {
-	var ser serializers.ProjectCreateAppSerializer
+	var ser serializers.CreateAppSerializer
 	if err := c.ShouldBind(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	return a.AppService.CreateProjectApp(c.User, ser)
+	app, resp := a.AppService.CreateProjectApp(c.User, ser)
+	var opScope, scopeName, opDetail, opNamespace string
+	if ser.Scope == types.AppVersionScopeProjectApp {
+		opDetail = fmt.Sprintf("应用%s创建新版本：%s-%s", app.Name, ser.Name, ser.Version)
+		projectObj, err := a.models.ProjectManager.Get(uint(ser.ScopeId))
+		if err != nil {
+			return &utils.Response{Code: code.GetError, Msg: err.Error()}
+		}
+		scopeName = projectObj.Name
+		opScope = types.ScopeProject
+		opNamespace = projectObj.Namespace
+	}
+	ser.ChartFiles = nil
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationCreate,
+		OperateDetail:        opDetail,
+		Scope:                opScope,
+		ScopeId:              ser.ScopeId,
+		ScopeName:            scopeName,
+		Namespace:            opNamespace,
+		ResourceId:           app.ID,
+		ResourceType:         types.AuditResourceAppVersion,
+		ResourceName:         ser.Name + "-" + ser.Version,
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: ser,
+	})
+	return resp
 }
 
 func (a *ProjectApp) listApps(c *views.Context) *utils.Response {
-	var ser serializers.ProjectAppListSerializer
+	var ser serializers.AppListSerializer
 	if err := c.ShouldBindQuery(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
@@ -68,7 +97,7 @@ func (a *ProjectApp) listApps(c *views.Context) *utils.Response {
 }
 
 func (a *ProjectApp) listAppStatus(c *views.Context) *utils.Response {
-	var ser serializers.ProjectAppListSerializer
+	var ser serializers.AppListSerializer
 	if err := c.ShouldBindQuery(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
@@ -88,15 +117,61 @@ func (a *ProjectApp) deleteApp(c *views.Context) *utils.Response {
 	if err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	err = a.models.ProjectAppManager.DeleteProjectApp(uint(appId))
+	app, err := a.models.AppManager.Get(uint(appId))
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
+	if app == nil {
+		return &utils.Response{Code: code.GetError, Msg: fmt.Sprintf("获取应用失败：未找到该应用id=%d", appId)}
+	}
+
+	var opDetail string
+	var opScopeName, opScope, opNamespace string
+	var resType = types.AuditResourceApp
+	if app.Scope == types.AppVersionScopeProjectApp {
+		if projectObj, err := a.models.ProjectManager.Get(app.ScopeId); err != nil {
+			return &utils.Response{Code: code.DBError, Msg: fmt.Sprintf("获取工作空间id=%d失败：%s", app.ScopeId, err.Error())}
+		} else {
+			opScope = types.ScopeProject
+			opScopeName = projectObj.Name
+			opNamespace = projectObj.Namespace
+		}
+		opDetail = fmt.Sprintf("删除应用%s，以及所有版本", app.Name)
+	} else if app.Scope == types.AppVersionScopeComponent {
+		if clusterObj, err := a.models.ClusterManager.Get(app.ScopeId); err != nil {
+			return &utils.Response{Code: code.DBError, Msg: fmt.Sprintf("获取集群id=%d失败：%s", app.ScopeId, err.Error())}
+		} else {
+			opScope = types.ScopeCluster
+			opScopeName = clusterObj.Name1
+		}
+		opNamespace = app.Namespace
+		opDetail = fmt.Sprintf("删除集群组件%s", app.Name)
+		resType = types.AuditResourceClusterComponent
+	}
+	err = a.models.AppManager.DeleteApp(uint(appId))
+	resp := &utils.Response{Code: code.Success}
+	if err != nil {
+		resp = &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationDelete,
+		OperateDetail:        opDetail,
+		Scope:                opScope,
+		ScopeId:              app.ScopeId,
+		ScopeName:            opScopeName,
+		Namespace:            opNamespace,
+		ResourceId:           app.ID,
+		ResourceType:         resType,
+		ResourceName:         app.Name,
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: nil,
+	})
 	return &utils.Response{Code: code.Success}
 }
 
 func (a *ProjectApp) listAppVersions(c *views.Context) *utils.Response {
-	var ser serializers.ProjectAppVersionListSerializer
+	var ser serializers.AppVersionListSerializer
 	if err := c.ShouldBindQuery(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
@@ -116,26 +191,184 @@ func (a *ProjectApp) deleteAppVersion(c *views.Context) *utils.Response {
 	if err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	if err = a.models.ProjectAppVersionManager.DeleteVersion(uint(appVersionId)); err != nil {
-		return &utils.Response{Code: code.DBError, Msg: "删除应用版本失败：" + err.Error()}
+	appVersion, err := a.models.AppVersionManager.GetById(uint(appVersionId))
+	if err != nil {
+		return &utils.Response{Code: code.GetError, Msg: fmt.Sprintf("获取应用版本失败：%s", err.Error())}
 	}
-	return &utils.Response{Code: code.Success}
+	var opScope, opScopeName, opDetail, opNamespace string
+	var opScopeId uint
+	if appVersion.Scope == types.AppVersionScopeProjectApp {
+		appObj, err := a.models.AppManager.Get(appVersion.ScopeId)
+		if err != nil {
+			return &utils.Response{Code: code.GetError, Msg: fmt.Sprintf("获取应用失败：%s", err.Error())}
+		}
+		projectObj, err := a.models.ProjectManager.Get(appObj.ScopeId)
+		if err != nil {
+			return &utils.Response{Code: code.GetError, Msg: fmt.Sprintf("获取应用所在工作空间失败：%s", err.Error())}
+		}
+		opScope = types.ScopeProject
+		opScopeId = projectObj.ID
+		opScopeName = projectObj.Name
+		opNamespace = projectObj.Namespace
+		opDetail = fmt.Sprintf("删除应用%s所属版本：%s-%s", appObj.Name, appVersion.PackageName, appVersion.PackageVersion)
+	} else if appVersion.Scope == types.AppVersionScopeStoreApp {
+		appStoreObj, err := a.models.AppStoreManager.GetById(appVersion.ScopeId)
+		if err != nil {
+			return &utils.Response{Code: code.GetError, Msg: fmt.Sprintf("获取应用商店应用失败：%s", err.Error())}
+		}
+		opScope = types.ScopeAppStore
+		opScopeId = appStoreObj.ID
+		opScopeName = appStoreObj.Name
+		opDetail = fmt.Sprintf("应用商店删除应用版本：%s-%s", appVersion.PackageName, appVersion.PackageVersion)
+	} else if appVersion.Scope == types.AppVersionScopeComponent {
+		appObj, err := a.models.AppManager.Get(appVersion.ScopeId)
+		if err != nil {
+			return &utils.Response{Code: code.GetError, Msg: fmt.Sprintf("获取应用id=%d失败：%s", appVersion.ScopeId, err.Error())}
+		}
+		clusterObj, err := a.models.ClusterManager.Get(appObj.ScopeId)
+		if err != nil {
+			return &utils.Response{Code: code.DBError, Msg: fmt.Sprintf("获取集群id=%d失败：%s", appObj.ScopeId, err.Error())}
+		}
+		opScope = types.ScopeCluster
+		opScopeId = clusterObj.ID
+		opNamespace = appObj.Namespace
+		opScopeName = clusterObj.Name1
+
+		opDetail = fmt.Sprintf("删除集群组件版本：%s-%s", appVersion.PackageName, appVersion.PackageVersion)
+	}
+	resp := &utils.Response{Code: code.Success}
+	if err = a.models.AppVersionManager.Delete(uint(appVersionId)); err != nil {
+		resp = &utils.Response{Code: code.DBError, Msg: "删除应用版本失败：" + err.Error()}
+	}
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationDelete,
+		OperateDetail:        opDetail,
+		Scope:                opScope,
+		ScopeId:              opScopeId,
+		ScopeName:            opScopeName,
+		Namespace:            opNamespace,
+		ResourceId:           appVersion.ID,
+		ResourceType:         types.AuditResourceAppVersion,
+		ResourceName:         appVersion.PackageName + "-" + appVersion.PackageVersion,
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: nil,
+	})
+	return resp
 }
 
 func (a *ProjectApp) install(c *views.Context) *utils.Response {
-	var ser serializers.ProjectInstallAppSerializer
+	var ser serializers.InstallAppSerializer
 	if err := c.ShouldBind(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	return a.AppService.InstallApp(c.User, ser)
+	versionApp, err := a.models.AppVersionManager.GetById(ser.AppVersionId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	app, err := a.models.AppManager.Get(ser.AppId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	var opDetail, opScope, opScopeName, opNamespace, opResType string
+	var opScopeId uint
+	opStr := "安装"
+	operation := types.AuditOperationInstall
+	if ser.Upgrade {
+		opStr = "升级"
+		operation = types.AuditOperationUpgrade
+	}
+	if app.Scope == types.AppVersionScopeProjectApp {
+		projectObj, err := a.models.ProjectManager.Get(app.ScopeId)
+		if err != nil {
+			return &utils.Response{Code: code.GetError, Msg: fmt.Sprintf("获取应用所在工作空间失败：%s", err.Error())}
+		}
+		opScope = types.ScopeProject
+		opScopeId = projectObj.ID
+		opNamespace = projectObj.Namespace
+		opScopeName = projectObj.Name
+		opResType = types.AuditResourceApp
+		opDetail = fmt.Sprintf("%s应用%s版本：%s-%s", opStr, app.Name, versionApp.PackageName, versionApp.PackageVersion)
+	} else {
+		clusterObj, err := a.models.ClusterManager.Get(app.ScopeId)
+		if err != nil {
+			return &utils.Response{Code: code.DBError, Msg: fmt.Sprintf("获取集群id=%d失败：%s", app.ScopeId, err.Error())}
+		}
+		opScope = types.ScopeCluster
+		opScopeId = clusterObj.ID
+		opNamespace = app.Namespace
+		opScopeName = clusterObj.Name1
+		opResType = types.AuditResourceClusterComponent
+		opDetail = fmt.Sprintf("%s集群组件：%s-%s", opStr, versionApp.PackageName, versionApp.PackageVersion)
+	}
+	resp := a.AppService.InstallApp(c.User, ser)
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            operation,
+		OperateDetail:        opDetail,
+		Scope:                opScope,
+		ScopeId:              opScopeId,
+		ScopeName:            opScopeName,
+		Namespace:            opNamespace,
+		ResourceId:           app.ID,
+		ResourceType:         opResType,
+		ResourceName:         app.Name,
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: nil,
+	})
+	return resp
 }
 
 func (a *ProjectApp) destroy(c *views.Context) *utils.Response {
-	var ser serializers.ProjectInstallAppSerializer
+	var ser serializers.InstallAppSerializer
 	if err := c.ShouldBind(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	return a.AppService.DestroyApp(c.User, ser)
+	app, err := a.models.AppManager.Get(ser.AppId)
+	if err != nil {
+		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+	}
+	var opDetail, opScope, opScopeName, opNamespace, opResType string
+	var opScopeId uint
+	if app.Scope == types.AppVersionScopeProjectApp {
+		projectObj, err := a.models.ProjectManager.Get(app.ScopeId)
+		if err != nil {
+			return &utils.Response{Code: code.GetError, Msg: fmt.Sprintf("获取应用所在工作空间失败：%s", err.Error())}
+		}
+		opScope = types.ScopeProject
+		opScopeId = projectObj.ID
+		opNamespace = projectObj.Namespace
+		opScopeName = projectObj.Name
+		opResType = types.AuditResourceApp
+		opDetail = fmt.Sprintf("销毁应用：%s", app.Name)
+	} else {
+		clusterObj, err := a.models.ClusterManager.Get(app.ScopeId)
+		if err != nil {
+			return &utils.Response{Code: code.DBError, Msg: fmt.Sprintf("获取集群id=%d失败：%s", app.ScopeId, err.Error())}
+		}
+		opScope = types.ScopeCluster
+		opScopeId = clusterObj.ID
+		opNamespace = app.Namespace
+		opScopeName = clusterObj.Name1
+		opResType = types.AuditResourceClusterComponent
+		opDetail = fmt.Sprintf("销毁集群组件：%s", app.Name)
+	}
+	resp := a.AppService.DestroyApp(c.User, ser)
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationDestroy,
+		OperateDetail:        opDetail,
+		Scope:                opScope,
+		ScopeId:              opScopeId,
+		ScopeName:            opScopeName,
+		Namespace:            opNamespace,
+		ResourceId:           app.ID,
+		ResourceType:         opResType,
+		ResourceName:         app.Name,
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: nil,
+	})
+	return resp
 }
 
 func (a *ProjectApp) importStoreapp(c *views.Context) *utils.Response {
@@ -143,7 +376,50 @@ func (a *ProjectApp) importStoreapp(c *views.Context) *utils.Response {
 	if err := c.ShouldBind(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	return a.AppService.ImportStoreApp(ser, c.User)
+	app, appVersion, resp := a.AppService.ImportStoreApp(ser, c.User)
+	if app == nil {
+		return resp
+	}
+	var opDetail, opScope, opScopeName, opNamespace, opResType string
+	var opScopeId uint
+	if app.Scope == types.AppVersionScopeProjectApp {
+		projectObj, err := a.models.ProjectManager.Get(app.ScopeId)
+		if err != nil {
+			return &utils.Response{Code: code.GetError, Msg: fmt.Sprintf("获取应用所在工作空间失败：%s", err.Error())}
+		}
+		opScope = types.ScopeProject
+		opScopeId = projectObj.ID
+		opNamespace = projectObj.Namespace
+		opScopeName = projectObj.Name
+		opResType = types.AuditResourceApp
+		opDetail = fmt.Sprintf("从应用商店导入应用：%s-%s", appVersion.PackageName, appVersion.PackageVersion)
+	} else {
+		clusterObj, err := a.models.ClusterManager.Get(app.ScopeId)
+		if err != nil {
+			return &utils.Response{Code: code.DBError, Msg: fmt.Sprintf("获取集群id=%d失败：%s", app.ScopeId, err.Error())}
+		}
+		opScope = types.ScopeCluster
+		opScopeId = clusterObj.ID
+		opNamespace = app.Namespace
+		opScopeName = clusterObj.Name1
+		opResType = types.AuditResourceClusterComponent
+		opDetail = fmt.Sprintf("从应用商店导入集群组件：%s-%s", appVersion.PackageName, appVersion.PackageVersion)
+	}
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationImport,
+		OperateDetail:        opDetail,
+		Scope:                opScope,
+		ScopeId:              opScopeId,
+		ScopeName:            opScopeName,
+		Namespace:            opNamespace,
+		ResourceId:           app.ID,
+		ResourceType:         opResType,
+		ResourceName:         app.Name,
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: nil,
+	})
+	return resp
 }
 
 func (a *ProjectApp) importCustomApp(c *views.Context) *utils.Response {
@@ -160,7 +436,50 @@ func (a *ProjectApp) importCustomApp(c *views.Context) *utils.Response {
 	if err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: "get chart file error: " + err.Error()}
 	}
-	return a.AppService.ImportCustomApp(c.User, ser, chartIn)
+	app, _, resp := a.AppService.ImportCustomApp(c.User, ser, chartIn)
+	if app == nil {
+		return resp
+	}
+	var opDetail, opScope, opScopeName, opNamespace, opResType string
+	var opScopeId uint
+	if app.Scope == types.AppVersionScopeProjectApp {
+		projectObj, err := a.models.ProjectManager.Get(app.ScopeId)
+		if err != nil {
+			return &utils.Response{Code: code.GetError, Msg: fmt.Sprintf("获取应用所在工作空间失败：%s", err.Error())}
+		}
+		opScope = types.ScopeProject
+		opScopeId = projectObj.ID
+		opNamespace = projectObj.Namespace
+		opScopeName = projectObj.Name
+		opResType = types.AuditResourceApp
+		opDetail = fmt.Sprintf("导入自定义应用：%s-%s", ser.Name, ser.PackageVersion)
+	} else {
+		clusterObj, err := a.models.ClusterManager.Get(app.ScopeId)
+		if err != nil {
+			return &utils.Response{Code: code.DBError, Msg: fmt.Sprintf("获取集群id=%d失败：%s", app.ScopeId, err.Error())}
+		}
+		opScope = types.ScopeCluster
+		opScopeId = clusterObj.ID
+		opNamespace = app.Namespace
+		opScopeName = clusterObj.Name1
+		opResType = types.AuditResourceClusterComponent
+		opDetail = fmt.Sprintf("导入自定义集群组件：%s-%s", ser.Name, ser.PackageVersion)
+	}
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationImport,
+		OperateDetail:        opDetail,
+		Scope:                opScope,
+		ScopeId:              opScopeId,
+		ScopeName:            opScopeName,
+		Namespace:            opNamespace,
+		ResourceId:           app.ID,
+		ResourceType:         opResType,
+		ResourceName:         app.Name,
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: nil,
+	})
+	return resp
 }
 
 func (a *ProjectApp) duplicateApp(c *views.Context) *utils.Response {
@@ -168,11 +487,45 @@ func (a *ProjectApp) duplicateApp(c *views.Context) *utils.Response {
 	if err := c.ShouldBind(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	return a.AppService.DuplicateApp(&ser, c.User)
+	app, appVersion, resp := a.AppService.DuplicateApp(&ser, c.User)
+	if app == nil {
+		return resp
+	}
+	var opDetail, operation string
+	projectObj, err := a.models.ProjectManager.Get(app.ScopeId)
+	if err != nil {
+		return &utils.Response{Code: code.GetError, Msg: fmt.Sprintf("获取应用所在工作空间失败：%s", err.Error())}
+	}
+	if ser.Scope == types.AppVersionScopeProjectApp {
+		destProject, err := a.models.ProjectManager.Get(ser.ScopeId)
+		if err != nil {
+			return &utils.Response{Code: code.GetError, Msg: fmt.Sprintf("获取目标工作空间失败：%s", err.Error())}
+		}
+		operation = types.AuditOperationClone
+		opDetail = fmt.Sprintf("克隆应用版本：%s-%s到目标工作空间：%s", appVersion.PackageName, appVersion.PackageVersion, destProject.Name)
+	} else {
+		operation = types.AuditOperationRelease
+		opDetail = fmt.Sprintf("发布应用版本：%s-%s到应用商店", appVersion.PackageName, appVersion.PackageVersion)
+	}
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            operation,
+		OperateDetail:        opDetail,
+		Scope:                types.ScopeProject,
+		ScopeId:              projectObj.ID,
+		ScopeName:            projectObj.Name,
+		Namespace:            projectObj.Namespace,
+		ResourceId:           app.ID,
+		ResourceType:         types.AuditResourceApp,
+		ResourceName:         app.Name,
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: nil,
+	})
+	return resp
 }
 
 func (a *ProjectApp) statusSSE(c *views.Context) *utils.Response {
-	var ser serializers.ProjectAppListSerializer
+	var ser serializers.AppListSerializer
 	if err := c.ShouldBindQuery(&ser); err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
@@ -210,7 +563,7 @@ func (a *ProjectApp) downloadChart(c *views.Context) *utils.Response {
 		return nil
 	}
 
-	appChart, err := a.models.ProjectAppVersionManager.GetAppVersionChart(chartPath)
+	appChart, err := a.models.AppVersionManager.GetChart(chartPath)
 	if err != nil {
 		c.JSON(http.StatusNotFound, &utils.Response{Code: code.GetError, Msg: err.Error()})
 		return nil

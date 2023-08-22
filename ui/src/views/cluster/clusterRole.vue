@@ -21,7 +21,7 @@ export default {
   },
   watch: {
     scopeId: function() {
-      this.fetchData()
+      // this.fetchData()
     }
   },
   computed: {
