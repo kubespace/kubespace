@@ -8,17 +8,17 @@ import (
 	"time"
 )
 
-type ManagerPipelinePlugin struct {
+type PipelinePluginManager struct {
 	DB *gorm.DB
 }
 
-func NewPipelinePluginManager(db *gorm.DB) *ManagerPipelinePlugin {
-	p := &ManagerPipelinePlugin{DB: db}
+func NewPipelinePluginManager(db *gorm.DB) *PipelinePluginManager {
+	p := &PipelinePluginManager{DB: db}
 	p.Init()
 	return p
 }
 
-func (p *ManagerPipelinePlugin) Get(pluginId uint) (*types.PipelinePlugin, error) {
+func (p *PipelinePluginManager) Get(pluginId uint) (*types.PipelinePlugin, error) {
 	var plugin types.PipelinePlugin
 	if err := p.DB.First(plugin, pluginId).Error; err != nil {
 		return nil, err
@@ -26,7 +26,7 @@ func (p *ManagerPipelinePlugin) Get(pluginId uint) (*types.PipelinePlugin, error
 	return &plugin, nil
 }
 
-func (p *ManagerPipelinePlugin) GetByKey(pluginKey string) (*types.PipelinePlugin, error) {
+func (p *PipelinePluginManager) GetByKey(pluginKey string) (*types.PipelinePlugin, error) {
 	var plugin types.PipelinePlugin
 	if err := p.DB.First(&plugin, "`key` = ?", pluginKey).Error; err != nil {
 		return nil, err
@@ -349,7 +349,7 @@ var BuiltinPlugins = []types.PipelinePlugin{
 	},
 }
 
-func (p *ManagerPipelinePlugin) Init() {
+func (p *PipelinePluginManager) Init() {
 	now := time.Now()
 	for _, plugin := range BuiltinPlugins {
 		var dbPlugin types.PipelinePlugin

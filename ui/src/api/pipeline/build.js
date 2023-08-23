@@ -54,9 +54,25 @@ export function stageCancel(data) {
   })
 }
 
+export function stageCancelReexec(data) {
+  return request({
+    url: `pipeline/build/cancel_reexec`,
+    method: 'post',
+    data,
+  })
+}
+
 export function stageReexec(data) {
   return request({
     url: `pipeline/build/reexec`,
+    method: 'post',
+    data,
+  })
+}
+
+export function stageAction(data) {
+  return request({
+    url: `pipeline/build/stage_action`,
     method: 'post',
     data,
   })

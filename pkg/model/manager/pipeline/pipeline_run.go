@@ -2,6 +2,9 @@ package pipeline
 
 import (
 	"errors"
+	"fmt"
+	"github.com/kubespace/kubespace/pkg/core/code"
+	corerrors "github.com/kubespace/kubespace/pkg/core/errors"
 	"github.com/kubespace/kubespace/pkg/informer/listwatcher"
 	listwatcherconfig "github.com/kubespace/kubespace/pkg/informer/listwatcher/config"
 	"github.com/kubespace/kubespace/pkg/informer/listwatcher/pipeline"
@@ -13,15 +16,15 @@ import (
 	"time"
 )
 
-type ManagerPipelineRun struct {
+type PipelineRunManager struct {
 	DB                        *gorm.DB
-	PluginManager             *ManagerPipelinePlugin
+	PluginManager             *PipelinePluginManager
 	pipelineRunListWatcher    listwatcher.Interface
 	pipelineRunJobListWatcher listwatcher.Interface
 }
 
-func NewPipelineRunManager(db *gorm.DB, pluginManager *ManagerPipelinePlugin, listwatcherConfig *listwatcherconfig.ListWatcherConfig) *ManagerPipelineRun {
-	return &ManagerPipelineRun{
+func NewPipelineRunManager(db *gorm.DB, pluginManager *PipelinePluginManager, listwatcherConfig *listwatcherconfig.ListWatcherConfig) *PipelineRunManager {
+	return &PipelineRunManager{
 		DB:                        db,
 		PluginManager:             pluginManager,
 		pipelineRunListWatcher:    pipeline.NewPipelineRunListWatcher(listwatcherConfig, nil),
@@ -29,7 +32,7 @@ func NewPipelineRunManager(db *gorm.DB, pluginManager *ManagerPipelinePlugin, li
 	}
 }
 
-func (p *ManagerPipelineRun) ListPipelineRun(pipelineId uint, lastBuildNumber int, status string, limit int) ([]types.PipelineRun, error) {
+func (p *PipelineRunManager) ListPipelineRun(pipelineId uint, lastBuildNumber int, status string, limit int) ([]types.PipelineRun, error) {
 	var pipelineRuns []types.PipelineRun
 	q := p.DB.Order("id desc").Limit(limit).Where("pipeline_id = ?", pipelineId)
 	if lastBuildNumber != 0 {
@@ -44,7 +47,7 @@ func (p *ManagerPipelineRun) ListPipelineRun(pipelineId uint, lastBuildNumber in
 	return pipelineRuns, nil
 }
 
-func (p *ManagerPipelineRun) GetLastPipelineRun(pipelineId uint) (*types.PipelineRun, error) {
+func (p *PipelineRunManager) GetLastPipelineRun(pipelineId uint) (*types.PipelineRun, error) {
 	var lastPipelineRun types.PipelineRun
 	if err := p.DB.Last(&lastPipelineRun, "pipeline_id = ?", pipelineId).Error; err != nil {
 		if strings.Contains(err.Error(), "record not found") {
@@ -55,7 +58,7 @@ func (p *ManagerPipelineRun) GetLastPipelineRun(pipelineId uint) (*types.Pipelin
 	return &lastPipelineRun, nil
 }
 
-func (p *ManagerPipelineRun) GetLastBuildNumber(pipelineId uint) (uint, error) {
+func (p *PipelineRunManager) GetLastBuildNumber(pipelineId uint) (uint, error) {
 	var lastPipelineRun types.PipelineRun
 	if err := p.DB.Last(&lastPipelineRun, "pipeline_id = ?", pipelineId).Error; err != nil {
 		if strings.Contains(err.Error(), "record not found") {
@@ -66,7 +69,7 @@ func (p *ManagerPipelineRun) GetLastBuildNumber(pipelineId uint) (uint, error) {
 	return lastPipelineRun.BuildNumber + 1, nil
 }
 
-func (p *ManagerPipelineRun) CreatePipelineRun(pipelineRun *types.PipelineRun, stagesRun []*types.PipelineRunStage) (*types.PipelineRun, error) {
+func (p *PipelineRunManager) CreatePipelineRun(pipelineRun *types.PipelineRun, stagesRun []*types.PipelineRunStage) (*types.PipelineRun, error) {
 	err := p.DB.Transaction(func(tx *gorm.DB) error {
 		var lastPipelineRun types.PipelineRun
 		if err := tx.Set("gorm:query_option", "FOR UPDATE").Last(&lastPipelineRun, "pipeline_id = ?", pipelineRun.PipelineId).Error; err != nil {
@@ -107,7 +110,7 @@ func (p *ManagerPipelineRun) CreatePipelineRun(pipelineRun *types.PipelineRun, s
 	return pipelineRun, nil
 }
 
-func (p *ManagerPipelineRun) GetStageRunJobs(stageRunId uint) (types.PipelineRunJobs, error) {
+func (p *PipelineRunManager) GetStageRunJobs(stageRunId uint) (types.PipelineRunJobs, error) {
 	var runJobs []types.PipelineRunJob
 	if err := p.DB.Where("stage_run_id = ?", stageRunId).Find(&runJobs).Error; err != nil {
 		return nil, err
@@ -119,7 +122,7 @@ func (p *ManagerPipelineRun) GetStageRunJobs(stageRunId uint) (types.PipelineRun
 	return stageRunJobs, nil
 }
 
-func (p *ManagerPipelineRun) NextStageRun(pipelineRunId uint, stageId uint) (*types.PipelineRunStage, error) {
+func (p *PipelineRunManager) NextStageRun(pipelineRunId uint, stageId uint) (*types.PipelineRunStage, error) {
 	var err error
 	var stageRun types.PipelineRunStage
 	if err = p.DB.Last(&stageRun, "prev_stage_run_id = ? and pipeline_run_id = ?", stageId, pipelineRunId).Error; err != nil {
@@ -134,7 +137,7 @@ func (p *ManagerPipelineRun) NextStageRun(pipelineRunId uint, stageId uint) (*ty
 	return &stageRun, nil
 }
 
-func (p *ManagerPipelineRun) Get(pipelineRunId uint) (*types.PipelineRun, error) {
+func (p *PipelineRunManager) Get(pipelineRunId uint) (*types.PipelineRun, error) {
 	var pipelineRun types.PipelineRun
 	if err := p.DB.First(&pipelineRun, pipelineRunId).Error; err != nil {
 		return nil, err
@@ -142,7 +145,7 @@ func (p *ManagerPipelineRun) Get(pipelineRunId uint) (*types.PipelineRun, error)
 	return &pipelineRun, nil
 }
 
-func (p *ManagerPipelineRun) GetJobRun(jobRunId uint) (*types.PipelineRunJob, error) {
+func (p *PipelineRunManager) GetJobRun(jobRunId uint) (*types.PipelineRunJob, error) {
 	var jobRun types.PipelineRunJob
 	if err := p.DB.First(&jobRun, jobRunId).Error; err != nil {
 		return nil, err
@@ -155,7 +158,7 @@ type JobRunListCondition struct {
 	StatusIn     []string `json:"status_in"`
 }
 
-func (p *ManagerPipelineRun) ListJobRun(cond *JobRunListCondition) ([]*types.PipelineRunJob, error) {
+func (p *PipelineRunManager) ListJobRun(cond *JobRunListCondition) ([]*types.PipelineRunJob, error) {
 	var jobRun []*types.PipelineRunJob
 	tx := p.DB
 	if cond.WithSpacelet != nil {
@@ -174,15 +177,15 @@ func (p *ManagerPipelineRun) ListJobRun(cond *JobRunListCondition) ([]*types.Pip
 	return jobRun, nil
 }
 
-func (p *ManagerPipelineRun) NotifyJobRun(jobRun *types.PipelineRunJob) error {
+func (p *PipelineRunManager) NotifyJobRun(jobRun *types.PipelineRunJob) error {
 	return p.pipelineRunJobListWatcher.Notify(jobRun)
 }
 
-func (p *ManagerPipelineRun) UpdateJobRun(id uint, jobRun *types.PipelineRunJob) error {
+func (p *PipelineRunManager) UpdateJobRun(id uint, jobRun *types.PipelineRunJob) error {
 	return p.DB.Model(types.PipelineRunJob{}).Where("id=?", id).Updates(jobRun).Error
 }
 
-func (p *ManagerPipelineRun) GetStageRun(stageId uint) (*types.PipelineRunStage, error) {
+func (p *PipelineRunManager) GetStageRun(stageId uint) (*types.PipelineRunStage, error) {
 	var err error
 	var stageRun types.PipelineRunStage
 	if err = p.DB.First(&stageRun, stageId).Error; err != nil {
@@ -194,7 +197,7 @@ func (p *ManagerPipelineRun) GetStageRun(stageId uint) (*types.PipelineRunStage,
 	return &stageRun, nil
 }
 
-func (p *ManagerPipelineRun) StagesRun(pipelineRunId uint) ([]*types.PipelineRunStage, error) {
+func (p *PipelineRunManager) StagesRun(pipelineRunId uint) ([]*types.PipelineRunStage, error) {
 	var stagesRun []types.PipelineRunStage
 	if err := p.DB.Where("pipeline_run_id = ?", pipelineRunId).Find(&stagesRun).Error; err != nil {
 		return nil, err
@@ -226,24 +229,11 @@ func (p *ManagerPipelineRun) StagesRun(pipelineRunId uint) ([]*types.PipelineRun
 	return seqStages, nil
 }
 
-func (p *ManagerPipelineRun) UpdateStageRun(stageRun *types.PipelineRunStage) error {
-	err := p.DB.Transaction(func(tx *gorm.DB) error {
-		if err := p.DB.Save(stageRun).Error; err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	var pipelineRun types.PipelineRun
-	if err = p.DB.First(&pipelineRun, stageRun.PipelineRunId).Error; err != nil {
-		return err
-	}
-	return err
+func (p *PipelineRunManager) UpdateStageRun(stageRun *types.PipelineRunStage) error {
+	return p.DB.Save(stageRun).Error
 }
 
-func (p *ManagerPipelineRun) UpdateStageJobRunParams(stageRun *types.PipelineRunStage, jobRuns []*types.PipelineRunJob) error {
+func (p *PipelineRunManager) UpdateStageJobRunParams(stageRun *types.PipelineRunStage, jobRuns []*types.PipelineRunJob) error {
 	return p.DB.Transaction(func(tx *gorm.DB) error {
 		if err := p.DB.Select("custom_params").Save(stageRun).Error; err != nil {
 			return err
@@ -263,7 +253,7 @@ func (p *ManagerPipelineRun) UpdateStageJobRunParams(stageRun *types.PipelineRun
 //     a. job中有error的，则stage为error；
 //     b. 所有job都为ok，则stage为ok；
 //     c. job中有ok，有wait，则stage为doing；
-func (p *ManagerPipelineRun) GetStageRunStatus(stageRun *types.PipelineRunStage) string {
+func (p *PipelineRunManager) GetStageRunStatus(stageRun *types.PipelineRunStage) string {
 	if stageRun.Status == types.PipelineStatusCancel || stageRun.Status == types.PipelineStatusCanceled {
 		// 如果当前阶段状态为取消状态，不以任务状态为准
 		return stageRun.Status
@@ -291,7 +281,7 @@ func (p *ManagerPipelineRun) GetStageRunStatus(stageRun *types.PipelineRunStage)
 	return status
 }
 
-func (p *ManagerPipelineRun) GetStageRunEnv(stageRun *types.PipelineRunStage) types.Map {
+func (p *PipelineRunManager) GetStageRunEnv(stageRun *types.PipelineRunStage) types.Map {
 	envs := make(map[string]interface{})
 	for _, jobRun := range stageRun.Jobs {
 		// 当前阶段所有Job合并env
@@ -310,30 +300,30 @@ type UpdateStageObj struct {
 	CustomParams   types.Map
 }
 
-func (p *ManagerPipelineRun) UpdatePipelineStageRun(updateStageObj *UpdateStageObj) (*types.PipelineRun, *types.PipelineRunStage, error) {
+func (p *PipelineRunManager) UpdatePipelineStageRun(updateStageObj *UpdateStageObj) (*types.PipelineRun, *types.PipelineRunStage, error) {
 	if updateStageObj == nil {
 		klog.Info("parameter stageObj is empty")
-		return nil, nil, errors.New("parameter is empty")
+		return nil, nil, corerrors.New(code.ParamsError, "parameter is empty")
 	}
 	if updateStageObj.StageRunId == 0 {
 		klog.Info("parameter stageRunId is empty")
-		return nil, nil, errors.New("parameter stageRunId is empty")
+		return nil, nil, corerrors.New(code.ParamsError, "parameter stageRunId is empty")
 	}
 	var stageRun types.PipelineRunStage
 	var pipelineRun types.PipelineRun
 	err := p.DB.Transaction(func(tx *gorm.DB) error {
 		var err error
 
-		// select for update数据库锁
+		// select for update数据库锁，防止并发修改
 		if err = tx.Set("gorm:query_option", "FOR UPDATE").First(&stageRun, updateStageObj.StageRunId).Error; err != nil {
 			return err
 		}
 		if updateStageObj.StageRunStatus == types.PipelineStatusCancel && stageRun.Status != types.PipelineStatusDoing {
-			return errors.New("stage status is not doing, can not cancel")
+			return corerrors.New(code.StatusError, "stage status is not doing, can not cancel")
 		}
 		if updateStageObj.StageRunStatus == types.PipelineStatusCanceled && stageRun.Status != types.PipelineStatusCancel {
 			// 阶段状态修改为canceled已取消，当前状态必须为cancel取消中
-			return errors.New("stage status is not cancel, can not set canceled")
+			return corerrors.New(code.StatusError, "stage status is not cancel, can not set canceled")
 		}
 
 		if updateStageObj.StageRunJobs != nil {
@@ -426,7 +416,115 @@ func (p *ManagerPipelineRun) UpdatePipelineStageRun(updateStageObj *UpdateStageO
 	return &pipelineRun, &stageRun, nil
 }
 
-func (p *ManagerPipelineRun) UpdatePipelineRun(pipelineRun *types.PipelineRun) error {
+// ReexecStage 重新执行已执行完成的阶段
+func (p *PipelineRunManager) ReexecStage(
+	pipelineRunId,
+	stageRunId uint,
+	customParams map[string]interface{},
+	jobParams map[uint]map[string]interface{}) (*types.PipelineRun, *types.PipelineRunStage, error) {
+	var pipelineRun *types.PipelineRun
+	var stageRun *types.PipelineRunStage
+	timeNow := time.Now()
+	err := p.DB.Transaction(func(tx *gorm.DB) error {
+		var err error
+
+		// select for update数据库锁，防止并发修改
+		if err = tx.Set("gorm:query_option", "FOR UPDATE").First(&pipelineRun, pipelineRunId).Error; err != nil {
+			return err
+		}
+		stageRun, err = p.GetStageRun(stageRunId)
+		if err != nil {
+			return err
+		}
+		if !utils.Contains([]string{types.PipelineStatusOK, types.PipelineStatusError, types.PipelineStatusPause},
+			pipelineRun.Status) {
+			return corerrors.New(code.StatusError, fmt.Sprintf("current pipeline status is %s, cannot reexecute", pipelineRun.Status))
+		}
+		if stageRun.Status != types.PipelineStatusOK && stageRun.Status != types.PipelineStatusError {
+			return corerrors.New(code.StatusError, fmt.Sprintf("current stage status is %s, cannot reexecute", pipelineRun.Status))
+		}
+		// 更新该阶段状态为doing，以及开始执行时间
+		stageRun.Status = types.PipelineStatusDoing
+		stageRun.UpdateTime = timeNow
+		stageRun.ExecTime = timeNow
+		stageRun.CustomParams = customParams
+		if err = tx.Select("status", "exec_time", "custom_params", "update_time").Save(&stageRun).Error; err != nil {
+			return err
+		}
+
+		for i, job := range stageRun.Jobs {
+			stageRun.Jobs[i].Status = types.PipelineStatusWait
+			stageRun.Jobs[i].UpdateTime = timeNow
+			if params, ok := jobParams[job.ID]; ok {
+				stageRun.Jobs[i].Params = params
+				if err = tx.Select("params", "update_time").Save(&stageRun.Jobs[i]).Error; err != nil {
+					return err
+				}
+			}
+		}
+
+		// 更新该阶段后续所有已执行阶段的状态为wait
+		pipelineRunStages, err := p.StagesRun(pipelineRunId)
+		if err != nil {
+			return err
+		}
+		needChange := false
+		var changeStageIds []uint
+		for _, sr := range pipelineRunStages {
+			if sr.ID == stageRunId {
+				// 当前阶段之后的所有阶段都需要修改状态
+				needChange = true
+				continue
+			}
+			if needChange && sr.Status == types.PipelineStatusWait {
+				// 如果之后有阶段状态为wait，则之后的阶段都不需要修改
+				break
+			}
+			if needChange {
+				changeStageIds = append(changeStageIds, sr.ID)
+			}
+		}
+		if len(changeStageIds) > 0 {
+			if err = tx.Model(&types.PipelineRunStage{}).Where("id in ?", changeStageIds).Updates(&types.PipelineRunStage{
+				Status:     types.PipelineStatusWait,
+				Env:        make(types.Map),
+				UpdateTime: timeNow,
+			}).Error; err != nil {
+				return err
+			}
+		}
+
+		changeStageIds = append(changeStageIds, stageRunId)
+		// 修改阶段的所有任务状态为wait
+		if err = tx.Model(&types.PipelineRunJob{}).Where("stage_run_id in ?", changeStageIds).Select(
+			"status", "update_time", "env", "result").Updates(&types.PipelineRunJob{
+			Status:     types.PipelineStatusWait,
+			UpdateTime: timeNow,
+			Env:        make(types.Map),
+			Result:     nil,
+		}).Error; err != nil {
+			return err
+		}
+
+		// 更新流水线构建状态
+		pipelineRun.Status = types.PipelineStatusDoing
+		pipelineRun.UpdateTime = timeNow
+		if err = tx.Select("status", "update_time").Save(&pipelineRun).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	// 发送informer watch通知
+	if notifyErr := p.pipelineRunListWatcher.Notify(pipelineRun); notifyErr != nil {
+		klog.Warningf("notify pipeline run error: %s", notifyErr.Error())
+	}
+	return pipelineRun, stageRun, nil
+}
+
+func (p *PipelineRunManager) UpdatePipelineRun(pipelineRun *types.PipelineRun) error {
 	pipelineRun.UpdateTime = time.Now()
 	if err := p.DB.Save(pipelineRun).Error; err != nil {
 		return err
@@ -437,7 +535,7 @@ func (p *ManagerPipelineRun) UpdatePipelineRun(pipelineRun *types.PipelineRun) e
 	return nil
 }
 
-func (p *ManagerPipelineRun) GetEnvBeforeStageRun(stageRun *types.PipelineRunStage) (envs map[string]interface{}, err error) {
+func (p *PipelineRunManager) GetEnvBeforeStageRun(stageRun *types.PipelineRunStage) (envs map[string]interface{}, err error) {
 	if stageRun.PrevStageRunId == 0 {
 		var pipelineRun types.PipelineRun
 		if err = p.DB.Last(&pipelineRun, "id = ?", stageRun.PipelineRunId).Error; err != nil {
@@ -457,7 +555,7 @@ func (p *ManagerPipelineRun) GetEnvBeforeStageRun(stageRun *types.PipelineRunSta
 	return envs, nil
 }
 
-func (p *ManagerPipelineRun) GetJobRunLog(jobRunId uint, withLog bool) (*types.PipelineRunJobLog, error) {
+func (p *PipelineRunManager) GetJobRunLog(jobRunId uint, withLog bool) (*types.PipelineRunJobLog, error) {
 	var jobLog types.PipelineRunJobLog
 	if withLog {
 		if err := p.DB.Last(&jobLog, "job_run_id = ?", jobRunId).Error; err != nil {

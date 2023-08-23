@@ -76,7 +76,7 @@
                       <template v-if="stage.status == 'pause'">
                         <div>
                           <el-button size="mini" type="primary" style="padding: 2px 5px;" round
-                            @click="openManualStageDialog(stage)">
+                            @click="openManualStageDialog(stage, 'manual_exec')">
                             <i class="el-icon-video-play" /> 
                             执行
                           </el-button>
@@ -146,6 +146,8 @@
                 </el-table-column>
               </el-table>
               <!-- <el-button style="margin-top: 8px; border-radius: 0px; padding: 5px 15px;" type="primary" size="mini">重新构建</el-button> -->
+              <el-button style="margin-top: 8px; border-radius: 0px; padding: 5px 15px;" type="primary" 
+                size="mini" v-if="(build.pipeline_run.status == 'error')" @click="stageRetry(build)">失败重试</el-button>
             </template>
             <template v-if="build.clickDetail && build.clickDetail.type == 'stage'">
               <div style="font-size: 14px; padding: 4px 3px 8px">
@@ -185,10 +187,13 @@
               <el-button style="margin-top: 8px; border-radius: 0px; padding: 5px 15px;" type="danger" 
                 size="mini" v-if="(build.clickDetail.stage.status == 'doing')" @click="stageCancel(build.clickDetail.stage)">取消执行</el-button>
               <el-button style="margin-top: 8px; border-radius: 0px; padding: 5px 15px;" type="primary" 
-                size="mini" v-if="(build.clickDetail.stage.status == 'canceled')" @click="stageReexec(build.clickDetail.stage)">重新执行</el-button>
+                size="mini" v-if="(['canceled'].indexOf(build.clickDetail.stage.status) >= 0)" @click="stageCancelReexec(build.clickDetail.stage)">重新执行</el-button>
+              <el-button style="margin-top: 8px; border-radius: 0px; padding: 5px 15px;" type="primary" 
+                size="mini" v-if="canReexec(build.pipeline_run, build.clickDetail.stage)" @click="stageReexec(build.clickDetail.stage)">从当前阶段重新执行</el-button>
+              <el-button style="margin-top: 8px; border-radius: 0px; padding: 5px 15px;" type="primary" 
+                size="mini" v-if="(build.clickDetail.stage.status == 'error')" @click="stageRetry(build)">失败重试</el-button>
             </template>
-            <el-button style="margin-top: 8px; border-radius: 0px; padding: 5px 15px;" type="primary" 
-                size="mini" v-if="(build.pipeline_run.status == 'error')" @click="stageRetry(build)">失败重试</el-button>
+            
           </div>
         </div>
       </div>
@@ -296,7 +301,7 @@
           </el-form>
           <template v-for="(job, i) in manualStage.stage.jobs || []">
             <div :key="i" v-if="manualJobComponent[job.plugin_key]">
-              <component v-if="manualStage.job_params[job.plugin_key]" v-bind:is="manualJobComponent[job.plugin_key]" :params="manualStage.job_params[job.plugin_key]"></component>
+              <component v-if="manualStage.job_params[job.id]" v-bind:is="manualJobComponent[job.plugin_key]" :params="manualStage.job_params[job.id]"></component>
             </div>
           </template>
         </div>
@@ -313,7 +318,7 @@
 import { Clusterbar } from '@/views/components'
 import { StatusIcon } from '@/views/pipeline/components'
 import { getPipeline, listRepoBranches } from '@/api/pipeline/pipeline'
-import { listBuilds, buildPipeline, manualExec, stageRetry, stageCancel, stageReexec } from '@/api/pipeline/build'
+import { listBuilds, buildPipeline, stageAction } from '@/api/pipeline/build'
 import { manualCheck, Release } from '@/views/pipeline/plugin-manual'
 import { Message } from 'element-ui'
 
@@ -348,7 +353,8 @@ export default {
       manualStage: {
         stage: {},
         job_params: {},
-        custom_params: []
+        custom_params: [],
+        action: '',
       },
       manualJobComponent: {
         release: Release
@@ -488,30 +494,30 @@ export default {
       });
       this.pipelineSSE.on("message", (res) => {
         // console.log(res)
-        if(res && res != "\n") {
-          let data = JSON.parse(res)
-          if(data.pipeline_run) {
-            for(let i in this.builds){
-              let build = this.builds[i]
-              if(build.pipeline_run.id == data.pipeline_run.id) {
-                if (build.clickDetail) {
-                  let clickDetail = build.clickDetail
-                  if(clickDetail.type == 'stage') {
-                    for(let s of data.stages_run) {
-                      if (s.id == clickDetail.stage.id) {
-                        clickDetail.stage = s
-                        break
-                      }
-                    }
-                  }
-                  data.clickDetail = clickDetail
+        if(!res || res == "\n") return
+
+        let data = JSON.parse(res)
+        if(!data.pipeline_run) return
+
+        for(let i in this.builds){
+          let build = this.builds[i]
+          if(build.pipeline_run.id != data.pipeline_run.id) continue
+
+          if (build.clickDetail) {
+            let clickDetail = build.clickDetail
+            if(clickDetail.type == 'stage') {
+              for(let s of data.stages_run) {
+                if (s.id == clickDetail.stage.id) {
+                  clickDetail.stage = s
+                  break
                 }
-                this.$set(this.builds, i, data)
-                this.processExecTime()
-                break
               }
             }
+            data.clickDetail = clickDetail
           }
+          this.$set(this.builds, i, data)
+          this.processExecTime()
+          break
         }
       })
       this.pipelineSSE.connect().then(() => {
@@ -703,7 +709,7 @@ export default {
     clickBuildNumber(build) {
       this.$router.push({name: 'pipelineBuildDetail', params: {buildId: build.pipeline_run.id}})
     },
-    openManualStageDialog(stage) {
+    openManualStageDialog(stage, action) {
       let custom_params = []
       if(stage.custom_params) {
         for(let k in stage.custom_params) {
@@ -712,17 +718,22 @@ export default {
       }
       let job_params = {}
       for(let j of stage.jobs) {
-        job_params[j.plugin_key] = j.params || {}
+        if(this.manualJobComponent[j.plugin_key]) {
+          job_params[j.id] = JSON.parse(JSON.stringify(j.params || {}))
+        }
+        // job_params[j.plugin_key] = j.params || {}
       }
       this.$set(this.manualStage, 'job_params', job_params)
       this.$set(this.manualStage, 'custom_params', custom_params)
       this.$set(this.manualStage, 'stage', stage)
+      this.$set(this.manualStage, 'action', action)
       this.manualDialogVisible = true
     },
     async manualExec() {
       let parmas = {
         stage_run_id: this.manualStage.stage.id,
-        job_params: this.manualStage.job_params
+        job_params: this.manualStage.job_params,
+        action: this.manualStage.action
       }
       let custom_params = {}
       if(this.manualStage.custom_params) {
@@ -742,7 +753,7 @@ export default {
         this.dialogLoading = false
         return
       }
-      manualExec(parmas).then((response) => {
+      stageAction(parmas).then((response) => {
         this.$message({message: '下发任务成功', type: 'success'});
         this.dialogLoading = false
         // this.fetchBuilds(0)
@@ -760,27 +771,19 @@ export default {
         Message.error("获取构建阶段失败，请刷新重试")
         return
       }
-      let stageId = 0
+      let stage
       for(let s of build.stages_run) {
         if(s.status == 'error') {
-          stageId = s.id
+          stage = s
         }
       }
-      if(!stageId) {
+      if(!stage) {
         Message.error("未获取到执行失败的阶段，请刷新重试")
         return
       }
-      this.loading = true
-      let parmas = {stage_run_id: stageId}
-      stageRetry(parmas).then((response) => {
-        this.$message({message: '重试成功', type: 'success'});
-        // this.fetchBuilds(0)
-        this.loading = false
-      }).catch( (err) => {
-        this.loading = false
-      })
+      this.openManualStageDialog(stage, 'error_retry')
     },
-    stageReexec(stage) {
+    stageCancelReexec(stage) {
       if(!stage) {
         Message.error("获取构建阶段失败，请刷新重试")
         return
@@ -789,15 +792,7 @@ export default {
         Message.error("获取构建阶段失败，请刷新重试")
         return
       }
-      this.loading = true
-      let parmas = {stage_run_id: stage.id}
-      stageReexec(parmas).then((response) => {
-        this.$message({message: '重新执行成功', type: 'success'});
-        // this.fetchBuilds(0)
-        this.loading = false
-      }).catch( (err) => {
-        this.loading = false
-      })
+      this.openManualStageDialog(stage, 'cancel_reexec')
     },
     stageCancel(stage) {
       if(!stage) {
@@ -808,11 +803,10 @@ export default {
         Message.error("获取构建阶段失败，请刷新重试")
         return
       }
+
       this.loading = true
-      let parmas = {stage_run_id: stage.id}
-      stageCancel(parmas).then((response) => {
+      stageAction({stage_run_id: stage.id, action: "cancel"}).then((response) => {
         this.$message({message: '取消成功', type: 'success'});
-        // this.fetchBuilds(0)
         this.loading = false
       }).catch( (err) => {
         this.loading = false
@@ -825,6 +819,17 @@ export default {
         build_num = lastStage.env.RELEASE_VERSION
       }
       return `${build_num} (${build.pipeline_run.operator})`
+    },
+    canReexec(build, stage) {
+      if(['ok', 'error', 'pause'].indexOf(build.status) >= 0) {
+        if(stage.status == 'ok') {
+          return true
+        }
+      }
+      return false
+    },
+    stageReexec(stage) {
+      this.openManualStageDialog(stage, 'reexec')
     },
   },
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/service/cluster"
 	"github.com/kubespace/kubespace/pkg/service/pipeline"
+	"github.com/kubespace/kubespace/pkg/service/pipeline/pipeline_run"
 	"github.com/kubespace/kubespace/pkg/service/project"
 	"github.com/kubespace/kubespace/pkg/service/spacelet"
 )
@@ -42,7 +43,7 @@ func NewServiceFactory(config *Config) *Factory {
 		Pipeline: &PipelineFactory{
 			WorkspaceService:   pipeline.NewWorkspaceService(config.models),
 			PipelineService:    pipeline.NewPipelineService(config.models),
-			PipelineRunService: pipeline.NewPipelineRunService(config.models),
+			PipelineRunService: pipeline_run.NewPipelineRunService(config.models),
 			SpaceletService:    spacelet.NewSpaceletService(config.models),
 		},
 	}
@@ -71,7 +72,7 @@ type PipelineFactory struct {
 	// 流水线
 	PipelineService *pipeline.PipelineService
 	// 流水线构建
-	PipelineRunService *pipeline.PipelineRunService
+	PipelineRunService *pipeline_run.PipelineRunService
 	// spacelet
 	SpaceletService *spacelet.SpaceletService
 }

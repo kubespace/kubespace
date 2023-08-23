@@ -10,6 +10,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/model"
 	pipelinemgr "github.com/kubespace/kubespace/pkg/model/manager/pipeline"
 	"github.com/kubespace/kubespace/pkg/model/types"
+	"github.com/kubespace/kubespace/pkg/service/pipeline/pipeline_run"
 	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
 	"github.com/kubespace/kubespace/pkg/third/git"
 	"github.com/kubespace/kubespace/pkg/utils"
@@ -304,7 +305,7 @@ func (p *PipelineService) ListRepoBranches(pipelineId uint) *utils.Response {
 	}
 	var branches []*git.Reference
 	for i, b := range repoBranches {
-		if MatchBranchSource(pipelineObj.Sources, b.Name) {
+		if pipeline_run.MatchBranchSource(pipelineObj.Sources, b.Name) {
 			branches = append(branches, repoBranches[i])
 		}
 	}

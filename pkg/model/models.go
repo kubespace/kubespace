@@ -30,9 +30,9 @@ type Models struct {
 	RoleManager     *user.RoleManager
 
 	PipelineManager             *pipeline.ManagerPipeline
-	PipelineRunManager          *pipeline.ManagerPipelineRun
+	PipelineRunManager          *pipeline.PipelineRunManager
 	PipelineWorkspaceManager    *pipeline.WorkspaceManager
-	PipelinePluginManager       *pipeline.ManagerPipelinePlugin
+	PipelinePluginManager       *pipeline.PipelinePluginManager
 	PipelineResourceManager     *pipeline.ResourceManager
 	PipelineJobLogManager       *pipeline.JobLog
 	PipelineReleaseManager      *pipeline.Release

@@ -75,6 +75,13 @@ type PipelineCallbackSerializer struct {
 	Result *utils.Response `json:"result"`
 }
 
+type PipelineStageActionSerializer struct {
+	Action       string                          `json:"action"`
+	StageRunId   uint                            `json:"stage_run_id"`
+	CustomParams map[string]interface{}          `json:"custom_params"`
+	JobParams    map[uint]map[string]interface{} `json:"job_params"`
+}
+
 type PipelineStageManualSerializer struct {
 	StageRunId   uint                              `json:"stage_run_id"`
 	CustomParams map[string]interface{}            `json:"custom_params"`

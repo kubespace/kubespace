@@ -26,7 +26,9 @@ export default {
     },
   },
   beforeMount() {
-    this.fetchLatestRelease()
+    if(!this.params.version) {
+      this.fetchLatestRelease()
+    }
   },
   methods: {
     fetchLatestRelease() {

@@ -22,9 +22,15 @@ type PipelineStageCancelParams struct {
 	StageRunId uint `json:"stage_run_id"`
 }
 
+// PipelineStageCancelReexecParams 流水线构建阶段重新执行
+type PipelineStageCancelReexecParams struct {
+	StageRunId uint `json:"stage_run_id"`
+}
+
 // PipelineStageReexecParams 流水线构建阶段重新执行
 type PipelineStageReexecParams struct {
-	StageRunId uint `json:"stage_run_id"`
+	PipelineRunId uint `json:"pipeline_run_id"`
+	StageRunId    uint `json:"stage_run_id"`
 }
 
 // PipelineBuildParams 流水线构建参数

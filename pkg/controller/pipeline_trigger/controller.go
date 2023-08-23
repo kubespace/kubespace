@@ -7,7 +7,7 @@ import (
 	pipelinelistwatcher "github.com/kubespace/kubespace/pkg/informer/listwatcher/pipeline"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
-	"github.com/kubespace/kubespace/pkg/service/pipeline"
+	"github.com/kubespace/kubespace/pkg/service/pipeline/pipeline_run"
 )
 
 // PipelineTriggerController 流水线触发事件controller，对所有的触发配置进行监听，如果有触发条件满足，则生成触发事件
@@ -19,7 +19,7 @@ type PipelineTriggerController struct {
 	pipelineCodeCacheInformer    informer.Informer
 	// 流水线构建时对其进行加锁，保证只有一个进行处理
 	lock               lock.Lock
-	pipelineRunService *pipeline.PipelineRunService
+	pipelineRunService *pipeline_run.PipelineRunService
 }
 
 func NewPipelineTriggerController(config *controller.Config) *PipelineTriggerController {

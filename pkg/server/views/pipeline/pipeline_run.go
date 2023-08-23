@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"github.com/kubespace/kubespace/pkg/core/code"
+	"github.com/kubespace/kubespace/pkg/core/errors"
 	"github.com/kubespace/kubespace/pkg/informer"
 	"github.com/kubespace/kubespace/pkg/informer/listwatcher/pipeline"
 	"github.com/kubespace/kubespace/pkg/model"
@@ -10,6 +11,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/server/views"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	pipelineservice "github.com/kubespace/kubespace/pkg/service/pipeline"
+	"github.com/kubespace/kubespace/pkg/service/pipeline/pipeline_run"
 	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"k8s.io/klog/v2"
@@ -22,7 +24,7 @@ type PipelineRun struct {
 	Views              []*views.View
 	models             *model.Models
 	pipelineService    *pipelineservice.PipelineService
-	pipelineRunService *pipelineservice.PipelineRunService
+	pipelineRunService *pipeline_run.PipelineRunService
 	informerFactory    informer.Factory
 }
 
@@ -38,10 +40,7 @@ func NewPipelineRun(config *config.ServerConfig) *PipelineRun {
 		views.NewView(http.MethodGet, "/:pipelineRunId", pw.get),
 		views.NewView(http.MethodGet, "/:pipelineRunId/sse", pw.watch),
 		views.NewView(http.MethodPost, "", pw.build),
-		views.NewView(http.MethodPost, "/manual_execute", pw.manual),
-		views.NewView(http.MethodPost, "/retry", pw.retry),
-		views.NewView(http.MethodPost, "/cancel", pw.cancel),
-		views.NewView(http.MethodPost, "/reexec", pw.reexec),
+		views.NewView(http.MethodPost, "/stage_action", pw.stageAction),
 		views.NewView(http.MethodGet, "/log/:jobRunId", pw.log),
 		views.NewView(http.MethodGet, "/log/:jobRunId/sse", pw.logStream),
 	}
@@ -51,7 +50,7 @@ func NewPipelineRun(config *config.ServerConfig) *PipelineRun {
 func (p *PipelineRun) build(c *views.Context) *utils.Response {
 	var ser schemas.PipelineBuildParams
 	if err := c.ShouldBind(&ser); err != nil {
-		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
 	return p.pipelineRunService.Build(ser.PipelineId, ser.PipelineBuildConfig, c.User.Name)
 }
@@ -59,20 +58,20 @@ func (p *PipelineRun) build(c *views.Context) *utils.Response {
 func (p *PipelineRun) list(c *views.Context) *utils.Response {
 	var ser serializers.PipelineBuildListSerializer
 	if err := c.ShouldBindQuery(&ser); err != nil {
-		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
 	if ser.Limit == 0 {
 		ser.Limit = 20
 	}
-	return p.pipelineRunService.ListPipelineRun(ser.PipelineId, ser.LastBuildNumber, ser.Status, ser.Limit)
+	return p.pipelineRunService.List(ser.PipelineId, ser.LastBuildNumber, ser.Status, ser.Limit)
 }
 
 func (p *PipelineRun) get(c *views.Context) *utils.Response {
 	pipelineRunId, err := strconv.ParseUint(c.Param("pipelineRunId"), 10, 64)
 	if err != nil {
-		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
-	return p.pipelineRunService.GetPipelineRun(uint(pipelineRunId))
+	return p.pipelineRunService.Get(uint(pipelineRunId))
 }
 
 func (p *PipelineRun) watch(c *views.Context) *utils.Response {
@@ -88,7 +87,7 @@ func (p *PipelineRun) watch(c *views.Context) *utils.Response {
 	c.Writer.Header().Set("Content-Type", "text/event-stream")
 	c.Writer.Header().Set("Cache-Control", "no-cache")
 	c.Writer.Header().Set("Connection", "keep-alive")
-	//c.Writer.Header().Set("Transfer-Encoding", "chunked")
+	c.Writer.Header().Set("Transfer-Encoding", "chunked")
 
 	c.SSEvent("message", "{}")
 	c.Writer.Flush()
@@ -113,44 +112,20 @@ func (p *PipelineRun) watch(c *views.Context) *utils.Response {
 	go pipelineRunInformer.Run(stopCh)
 
 	<-c.Writer.CloseNotify()
-	klog.Infof("stop sse")
 	close(stopCh)
 	return nil
 }
 
-func (p *PipelineRun) manual(c *views.Context) *utils.Response {
-	var ser serializers.PipelineStageManualSerializer
+func (p *PipelineRun) stageAction(c *views.Context) *utils.Response {
+	var ser serializers.PipelineStageActionSerializer
 	if err := c.ShouldBind(&ser); err != nil {
-		return &utils.Response{
-			Code: code.ParamsError,
-			Msg:  err.Error(),
-		}
+		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
-	return p.pipelineRunService.ManualExecuteStage(&ser)
-}
-
-func (p *PipelineRun) retry(c *views.Context) *utils.Response {
-	var ser serializers.PipelineStageRetrySerializer
-	if err := c.ShouldBind(&ser); err != nil {
-		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
-	}
-	return p.pipelineRunService.RetryStage(&ser)
-}
-
-func (p *PipelineRun) cancel(c *views.Context) *utils.Response {
-	var params schemas.PipelineStageCancelParams
-	if err := c.ShouldBind(&params); err != nil {
-		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
-	}
-	return p.pipelineRunService.CancelStage(&params)
-}
-
-func (p *PipelineRun) reexec(c *views.Context) *utils.Response {
-	var params schemas.PipelineStageReexecParams
-	if err := c.ShouldBind(&params); err != nil {
-		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
-	}
-	return p.pipelineRunService.ReExecStage(&params)
+	_, _, err := p.pipelineRunService.StageAction(ser.Action, ser.StageRunId, pipeline_run.StageActionParams{
+		CustomParams: ser.CustomParams,
+		JobParams:    ser.JobParams,
+	})
+	return c.GenerateResponseError(err)
 }
 
 func (p *PipelineRun) log(c *views.Context) *utils.Response {

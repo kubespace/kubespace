@@ -22,4 +22,5 @@ const (
 	PluginError    = "PluginError"
 	JobCanceled    = "JobCanceled"
 	GitError       = "GitError"
+	StatusError    = "StatusError"
 )

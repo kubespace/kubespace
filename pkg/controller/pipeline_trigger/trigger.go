@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/model/types"
-	pipelineservice "github.com/kubespace/kubespace/pkg/service/pipeline"
+	pipelineservice "github.com/kubespace/kubespace/pkg/service/pipeline/pipeline_run"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"k8s.io/klog/v2"
 	"time"

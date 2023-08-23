@@ -12,17 +12,19 @@ import (
 	"github.com/kubespace/kubespace/pkg/server/views"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	pipelineservice "github.com/kubespace/kubespace/pkg/service/pipeline"
+	"github.com/kubespace/kubespace/pkg/service/pipeline/pipeline_run"
 	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"net/http"
 	"strconv"
+	"sync"
 )
 
 type Pipeline struct {
 	Views              []*views.View
 	models             *model.Models
 	pipelineService    *pipelineservice.PipelineService
-	pipelineRunService *pipelineservice.PipelineRunService
+	pipelineRunService *pipeline_run.PipelineRunService
 	informerFactory    informer.Factory
 }
 
@@ -77,7 +79,10 @@ func (p *Pipeline) watch(c *views.Context) *utils.Response {
 		WithList:   false,
 	})
 	stopCh := make(chan struct{})
+	mu := sync.Mutex{}
 	pipelineRunInformer.AddHandler(&informer.ResourceHandler{HandleFunc: func(obj interface{}) error {
+		mu.Lock()
+		defer mu.Unlock()
 		pipelineRun, ok := obj.(types.PipelineRun)
 		if !ok {
 			return nil

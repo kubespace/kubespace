@@ -467,20 +467,18 @@ type PipelineRunStage struct {
 type PipelineRunJobs []*PipelineRunJob
 
 type PipelineRunJob struct {
-	ID            uint   `gorm:"primaryKey" json:"id"`
-	PipelineRunId uint   `gorm:"not null" json:"pipeline_run_id"`
-	StageRunId    uint   `gorm:"not null" json:"stage_run_id"`
-	Name          string `gorm:"size:50;not null" json:"name"`
-	PluginKey     string `gorm:"size:255;not null" json:"plugin_key"`
-	Status        string `gorm:"size:50;not null" json:"status"`
-	// 每个Job执行完之后的环境变量
-	Env    Map             `gorm:"type:json" json:"env"`
-	Params Map             `gorm:"type:json;not null" json:"params"`
-	Result *utils.Response `gorm:"type:json;" json:"result"`
-	// job执行的spacelet代理节点
-	SpaceletId uint      `gorm:"" json:"spacelet_id"`
-	CreateTime time.Time `gorm:"not null;autoCreateTime" json:"create_time"`
-	UpdateTime time.Time `gorm:"not null;autoUpdateTime" json:"update_time"`
+	ID            uint            `gorm:"primaryKey" json:"id"`
+	PipelineRunId uint            `gorm:"not null" json:"pipeline_run_id"`
+	StageRunId    uint            `gorm:"not null" json:"stage_run_id"`
+	Name          string          `gorm:"size:50;not null" json:"name"`
+	PluginKey     string          `gorm:"size:255;not null" json:"plugin_key"`
+	Status        string          `gorm:"size:50;not null" json:"status"`
+	Env           Map             `gorm:"type:json;comment:任务执行完成后的变量参数值" json:"env"`
+	Params        Map             `gorm:"type:json;not null;comment:任务执行时参数" json:"params"`
+	Result        *utils.Response `gorm:"type:json;comment:任务执行结果" json:"result"`
+	SpaceletId    uint            `gorm:"comment:任务执行时的spacelet代理节点" json:"spacelet_id"`
+	CreateTime    time.Time       `gorm:"not null;autoCreateTime" json:"create_time"`
+	UpdateTime    time.Time       `gorm:"not null;autoUpdateTime" json:"update_time"`
 }
 
 func (p *PipelineRunJob) Unmarshal(bytes []byte) (interface{}, error) {

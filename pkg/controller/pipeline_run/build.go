@@ -185,7 +185,7 @@ func (p *PipelineRunController) executeJob(stageRun *types.PipelineRunStage, run
 	executeParams := map[string]interface{}{
 		"job_id": runJob.ID,
 	}
-	klog.Infof("stage run id=%d envs=%v", stageRun.ID, stageRun.Env)
+	klog.Infof("stage run id=%d, jobId=%d, envs=%v", stageRun.ID, runJob.ID, stageRun.Env)
 	// 根据任务插件配置，从阶段中获取对应参数值
 	for _, pluginParam := range plugin.Params.Params {
 		if pluginParam.ParamName == "" {

@@ -8,7 +8,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/config"
 	"github.com/kubespace/kubespace/pkg/server/views"
-	"github.com/kubespace/kubespace/pkg/service/pipeline"
+	"github.com/kubespace/kubespace/pkg/service/pipeline/pipeline_run"
 	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
 	spaceletservice "github.com/kubespace/kubespace/pkg/service/spacelet"
 	"github.com/kubespace/kubespace/pkg/spacelet"
@@ -22,7 +22,7 @@ import (
 type SpaceletViews struct {
 	Views              []*views.View
 	models             *model.Models
-	pipelineRunService *pipeline.PipelineRunService
+	pipelineRunService *pipeline_run.PipelineRunService
 	spaceletService    *spaceletservice.SpaceletService
 }
 
