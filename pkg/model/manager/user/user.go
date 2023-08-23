@@ -37,11 +37,18 @@ func (u *UserManager) GetById(id uint) (*types.User, error) {
 	return &user, nil
 }
 
-func (u *UserManager) List(filters map[string]interface{}) ([]types.User, error) {
-	var users []types.User
-	result := u.DB.Where(filters).Order("name").Find(&users)
-	if result.Error != nil {
-		return nil, result.Error
+type UserListCondition struct {
+	Ids []uint `json:"ids"`
+}
+
+func (u *UserManager) List(cond UserListCondition) ([]*types.User, error) {
+	var users []*types.User
+	tx := u.DB
+	if len(cond.Ids) > 0 {
+		tx = tx.Where("id in ?", cond.Ids)
+	}
+	if err := tx.Order("name").Find(&users).Error; err != nil {
+		return nil, err
 	}
 	return users, nil
 }
@@ -86,6 +93,14 @@ type UserRoleManager struct {
 
 func NewUserRoleManager(db *gorm.DB, user *UserManager) *UserRoleManager {
 	return &UserRoleManager{DB: db, UserManager: user}
+}
+
+func (r *UserRoleManager) GetById(id uint) (*types.UserRole, error) {
+	var userRole types.UserRole
+	if err := r.DB.First(&userRole, "id=?", id).Error; err != nil {
+		return nil, err
+	}
+	return &userRole, nil
 }
 
 func (r *UserRoleManager) List(scope string, scopeId uint) ([]*types.UserRole, error) {

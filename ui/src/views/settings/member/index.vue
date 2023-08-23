@@ -90,17 +90,16 @@ export default {
     const that = this;
     window.onresize = () => {
       return (() => {
-        let heightStyle = window.innerHeight - 150;
+        let heightStyle = window.innerHeight - this.$contentHeight;
         console.log(heightStyle);
         that.maxHeight = heightStyle;
       })();
     };
     this.handleGetUser();
-    this.handleGetRoles();
   },
   data() {
     return {
-      maxHeight: window.innerHeight - 150,
+      maxHeight: window.innerHeight - this.$contentHeight,
       cellStyle: { border: 0 },
       titleName: ["用户管理"],
       createUserFormVisible: false,
@@ -179,19 +178,12 @@ export default {
         console.log(err)
       });
     },
-    handleGetUser(name) {
-      getUser(name).then((response) => {
-        this.userData = response.data;
-      });
-    },
-    handleGetRoles() {
-      getRoles().then((response) => {
-        this.roles = response.data;
-        this.roles.sort((a, b) => {return a.name > b.name ? 1 : -1});
+    handleGetUser() {
+      getUser().then((response) => {
+        this.userData = response.data || [];
       });
     },
     handleEnableUser(name, currentStatus) {
-      console.log(name, status);
       this.$confirm("此操作将禁用该用户, 是否继续?", "提示", {
         confirmButtonText: "确定",
         cancelButtonText: "取消",

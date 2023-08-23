@@ -5,6 +5,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/core/code"
 	"github.com/kubespace/kubespace/pkg/core/errors"
 	"github.com/kubespace/kubespace/pkg/model"
+	"github.com/kubespace/kubespace/pkg/model/manager/user"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/views"
 	"github.com/kubespace/kubespace/pkg/server/views/serializers"
@@ -20,53 +21,45 @@ type User struct {
 }
 
 func NewUser(models *model.Models) *User {
-	user := &User{
+	u := &User{
 		models: models,
 	}
-	user.Views = []*views.View{
-		views.NewView(http.MethodGet, "", user.list),
-		views.NewView(http.MethodGet, "/:id/roles", user.list),
-		views.NewView(http.MethodPost, "", user.create),
-		//NewView(http.MethodPost, "/admin", user.create),
-		views.NewView(http.MethodPut, "/", user.updateSelf),
-		views.NewView(http.MethodPut, "/:username", user.update),
+	u.Views = []*views.View{
+		views.NewView(http.MethodGet, "", u.list),
+		views.NewView(http.MethodGet, "/:id/roles", u.list),
+		views.NewView(http.MethodPost, "", u.create),
+		views.NewView(http.MethodPut, "/", u.updateSelf),
+		views.NewView(http.MethodPut, "/:username", u.update),
 
-		views.NewView(http.MethodGet, "/token", user.tokenUser),
-		views.NewView(http.MethodPost, "/delete", user.delete),
-		views.NewView(http.MethodPost, "/update_password", user.updatePassword),
+		views.NewView(http.MethodGet, "/token", u.tokenUser),
+		views.NewView(http.MethodPost, "/delete", u.delete),
+		views.NewView(http.MethodPost, "/update_password", u.updatePassword),
 	}
-	return user
+	return u
 }
 
 func (u *User) tokenUser(c *views.Context) *utils.Response {
-	user, err := u.models.UserManager.GetById(c.User.ID)
+	userObj, err := u.models.UserManager.GetById(c.User.ID)
 	if err != nil {
-		return &utils.Response{
-			Code: code.ParamsError,
-			Msg:  err.Error(),
-		}
+		return c.GenerateResponseError(errors.New(code.DataNotExists, err))
 	}
-	perms, err := u.models.UserRoleManager.GetUserRoles(user.ID)
+	perms, err := u.models.UserRoleManager.GetUserRoles(userObj.ID)
 	if err != nil {
-		return &utils.Response{
-			Code: code.ParamsError,
-			Msg:  err.Error(),
-		}
+		return c.GenerateResponseError(errors.New(code.DBError, err))
 	}
-	return &utils.Response{Code: code.Success,
-		Data: map[string]interface{}{
-			"id":          c.User.ID,
-			"name":        c.User.Name,
-			"permissions": perms,
-			"is_super":    user.IsSuper,
-		}}
+	return c.GenerateResponseOK(map[string]interface{}{
+		"id":          c.User.ID,
+		"name":        c.User.Name,
+		"permissions": perms,
+		"is_super":    userObj.IsSuper,
+	})
 }
 
 func (u *User) update(c *views.Context) *utils.Response {
 	userName := c.Param("username")
-	var user serializers.UserSerializers
+	var ser serializers.UserSerializers
 
-	if err := c.ShouldBindJSON(&user); err != nil {
+	if err := c.ShouldBindJSON(&ser); err != nil {
 		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
 
@@ -75,19 +68,19 @@ func (u *User) update(c *views.Context) *utils.Response {
 		return c.GenerateResponseError(errors.New(code.DataNotExists, err))
 	}
 
-	if user.Status != "" {
-		userObj.Status = user.Status
+	if ser.Status != "" {
+		userObj.Status = ser.Status
 	}
 
-	if user.Password != "" {
-		userObj.Password = utils.Encrypt(user.Password)
+	if ser.Password != "" {
+		userObj.Password = utils.Encrypt(ser.Password)
 	}
 
-	if user.Email != "" {
-		if ok := utils.VerifyEmailFormat(user.Email); !ok {
-			return c.GenerateResponseError(errors.New(code.ParamsError, fmt.Sprintf("email:%s format error for user:%s", user.Email, userName)))
+	if ser.Email != "" {
+		if ok := utils.VerifyEmailFormat(ser.Email); !ok {
+			return c.GenerateResponseError(errors.New(code.ParamsError, fmt.Sprintf("email:%s format error for user:%s", ser.Email, userName)))
 		}
-		userObj.Email = user.Email
+		userObj.Email = ser.Email
 	}
 
 	err = u.models.UserManager.Update(userObj)
@@ -104,77 +97,49 @@ func (u *User) update(c *views.Context) *utils.Response {
 		ResourceName:         userObj.Name,
 		Code:                 resp.Code,
 		Message:              resp.Msg,
-		OperateDataInterface: user,
+		OperateDataInterface: ser,
 	})
 	return resp
 }
 
 func (u *User) updateSelf(c *views.Context) *utils.Response {
-	var user serializers.UserSerializers
-
-	resp := &utils.Response{Code: code.Success}
-
-	if err := c.ShouldBindJSON(&user); err != nil {
-		resp.Code = code.ParamsError
-		resp.Msg = err.Error()
-		return resp
+	var ser serializers.UserSerializers
+	if err := c.ShouldBindJSON(&ser); err != nil {
+		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
 
 	userObj, err := u.models.UserManager.GetById(c.User.ID)
 	if err != nil {
-		resp.Code = code.GetError
-		resp.Msg = err.Error()
-		return resp
+		return c.GenerateResponseError(errors.New(code.DataNotExists, err))
 	}
 
-	if user.Status != "" {
-		userObj.Status = user.Status
+	if ser.Status != "" {
+		userObj.Status = ser.Status
 	}
-
-	if user.Password != "" {
-		userObj.Password = utils.Encrypt(user.Password)
+	if ser.Password != "" {
+		userObj.Password = utils.Encrypt(ser.Password)
 	}
-
-	//if user.Roles != nil {
-	//	userObj.Roles = user.Roles
-	//}
-
-	if user.Email != "" {
-		if ok := utils.VerifyEmailFormat(user.Email); !ok {
-			resp.Code = code.ParamsError
-			resp.Msg = fmt.Sprintf("email:%s format error for user:%s", user.Email, userObj.Name)
-			return resp
+	if ser.Email != "" {
+		if ok := utils.VerifyEmailFormat(ser.Email); !ok {
+			return c.GenerateResponseError(errors.New(code.ParamsError, fmt.Sprintf("email:%s format error for user:%s", ser.Email, userObj.Name)))
 		}
-		userObj.Email = user.Email
+		userObj.Email = ser.Email
 	}
 
 	if err := u.models.UserManager.Update(userObj); err != nil {
-		resp.Code = code.UpdateError
-		resp.Msg = err.Error()
-		return resp
+		return c.GenerateResponseError(errors.New(code.UpdateError, err))
 	}
-	return resp
+	return c.GenerateResponseOK(nil)
 }
 
 func (u *User) list(c *views.Context) *utils.Response {
-	resp := &utils.Response{Code: code.Success}
-	var filters map[string]interface{}
-
-	dList, err := u.models.UserManager.List(filters)
+	dList, err := u.models.UserManager.List(user.UserListCondition{})
 	if err != nil {
-		resp.Code = code.GetError
-		resp.Msg = err.Error()
-		return resp
+		return c.GenerateResponseError(errors.New(code.DBError, err))
 	}
 	var data []map[string]interface{}
 
 	for _, du := range dList {
-		perms, err := u.models.UserManager.Permissions(&du)
-		if err != nil {
-			resp.Code = code.GetError
-			resp.Msg = err.Error()
-			return resp
-		}
 		data = append(data, map[string]interface{}{
 			"id":         du.ID,
 			"name":       du.Name,
@@ -182,12 +147,9 @@ func (u *User) list(c *views.Context) *utils.Response {
 			"status":     du.Status,
 			"is_super":   du.IsSuper,
 			"last_login": du.LastLogin,
-			//"roles":       du.Roles,
-			"permissions": perms,
 		})
 	}
-	resp.Data = data
-	return resp
+	return c.GenerateResponseOK(data)
 }
 
 func (u *User) create(c *views.Context) *utils.Response {
@@ -241,7 +203,7 @@ func (u *User) delete(c *views.Context) *utils.Response {
 		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
 	for _, du := range ser {
-		user, err := u.models.UserManager.GetByName(du.Name)
+		userObj, err := u.models.UserManager.GetByName(du.Name)
 		if err != nil {
 			return c.GenerateResponseError(errors.New(code.DataNotExists, err))
 		}
@@ -252,14 +214,14 @@ func (u *User) delete(c *views.Context) *utils.Response {
 		resp := c.GenerateResponse(err, nil)
 		c.CreateAudit(&types.AuditOperate{
 			Operation:            types.AuditOperationDelete,
-			OperateDetail:        fmt.Sprintf("删除用户：%s", user.Name),
+			OperateDetail:        fmt.Sprintf("删除用户：%s", userObj.Name),
 			Scope:                types.ScopePlatform,
-			ResourceId:           user.ID,
+			ResourceId:           userObj.ID,
 			ResourceType:         types.AuditResourcePlatformUser,
-			ResourceName:         user.Name,
+			ResourceName:         userObj.Name,
 			Code:                 resp.Code,
 			Message:              resp.Msg,
-			OperateDataInterface: user,
+			OperateDataInterface: userObj,
 		})
 		if err != nil {
 			return c.GenerateResponseError(err)
@@ -271,31 +233,31 @@ func (u *User) delete(c *views.Context) *utils.Response {
 func (u *User) roles(c *views.Context) *utils.Response {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
 	roles, err := u.models.UserRoleManager.GetUserRoles(uint(id))
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+		return c.GenerateResponseError(errors.New(code.DBError, err))
 	}
-	return &utils.Response{Code: code.Success, Data: roles}
+	return c.GenerateResponseOK(roles)
 }
 
 func (u *User) updatePassword(c *views.Context) *utils.Response {
 	var ser serializers.UpdatePasswordSerializers
 	if err := c.ShouldBind(&ser); err != nil {
-		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
 	userObj, err := u.models.UserManager.GetById(c.User.ID)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+		return c.GenerateResponseError(errors.New(code.DataNotExists, err))
 	}
 	if userObj.Password != utils.Encrypt(ser.OriginPassword) {
-		return &utils.Response{Code: code.ParamsError, Msg: "原密码不正确，请重新输入"}
+		return c.GenerateResponseError(errors.New(code.ParamsError, "原密码不正确，请重新输入"))
 	}
 	userObj.Password = utils.Encrypt(ser.NewPassword)
 
 	if err = u.models.UserManager.Update(userObj); err != nil {
-		return &utils.Response{Code: code.UpdateError, Msg: "更新密码失败：" + err.Error()}
+		return c.GenerateResponseError(errors.New(code.UpdateError, "更新密码失败："+err.Error()))
 	}
-	return &utils.Response{Code: code.Success}
+	return c.GenerateResponseOK(nil)
 }

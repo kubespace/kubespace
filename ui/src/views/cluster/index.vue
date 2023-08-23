@@ -145,7 +145,6 @@ export default {
     return {
       titleName: ["集群管理"],
       search_name: '',
-      users: [],
       cellStyle: {border: 0},
       maxHeight: window.innerHeight - this.$contentHeight,
       loading: true,
@@ -167,7 +166,6 @@ export default {
   },
   created() {
     this.fetchData();
-    this.fetchUsers();
   },
   mounted() {
     const that = this
@@ -197,11 +195,6 @@ export default {
         .catch(() => {
           this.loading = false
         })
-    },
-    fetchUsers() {
-      getUser({}).then((response) => {
-        this.users = response.data;
-      });
     },
     nameClick: function(name) {
       this.$router.push({name: 'cluster', params: {clusterId: name}})
