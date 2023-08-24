@@ -9,6 +9,7 @@ import (
 	"k8s.io/klog/v2"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -42,6 +43,7 @@ type execShellExecutor struct {
 	cancelFunc context.CancelFunc
 	ctx        context.Context
 	canceled   bool
+	sshSession *ssh.Session
 }
 
 func newExecShellExecutor(params *ExecutorParams) (*execShellExecutor, error) {
@@ -81,6 +83,9 @@ func (b *execShellExecutor) Execute() (interface{}, error) {
 func (b *execShellExecutor) Cancel() error {
 	b.canceled = true
 	b.cancelFunc()
+	if b.sshSession != nil {
+		b.sshSession.Close()
+	}
 	return nil
 }
 
@@ -90,56 +95,56 @@ func (b *execShellExecutor) execImage() error {
 	if shell == "" {
 		shell = "bash"
 	}
-	scriptFile := filepath.Join(b.rootDir, ".script.sh")
-	f, err := os.Create(scriptFile)
-	if err != nil {
-		b.Log("create script file error: %s", err.Error())
-		return err
-	}
-	defer f.Close()
-	if _, err = f.Write([]byte(b.Params.Script)); err != nil {
+
+	// 脚本写入文件
+	scriptFileName := ".script.sh"
+	scriptFile := filepath.Join(b.rootDir, scriptFileName)
+	if err := os.WriteFile(scriptFile, []byte(b.Params.Script), 0644); err != nil {
 		b.Log("写入脚本错误：%v", err)
 		klog.Errorf("job=%d write build error: %v", b.Params.JobId, err)
 		return err
 	}
-	scriptFileName := ".script.sh"
+
 	var envs []string
 	for name, val := range b.Params.Env {
 		envs = append(envs, fmt.Sprintf("%s='%v'", name, val))
 	}
 	envs = append(envs, fmt.Sprintf("WORKDIR='/pipeline'"))
 	env := strings.Join(envs, " ")
+
 	dockerRunCmd := fmt.Sprintf("docker run --net=host --rm -i -v %s:/pipeline -w /pipeline --entrypoint sh %s -c \"%s %s -x %s 2>&1\"", b.rootDir, image, env, shell, scriptFileName)
 	klog.Infof("job=%d code build cmd: %s", b.Params.JobId, dockerRunCmd)
 	cmd := exec.CommandContext(b.ctx, "bash", "-c", dockerRunCmd)
 	cmd.Stdout = b.Logger
 	cmd.Stderr = b.Logger
-	if err = cmd.Run(); err != nil {
-		klog.Errorf("job=%d build error: %v", b.Params.JobId, err)
+
+	if err := cmd.Run(); err != nil {
+		klog.Errorf("job=%d execute error: %v", b.Params.JobId, err)
 		b.Log(err.Error())
-		return fmt.Errorf("build code error: %v", err)
-	} else {
-		outputBytes, err := os.ReadFile(b.rootDir + "/output")
-		if err != nil {
-			if !os.IsNotExist(err) {
-				b.Log("read output error: %s", err.Error())
-				return err
-			}
-		} else {
-			outEnvStr := string(outputBytes)
-			b.Log("output:\n%s", outEnvStr)
-			if outEnvStr != "" {
-				for _, line := range strings.Split(outEnvStr, "\n") {
-					if strings.Contains(line, "=") {
-						splits := strings.SplitN(line, "=", 2)
-						key := splits[0]
-						value := splits[1]
-						b.Result[key] = value
-					}
-				}
+		return fmt.Errorf("execute error: %v", err)
+	}
+
+	// 读取脚本输出内容
+	outputBytes, err := os.ReadFile(path.Join(b.rootDir, "output"))
+	if err != nil {
+		if !os.IsNotExist(err) {
+			b.Log("read output error: %s", err.Error())
+			return err
+		}
+	}
+	outEnvStr := string(outputBytes)
+	b.Log("output:\n%s", outEnvStr)
+	if outEnvStr != "" {
+		for _, line := range strings.Split(outEnvStr, "\n") {
+			if strings.Contains(line, "=") {
+				splits := strings.SplitN(line, "=", 2)
+				key := splits[0]
+				value := splits[1]
+				b.Result[key] = value
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -180,6 +185,11 @@ func (b *execShellExecutor) execSsh() error {
 		return err
 	}
 	defer session.Close()
+	if err = session.RequestPty("vt100", 80, 25, ssh.TerminalModes{}); err != nil {
+		fmt.Printf("Failed to request for pseudo terminal.err: %s\n", err.Error())
+		return err
+	}
+	b.sshSession = session
 	b.Log("建立session成功，开始执行脚本")
 	session.Stdout = b.Logger
 	var envs []string
@@ -197,6 +207,8 @@ func (b *execShellExecutor) execSsh() error {
 		b.Log("执行脚本失败: %s", err.Error())
 		return err
 	}
+
+	// 建立新会话
 	newSession, err := client.NewSession()
 	if err != nil {
 		b.Log("ssh host %s new session error: %s", host, err.Error())
@@ -205,24 +217,25 @@ func (b *execShellExecutor) execSsh() error {
 	defer newSession.Close()
 	buffer := new(bytes.Buffer)
 	newSession.Stdout = buffer
+	// 获取执行脚本输出内容
 	cmd = fmt.Sprintf("bash -c '[[ -f %s ]] && cat %s; rm -rf %s'", output, output, workDir)
 	err = newSession.Run(cmd)
 	if err != nil {
 		b.Log("获取脚本输出%s失败: %s", output, err.Error())
 		return err
-	} else {
-		outEnvStr := buffer.String()
-		b.Log("output:\n%s", outEnvStr)
-		if outEnvStr != "" {
-			for _, line := range strings.Split(outEnvStr, "\n") {
-				if strings.Contains(line, "=") {
-					splits := strings.SplitN(line, "=", 2)
-					key := splits[0]
-					value := splits[1]
-					b.Result[key] = value
-				}
+	}
+	outEnvStr := buffer.String()
+	b.Log("output:\n%s", outEnvStr)
+	if outEnvStr != "" {
+		for _, line := range strings.Split(outEnvStr, "\n") {
+			if strings.Contains(line, "=") {
+				splits := strings.SplitN(line, "=", 2)
+				key := splits[0]
+				value := splits[1]
+				b.Result[key] = value
 			}
 		}
 	}
+
 	return nil
 }
