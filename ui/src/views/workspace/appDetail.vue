@@ -123,7 +123,7 @@
                         </el-dropdown-item>
                       </div>
                       <div @mouseover="termContainerShow = true;" @mouseout="termContainerShow = false;">
-                        <el-dropdown-item @click.native.prevent="selectContainer = scope.row.containers[0].name; selectPodName = scope.row.name; terminalDialog = true;">
+                        <el-dropdown-item :disabled="!$editorRole()" @click.native.prevent="selectContainer = scope.row.containers[0].name; selectPodName = scope.row.name; terminalDialog = true;">
                           <div class="download">
                             <div>
                               <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="terminal" />
@@ -144,7 +144,7 @@
                         <span style="margin-left: 5px;">事件</span>
                       </el-dropdown-item>
 
-                      <el-dropdown-item @click.native.prevent="deletePods([{namespace: scope.row.namespace, name: scope.row.name}])">
+                      <el-dropdown-item :disabled="!$editorRole()" @click.native.prevent="deletePods([{namespace: scope.row.namespace, name: scope.row.name}])">
                         <svg-icon style="width: 1.3em; height: 1.3em; line-height: 40px; vertical-align: -0.25em" icon-class="delete" />
                         <span style="margin-left: 5px;">删除</span>
                       </el-dropdown-item>
@@ -623,7 +623,7 @@ export default {
       let params = {
         resources: pods
       }
-      delResource(this.originApp.cluster_id, ResType.Pod, params).then(() => {
+      delResource(this.originApp.cluster_id, ResType.Pod, params, {project_id: this.projectId}).then(() => {
         Message.success("删除成功")
         this.fetchData()
       }).catch(() => {
