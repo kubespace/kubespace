@@ -175,7 +175,7 @@ func (p *Pipeline) delete(c *views.Context) *utils.Response {
 	if err != nil {
 		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
 	}
-	pipelineObj, err := p.models.PipelineManager.Get(uint(id))
+	pipelineObj, err := p.models.PipelineManager.GetById(uint(id))
 	if err != nil {
 		return c.GenerateResponse(errors.New(code.DataNotExists, fmt.Sprintf("获取流水线id=%d失败：%s", id, err.Error())), nil)
 	}

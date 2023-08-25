@@ -31,6 +31,7 @@ const (
 
 	AuditResourcePipeSpace        = "流水线空间"
 	AuditResourcePipeline         = "流水线"
+	AuditResourcePipelineBuild    = "流水线构建"
 	AuditResourcePipelineResource = "流水线资源"
 
 	AuditResourcePlatformSecret   = "平台密钥"

@@ -47,7 +47,7 @@ func (r *PipelineRunService) Get(pipelineRunId uint) *utils.Response {
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
-	pipelineObj, err := r.models.PipelineManager.Get(pipelineRun.PipelineId)
+	pipelineObj, err := r.models.PipelineManager.GetById(pipelineRun.PipelineId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}

@@ -113,7 +113,7 @@ func (p *ManagerPipeline) UpdatePipeline(pipeline *types.Pipeline, stages []*typ
 	return pipeline, nil
 }
 
-func (p *ManagerPipeline) Get(pipelineId uint) (*types.Pipeline, error) {
+func (p *ManagerPipeline) GetById(pipelineId uint) (*types.Pipeline, error) {
 	var pipeline types.Pipeline
 	if err := p.db.First(&pipeline, pipelineId).Error; err != nil {
 		return nil, err

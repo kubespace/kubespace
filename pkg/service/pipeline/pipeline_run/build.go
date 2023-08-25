@@ -61,7 +61,7 @@ type BuildForPipelineParams struct {
 }
 
 func (r *PipelineRunService) Build(pipelineId uint, buildConfig *types.PipelineBuildConfig, username string) *utils.Response {
-	pipelineObj, err := r.models.PipelineManager.Get(pipelineId)
+	pipelineObj, err := r.models.PipelineManager.GetById(pipelineId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
@@ -154,7 +154,7 @@ func (r *PipelineRunService) InitialEnvs(pipeline *types.Pipeline, workspace *ty
 			if err != nil {
 				return nil, fmt.Errorf("获取流水线构建源失败：%s", err.Error())
 			}
-			pipelineSrc, err := r.models.PipelineManager.Get(build.PipelineId)
+			pipelineSrc, err := r.models.PipelineManager.GetById(build.PipelineId)
 			if err != nil {
 				return nil, fmt.Errorf("获取流水线源失败：%s", err.Error())
 			}

@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"fmt"
 	"github.com/kubespace/kubespace/pkg/core/code"
 	"github.com/kubespace/kubespace/pkg/core/errors"
 	"github.com/kubespace/kubespace/pkg/informer"
@@ -121,11 +122,44 @@ func (p *PipelineRun) stageAction(c *views.Context) *utils.Response {
 	if err := c.ShouldBind(&ser); err != nil {
 		return c.GenerateResponseError(errors.New(code.ParamsError, err))
 	}
-	_, _, err := p.pipelineRunService.StageAction(ser.Action, ser.StageRunId, pipeline_run.StageActionParams{
+	pipelineRun, stageRun, err := p.pipelineRunService.StageAction(ser.Action, ser.StageRunId, pipeline_run.StageActionParams{
 		CustomParams: ser.CustomParams,
 		JobParams:    ser.JobParams,
 	})
-	return c.GenerateResponseError(err)
+	resp := c.GenerateResponseError(err)
+	if pipelineRun == nil {
+		return resp
+	}
+	pipelineObj, err := p.models.PipelineManager.GetById(pipelineRun.PipelineId)
+	if err != nil {
+		return c.GenerateResponseError(errors.New(code.DataNotExists, err))
+	}
+	workspace, err := p.models.PipelineWorkspaceManager.Get(pipelineObj.WorkspaceId)
+	if err != nil {
+		return c.GenerateResponseError(errors.New(code.DataNotExists, err))
+	}
+	actionNameMap := map[string]string{
+		pipeline_run.StageActionManualExec:   "手动执行",
+		pipeline_run.StageActionCancel:       "取消执行",
+		pipeline_run.StageActionCancelReexec: "重新执行取消",
+		pipeline_run.StageActionReexec:       "重新执行",
+		pipeline_run.StageActionErrorRetry:   "重试失败",
+	}
+	opDetail := fmt.Sprintf("%s流水线「%s(#%d)」构建阶段：%s", actionNameMap[ser.Action], pipelineObj.Name, pipelineRun.BuildNumber, stageRun.Name)
+	c.CreateAudit(&types.AuditOperate{
+		Operation:            types.AuditOperationUpdate,
+		OperateDetail:        opDetail,
+		Scope:                types.ScopePipeline,
+		ScopeId:              workspace.ID,
+		ScopeName:            workspace.Name,
+		ResourceId:           pipelineRun.ID,
+		ResourceType:         types.AuditResourcePipelineBuild,
+		ResourceName:         fmt.Sprintf("%s(#%d)", pipelineObj.Name, pipelineRun.BuildNumber),
+		Code:                 resp.Code,
+		Message:              resp.Msg,
+		OperateDataInterface: ser,
+	})
+	return resp
 }
 
 func (p *PipelineRun) log(c *views.Context) *utils.Response {

@@ -149,7 +149,7 @@ func (p *PipelineService) Update(params *schemas.PipelineParams, user *types.Use
 	if err != nil {
 		return nil, errors.New(code.DBError, err)
 	}
-	pipeline, err := p.models.PipelineManager.Get(params.ID)
+	pipeline, err := p.models.PipelineManager.GetById(params.ID)
 	if err != nil {
 		return nil, errors.New(code.DataNotExists, fmt.Sprintf("获取流水线失败:%s", err.Error()))
 	}
@@ -188,7 +188,7 @@ func (p *PipelineService) Update(params *schemas.PipelineParams, user *types.Use
 }
 
 func (p *PipelineService) GetPipeline(pipelineId uint) *utils.Response {
-	pipeline, err := p.models.PipelineManager.Get(pipelineId)
+	pipeline, err := p.models.PipelineManager.GetById(pipelineId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: err.Error()}
 	}
@@ -214,7 +214,7 @@ func (p *PipelineService) GetPipeline(pipelineId uint) *utils.Response {
 				} else {
 					pipeline.Sources[i].WorkspaceName = w.Name
 				}
-				p, err := p.models.PipelineManager.Get(t.Pipeline)
+				p, err := p.models.PipelineManager.GetById(t.Pipeline)
 				if err != nil {
 					if !oerrors.Is(err, gorm.ErrRecordNotFound) {
 						return &utils.Response{Code: code.DBError, Msg: err.Error()}
@@ -271,7 +271,7 @@ func (p *PipelineService) ListPipeline(workspaceId uint) *utils.Response {
 }
 
 func (p *PipelineService) ListRepoBranches(pipelineId uint) *utils.Response {
-	pipelineObj, err := p.models.PipelineManager.Get(pipelineId)
+	pipelineObj, err := p.models.PipelineManager.GetById(pipelineId)
 	if err != nil {
 		return &utils.Response{Code: code.GetError, Msg: err.Error()}
 	}

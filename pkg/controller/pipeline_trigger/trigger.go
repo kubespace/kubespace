@@ -47,7 +47,7 @@ func (p *PipelineTriggerController) triggerHandle(obj interface{}) error {
 		return nil
 	}
 
-	pipeline, err := p.models.PipelineManager.Get(trigger.PipelineId)
+	pipeline, err := p.models.PipelineManager.GetById(trigger.PipelineId)
 	if err != nil {
 		return err
 	}
@@ -217,7 +217,7 @@ func (p *PipelineTriggerController) cronTriggerCustomPipeline(
 			// 没有成功的构建记录
 			continue
 		}
-		sourcePipeline, err := p.models.PipelineManager.Get(sourceBuilds[0].PipelineId)
+		sourcePipeline, err := p.models.PipelineManager.GetById(sourceBuilds[0].PipelineId)
 		if err != nil {
 			return err
 		}
