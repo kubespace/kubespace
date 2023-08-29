@@ -297,10 +297,10 @@ export default {
         this.loading = false
         return
       }
-      getResource(cluster, ResType.Service, this.namespace, this.serviceName).then(response => {
+      getResource(cluster, ResType.Service, this.namespace, this.serviceName, '', {project_id: this.projectId}).then(response => {
         // this.loading = false
         this.originService = response.data
-        getResource(cluster, ResType.Endpoint, this.namespace, this.serviceName).then(response => {
+        getResource(cluster, ResType.Endpoint, this.namespace, this.serviceName, '', {project_id: this.projectId}).then(response => {
           // this.loading = false
           this.endpoints = response.data ? [response.data] : []
           let pod_names = []
@@ -322,7 +322,7 @@ export default {
                 matchLabels: this.originService.spec.selector
               }
             }
-            listResource(cluster, ResType.Pod, params).then(response => {
+            listResource(cluster, ResType.Pod, params, {project_id: this.projectId}).then(response => {
               this.loading = false
               this.pods = response.data
               this.fetchPodSSE()
@@ -347,6 +347,7 @@ export default {
           matchLabels: this.originService.spec.selector
         },
         process: true,
+        project_id: this.projectId
       }
       this.podSSE = watchResource(this.$sse, this.cluster, ResType.Pod, this.podsWatchFunc, params)
     },
@@ -416,7 +417,7 @@ export default {
       let params = {
         resources: services
       }
-      delResource(cluster, ResType.Service, params).then(() => {
+      delResource(cluster, ResType.Service, params, {project_id: this.projectId}).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)
@@ -452,7 +453,7 @@ export default {
         Message.error("获取集群参数异常，请刷新重试")
         return
       }
-      updateResource(cluster, ResType.Service, this.service.namespace, this.service.name, this.yamlValue).then(() => {
+      updateResource(cluster, ResType.Service, this.service.namespace, this.service.name, this.yamlValue, {project_id: this.projectId}).then(() => {
         Message.success("更新成功")
       }).catch(() => {
         // console.log(e) 
@@ -502,7 +503,7 @@ export default {
       let params = {
         resources: pods
       }
-      delResource(cluster, ResType.Pod, params).then(() => {
+      delResource(cluster, ResType.Pod, params, {project_id: this.projectId}).then(() => {
         Message.success("删除成功")
       }).catch(() => {
         // console.log(e)

@@ -634,7 +634,7 @@ export default {
       this.podEvents = []
       this.eventPodName = pod.name
       this.eventLoading = true
-      listResource(this.originApp.cluster_id, ResType.Event, {kind: "Pod", namespace: pod.namespace, name: pod.name}).then(response => {
+      listResource(this.originApp.cluster_id, ResType.Event, {kind: "Pod", namespace: pod.namespace, name: pod.name}, {project_id: this.projectId}).then(response => {
         this.eventLoading = false
         if (response.data) {
           this.podEvents = response.data.length > 0 ? response.data : []

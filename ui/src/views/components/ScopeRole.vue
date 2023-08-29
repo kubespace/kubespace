@@ -183,12 +183,10 @@ export default {
         "name": roleInfo.admin,
         "desc": roleInfo.adminDesc
       }],
-
     };
   },
   created() {
     this.fetchPlatformUserRoles();
-    this.fetchUsers()
   },
   computed: {
     secrets() {
@@ -299,9 +297,15 @@ export default {
       this.search_name = val;
     },
     createUserRoleFormDialog() {
+      if(this.users.length == 0) {
+        this.fetchUsers()
+      }
       this.createFormVisible = true;
     },
     updateUserRoleFormDialog(userRole) {
+      if(this.users.length == 0) {
+        this.fetchUsers()
+      }
       this.form = {
         userIds: [userRole.user_id],
         role: userRole.role

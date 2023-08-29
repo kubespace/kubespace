@@ -4,7 +4,6 @@ import (
 	"github.com/kubespace/kubespace/pkg/core/code"
 	"github.com/kubespace/kubespace/pkg/core/errors"
 	"github.com/kubespace/kubespace/pkg/model"
-	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/api/api"
 	"github.com/kubespace/kubespace/pkg/server/config"
 	"github.com/kubespace/kubespace/pkg/utils"
@@ -19,11 +18,7 @@ func ListHandler(conf *config.ServerConfig) api.Handler {
 }
 
 func (h *listHandler) Auth(c *api.Context) (bool, *api.AuthPerm, error) {
-	return true, &api.AuthPerm{
-		Scope:   types.ScopePlatform,
-		ScopeId: 0,
-		Role:    types.RoleViewer,
-	}, nil
+	return true, nil, nil
 }
 
 func (h *listHandler) Handle(c *api.Context) *utils.Response {

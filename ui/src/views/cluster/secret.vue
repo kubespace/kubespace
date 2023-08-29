@@ -297,7 +297,7 @@ export default {
       let params = {namespace: this.namespace}
       if(this.projectId) params['label_selector'] = {"matchLabels": projectLabels()}
       if (cluster) {
-        listResource(cluster, ResType.Secret, params).then(response => {
+        listResource(cluster, ResType.Secret, params, {project_id: this.projectId}).then(response => {
           this.loading = false
           let originSecrets = response.data || []
           this.$set(this, 'originSecrets', originSecrets)
@@ -396,7 +396,7 @@ export default {
         return
       }
       this.dialogLoading = true
-      getResource(cluster, ResType.Secret, namespace, name,).then((response) => {
+      getResource(cluster, ResType.Secret, namespace, name, '', {project_id: this.projectId}).then((response) => {
         this.dialogLoading = false
         let secret = response.data
         resolveSecret(secret)

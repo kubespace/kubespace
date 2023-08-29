@@ -42,6 +42,11 @@ export default {
   mounted() {
     this.initTerm()
   },
+  computed: {
+    projectId() {
+      return this.$route.params.workspaceId ? this.$route.params.workspaceId : ''
+    },
+  },
   beforeDestroy() {
     console.log(this.socket)
     console.log(WebSocket.OPEN)
@@ -86,7 +91,7 @@ export default {
       }
       var protocal = window.location.protocol == 'http:' ? 'ws':'wss'
       let wsUrl = `${protocal}://${window.location.host}/api/v1/cluster/${this.cluster}/pod/exec/${this.namespace}/${this.pod}`
-      this.socket = new WebSocket(wsUrl + `?container=${this.container}&cols=${width}&rows=${height}`);
+      this.socket = new WebSocket(wsUrl + `?container=${this.container}&cols=${width}&rows=${height}&project_id=${this.projectId}`);
       this.socketOnClose();
       this.socketOnOpen();
       this.socketOnError();

@@ -233,7 +233,7 @@ export default {
       let params = {namespace: this.namespace}
       if(this.projectId) params['label_selector'] = {"matchLabels": projectLabels()}
       if (cluster) {
-        listResource(cluster, ResType.PersistentVolumeClaim, params).then(response => {
+        listResource(cluster, ResType.PersistentVolumeClaim, params, {project_id: this.projectId}).then(response => {
           this.loading = false
           this.$set(this, 'originPersistentVolumeClaims', response.data ? response.data : [])
         }).catch(() => {
@@ -246,7 +246,7 @@ export default {
     },
     getPersistentVolumeClaim: function(namespace, name) {
       this.dialogLoading = true
-      getResource(this.cluster, ResType.PersistentVolumeClaim, namespace, name, ).then(response => {
+      getResource(this.cluster, ResType.PersistentVolumeClaim, namespace, name, '', {project_id: this.projectId}).then(response => {
         this.pvc = response.data
         this.dialogLoading = false
       }).catch(() => {
@@ -358,7 +358,7 @@ export default {
       })
     },
     openCreateFormDialog() {
-      if(this.namespaces.length == 0) {
+      if(!this.projectId && this.namespaces.length == 0) {
         this.fetchNamespace()
       }
       this.createFormVisible = true
@@ -366,7 +366,7 @@ export default {
     openUpdateFormDialog(namespace, name) {
       this.createFormVisible = true
       this.updateFormVisible = true
-      if(this.namespaces.length == 0) {
+      if(!this.projectId && this.namespaces.length == 0) {
         this.fetchNamespace()
       }
       this.getPersistentVolumeClaim(namespace, name)

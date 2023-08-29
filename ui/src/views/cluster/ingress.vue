@@ -350,7 +350,7 @@ export default {
       let params = {namespace: this.namespace}
       if(this.projectId) params['label_selector'] = {"matchLabels": projectLabels()}
       if (cluster) {
-        listResource(cluster, ResType.Ingress, params).then(response => {
+        listResource(cluster, ResType.Ingress, params, {project_id: this.projectId}).then(response => {
           this.loading = false
           let originIngresses = response.data.ingresses ? response.data.ingresses : []
           this.$set(this, 'originIngresses', originIngresses)
@@ -404,7 +404,7 @@ export default {
         return
       }
       this.dialogLoading = true
-      getResource(cluster, ResType.Ingress, namespace, name, ).then(response => {
+      getResource(cluster, ResType.Ingress, namespace, name, '', {project_id: this.projectId}).then(response => {
         let ingress = response.data
         // let rules = []
         for(let r of ingress.spec.rules) {
@@ -590,7 +590,7 @@ export default {
     fetchServices: function() {
       let params = {namespace: this.namespace}
       if (this.cluster) {
-        listResource(this.cluster, ResType.Service, params).then(response => {
+        listResource(this.cluster, ResType.Service, params, {project_id: this.projectId}).then(response => {
           this.services = response.data || []
         }).catch(() => {
         })

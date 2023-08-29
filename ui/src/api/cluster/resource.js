@@ -35,11 +35,12 @@ export const ResType = {
     ClusterRoleBinding: "clusterrolebinding",
 }
 
-export function listResource(cluster, resType, params) {
+export function listResource(cluster, resType, data, params) {
   return request({
     url: `cluster/${cluster}/${resType}/list`,
     method: 'post',
-    data: params,
+    data: data,
+    params,
   })
 }
 

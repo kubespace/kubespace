@@ -251,7 +251,7 @@ export default {
       let params = {namespace: this.namespace}
       if(this.projectId) params['label_selector'] = {"matchLabels": projectLabels()}
       if (cluster) {
-        listResource(cluster, ResType.ConfigMap, params)
+        listResource(cluster, ResType.ConfigMap, params, {project_id: this.projectId})
           .then((response) => {
             this.loading = false
             let originConfigMaps = response.data || []
@@ -364,7 +364,7 @@ export default {
         return
       }
       this.dialogLoading = true
-      getResource(cluster, ResType.ConfigMap, namespace, name,).then((response) => {
+      getResource(cluster, ResType.ConfigMap, namespace, name, '', {project_id:this.projectId}).then((response) => {
         this.dialogLoading = false
         this.configMap = response.data
         let data = []

@@ -42,7 +42,10 @@ export default {
   computed: {
     logHeight() {
       return window.innerHeight - 200
-    }
+    },
+    projectId() {
+      return this.$route.params.workspaceId ? this.$route.params.workspaceId : ''
+    },
   },
   mounted() {
     let logDiv = document.getElementById('logDiv')
@@ -80,7 +83,7 @@ export default {
 
       var protocal = window.location.protocol == 'http:' ? 'ws':'wss'
       let wsUrl = `${protocal}://${window.location.host}/api/v1/cluster/${this.cluster}/pod/log/${this.namespace}/${this.pod}`
-      this.socket = new WebSocket(wsUrl + `?container=${this.container}&token=${token}`);
+      this.socket = new WebSocket(wsUrl + `?container=${this.container}&token=${token}&project_id=${this.projectId}`);
       this.socketOnClose();
       this.socketOnOpen();
       this.socketOnError();

@@ -28,6 +28,17 @@ func PodLogHandler(conf *config.ServerConfig) api.Handler {
 }
 
 func (h *podLogHandler) Auth(c *api.Context) (bool, *api.AuthPerm, error) {
+	if c.Query("project_id") != "" {
+		projectId, err := utils.ParseUint(c.Query("project_id"))
+		if err != nil {
+			return true, nil, errors.New(code.ParamsError, err)
+		}
+		return true, &api.AuthPerm{
+			Scope:   types.ScopeProject,
+			ScopeId: projectId,
+			Role:    types.RoleViewer,
+		}, nil
+	}
 	clusterId, err := utils.ParseUint(c.Param("id"))
 	if err != nil {
 		return true, nil, errors.New(code.ParamsError, err)
@@ -47,7 +58,7 @@ func (h *podLogHandler) Handle(c *api.Context) *utils.Response {
 		klog.Errorf("upgrader agent conn error: %s", err)
 		return nil
 	}
-	podlog, err := newPodLog(ws, h.kubeClient, c.Param("cluster"), &podLogParams{
+	podlog, err := newPodLog(ws, h.kubeClient, c.Param("id"), &podLogParams{
 		Namespace: c.Param("namespace"),
 		Name:      c.Param("pod"),
 		Container: c.Query("container"),

@@ -295,9 +295,6 @@ export default {
       }
       return dlist
     },
-    servicesWatch: function() {
-      return this.$store.getters["ws/servicesWatch"]
-    },
     projectId() {
       return this.$route.params.workspaceId
     },
@@ -315,7 +312,7 @@ export default {
       let params = {namespace: this.namespace}
       if(this.projectId) params['label_selector'] = {"matchLabels": projectLabels()}
       if (cluster) {
-        listResource(cluster, ResType.Service, params).then(response => {
+        listResource(cluster, ResType.Service, params, {project_id: this.projectId}).then(response => {
           this.loading = false
           let originServices = response.data || []
           this.$set(this, 'originServices', originServices)
@@ -371,7 +368,7 @@ export default {
         return
       }
       this.dialogLoading = true
-      getResource(cluster, ResType.Service, namespace, name,).then(response => {
+      getResource(cluster, ResType.Service, namespace, name, '', {project_id: this.projectId}).then(response => {
         let service = response.data
         let selector = []
         for(let k in service.spec.selector) {

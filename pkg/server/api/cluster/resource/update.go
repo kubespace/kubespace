@@ -26,6 +26,17 @@ func UpdateHandler(conf *config.ServerConfig) api.Handler {
 }
 
 func (h *updateHandler) Auth(c *api.Context) (bool, *api.AuthPerm, error) {
+	if c.Query("project_id") != "" {
+		projectId, err := utils.ParseUint(c.Query("project_id"))
+		if err != nil {
+			return true, nil, errors.New(code.ParamsError, err)
+		}
+		return true, &api.AuthPerm{
+			Scope:   types.ScopeProject,
+			ScopeId: projectId,
+			Role:    types.RoleEditor,
+		}, nil
+	}
 	clusterId, err := utils.ParseUint(c.Param("id"))
 	if err != nil {
 		return true, nil, errors.New(code.ParamsError, err)
