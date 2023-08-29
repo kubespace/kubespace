@@ -17,28 +17,6 @@ type AddReleaseVersionParams struct {
 	Version     string `json:"version"`
 }
 
-// PipelineStageCancelParams 流水线构建阶段取消
-type PipelineStageCancelParams struct {
-	StageRunId uint `json:"stage_run_id"`
-}
-
-// PipelineStageCancelReexecParams 流水线构建阶段重新执行
-type PipelineStageCancelReexecParams struct {
-	StageRunId uint `json:"stage_run_id"`
-}
-
-// PipelineStageReexecParams 流水线构建阶段重新执行
-type PipelineStageReexecParams struct {
-	PipelineRunId uint `json:"pipeline_run_id"`
-	StageRunId    uint `json:"stage_run_id"`
-}
-
-// PipelineBuildParams 流水线构建参数
-type PipelineBuildParams struct {
-	*types.PipelineBuildConfig `json:",inline"`
-	PipelineId                 uint `json:"pipeline_id"`
-}
-
 type PipelineBody struct {
 	ID          uint                  `json:"id"`
 	WorkspaceId uint                  `json:"workspace_id"`

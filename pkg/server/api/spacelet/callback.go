@@ -7,6 +7,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/server/api/api"
 	"github.com/kubespace/kubespace/pkg/server/config"
 	"github.com/kubespace/kubespace/pkg/service/pipeline/pipeline_run"
+	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
 	"github.com/kubespace/kubespace/pkg/utils"
 )
 
@@ -22,18 +23,12 @@ func CallbackHandler(conf *config.ServerConfig) api.Handler {
 	}
 }
 
-// JobCallbackParams 任务执行完成回调参数
-type jobCallbackBody struct {
-	JobId  uint   `json:"job_id"`
-	Status string `json:"status"`
-}
-
 func (h *callbackHandler) Auth(c *api.Context) (bool, *api.AuthPerm, error) {
 	return false, nil, nil
 }
 
 func (h *callbackHandler) Handle(c *api.Context) *utils.Response {
-	var form jobCallbackBody
+	var form schemas.JobCallbackParams
 	if err := c.ShouldBind(&form); err != nil {
 		return c.ResponseError(errors.New(code.ParamsError, err))
 	}

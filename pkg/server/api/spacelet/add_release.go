@@ -6,6 +6,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/server/api/api"
 	"github.com/kubespace/kubespace/pkg/server/config"
+	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
 	spaceletservice "github.com/kubespace/kubespace/pkg/service/spacelet"
 	"github.com/kubespace/kubespace/pkg/utils"
 )
@@ -22,19 +23,12 @@ func AddReleaseHandler(conf *config.ServerConfig) api.Handler {
 	}
 }
 
-// addReleaseVersionParams 发布阶段执行时添加版本
-type addReleaseVersionBody struct {
-	WorkspaceId uint   `json:"workspace_id"`
-	JobId       uint   `json:"job_id"`
-	Version     string `json:"version"`
-}
-
 func (h *addReleaseHandler) Auth(c *api.Context) (bool, *api.AuthPerm, error) {
 	return false, nil, nil
 }
 
 func (h *addReleaseHandler) Handle(c *api.Context) *utils.Response {
-	var body addReleaseVersionBody
+	var body schemas.AddReleaseVersionParams
 	if err := c.ShouldBind(&body); err != nil {
 		return c.ResponseError(errors.New(code.ParamsError, err))
 	}
