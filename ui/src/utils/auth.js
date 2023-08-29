@@ -1,6 +1,6 @@
 import Cookies from 'js-cookie'
 
-const TokenKey = 'osp-token'
+const TokenKey = 'sessionId'
 
 export function getToken() {
   return Cookies.get(TokenKey)

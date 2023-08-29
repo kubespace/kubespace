@@ -3,7 +3,6 @@ package spacelet
 import (
 	"github.com/kubespace/kubespace/pkg/core/code"
 	"github.com/kubespace/kubespace/pkg/model"
-	spaceletmanager "github.com/kubespace/kubespace/pkg/model/manager/spacelet"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/utils"
 )
@@ -14,17 +13,6 @@ type SpaceletService struct {
 
 func NewSpaceletService(models *model.Models) *SpaceletService {
 	return &SpaceletService{models: models}
-}
-
-func (s *SpaceletService) List() *utils.Response {
-	spacelets, err := s.models.SpaceletManager.List(&spaceletmanager.SpaceletListCondition{})
-	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
-	}
-	for _, sp := range spacelets {
-		sp.Token = ""
-	}
-	return &utils.Response{Code: code.Success, Data: spacelets}
 }
 
 func (s *SpaceletService) Delete(id uint) *utils.Response {

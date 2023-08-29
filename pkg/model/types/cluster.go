@@ -19,12 +19,11 @@ type ClusterStore struct {
 }
 
 type Cluster struct {
-	//Common
 	ID         uint      `gorm:"primaryKey" json:"id"`
 	Name1      string    `gorm:"column:name;size:500;not null;uniqueIndex" json:"name1"`
 	Name       string    `gorm:"-" json:"name"`
-	KubeConfig string    `gorm:"type:text;column:kubeconfig" json:"kubeconfig"`
-	Token      string    `gorm:"size:;not null;" json:"token"`
+	KubeConfig string    `gorm:"type:text;column:kubeconfig" json:"-"`
+	Token      string    `gorm:"size:255;not null;uniqueIndex" json:"token"`
 	Status     string    `gorm:"size:50;" json:"status"`
 	CreatedBy  string    `gorm:"size:255;not null;" json:"created_by"`
 	Members    []string  `gorm:"-" json:"members"`

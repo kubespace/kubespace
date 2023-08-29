@@ -32,18 +32,17 @@ export function clusterMembers(data) {
   })
 }
 
-export function clusterDetail(cluster) {
+export function clusterDetail(id) {
   return request({
-    url: `/cluster/${cluster}/detail`,
+    url: `/cluster/${id}/detail`,
     method: 'get',
   })
 }
 
-export function deleteCluster(clusters) {
+export function deleteCluster(id) {
   return request({
-    url: `/cluster/delete`,
-    method: 'post',
-    data: clusters,
+    url: `/cluster/delete/${id}`,
+    method: 'delete',
   })
 }
 

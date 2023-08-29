@@ -13,8 +13,8 @@ type Server struct {
 }
 
 func NewServer(config *config.ServerConfig) (*Server, error) {
-	r, err := router.NewRouter(config)
-	if err != nil {
+	r := router.NewRouter(config)
+	if err := r.Init(); err != nil {
 		return nil, err
 	}
 	return &Server{

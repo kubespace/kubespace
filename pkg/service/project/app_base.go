@@ -3,7 +3,6 @@ package project
 import (
 	"github.com/kubespace/kubespace/pkg/core/code"
 	"github.com/kubespace/kubespace/pkg/model"
-	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"io"
@@ -31,12 +30,4 @@ func (b *AppBaseService) ResolveChart(chartIn io.Reader) *utils.Response {
 		"app_version":     charts.AppVersion(),
 	}
 	return &utils.Response{Code: code.Success, Data: data}
-}
-
-func (b *AppBaseService) ListAppVersions(serializer serializers.AppVersionListSerializer) *utils.Response {
-	appVersions, err := b.models.AppVersionManager.List(serializer.Scope, serializer.ScopeId)
-	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
-	}
-	return &utils.Response{Code: code.Success, Data: appVersions}
 }

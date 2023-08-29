@@ -65,7 +65,7 @@ type PipelineWorkspace struct {
 	ID          uint                   `gorm:"primaryKey" json:"id"`
 	Name        string                 `gorm:"size:255;not null;uniqueIndex" json:"name"`
 	Description string                 `gorm:"type:text;" json:"description"`
-	Pipelines   []Pipeline             `gorm:"-" json:"pipelines"`
+	Pipelines   []*Pipeline            `gorm:"-" json:"pipelines"`
 	Type        string                 `gorm:"size:20;not null" json:"type"`
 	Code        *PipelineWorkspaceCode `gorm:"type:json" json:"code"`
 	CreateUser  string                 `gorm:"size:50;not null" json:"create_user"`

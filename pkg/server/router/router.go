@@ -4,34 +4,39 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/kubespace/kubespace/pkg/core/code"
-	"github.com/kubespace/kubespace/pkg/model"
-	"github.com/kubespace/kubespace/pkg/model/types"
+	"github.com/kubespace/kubespace/pkg/core/errors"
+	"github.com/kubespace/kubespace/pkg/server/api"
+	apictx "github.com/kubespace/kubespace/pkg/server/api/api"
+	"github.com/kubespace/kubespace/pkg/server/api/cluster/agent"
 	"github.com/kubespace/kubespace/pkg/server/config"
-	"github.com/kubespace/kubespace/pkg/server/views"
-	"github.com/kubespace/kubespace/pkg/server/views/cluster"
-	"github.com/kubespace/kubespace/pkg/server/views/spacelet"
-	"github.com/kubespace/kubespace/pkg/server/views/user"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"html/template"
-	"io/ioutil"
+	"io"
 	"k8s.io/klog/v2"
 	"net/http"
 	"runtime"
-	"strings"
 )
 
 type Router struct {
 	*gin.Engine
+	conf *config.ServerConfig
+	auth *apictx.Auth
 }
 
-func NewRouter(conf *config.ServerConfig) (*Router, error) {
-	models := conf.Models
+func NewRouter(conf *config.ServerConfig) *Router {
+	return &Router{
+		Engine: gin.Default(),
+		conf:   conf,
+		auth:   apictx.NewAuth(conf),
+	}
+}
 
-	engine := gin.Default()
+func (r *Router) Init() error {
+	engine := r.Engine
 
 	engine.Use(LocalMiddleware())
 
-	indexHtml, _ := ioutil.ReadAll(Assets.Files["/index.html"])
+	indexHtml, _ := io.ReadAll(Assets.Files["/index.html"])
 	t, _ := template.New("").New("/index.html").Parse(string(indexHtml))
 	engine.SetHTMLTemplate(t)
 	engine.StaticFS("/static", Assets)
@@ -47,93 +52,61 @@ func NewRouter(conf *config.ServerConfig) (*Router, error) {
 
 	// 统一认证的api接口
 	apiGroup := engine.Group("/api/v1")
-	viewsets := NewViewSets(conf)
-	for group, vs := range *viewsets {
+
+	for group, apis := range api.Apis(r.conf) {
 		g := apiGroup.Group(group)
-		for _, v := range vs {
-			g.Handle(v.Method, v.Path, apiWrapper(models, v.Handler))
+
+		for _, a := range apis.Apis() {
+			g.Handle(a.Method, a.Path, r.apiWrapper(a.Handler))
 		}
 	}
 
-	// 登录登出接口
-	loginView := user.NewLogin(models)
-	apiGroup.POST("/login", loginView.Login)
-	apiGroup.GET("/has_admin", loginView.HasAdmin)
-	apiGroup.POST("/admin", loginView.CreateAdmin)
-	apiGroup.POST("/logout", loginView.Logout)
-
-	// kube-agent访问接口
-	agentView := cluster.NewAgentViews(conf)
-	apiGroup.GET("/agent/connect", agentView.Connect)
-	apiGroup.GET("/agent/response", agentView.Response)
-	engine.GET("/import/agent/:token", agentView.AgentYaml)
-
-	// spacelet注册接口
-	spaceletView := spacelet.NewSpaceletViews(conf)
-	apiGroup.GET("/spacelet/install.sh", spaceletView.InstallSpacelet)
-	apiGroup.POST("/spacelet/register", spaceletView.Register)
-	apiGroup.POST("/spacelet/pipeline/callback", spaceletView.PipelineJobCallback)
-	apiGroup.POST("/spacelet/pipeline/add_release", spaceletView.PipelineAddReleaseVersion)
+	agentImportHandler := agent.ImportHandler(r.conf)
+	// 集群导入agent
+	engine.GET("/import/agent/:token", r.apiWrapper(agentImportHandler))
 
 	// 静态资源，包括spacelet二进制
 	apiGroup.StaticFS("/assets", gin.Dir("./assets", true))
-	return &Router{
-		Engine: engine,
-	}, nil
+	return nil
 }
 
-func apiWrapper(m *model.Models, handler views.ViewHandler) gin.HandlerFunc {
+// 对所有api进行封装，进行认证以及鉴权
+func (r *Router) apiWrapper(handler apictx.Handler) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authRes := auth(m, c)
-		if !authRes.IsSuccess() {
-			c.JSON(401, authRes)
-		} else {
-			context := &views.Context{Context: c, User: authRes.Data.(*types.User), Models: m}
-			res := handler(context)
-			if res != nil {
-				c.JSON(200, res)
+		context := &apictx.Context{
+			Context: c,
+			Models:  r.conf.Models,
+		}
+		needAuth, perm, err := handler.Auth(context)
+		if err != nil {
+			c.JSON(http.StatusForbidden, context.ResponseError(errors.New(code.AuthError, err, errors.Overlap)))
+			return
+		}
+		if needAuth {
+			// 获取认证用户
+			user, err := r.auth.Authenticate(context)
+			if err != nil {
+				c.JSON(http.StatusUnauthorized, context.ResponseError(errors.New(code.AuthError, err, errors.Overlap)))
+				return
+			}
+			context.User = user
+		}
+		if perm != nil {
+			// 对用户进行权限鉴权
+			ok, err := r.auth.Authorize(context, perm)
+			if err != nil {
+				c.JSON(http.StatusForbidden, context.ResponseError(errors.New(code.AuthError, err, errors.Overlap)))
+				return
+			}
+			if !ok {
+				c.JSON(http.StatusForbidden, context.ResponseError(errors.New(code.AuthError, "无操作权限", errors.Overlap)))
+				return
 			}
 		}
-	}
-}
-
-func auth(m *model.Models, c *gin.Context) *utils.Response {
-	resp := utils.Response{Code: code.Success}
-	token := c.DefaultQuery("token", "")
-	if token == "" {
-		token = c.Request.Header.Get("Authorization")
-		if s := strings.Split(token, " "); len(s) == 2 {
-			token = s[1]
+		if res := handler.Handle(context); res != nil {
+			c.JSON(200, res)
 		}
 	}
-	if token == "" {
-		tokenCookie, err := c.Request.Cookie("osp-token")
-		if err == nil {
-			token = tokenCookie.Value
-		}
-	}
-	if token == "" {
-		resp.Code = code.ParamsError
-		resp.Msg = "not found token"
-		return &resp
-	}
-
-	tk, err := m.TokenManager.Get(token)
-	if err != nil {
-		resp.Code = code.GetError
-		resp.Msg = err.Error()
-		return &resp
-	}
-
-	u, err := m.UserManager.GetByName(tk.UserName)
-	if err != nil {
-		resp.Code = code.GetError
-		resp.Msg = err.Error()
-		return &resp
-	}
-	resp.Data = u
-	//resp.Data = &types.User{}
-	return &resp
 }
 
 func LocalMiddleware() gin.HandlerFunc {

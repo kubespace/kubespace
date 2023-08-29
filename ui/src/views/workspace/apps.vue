@@ -81,11 +81,11 @@
                 <el-dropdown-menu slot="dropdown" :disabled="!$editorRole()">
                   <el-dropdown-item>
                     <el-link :disabled="!$editorRole()" :underline="false" class="operator-btn" type="primary" style="font-weight: 400"
-                      @click="openCloneAppDiloag(scope.row, 'project_app')">克隆</el-link>
+                      @click="openCloneAppDiloag(scope.row, 'project')">克隆</el-link>
                   </el-dropdown-item>
                   <el-dropdown-item>
                     <el-link :disabled="!$editorRole()" :underline="false" class="operator-btn" type="primary" style="font-weight: 400"
-                      @click="openCloneAppDiloag(scope.row, 'store_app')">发布</el-link>
+                      @click="openCloneAppDiloag(scope.row, 'appstore')">发布</el-link>
                   </el-dropdown-item>
                   <el-dropdown-item>
                     <el-link :disabled="!$editorRole()" :underline="false" class="operator-btn" type="primary" style="font-weight: 400"
@@ -240,12 +240,12 @@
         </div>
       </el-dialog>
 
-      <el-dialog :title="cloneForm.scope == 'project_app' ? '克隆应用' : '发布应用'" :visible.sync="cloneFormVisible"
+      <el-dialog :title="cloneForm.scope == 'project' ? '克隆应用' : '发布应用'" :visible.sync="cloneFormVisible"
         @close="cloneFormVisible=false;cloneForm={}" :destroy-on-close="true" :close-on-click-modal="false">
         <div v-loading="dialogLoading">
           <div class="dialogContent" style="">
             <el-form :model="cloneForm" :rules="rules" ref="form" label-position="left" label-width="105px">
-              <el-form-item v-if="cloneForm.scope == 'project_app'" label="工作空间" prop="" :required="true">
+              <el-form-item v-if="cloneForm.scope == 'project'" label="工作空间" prop="" :required="true">
                 <el-select v-model="cloneForm.project_id" placeholder="请选择工作空间" size="small" style="width: 100%;">
                   <el-option
                     v-for="item in projects"
@@ -265,7 +265,7 @@
           </div>
           <div slot="footer" class="dialogFooter" style="padding-top: 10px;">
             <el-button @click="cloneFormVisible = false" style="margin-right: 20px;" >取 消</el-button>
-            <el-button type="primary" @click="handleDuplicateApp" >{{ cloneForm.scope == 'project_app' ? '克 隆' : '发 布' }}</el-button>
+            <el-button type="primary" @click="handleDuplicateApp" >{{ cloneForm.scope == 'project' ? '克 隆' : '发 布' }}</el-button>
           </div>
         </div>
       </el-dialog>
@@ -442,7 +442,7 @@ export default {
     },
     fetchApps() {
       this.loading = true
-      listApps({scope_id: this.projectId, scope: "project_app"}).then((resp) => {
+      listApps({scope_id: this.projectId, scope: "project"}).then((resp) => {
         let originApps = resp.data ? resp.data : []
         this.$set(this, 'originApps', originApps)
         this.loading = false
@@ -501,7 +501,7 @@ export default {
         values = yaml.dump(values_dict)
       }
       let data = {
-        project_app_id: this.form.id, 
+        app_id: this.form.id, 
         app_version_id: this.form.app_version_id, 
         values: values,
         upgrade: upgrade ? true : false
@@ -527,7 +527,7 @@ export default {
           type: 'warning'
       }).then(() => {
         this.loading = true
-        destroyApp({project_app_id: id}).then(() => {
+        destroyApp({app_id: id}).then(() => {
           Message.success("销毁应用成功")
           this.fetchApps()
         }).catch((err) => {
@@ -575,7 +575,7 @@ export default {
       }
       this.installFormVisible = true;
       this.fetchVersionLoading = true;
-      listAppVersions({scope: "project_app", scope_id: app.id}).then((resp) => {
+      listAppVersions({scope: "project", scope_id: app.id}).then((resp) => {
         this.appVersions = resp.data ? resp.data : []
         this.changeInstallAppVersion(app.app_version_id)
         this.fetchVersionLoading = false
@@ -626,7 +626,7 @@ export default {
       }
     },
     fetchAppStatusSSE() {
-      let url = `/api/v1/project/apps/status_sse?scope=project_app&scope_id=${this.projectId}`
+      let url = `/api/v1/apps/status_sse?scope=project&scope_id=${this.projectId}`
       this.appStatusSSE = this.$sse.create({
         url: url,
         includeCredentials: false,
@@ -663,7 +663,7 @@ export default {
       })
     },
     getAppStatus() {
-      listAppStatus({scope_id: this.projectId, scope: "project_app"}).then((resp) => {
+      listAppStatus({scope_id: this.projectId, scope: "project"}).then((resp) => {
         let mapStatus = resp.data
         // console.log(mapStatus)
         for(let i in this.originApps) {
@@ -717,7 +717,7 @@ export default {
     },
     handelImportStoreApp() {
       var data = {
-        scope: "project_app",
+        scope: "project",
         scope_id: parseInt(this.projectId),
         store_app_id: this.importStoreAppForm.storeAppId,
         app_version_id: this.importStoreAppForm.storeAppVersion
@@ -758,7 +758,7 @@ export default {
         version_id: app.app_version_id,
         scope: scope
       }
-      if(scope == 'project_app' && this.projects.length == 0) {
+      if(scope == 'project' && this.projects.length == 0) {
         this.fetchProjects()
       }
       this.cloneFormVisible = true
@@ -774,7 +774,7 @@ export default {
       var data = {
         scope: this.cloneForm.scope
       }
-      if(this.cloneForm.scope == 'project_app') {
+      if(this.cloneForm.scope == 'project') {
         if(!this.cloneForm.project_id) {
           Message.error("克隆参数project_id错误，请刷新重试")
           return
@@ -799,7 +799,7 @@ export default {
       
       this.dialogLoading = true
       duplicateApp(data).then(response => {
-        if(this.cloneForm.scope=='project_app') {
+        if(this.cloneForm.scope=='project') {
           Message.success("克隆应用到工作空间成功")
         } else {
           Message.success("发布应用到应用商店成功")
@@ -866,7 +866,7 @@ export default {
         return
       }
       var data = new FormData()
-      data.append("scope", "project_app")
+      data.append("scope", "project")
       data.append("scope_id", this.projectId)
       data.append("file", appUpload.uploadFiles[0].raw)
       data.append('name', this.importCustomForm.name)

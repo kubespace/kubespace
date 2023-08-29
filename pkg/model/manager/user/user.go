@@ -2,6 +2,7 @@ package user
 
 import (
 	"errors"
+	"github.com/kubespace/kubespace/pkg/model/manager"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"gorm.io/gorm"
@@ -21,9 +22,13 @@ func NewUserManager(db *gorm.DB) *UserManager {
 	}
 }
 
-func (u *UserManager) GetByName(name string) (*types.User, error) {
+func (u *UserManager) GetByName(name string, opfs ...manager.OptionFunc) (*types.User, error) {
 	var user types.User
+	ops := manager.GetOptions(opfs)
 	if err := u.DB.First(&user, "name=?", name).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) && ops.NotFoundReturnNil {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return &user, nil
@@ -61,10 +66,7 @@ func (u *UserManager) Update(user *types.User) error {
 }
 
 func (u *UserManager) Create(user *types.User) error {
-	if err := u.DB.Create(user).Error; err != nil {
-		return err
-	}
-	return nil
+	return u.DB.Create(user).Error
 }
 
 func (u *UserManager) Delete(name string) error {
@@ -103,24 +105,46 @@ func (r *UserRoleManager) GetById(id uint) (*types.UserRole, error) {
 	return &userRole, nil
 }
 
-func (r *UserRoleManager) List(scope string, scopeId uint) ([]*types.UserRole, error) {
-	var roles []types.UserRole
-	if err := r.DB.Find(&roles, "scope=? and scope_id=?", scope, scopeId).Error; err != nil {
+type ListUserRoleCondition struct {
+	Scope   string
+	ScopeId *uint
+	UserId  *uint
+	Role    string
+
+	// 是否需要username
+	WithUsername bool
+}
+
+func (r *UserRoleManager) List(cond *ListUserRoleCondition) ([]*types.UserRole, error) {
+	tx := r.DB.Model(&types.UserRole{})
+	if cond.Scope != "" {
+		tx = tx.Where("scope = ?", cond.Scope)
+	}
+	if cond.ScopeId != nil {
+		tx = tx.Where("scope_id = ?", *cond.ScopeId)
+	}
+	if cond.UserId != nil {
+		tx = tx.Where("user_id = ?", *cond.UserId)
+	}
+	if cond.Role != "" {
+		tx = tx.Where("role = ?", cond.Role)
+	}
+	var roles []*types.UserRole
+	if err := tx.Find(&roles).Error; err != nil {
 		return nil, err
 	}
-	var resRoles []*types.UserRole
-	for i, role := range roles {
-		user, err := r.UserManager.GetById(role.UserId)
-		if err != nil {
-			if !errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil, err
+	if cond.WithUsername {
+		for i, role := range roles {
+			user, err := r.UserManager.GetById(role.UserId)
+			if err != nil {
+				if !errors.Is(err, gorm.ErrRecordNotFound) {
+					return nil, err
+				}
 			}
-		} else {
 			roles[i].UserName = user.Name
 		}
-		resRoles = append(resRoles, &roles[i])
 	}
-	return resRoles, nil
+	return roles, nil
 }
 
 func (r *UserRoleManager) CreateOrUpdate(scope string, scopeId uint, userIds []uint, role string) error {
@@ -171,33 +195,37 @@ func (r *UserRoleManager) GetUserRoles(userId uint) ([]types.UserRole, error) {
 	return userRoles, nil
 }
 
-func (r *UserRoleManager) HasScopeRole(user *types.User, scope string, scopeId uint, role string) bool {
+// AuthRole 对用户角色进行鉴权，判断用户是否有该角色权限
+func (r *UserRoleManager) AuthRole(user *types.User, scope string, scopeId uint, role string) bool {
 	if user.IsSuper {
 		return true
 	}
 	if user.Roles == nil {
-		roles, err := r.GetUserRoles(user.ID)
+		roles, err := r.List(&ListUserRoleCondition{UserId: &user.ID})
 		if err != nil {
-			klog.Errorf("get user id=%d error: %s", user.ID, err.Error())
+			klog.Errorf("get user id=%d name=%s roles error: %s", user.ID, user.Name, err.Error())
 			return false
 		}
 		user.Roles = &roles
 	}
-	roleSetsMap := map[string][]string{
-		types.RoleTypeViewer: {types.RoleTypeViewer, types.RoleTypeEditor, types.RoleTypeAdmin},
-		types.RoleTypeEditor: {types.RoleTypeEditor, types.RoleTypeAdmin},
-		types.RoleTypeAdmin:  {types.RoleTypeAdmin},
+	// 某个角色所需要的权限
+	authRolesMap := map[string][]string{
+		types.RoleViewer: {types.RoleViewer, types.RoleEditor, types.RoleAdmin},
+		types.RoleEditor: {types.RoleEditor, types.RoleAdmin},
+		types.RoleAdmin:  {types.RoleAdmin},
 	}
-	roleSet, ok := roleSetsMap[role]
+	authRoles, ok := authRolesMap[role]
 	if !ok {
 		klog.Errorf("not found role %s", role)
 		return false
 	}
-	for _, scopeRole := range *user.Roles {
-		if scopeRole.Scope == scope && scopeRole.ScopeId == scopeId && utils.Contains(roleSet, scopeRole.Role) {
+	for _, userRole := range *user.Roles {
+		// 用户有该scope下所具有的角色权限
+		if userRole.Scope == scope && userRole.ScopeId == scopeId && utils.Contains(authRoles, userRole.Role) {
 			return true
 		}
-		if scopeRole.Scope == types.ScopePlatform && scopeRole.ScopeId == 0 && utils.Contains(roleSet, scopeRole.Role) {
+		// 用户有平台权限
+		if userRole.Scope == types.ScopePlatform && userRole.ScopeId == 0 && utils.Contains(authRoles, userRole.Role) {
 			return true
 		}
 	}

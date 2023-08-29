@@ -2,7 +2,7 @@ import request from '@/utils/request'
 
 export function listApps(params) {
   return request({
-    url: `project/apps`,
+    url: `/apps`,
     method: 'get',
     params
   })
@@ -10,7 +10,7 @@ export function listApps(params) {
 
 export function listAppStatus(params) {
   return request({
-    url: `project/apps/status`,
+    url: `/apps/status`,
     method: 'get',
     params
   })
@@ -18,7 +18,7 @@ export function listAppStatus(params) {
 
 export function listAppVersions(params) {
   return request({
-    url: `project/apps/versions`,
+    url: `/apps/versions`,
     method: 'get',
     params
   })
@@ -26,28 +26,28 @@ export function listAppVersions(params) {
 
 export function getApp(id) {
   return request({
-    url: `project/apps/${id}`,
+    url: `/apps/${id}`,
     method: 'get',
   })
 }
 
 export function deleteApp(id) {
   return request({
-    url: `project/apps/${id}`,
+    url: `/apps/${id}`,
     method: 'delete',
   })
 }
 
 export function getAppVersion(id) {
   return request({
-    url: `project/apps/version/${id}`,
+    url: `/apps/version/${id}`,
     method: 'get',
   })
 }
 
 export function createApp(data) {
   return request({
-    url: '/project/apps',
+    url: '/apps',
     method: 'post',
     data,
   })
@@ -55,7 +55,7 @@ export function createApp(data) {
 
 export function installApp(data) {
   return request({
-    url: '/project/apps/install',
+    url: '/apps/install',
     method: 'post',
     data,
   })
@@ -63,7 +63,7 @@ export function installApp(data) {
 
 export function destroyApp(data) {
   return request({
-    url: '/project/apps/destroy',
+    url: '/apps/destroy',
     method: 'post',
     data,
   })
@@ -71,7 +71,7 @@ export function destroyApp(data) {
 
 export function updateApp(id, data) {
   return request({
-    url: `/project/apps/${id}`,
+    url: `/apps/${id}`,
     method: 'put',
     data,
   })
@@ -79,7 +79,7 @@ export function updateApp(id, data) {
 
 export function importStoreApp(data) {
   return request({
-    url: `/project/apps/import_storeapp`,
+    url: `/apps/import_storeapp`,
     method: 'post',
     data,
   })
@@ -87,7 +87,7 @@ export function importStoreApp(data) {
 
 export function importCustomApp(data) {
   return request({
-    url: `/project/apps/import_custom_app`,
+    url: `/apps/import_custom_app`,
     method: 'post',
     data,
   })
@@ -95,7 +95,7 @@ export function importCustomApp(data) {
 
 export function duplicateApp(data) {
   return request({
-    url: `/project/apps/duplicate_app`,
+    url: `/apps/duplicate_app`,
     method: 'post',
     data,
   })
@@ -103,14 +103,14 @@ export function duplicateApp(data) {
 
 export function deleteAppVersion(id) {
   return request({
-    url: `project/apps/version/${id}`,
+    url: `/apps/version/${id}`,
     method: 'delete',
   })
 }
 
 export function downloadChart(path) {
   return request({
-    url: `project/apps/download`,
+    url: `/apps/download`,
     method: 'get',
     params: {path}
   })
@@ -118,7 +118,7 @@ export function downloadChart(path) {
 
 export function getAppChartFiles(versionId) {
   return request({
-    url: `project/apps/version/${versionId}/chartfiles`,
+    url: `/apps/version/${versionId}/chartfiles`,
     method: 'get'
   })
 }

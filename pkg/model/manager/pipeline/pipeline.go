@@ -121,11 +121,19 @@ func (p *ManagerPipeline) GetById(pipelineId uint) (*types.Pipeline, error) {
 	return &pipeline, nil
 }
 
-func (p *ManagerPipeline) List(workspaceId uint) ([]types.Pipeline, error) {
-	var ps []types.Pipeline
-	result := p.db.Where("workspace_id = ?", workspaceId).Find(&ps)
-	if result.Error != nil {
-		return nil, result.Error
+type ListPipelineCondition struct {
+	WorkspaceId *uint
+}
+
+func (p *ManagerPipeline) List(cond ListPipelineCondition) ([]*types.Pipeline, error) {
+	tx := p.db.Model(&types.Pipeline{})
+
+	if cond.WorkspaceId != nil {
+		tx = tx.Where("workspace_id = ?", *cond.WorkspaceId)
+	}
+	var ps []*types.Pipeline
+	if err := tx.Find(&ps).Error; err != nil {
+		return nil, err
 	}
 	return ps, nil
 }

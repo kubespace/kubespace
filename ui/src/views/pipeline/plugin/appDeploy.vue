@@ -84,7 +84,7 @@ export default {
       if(!unset) {
         this.$set(this.params, 'apps', [])
       }
-      listApps({scope_id: this.params.project, scope: "project_app"}).then((resp) => {
+      listApps({scope_id: this.params.project, scope: "project"}).then((resp) => {
         let originApps = resp.data ? resp.data : []
         this.apps = originApps
       }).catch((err) => {

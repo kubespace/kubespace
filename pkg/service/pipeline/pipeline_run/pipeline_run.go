@@ -2,8 +2,8 @@ package pipeline_run
 
 import (
 	"github.com/kubespace/kubespace/pkg/core/code"
+	"github.com/kubespace/kubespace/pkg/core/errors"
 	"github.com/kubespace/kubespace/pkg/model"
-	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
 	"github.com/kubespace/kubespace/pkg/utils"
 )
 
@@ -16,26 +16,6 @@ func NewPipelineRunService(models *model.Models) *PipelineRunService {
 		models: models,
 	}
 	return r
-}
-
-func (r *PipelineRunService) List(pipelineId uint, lastBuildNumber int, status string, limit int) *utils.Response {
-	pipelineRuns, err := r.models.PipelineRunManager.ListPipelineRun(pipelineId, lastBuildNumber, status, limit)
-	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
-	}
-	var retData []map[string]interface{}
-	for _, pipelineRun := range pipelineRuns {
-		stagesRun, err := r.models.PipelineRunManager.StagesRun(pipelineRun.ID)
-		if err != nil {
-			return &utils.Response{Code: code.DBError, Msg: err.Error()}
-		}
-		data := map[string]interface{}{
-			"pipeline_run": pipelineRun,
-			"stages_run":   stagesRun,
-		}
-		retData = append(retData, data)
-	}
-	return &utils.Response{Code: code.Success, Data: retData}
 }
 
 func (r *PipelineRunService) Get(pipelineRunId uint) *utils.Response {
@@ -74,15 +54,15 @@ func (r *PipelineRunService) Get(pipelineRunId uint) *utils.Response {
 }
 
 // JobCallback spacelet节点执行完成任务后进行回调，不写数据库，通知controller-manager
-func (r *PipelineRunService) JobCallback(params *schemas.JobCallbackParams) *utils.Response {
-	jobRun, err := r.models.PipelineRunManager.GetJobRun(params.JobId)
+func (r *PipelineRunService) JobCallback(jobId uint, status string) error {
+	jobRun, err := r.models.PipelineRunManager.GetJobRun(jobId)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+		return errors.New(code.DataNotExists, "get job run error: "+err.Error())
 	}
-	jobRun.Status = params.Status
+	jobRun.Status = status
 	// 通知controller-manager
 	if err = r.models.PipelineRunManager.NotifyJobRun(jobRun); err != nil {
-		return &utils.Response{Code: code.RedisError, Msg: err.Error()}
+		return errors.New(code.RedisError, err)
 	}
-	return &utils.Response{Code: code.Success}
+	return nil
 }

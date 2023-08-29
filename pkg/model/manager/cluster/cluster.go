@@ -8,7 +8,6 @@ import (
 	"github.com/kubespace/kubespace/pkg/utils"
 	"gorm.io/gorm"
 	"k8s.io/klog/v2"
-	"strconv"
 	"time"
 )
 
@@ -62,7 +61,7 @@ func (clu *ClusterManager) UpdateByObject(id uint, cluster *types.Cluster) error
 	return clu.DB.Where("id=?", id).Updates(cluster).Error
 }
 
-func (clu *ClusterManager) Get(id uint) (*types.Cluster, error) {
+func (clu *ClusterManager) GetById(id uint) (*types.Cluster, error) {
 	cluster := &types.Cluster{}
 	if err := clu.DB.First(cluster, "id = ?", id).Error; err != nil {
 		return nil, err
@@ -72,44 +71,35 @@ func (clu *ClusterManager) Get(id uint) (*types.Cluster, error) {
 }
 
 func (clu *ClusterManager) GetByName(name string) (*types.Cluster, error) {
-	cluster := &types.Cluster{}
-	id, err := strconv.ParseUint(name, 10, 64)
+	id, err := utils.ParseUint(name)
 	if err != nil {
 		return nil, err
 	}
-	if err = clu.DB.First(cluster, "id = ?", id).Error; err != nil {
+	return clu.GetById(id)
+}
+
+func (clu *ClusterManager) GetByToken(token string) (*types.Cluster, error) {
+	cluster := &types.Cluster{}
+	if err := clu.DB.First(cluster, "token = ?", token).Error; err != nil {
 		return nil, err
 	}
 	cluster.Name = fmt.Sprintf("%d", cluster.ID)
 	return cluster, nil
 }
 
-func (clu *ClusterManager) List(filters map[string]interface{}) ([]types.Cluster, error) {
+type ListClusterCondition struct{}
 
-	var clusters []types.Cluster
-	if err := clu.DB.Find(&clusters, filters).Error; err != nil {
+func (clu *ClusterManager) List(cond ListClusterCondition) ([]*types.Cluster, error) {
+	tx := clu.DB.Model(&types.Cluster{})
+
+	var clusters []*types.Cluster
+	if err := tx.Find(&clusters).Error; err != nil {
 		return nil, err
 	}
 	for i, c := range clusters {
 		clusters[i].Name = fmt.Sprintf("%d", c.ID)
 	}
 	return clusters, nil
-}
-
-func (clu *ClusterManager) GetByToken(token string) (*types.Cluster, error) {
-
-	clusterList, err := clu.List(map[string]interface{}{
-		"token": token,
-	})
-	if err != nil {
-		return nil, err
-	}
-	for _, cluster := range clusterList {
-		if cluster.Token == token {
-			return &cluster, nil
-		}
-	}
-	return nil, nil
 }
 
 func (clu *ClusterManager) Delete(id uint) error {
@@ -120,8 +110,9 @@ func (clu *ClusterManager) Delete(id uint) error {
 	if cnt > 0 {
 		return fmt.Errorf("当前集群存在工作空间绑定")
 	}
+	// 删除集群下集群组件
 	var apps []types.App
-	if err := clu.DB.Find(&apps, "scope=? and scope_id=?", types.AppVersionScopeComponent, id).Error; err != nil {
+	if err := clu.DB.Find(&apps, "scope=? and scope_id=?", types.ScopeCluster, id).Error; err != nil {
 		return err
 	}
 	for _, app := range apps {
@@ -129,6 +120,7 @@ func (clu *ClusterManager) Delete(id uint) error {
 			return err
 		}
 	}
+	// 删除用户角色
 	if err := clu.DB.Delete(&types.UserRole{}, "scope = ? and scope_id = ?", types.ScopeCluster, id).Error; err != nil {
 		return err
 	}
@@ -136,18 +128,4 @@ func (clu *ClusterManager) Delete(id uint) error {
 		return err
 	}
 	return nil
-}
-
-func (clu *ClusterManager) HasMember(cluster *types.Cluster, user *types.User) bool {
-	// 不是超级用户且当前用户不在集群邀请之内
-	if user.IsSuper {
-		return true
-	}
-	if cluster.CreatedBy == user.Name {
-		return true
-	}
-	if utils.Contains(cluster.Members, user.Name) {
-		return true
-	}
-	return false
 }

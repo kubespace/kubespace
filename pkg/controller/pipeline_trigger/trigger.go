@@ -3,6 +3,7 @@ package pipeline_trigger
 import (
 	"database/sql"
 	"fmt"
+	pipelinemgr "github.com/kubespace/kubespace/pkg/model/manager/pipeline"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	pipelineservice "github.com/kubespace/kubespace/pkg/service/pipeline/pipeline_run"
 	"github.com/kubespace/kubespace/pkg/utils"
@@ -209,7 +210,11 @@ func (p *PipelineTriggerController) cronTriggerCustomPipeline(
 	trigger *types.PipelineTrigger) error {
 	var buildSources []*types.PipelineBuildCustomSource
 	for _, source := range pipeline.Sources {
-		sourceBuilds, err := p.models.PipelineRunManager.ListPipelineRun(source.Pipeline, 0, types.PipelineStatusOK, 1)
+		sourceBuilds, err := p.models.PipelineRunManager.ListPipelineRun(pipelinemgr.ListPipelineRunCondition{
+			PipelineId: source.Pipeline,
+			Status:     types.PipelineStatusOK,
+			Limit:      1,
+		})
 		if err != nil {
 			return err
 		}

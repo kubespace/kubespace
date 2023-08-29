@@ -46,11 +46,10 @@ func (p *ManagerProject) Get(projectId uint) (*types.Project, error) {
 	return &ws, nil
 }
 
-func (p *ManagerProject) List() ([]types.Project, error) {
-	var ws []types.Project
-	result := p.DB.Find(&ws)
-	if result.Error != nil {
-		return nil, result.Error
+func (p *ManagerProject) List() ([]*types.Project, error) {
+	var ws []*types.Project
+	if err := p.DB.Find(&ws).Error; err != nil {
+		return nil, err
 	}
 	return ws, nil
 }
@@ -58,7 +57,7 @@ func (p *ManagerProject) List() ([]types.Project, error) {
 func (p *ManagerProject) Delete(project *types.Project) error {
 	var apps []types.App
 	var err error
-	if err = p.DB.Where("scope = ? and scope_id = ?", types.AppVersionScopeProjectApp, project.ID).Find(&apps).Error; err != nil {
+	if err = p.DB.Where("scope = ? and scope_id = ?", types.ScopeProject, project.ID).Find(&apps).Error; err != nil {
 		return err
 	}
 	for _, app := range apps {
@@ -76,17 +75,17 @@ func (p *ManagerProject) Delete(project *types.Project) error {
 	return nil
 }
 
-func (p *ManagerProject) Clone(originProjectId uint, newProject *types.Project) (*types.Project, error) {
+func (p *ManagerProject) Clone(sourceProjectId uint, newProject *types.Project) (*types.Project, error) {
 	err := p.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(newProject).Error; err != nil {
 			return err
 		}
-		var originApps []types.App
+		var sourceApps []types.App
 		var err error
-		if err = tx.Where("scope = ? and scope_id = ?", types.AppVersionScopeProjectApp, originProjectId).Find(&originApps).Error; err != nil {
+		if err = tx.Where("scope = ? and scope_id = ?", types.ScopeProject, sourceProjectId).Find(&sourceApps).Error; err != nil {
 			return err
 		}
-		for _, app := range originApps {
+		for _, app := range sourceApps {
 			var appVersion types.AppVersion
 			if err = tx.First(&appVersion, "id = ?", app.AppVersionId).Error; err != nil {
 				return err

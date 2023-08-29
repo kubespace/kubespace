@@ -14,18 +14,11 @@ const (
 	AppTypeMiddleware = "middleware"
 	// AppTypeClusterComponent 集群组件
 	AppTypeClusterComponent = "component"
-
-	// AppVersionScopeProjectApp 工作空间应用
-	AppVersionScopeProjectApp = "project_app"
-	// AppVersionScopeStoreApp 应用商店应用
-	AppVersionScopeStoreApp = "store_app"
-	// AppVersionScopeComponent 集群组件应用
-	AppVersionScopeComponent = "component"
 )
 
 type App struct {
 	ID           uint        `gorm:"primaryKey" json:"id"`
-	Scope        string      `gorm:"size:50;not null;uniqueIndex:ScopeNameUnique;comment:应用所属范围，包括project_app/store_app/component"`
+	Scope        string      `gorm:"size:50;not null;uniqueIndex:ScopeNameUnique;comment:应用所属范围，包括project_app/store_app/component", json:"scope"`
 	ScopeId      uint        `gorm:"not null;uniqueIndex:ScopeNameUnique" json:"scope_id"`
 	Name         string      `gorm:"size:255;not null;uniqueIndex:ScopeNameUnique" json:"name"`
 	Description  string      `gorm:"type:text;" json:"description"`

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/core/code"
+	"github.com/kubespace/kubespace/pkg/core/errors"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	utilgit "github.com/kubespace/kubespace/pkg/third/git"
 	"github.com/kubespace/kubespace/pkg/utils"
@@ -60,25 +61,25 @@ type BuildForPipelineParams struct {
 	BuildIds []*BuildForPipelineParamsBuilds `json:"build_ids"`
 }
 
-func (r *PipelineRunService) Build(pipelineId uint, buildConfig *types.PipelineBuildConfig, username string) *utils.Response {
+func (r *PipelineRunService) Build(pipelineId uint, buildConfig *types.PipelineBuildConfig, username string) (*types.PipelineRun, error) {
 	pipelineObj, err := r.models.PipelineManager.GetById(pipelineId)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+		return nil, errors.New(code.DataNotExists, fmt.Sprintf("get pipeline id=%d error: %v", pipelineId, err))
 	}
 	workspace, err := r.models.PipelineWorkspaceManager.Get(pipelineObj.WorkspaceId)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+		return nil, errors.New(code.DataNotExists, fmt.Sprintf("get pipeline workspace id=%d error: %v", pipelineObj.WorkspaceId, err))
 	}
 	stages, err := r.models.PipelineManager.Stages(pipelineId)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+		return nil, errors.New(code.DBError, fmt.Sprintf("get pipeline id=%d name=%s stages error: %v", pipelineId, pipelineObj.Name, err))
 	}
 	if len(stages) == 0 {
-		return &utils.Response{Code: code.DataNotExists, Msg: "当前流水线未配置阶段"}
+		return nil, errors.New(code.DataNotExists, fmt.Sprintf("流水线「%s」未配置阶段", pipelineObj.Name))
 	}
 	envs, err := r.InitialEnvs(pipelineObj, workspace, buildConfig)
 	if err != nil {
-		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+		return nil, errors.New(code.ParamsError, err.Error())
 	}
 	var stagesRun []*types.PipelineRunStage
 	for _, stage := range stages {
@@ -107,7 +108,7 @@ func (r *PipelineRunService) Build(pipelineId uint, buildConfig *types.PipelineB
 	}
 	var paramsMap = make(types.Map)
 	if err = utils.ConvertTypeByJson(buildConfig, &paramsMap); err != nil {
-		return &utils.Response{Code: code.UnMarshalError, Msg: err.Error()}
+		return nil, errors.New(code.UnMarshalError, err.Error())
 	}
 	pipelineRun := &types.PipelineRun{
 		PipelineId: pipelineId,
@@ -120,9 +121,9 @@ func (r *PipelineRunService) Build(pipelineId uint, buildConfig *types.PipelineB
 	}
 	pipelineRun, err = r.models.PipelineRunManager.CreatePipelineRun(pipelineRun, stagesRun)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+		return nil, errors.New(code.DBError, err.Error())
 	}
-	return &utils.Response{Code: code.Success, Data: pipelineRun}
+	return pipelineRun, nil
 }
 
 func (r *PipelineRunService) InitialEnvs(pipeline *types.Pipeline, workspace *types.PipelineWorkspace, params *types.PipelineBuildConfig) (map[string]interface{}, error) {

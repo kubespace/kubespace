@@ -86,7 +86,7 @@ func (k *KubeClient) Pods(clusterId string) (PodClient, error) {
 
 func (k *KubeClient) getClient(clusterId string) (c kubeclient, clusterObj *types.Cluster, err error) {
 	id, _ := strconv.Atoi(clusterId)
-	clusterObj, err = k.models.ClusterManager.Get(uint(id))
+	clusterObj, err = k.models.ClusterManager.GetById(uint(id))
 	if err != nil {
 		return nil, nil, fmt.Errorf("获取集群%s失败：%s", clusterId, err.Error())
 	}

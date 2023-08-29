@@ -359,7 +359,7 @@ const Routes = [
     path: 'audit',
     name: 'clusterAudit',
     component: () => import('@/views/cluster/clusterAudit'),
-    meta: { title: '操作审计', icon: 'audit', 'group': 'cluster', object: 'audit' }
+    meta: { title: '操作审计', icon: 'cluster_audit', 'group': 'cluster', object: 'audit' }
   },
 ]
 

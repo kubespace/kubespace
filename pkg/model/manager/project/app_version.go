@@ -3,6 +3,7 @@ package project
 import (
 	"errors"
 	"fmt"
+	"github.com/kubespace/kubespace/pkg/model/manager"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"gorm.io/gorm"
 	"os"
@@ -71,9 +72,13 @@ func (v *AppVersionManager) CreateWithChartByte(chartBytes []byte, scope string,
 	return appVersion, nil
 }
 
-func (v *AppVersionManager) GetById(id uint) (*types.AppVersion, error) {
+func (v *AppVersionManager) GetById(id uint, opfs ...manager.OptionFunc) (*types.AppVersion, error) {
 	var appVersion types.AppVersion
+	ops := manager.GetOptions(opfs)
 	if err := v.DB.First(&appVersion, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) && ops.NotFoundReturnNil {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return &appVersion, nil
@@ -100,13 +105,13 @@ func (v *AppVersionManager) UpdateAppVersion(appVersion *types.AppVersion, colum
 	return nil
 }
 
-func (v *AppVersionManager) List(scope string, scopeId uint) (*[]types.AppVersion, error) {
-	var appVersions []types.AppVersion
+func (v *AppVersionManager) List(scope string, scopeId uint) ([]*types.AppVersion, error) {
+	var appVersions []*types.AppVersion
 	var err error
 	if err = v.DB.Where("scope = ? and scope_id = ?", scope, scopeId).Order("id desc").Find(&appVersions).Error; err != nil {
 		return nil, err
 	}
-	return &appVersions, nil
+	return appVersions, nil
 }
 
 // Delete 删除应用版本以及该版本构建历史，如果该版本没有其他应用使用，则同时删除chart

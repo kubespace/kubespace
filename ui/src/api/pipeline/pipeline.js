@@ -15,9 +15,9 @@ export function getPipeline(pipelineId) {
   })
 }
 
-export function updatePipeline(data) {
+export function updatePipeline(id, data) {
   return request({
-    url: `pipeline/pipeline`,
+    url: `pipeline/pipeline/${id}`,
     method: 'put',
     data: data,
   })

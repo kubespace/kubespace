@@ -39,7 +39,7 @@ type PipelineBuildParams struct {
 	PipelineId                 uint `json:"pipeline_id"`
 }
 
-type PipelineParams struct {
+type PipelineBody struct {
 	ID          uint                  `json:"id"`
 	WorkspaceId uint                  `json:"workspace_id"`
 	Name        string                `json:"name"`

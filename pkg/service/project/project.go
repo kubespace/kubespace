@@ -3,18 +3,17 @@ package project
 import (
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/core/code"
+	"github.com/kubespace/kubespace/pkg/core/errors"
 	"github.com/kubespace/kubespace/pkg/kubernetes/resource"
 	kubetypes "github.com/kubespace/kubespace/pkg/kubernetes/types"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
-	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	"github.com/kubespace/kubespace/pkg/service/cluster"
 	"github.com/kubespace/kubespace/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/yaml"
-	"time"
 )
 
 type ProjectService struct {
@@ -31,19 +30,19 @@ func NewProjectService(models *model.Models, kubeClient *cluster.KubeClient, app
 	}
 }
 
-func (p *ProjectService) Delete(projectId uint, delResource bool) *utils.Response {
+func (p *ProjectService) Delete(projectId uint, delResource bool) (*types.Project, error) {
 	project, err := p.models.ProjectManager.Get(projectId)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: "获取工作空间失败: " + err.Error()}
+		return nil, errors.New(code.DataNotExists, "获取工作空间失败: "+err.Error())
 	}
 	if delResource {
-		apps, err := p.appService.ListApp(types.AppVersionScopeProjectApp, projectId)
+		apps, err := p.appService.ListApp(types.ScopeProject, projectId)
 		if err != nil {
-			return &utils.Response{Code: code.GetError, Msg: err.Error()}
+			return project, errors.New(code.GetError, err.Error())
 		}
 		for _, app := range apps {
 			if app.Status != types.AppStatusUninstall {
-				return &utils.Response{Code: code.DeleteError, Msg: "删除工作空间失败：应用" + app.Name + "正在运行"}
+				return project, errors.New(code.DeleteError, "删除工作空间失败：应用"+app.Name+"正在运行")
 			}
 		}
 		resTypes := []string{
@@ -64,14 +63,14 @@ func (p *ProjectService) Delete(projectId uint, delResource bool) *utils.Respons
 			}
 		}
 		if errs != "" {
-			return &utils.Response{Code: code.DeleteError, Msg: "删除k8s以下资源失败：\n" + errs}
+			return project, errors.New(code.DeleteError, "删除k8s以下资源失败：\n"+errs)
 		}
 	}
 	err = p.models.ProjectManager.Delete(project)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: "删除工作空间失败: " + err.Error()}
+		return project, errors.New(code.DBError, "删除工作空间失败: "+err.Error())
 	}
-	return &utils.Response{Code: code.Success}
+	return project, nil
 }
 
 func (p *ProjectService) Get(projectId uint, withDetail bool) *utils.Response {
@@ -202,25 +201,14 @@ func (p *ProjectService) cloneK8sResource(oriProject, destProject *types.Project
 	return nil
 }
 
-func (p *ProjectService) Clone(ser *serializers.ProjectCloneSerializer, user *types.User) *utils.Response {
-	oriProject, err := p.models.ProjectManager.Get(ser.OriginProjectId)
+func (p *ProjectService) Clone(sourceProjectId uint, newProject *types.Project) (*types.Project, error) {
+	sourceProject, err := p.models.ProjectManager.Get(sourceProjectId)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: "获取工作空间失败:" + err.Error()}
+		return nil, errors.New(code.DataNotExists, "获取源工作空间失败:"+err.Error())
 	}
-	newProject := &types.Project{
-		Name:        ser.Name,
-		Description: ser.Description,
-		ClusterId:   ser.ClusterId,
-		Namespace:   ser.Namespace,
-		Owner:       ser.Owner,
-		CreateUser:  user.Name,
-		UpdateUser:  user.Name,
-		CreateTime:  time.Now(),
-		UpdateTime:  time.Now(),
-	}
-	newProject, err = p.models.ProjectManager.Clone(ser.OriginProjectId, newProject)
+	newProject, err = p.models.ProjectManager.Clone(sourceProjectId, newProject)
 	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: err.Error()}
+		return nil, errors.New(code.DBError, err)
 	}
 	resTypes := []string{
 		kubetypes.ConfigMapType,
@@ -231,19 +219,19 @@ func (p *ProjectService) Clone(ser *serializers.ProjectCloneSerializer, user *ty
 	}
 	errs := ""
 	for _, resType := range resTypes {
-		err = p.cloneK8sResource(oriProject, newProject, resType)
+		err = p.cloneK8sResource(sourceProject, newProject, resType)
 		if err != nil {
 			errs += err.Error()
 		}
 	}
 	if errs != "" {
-		return &utils.Response{Code: code.CreateError, Msg: "克隆k8s以下资源失败：\n" + errs}
+		return nil, errors.New(code.CreateError, "克隆k8s以下资源失败：\n"+errs)
 	}
-	return &utils.Response{Code: code.Success}
+	return newProject, nil
 }
 
-func (p *ProjectService) GetProjectNamespaceResources(ser *serializers.ProjectResourcesSerializer) *utils.Response {
-	oriProject, err := p.models.ProjectManager.Get(ser.ProjectId)
+func (p *ProjectService) GetProjectNamespaceResources(projectId uint) *utils.Response {
+	oriProject, err := p.models.ProjectManager.Get(projectId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: "获取工作空间失败:" + err.Error()}
 	}

@@ -6,12 +6,29 @@ import (
 	"errors"
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/core/code"
+	corerrors "github.com/kubespace/kubespace/pkg/core/errors"
 )
 
 type Response struct {
 	Code string `json:"code"`
 	Msg  string `json:"msg"`
 	Data any    `json:"data"`
+}
+
+func NewResponseSuccess(data any) *Response {
+	return &Response{Code: code.Success, Data: data}
+}
+
+func NewResponseWithError(err error) *Response {
+	if err == nil {
+		return &Response{Code: code.Success}
+	}
+	switch e := err.(type) {
+	case *corerrors.Error:
+		return &Response{Code: e.Code(), Msg: e.Error()}
+	default:
+		return &Response{Code: code.UnknownError, Msg: e.Error()}
+	}
 }
 
 func (r *Response) IsSuccess() bool {

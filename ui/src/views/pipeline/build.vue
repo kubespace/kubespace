@@ -396,6 +396,9 @@ export default {
     pipelineId() {
       return this.$route.params.pipelineId
     },
+    workspaceId() {
+      return this.$route.params.workspaceId
+    }
   },
   methods: {
     fetchPipeline() {
@@ -623,7 +626,7 @@ export default {
         params["custom_sources"] = build_ids
       }
       this.dialogLoading = true
-      buildPipeline(params).then((response) => {
+      buildPipeline(this.pipelineId, params).then((response) => {
         this.$message({message: '构建成功', type: 'success'});
         this.dialogLoading = false
         this.fetchBuilds(0)
@@ -731,6 +734,7 @@ export default {
     },
     async manualExec() {
       let parmas = {
+        workspace_id: parseInt(this.workspaceId),
         stage_run_id: this.manualStage.stage.id,
         job_params: this.manualStage.job_params,
         action: this.manualStage.action

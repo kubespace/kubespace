@@ -14,16 +14,39 @@ func (e *Error) Error() string {
 	return e.err.Error()
 }
 
+func (e *Error) String() string {
+	return fmt.Sprintf("%s:%v", e.code, e.err)
+}
+
 func (e *Error) Code() string {
 	return e.code
 }
 
-func New(code string, e interface{}) *Error {
+type options struct {
+	// 是否覆盖错误码
+	overlap bool
+}
+
+type optionFunc func(o *options)
+
+var Overlap = func(o *options) {
+	o.overlap = true
+}
+
+func New(code string, e interface{}, opfs ...optionFunc) *Error {
+	o := options{}
+	for _, opf := range opfs {
+		opf(&o)
+	}
 	var err error
 
 	switch e := e.(type) {
 	case *Error:
-		return e
+		if !o.overlap {
+			return e
+		}
+		// 覆盖当前错误码
+		return &Error{code: code, err: fmt.Errorf("%s", e)}
 	case error:
 		err = e
 	default:

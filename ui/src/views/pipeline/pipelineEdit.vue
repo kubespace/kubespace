@@ -538,7 +538,7 @@ export default {
       }
       this.loading = true
       if(this.pipelineId) {
-        updatePipeline(this.editPipeline).then((response) => {
+        updatePipeline(this.pipelineId, this.editPipeline).then((response) => {
           Message.success("编辑流水线成功")
           this.$router.push({name: 'pipeline', params: {'workspaceId': this.workspaceId}})
           // this.loading = false

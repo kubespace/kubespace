@@ -52,7 +52,7 @@ func (a *AppStoreManager) CreateStoreApp(chartBytes []byte, storeApp *types.AppS
 				return err
 			}
 		}
-		appVersion, err = a.AppVersionManager.CreateWithChartByte(chartBytes, types.AppVersionScopeStoreApp, storeApp.ID, appVersion)
+		appVersion, err = a.AppVersionManager.CreateWithChartByte(chartBytes, types.ScopeAppStore, storeApp.ID, appVersion)
 		if err != nil {
 			return err
 		}
@@ -68,16 +68,16 @@ func (a *AppStoreManager) UpdateStoreApp(appId uint, columns map[string]interfac
 	return a.DB.Model(&types.AppStore{}).Where("id=?", appId).Updates(columns).Error
 }
 
-func (a *AppStoreManager) DeleteStoreAppVersion(appId, versionId uint, user *types.User) error {
+func (a *AppStoreManager) DeleteStoreAppVersion(appId, versionId uint, user string) error {
 	err := a.AppVersionManager.Delete(versionId)
 	if err != nil {
 		return err
 	}
-	versions, _ := a.AppVersionManager.List(types.AppVersionScopeStoreApp, appId)
-	if versions != nil && len(*versions) == 0 {
+	versions, _ := a.AppVersionManager.List(types.ScopeAppStore, appId)
+	if versions != nil && len(versions) == 0 {
 		return a.DB.Delete(&types.AppStore{}, "id=?", appId).Error
 	} else {
-		return a.UpdateStoreApp(appId, map[string]interface{}{"update_user": user.Name})
+		return a.UpdateStoreApp(appId, map[string]interface{}{"update_user": user})
 	}
 }
 
@@ -116,7 +116,7 @@ func (a *AppStoreManager) ImportApp(storeApp *types.AppStore, appVersion *types.
 
 func (a *AppStoreManager) GetLatestVersion(appId uint) (*types.AppVersion, error) {
 	var appVersion types.AppVersion
-	if err := a.DB.Order("create_time desc").First(&appVersion, "scope = ? and scope_id = ?", types.AppVersionScopeStoreApp, appId).Error; err != nil {
+	if err := a.DB.Order("create_time desc").First(&appVersion, "scope = ? and scope_id = ?", types.ScopeAppStore, appId).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -208,7 +208,7 @@ func (a *AppStoreManager) loadApp(appPath string) {
 		if app.ID != 0 {
 			var existsVersion types.AppVersion
 			if err = a.DB.First(&existsVersion, "scope=? and scope_id=? and package_name=? and package_version=?",
-				types.AppVersionScopeStoreApp, app.ID, charts.Name(), charts.Metadata.Version).Error; err != nil {
+				types.ScopeAppStore, app.ID, charts.Name(), charts.Metadata.Version).Error; err != nil {
 				if !errors.Is(err, gorm.ErrRecordNotFound) {
 					klog.Errorf("get store app exist package name=%s version=%s error: %s", charts.Name(), charts.Metadata.Version)
 				}

@@ -12,6 +12,7 @@ import (
 	"os"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -160,6 +161,7 @@ func GetImageName(img string) string {
 	return name
 }
 
+// RequestHost 获取http请求的server host
 func RequestHost(r *http.Request) (host string) {
 	switch {
 	case r.Header.Get("X-Host") != "":
@@ -171,4 +173,9 @@ func RequestHost(r *http.Request) (host string) {
 	default:
 		return r.Host
 	}
+}
+
+func ParseUint(s string) (uint, error) {
+	i, err := strconv.ParseUint(s, 10, 64)
+	return uint(i), err
 }

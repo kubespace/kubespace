@@ -26,7 +26,7 @@ type Models struct {
 
 	UserManager     *user.UserManager
 	UserRoleManager *user.UserRoleManager
-	TokenManager    *user.TokenManager
+	SessionManager  *user.SessionManager
 	RoleManager     *user.RoleManager
 
 	PipelineManager             *pipeline.ManagerPipeline
@@ -56,10 +56,11 @@ type Models struct {
 
 func NewModels(c *Config) (*Models, error) {
 	role := user.NewRoleManager(c.DB.RedisInstance)
-	tk := user.NewTokenManager(c.DB.RedisInstance)
+	sess := user.NewTokenManager(c.DB.RedisInstance)
 
 	userMgr := user.NewUserManager(c.DB.Instance)
 	userRole := user.NewUserRoleManager(c.DB.Instance, userMgr)
+
 	pipelinePluginMgr := pipeline.NewPipelinePluginManager(c.DB.Instance)
 	pipelineMgr := pipeline.NewPipelineManager(c.DB.Instance)
 	pipelineWorkspaceMgr := pipeline.NewWorkspaceManager(c.DB.Instance, pipelineMgr)
@@ -93,7 +94,7 @@ func NewModels(c *Config) (*Models, error) {
 		ClusterManager:              cm,
 		UserManager:                 userMgr,
 		UserRoleManager:             userRole,
-		TokenManager:                tk,
+		SessionManager:              sess,
 		RoleManager:                 role,
 		PipelineManager:             pipelineMgr,
 		PipelineRunManager:          pipelineRunMgr,

@@ -70,6 +70,7 @@ func (w *WorkspaceManager) List() ([]types.PipelineWorkspace, error) {
 	return ws, nil
 }
 
+// Delete 删除流水线空间下所有资源
 func (w *WorkspaceManager) Delete(workspace *types.PipelineWorkspace) error {
 	var pipelines []types.Pipeline
 	if err := w.DB.Where("workspace_id = ?", workspace.ID).Find(&pipelines).Error; err != nil {
@@ -81,6 +82,9 @@ func (w *WorkspaceManager) Delete(workspace *types.PipelineWorkspace) error {
 		}
 	}
 	if err := w.DB.Delete(&types.UserRole{}, "scope = ? and scope_id = ?", types.ScopePipeline, workspace.ID).Error; err != nil {
+		return err
+	}
+	if err := w.DB.Delete(&types.PipelineResource{}, "workspace_id = ?", workspace.ID).Error; err != nil {
 		return err
 	}
 	if err := w.DB.Delete(&types.PipelineCodeCache{}, "workspace_id = ?", workspace.ID).Error; err != nil {

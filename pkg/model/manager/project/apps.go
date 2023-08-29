@@ -2,6 +2,7 @@ package project
 
 import (
 	"errors"
+	"github.com/kubespace/kubespace/pkg/model/manager"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"gorm.io/gorm"
 	"gorm.io/gorm/utils"
@@ -77,12 +78,13 @@ func (a *AppManager) CreateAppWithBytes(chartBytes []byte, app *types.App, appVe
 	return app, nil
 }
 
-func (a *AppManager) Get(id uint) (*types.App, error) {
+func (a *AppManager) GetById(id uint, opfs ...manager.OptionFunc) (*types.App, error) {
 	var app types.App
-	err := a.DB.First(&app, "id = ?", id).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
-	} else if err != nil {
+	ops := manager.GetOptions(opfs)
+	if err := a.DB.First(&app, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) && ops.NotFoundReturnNil {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return &app, nil
@@ -99,21 +101,32 @@ func (a *AppManager) GetByName(scope string, projectId uint, name string) (*type
 	return &app, nil
 }
 
-func (a *AppManager) ListApps(scope string, scopeId uint) ([]*types.App, error) {
-	var apps []types.App
+type ListAppCondition struct {
+	Scope       string
+	ScopeId     uint
+	WithVersion bool
+	Name        string
+}
+
+func (a *AppManager) ListApps(cond ListAppCondition) ([]*types.App, error) {
+	var apps []*types.App
 	var err error
-	if err = a.DB.Where("scope = ? and scope_id = ?", scope, scopeId).Find(&apps).Error; err != nil {
+	tx := a.DB.Model(&types.App{}).Where("scope = ? and scope_id = ?", cond.Scope, cond.ScopeId)
+	if cond.Name != "" {
+		tx = tx.Where("name = ?", cond.Name)
+	}
+	if err = tx.Find(&apps).Error; err != nil {
 		return nil, err
 	}
-	var rets []*types.App
-	for i, app := range apps {
-		apps[i].AppVersion, err = a.AppVersionManager.GetById(app.AppVersionId)
-		if err != nil {
-			return nil, err
+	if cond.WithVersion {
+		for i, app := range apps {
+			apps[i].AppVersion, err = a.AppVersionManager.GetById(app.AppVersionId)
+			if err != nil {
+				return nil, err
+			}
 		}
-		rets = append(rets, &apps[i])
 	}
-	return rets, nil
+	return apps, nil
 }
 
 func (a *AppManager) GetAppWithVersion(appId uint) (*types.App, error) {
@@ -157,7 +170,7 @@ func (a *AppManager) UpdateApp(app *types.App, columns ...string) error {
 
 func (a *AppManager) DeleteApp(appId uint) error {
 	return a.DB.Transaction(func(tx *gorm.DB) error {
-		appObj, err := a.Get(appId)
+		appObj, err := a.GetById(appId)
 		if err != nil {
 			return err
 		}
@@ -165,7 +178,7 @@ func (a *AppManager) DeleteApp(appId uint) error {
 		if err != nil {
 			return err
 		}
-		for _, appVersion := range *appVersions {
+		for _, appVersion := range appVersions {
 			if err = a.AppVersionManager.Delete(appVersion.ID); err != nil {
 				return err
 			}
@@ -198,6 +211,7 @@ func (a *AppManager) ImportApp(app *types.App, appVersion *types.AppVersion) err
 		}
 		if app.Status == types.AppStatusUninstall {
 			app.AppVersionId = appVersion.ID
+			app.UpdateUser = appVersion.CreateUser
 			if err := tx.Model(app).Select("app_version_id").Updates(*app).Error; err != nil {
 				return err
 			}

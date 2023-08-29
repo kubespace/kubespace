@@ -29,7 +29,7 @@ func NewPipelineService(models *model.Models) *PipelineService {
 	}
 }
 
-func (p *PipelineService) Create(params *schemas.PipelineParams, user *types.User) (*types.Pipeline, error) {
+func (p *PipelineService) Create(params *schemas.PipelineBody, user *types.User) (*types.Pipeline, error) {
 	workspace, err := p.models.PipelineWorkspaceManager.Get(params.WorkspaceId)
 	if err != nil {
 		return nil, errors.New(code.DataNotExists, err)
@@ -144,7 +144,7 @@ func (p *PipelineService) GetPipelineTrigger(pipelineId uint, triggers []*schema
 	return triggerObjs, nil
 }
 
-func (p *PipelineService) Update(params *schemas.PipelineParams, user *types.User) (*types.Pipeline, error) {
+func (p *PipelineService) Update(params *schemas.PipelineBody, user *types.User) (*types.Pipeline, error) {
 	workspace, err := p.models.PipelineWorkspaceManager.Get(params.WorkspaceId)
 	if err != nil {
 		return nil, errors.New(code.DBError, err)
@@ -250,44 +250,24 @@ func (p *PipelineService) GetPipeline(pipelineId uint) *utils.Response {
 	return &utils.Response{Code: code.Success, Data: data}
 }
 
-func (p *PipelineService) ListPipeline(workspaceId uint) *utils.Response {
-	pipelines, err := p.models.PipelineManager.List(workspaceId)
-	if err != nil {
-		return &utils.Response{Code: code.DBError, Msg: fmt.Sprintf("获取流水线列表错误: %v", err)}
-	}
-	var retData []map[string]interface{}
-	for _, pipeline := range pipelines {
-		lastPipelineRun, err := p.models.PipelineRunManager.GetLastPipelineRun(pipeline.ID)
-		if err != nil {
-			return &utils.Response{Code: code.DBError, Msg: fmt.Sprintf("获取流水线构建列表错误: %v", err)}
-		}
-		data := map[string]interface{}{
-			"pipeline":   pipeline,
-			"last_build": lastPipelineRun,
-		}
-		retData = append(retData, data)
-	}
-	return &utils.Response{Code: code.Success, Data: retData}
-}
-
-func (p *PipelineService) ListRepoBranches(pipelineId uint) *utils.Response {
+func (p *PipelineService) ListRepoBranches(pipelineId uint) ([]*git.Reference, error) {
 	pipelineObj, err := p.models.PipelineManager.GetById(pipelineId)
 	if err != nil {
-		return &utils.Response{Code: code.GetError, Msg: err.Error()}
+		return nil, errors.New(code.DataNotExists, err)
 	}
 	workspace, err := p.models.PipelineWorkspaceManager.Get(pipelineObj.WorkspaceId)
 	if err != nil {
-		return &utils.Response{Code: code.GetError, Msg: err.Error()}
+		return nil, errors.New(code.DataNotExists, err)
 	}
 	if workspace.Type != types.WorkspaceTypeCode {
-		return &utils.Response{Code: code.ParamsError, Msg: "当前流水线空间不是代码空间"}
+		return nil, errors.New(code.ParamsError, "当前流水线空间不是代码空间")
 	}
 	if workspace.Code == nil {
-		return &utils.Response{Code: code.ParamsError, Msg: "当前流水线代码空间未获取到仓库"}
+		return nil, errors.New(code.ParamsError, "当前流水线代码空间未获取到仓库")
 	}
 	secret, err := p.models.SettingsSecretManager.Get(workspace.Code.SecretId)
 	if err != nil {
-		return &utils.Response{Code: code.GetError, Msg: err.Error()}
+		return nil, errors.New(code.DataNotExists, "获取代码密钥失败："+err.Error())
 	}
 	gitcli, err := git.NewClient(workspace.Code.Type, workspace.Code.ApiUrl, &types.Secret{
 		Type:        secret.Type,
@@ -297,11 +277,11 @@ func (p *PipelineService) ListRepoBranches(pipelineId uint) *utils.Response {
 		AccessToken: secret.AccessToken,
 	})
 	if err != nil {
-		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+		return nil, errors.New(code.GitError, err)
 	}
 	repoBranches, err := gitcli.ListRepoBranches(context.Background(), workspace.Code.CloneUrl)
 	if err != nil {
-		return &utils.Response{Code: code.RequestError, Msg: err.Error()}
+		return nil, errors.New(code.GitError, "获取代码仓库分支失败："+err.Error())
 	}
 	var branches []*git.Reference
 	for i, b := range repoBranches {
@@ -309,5 +289,5 @@ func (p *PipelineService) ListRepoBranches(pipelineId uint) *utils.Response {
 			branches = append(branches, repoBranches[i])
 		}
 	}
-	return &utils.Response{Code: code.Success, Data: branches}
+	return branches, nil
 }

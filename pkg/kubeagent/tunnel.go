@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	TunnelConnectPath  = "/api/v1/agent/connect"
-	TunnelResponsePath = "/api/v1/agent/response"
+	TunnelConnectPath  = "/api/v1/cluster/agent/connect"
+	TunnelResponsePath = "/api/v1/cluster/agent/response"
 )
 
 type TunnelCallback interface {

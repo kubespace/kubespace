@@ -2,8 +2,8 @@ package types
 
 import "github.com/google/uuid"
 
-type Token struct {
+type UserSession struct {
 	Common
-	UserName string    `json:"username"`
-	Token    uuid.UUID `json:"token"`
+	UserName  string    `json:"username"`
+	SessionId uuid.UUID `json:"session_id"`
 }

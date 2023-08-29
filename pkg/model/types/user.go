@@ -7,16 +7,16 @@ const (
 )
 
 type User struct {
-	ID         uint        `gorm:"primaryKey" json:"id"`
-	Name       string      `gorm:"size:255;not null;uniqueIndex" json:"name"`
-	Email      string      `gorm:"size:500" json:"email"`
-	Password   string      `gorm:"size:1000;not null" json:"password"`
-	Roles      *[]UserRole `gorm:"-" json:"roles"`
-	Status     string      `gorm:"size:255" json:"status"`
-	IsSuper    bool        `json:"is_super"`
-	LastLogin  time.Time   `json:"last_login"`
-	CreateTime time.Time   `gorm:"column:create_time;not null;autoCreateTime" json:"create_time"`
-	UpdateTime time.Time   `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`
+	ID         uint         `gorm:"primaryKey" json:"id"`
+	Name       string       `gorm:"size:255;not null;uniqueIndex" json:"name"`
+	Email      string       `gorm:"size:500" json:"email"`
+	Password   string       `gorm:"size:1000;not null" json:"password"`
+	Roles      *[]*UserRole `gorm:"-" json:"roles"`
+	Status     string       `gorm:"size:255" json:"status"`
+	IsSuper    bool         `json:"is_super"`
+	LastLogin  time.Time    `json:"last_login"`
+	CreateTime time.Time    `gorm:"column:create_time;not null;autoCreateTime" json:"create_time"`
+	UpdateTime time.Time    `gorm:"column:update_time;not null;autoUpdateTime" json:"update_time"`
 }
 
 const (
@@ -26,9 +26,12 @@ const (
 	ScopeProject  = "project"
 	ScopeAppStore = "appstore"
 
-	RoleTypeViewer = "viewer"
-	RoleTypeEditor = "editor"
-	RoleTypeAdmin  = "admin"
+	// RoleViewer 观察员，范围内只有查询资源权限
+	RoleViewer = "viewer"
+	// RoleEditor 编辑员，范围内有查询、更新、创建、删除权限，但是没有成员管理以及删除该范围权限
+	RoleEditor = "editor"
+	// RoleAdmin 管理员，范围内所有权限
+	RoleAdmin = "admin"
 )
 
 type UserRole struct {

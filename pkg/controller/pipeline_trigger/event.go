@@ -2,7 +2,10 @@ package pipeline_trigger
 
 import (
 	"fmt"
+	"github.com/kubespace/kubespace/pkg/core/code"
+	"github.com/kubespace/kubespace/pkg/core/errors"
 	"github.com/kubespace/kubespace/pkg/model/types"
+	"github.com/kubespace/kubespace/pkg/utils"
 	"k8s.io/klog/v2"
 	"time"
 )
@@ -46,9 +49,15 @@ func (p *PipelineTriggerController) eventHandle(obj interface{}) error {
 		return nil
 	}
 
-	buildResp := p.pipelineRunService.Build(event.PipelineId, &event.EventConfig, event.TriggerUser)
+	pipelineRun, err := p.pipelineRunService.Build(event.PipelineId, &event.EventConfig, event.TriggerUser)
+	var result *utils.Response
+	if err != nil {
+		result = utils.NewResponseWithError(errors.New(code.BuildError, err))
+	} else {
+		result = utils.NewResponseSuccess(pipelineRun)
+	}
 	return p.models.PipelineTriggerEventManager.Update(event.ID, &types.PipelineTriggerEvent{
-		EventResult: buildResp,
+		EventResult: result,
 		Status:      types.PipelineTriggerEventStatusConsumed,
 		UpdateTime:  time.Now(),
 	})

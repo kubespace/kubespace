@@ -4,7 +4,7 @@ import router from '@/router'
 
 export function listUserRole(params) {
   return request({
-    url: '/user_role',
+    url: '/user/role',
     method: 'get',
     params
   })
@@ -12,7 +12,7 @@ export function listUserRole(params) {
 
 export function updateUserRole(data) {
   return request({
-    url: `/user_role`,
+    url: `/user/role`,
     method: 'post',
     data,
   })
@@ -20,7 +20,7 @@ export function updateUserRole(data) {
 
 export function deleteUserRole(id) {
   return request({
-    url: `/user_role/${id}`,
+    url: `/user/role/${id}`,
     method: 'delete',
   })
 }

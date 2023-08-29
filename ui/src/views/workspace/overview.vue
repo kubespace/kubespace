@@ -162,7 +162,7 @@ export default {
     },
     fetchApps() {
       this.loading = true
-      listApps({scope_id: this.projectId, scope: "project_app"}).then((resp) => {
+      listApps({scope_id: this.projectId, scope: "project"}).then((resp) => {
         let originApps = resp.data ? resp.data : []
         this.originApps = originApps
         this.appLoadingOk = true

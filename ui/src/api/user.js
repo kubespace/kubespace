@@ -2,7 +2,7 @@ import request from '@/utils/request'
 
 export function login(data) {
   return request({
-    url: '/login',
+    url: '/user/login',
     method: 'post',
     data
   })
@@ -18,14 +18,14 @@ export function getInfo(token) {
 
 export function logout() {
   return request({
-    url: '/logout',
+    url: '/user/logout',
     method: 'post'
   })
 }
 
 export function adminSet(data) {
   return request({
-    url: '/admin',
+    url: '/user/admin',
     method: 'post',
     data
   })
@@ -33,7 +33,7 @@ export function adminSet(data) {
 
 export function hasAdmin() {
   return request({
-    url: '/has_admin',
+    url: '/user/has_admin',
     method: 'get',
   })
 }

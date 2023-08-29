@@ -2,14 +2,12 @@ package pipeline
 
 import (
 	"context"
+	"fmt"
 	"github.com/kubespace/kubespace/pkg/core/code"
 	"github.com/kubespace/kubespace/pkg/core/errors"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/model/types"
-	"github.com/kubespace/kubespace/pkg/server/views/serializers"
-	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
 	"github.com/kubespace/kubespace/pkg/third/git"
-	"github.com/kubespace/kubespace/pkg/utils"
 	"regexp"
 	"time"
 )
@@ -48,11 +46,11 @@ func (w *WorkspaceService) checkCodeUrl(codeType string, codeUrl string) bool {
 	return re.MatchString(codeUrl)
 }
 
-func (w *WorkspaceService) defaultCodePipelines() ([]*types.Pipeline, error) {
+func (w *WorkspaceService) defaultCodePipelines(pipespace *types.PipelineWorkspace) ([]*types.Pipeline, error) {
 	branchPipeline := &types.Pipeline{
 		Name:       "分支流水线",
-		CreateUser: "admin",
-		UpdateUser: "admin",
+		CreateUser: pipespace.CreateUser,
+		UpdateUser: pipespace.UpdateUser,
 		CreateTime: time.Now(),
 		UpdateTime: time.Now(),
 		Sources: types.PipelineSources{
@@ -79,8 +77,8 @@ func (w *WorkspaceService) defaultCodePipelines() ([]*types.Pipeline, error) {
 	}
 	masterPipeline := &types.Pipeline{
 		Name:       "主干流水线",
-		CreateUser: "admin",
-		UpdateUser: "admin",
+		CreateUser: pipespace.CreateUser,
+		UpdateUser: pipespace.UpdateUser,
 		CreateTime: time.Now(),
 		UpdateTime: time.Now(),
 		Sources: types.PipelineSources{
@@ -119,18 +117,17 @@ func (w *WorkspaceService) defaultCodePipelines() ([]*types.Pipeline, error) {
 	return []*types.Pipeline{branchPipeline, masterPipeline}, nil
 }
 
-func (w *WorkspaceService) Create(workspaceSer *serializers.WorkspaceSerializer, user *types.User) (*types.PipelineWorkspace, error) {
-	var err error
-	if workspaceSer.Type == types.WorkspaceTypeCode {
-		if !w.checkCodeUrl(workspaceSer.CodeType, workspaceSer.CodeUrl) {
+func (w *WorkspaceService) Create(pipespace *types.PipelineWorkspace) (*types.PipelineWorkspace, error) {
+	if pipespace.Type == types.WorkspaceTypeCode {
+		if !w.checkCodeUrl(pipespace.Code.Type, pipespace.Code.CloneUrl) {
 			return nil, errors.New(code.ParamsError, "代码地址格式不正确")
 		}
-		workspaceSer.Name = w.getCodeName(workspaceSer.CodeType, workspaceSer.CodeUrl)
-		secret, err := w.models.SettingsSecretManager.Get(workspaceSer.CodeSecretId)
+		pipespace.Name = w.getCodeName(pipespace.Code.Type, pipespace.Code.CloneUrl)
+		secret, err := w.models.SettingsSecretManager.Get(pipespace.Code.SecretId)
 		if err != nil {
-			return nil, errors.New(code.DataNotExists, err)
+			return nil, errors.New(code.DataNotExists, fmt.Sprintf("获取代码密钥失败：%v", err))
 		}
-		gitcli, err := git.NewClient(workspaceSer.CodeType, workspaceSer.ApiUrl, &types.Secret{
+		gitcli, err := git.NewClient(pipespace.Code.Type, pipespace.Code.ApiUrl, &types.Secret{
 			Type:        secret.Type,
 			User:        secret.User,
 			Password:    secret.Password,
@@ -138,51 +135,37 @@ func (w *WorkspaceService) Create(workspaceSer *serializers.WorkspaceSerializer,
 			AccessToken: secret.AccessToken,
 		})
 		if err != nil {
-			return nil, errors.New(code.GitError, err)
+			return nil, errors.New(code.GitError, fmt.Sprintf("new git clint error: %v", err))
 		}
 		// 获取代码仓库分支，验证是否可以连通
-		if _, err = gitcli.ListRepoBranches(context.Background(), workspaceSer.CodeUrl); err != nil {
-			return nil, errors.New(code.GitError, err)
+		if _, err = gitcli.ListRepoBranches(context.Background(), pipespace.Code.CloneUrl); err != nil {
+			return nil, errors.New(code.GitError, fmt.Sprintf("get git branch error: %v", err))
 		}
 	}
-	if workspaceSer.Name == "" {
+	if pipespace.Name == "" {
 		return nil, errors.New(code.ParamsError, "解析代码地址失败，未获取到代码库名称")
 	}
-	workspace := &types.PipelineWorkspace{
-		Name:        workspaceSer.Name,
-		Description: workspaceSer.Description,
-		Type:        workspaceSer.Type,
-		Code: &types.PipelineWorkspaceCode{
-			Type:     workspaceSer.CodeType,
-			ApiUrl:   workspaceSer.ApiUrl,
-			CloneUrl: workspaceSer.CodeUrl,
-			SecretId: workspaceSer.CodeSecretId,
-		},
-		CreateUser: user.Name,
-		UpdateUser: user.Name,
-		CreateTime: time.Now(),
-		UpdateTime: time.Now(),
-	}
 	var defaultPipeline []*types.Pipeline
-	if workspace.Type == types.WorkspaceTypeCode {
-		defaultPipeline, err = w.defaultCodePipelines()
+	var err error
+	if pipespace.Type == types.WorkspaceTypeCode {
+		defaultPipeline, err = w.defaultCodePipelines(pipespace)
 		if err != nil {
 			return nil, errors.New(code.CreateError, "创建默认流水线失败: "+err.Error())
 		}
 	}
-	workspace, err = w.models.PipelineWorkspaceManager.Create(workspace, defaultPipeline)
+	pipespace, err = w.models.PipelineWorkspaceManager.Create(pipespace, defaultPipeline)
 	if err != nil {
 		return nil, errors.New(code.DBError, err)
 	}
-	return workspace, nil
+	return pipespace, nil
 }
 
-func (w *WorkspaceService) ListGitRepos(params *schemas.ListGitReposParams) *utils.Response {
-	secret, err := w.models.SettingsSecretManager.Get(params.SecretId)
+func (w *WorkspaceService) ListGitRepos(secretId uint, gitType, apiUrl string) ([]*git.Repository, error) {
+	secret, err := w.models.SettingsSecretManager.Get(secretId)
 	if err != nil {
-		return &utils.Response{Code: code.GetError, Msg: err.Error()}
+		return nil, errors.New(code.DataNotExists, "获取密钥失败："+err.Error())
 	}
-	gitcli, err := git.NewClient(params.GitType, params.ApiUrl, &types.Secret{
+	gitcli, err := git.NewClient(gitType, apiUrl, &types.Secret{
 		Type:        secret.Type,
 		User:        secret.User,
 		Password:    secret.Password,
@@ -190,11 +173,11 @@ func (w *WorkspaceService) ListGitRepos(params *schemas.ListGitReposParams) *uti
 		AccessToken: secret.AccessToken,
 	})
 	if err != nil {
-		return &utils.Response{Code: code.ParamsError, Msg: err.Error()}
+		return nil, errors.New(code.GitError, "new git clint error: "+err.Error())
 	}
 	repos, err := gitcli.ListRepositories(context.Background())
 	if err != nil {
-		return &utils.Response{Code: code.RequestError, Msg: err.Error()}
+		return nil, errors.New(code.GitError, "list git repository error: "+err.Error())
 	}
-	return &utils.Response{Code: code.Success, Data: repos}
+	return repos, nil
 }

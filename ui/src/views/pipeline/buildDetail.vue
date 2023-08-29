@@ -182,6 +182,9 @@ export default {
     buildId() {
       return this.$route.params.buildId
     },
+    workspaceId() {
+      return this.$route.params.workspaceId
+    },
     mainStageEnvs() {
       if(this.mainContent.mainStage.env) {
         let r = []
@@ -197,7 +200,7 @@ export default {
   methods: {
     getBuild() {
       this.loading = true
-      getBuild(this.buildId).then((response) => {
+      getBuild(this.buildId, {workspace_id: this.workspaceId}).then((response) => {
         this.build = response.data;
         this.titleName = ["流水线", this.build.pipeline.name, '#' + this.build.pipeline_run.build_number]
         this.getMainContent()
@@ -235,7 +238,7 @@ export default {
       this.getJobLog()
     },
     fetchBuildSSE() {
-      let url = `/api/v1/pipeline/build/${this.buildId}/sse`
+      let url = `/api/v1/pipeline/build/${this.buildId}/sse?workspace_id=${this.workspaceId}`
       this.buildSSE = new EventSource(url);
       this.buildSSE.addEventListener('message', event => {
           if(event.data && event.data != "\n") {
@@ -320,7 +323,7 @@ export default {
           }
         } else if(!withSSE && this.jobLogSSE) {
           this.jobLogSSE.close()
-          getJobLog(this.mainContent.mainJob.id).then((response) => {
+          getJobLog(this.mainContent.mainJob.id, false, {workspace_id: this.workspaceId}).then((response) => {
             this.$set(this.mainContent, 'jobLog', response.data)
             this.$nextTick(() => {
               if (this.scrollToBottom) {
@@ -336,7 +339,7 @@ export default {
       }
     },
     fetchJobLogSSE(jobId) {
-      let url = `/api/v1/pipeline/build/log/${jobId}/sse`
+      let url = `/api/v1/pipeline/build/log/${jobId}/sse?workspace_id=${this.workspaceId}`
       this.jobLogSSE = new EventSource(url);
       this.jobLogSSE.addEventListener('message', event => {
         // console.log(event.data);

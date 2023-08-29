@@ -10,6 +10,7 @@ import (
 	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_1/v1_1_6_a_pipeline_trigger_event_add_user"
 	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_2/v1_2_5_a_add_audit_operation"
 	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_2/v1_2_5_b_alter_app_name"
+	_ "github.com/kubespace/kubespace/pkg/model/migrate/v1_2/v1_2_6_a_update_app_scope"
 	"github.com/kubespace/kubespace/pkg/model/types"
 )
 

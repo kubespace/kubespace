@@ -8,25 +8,27 @@ export function listBuilds(pipeline_id, last_build_number, status, limit) {
   })
 }
 
-export function getBuild(build_id) {
+export function getBuild(build_id, params) {
   return request({
     url: `pipeline/build/${build_id}`,
     method: 'get',
+    params
   })
 }
 
-export function buildPipeline(data) {
+export function buildPipeline(pipelineId, data) {
   return request({
-    url: `pipeline/build`,
+    url: `pipeline/build/${pipelineId}`,
     method: 'post',
     data: data
   })
 }
 
-export function getJobLog(job_id, with_sse) {
+export function getJobLog(job_id, with_sse, params) {
   return request({
     url: `pipeline/build/log/${job_id}${with_sse? "/sse" : ""}`,
     method: 'get',
+    params
   })
 }
 

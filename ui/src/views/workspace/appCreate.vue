@@ -261,7 +261,7 @@ export default {
         "templates": this.chart.templates,
       }
       let data = {
-        scope: "project_app",
+        scope: "project",
         scope_id: parseInt(this.projectId), 
         name: this.form.name, 
         type: this.form.type,

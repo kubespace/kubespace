@@ -282,7 +282,7 @@ export default {
   methods: {
     fetchApps() {
       this.loading = true
-      listApps({scope_id: this.clusterId, scope: "component"}).then((resp) => {
+      listApps({scope_id: this.clusterId, scope: "cluster"}).then((resp) => {
         let originApps = resp.data ? resp.data : []
         this.$set(this, 'originApps', originApps)
         this.loading = false
@@ -344,7 +344,7 @@ export default {
       }
       this.installFormVisible = true;
       this.fetchVersionLoading = true;
-      listAppVersions({scope: "project_app", scope_id: app.id}).then((resp) => {
+      listAppVersions({scope: "cluster", scope_id: app.id}).then((resp) => {
         this.appVersions = resp.data ? resp.data : []
         this.changeInstallAppVersion(app.app_version_id)
         this.fetchVersionLoading = false
@@ -394,7 +394,7 @@ export default {
       }
       let values = this.form.values
       let data = {
-        project_app_id: this.form.id, 
+        app_id: this.form.id, 
         app_version_id: this.form.app_version_id, 
         values: values,
         upgrade: upgrade ? true : false
@@ -420,7 +420,7 @@ export default {
           type: 'warning'
       }).then(() => {
         this.loading = true
-        destroyApp({project_app_id: id}).then(() => {
+        destroyApp({app_id: id}).then(() => {
           Message.success("销毁应用成功")
           this.fetchApps()
         }).catch((err) => {
@@ -489,7 +489,7 @@ export default {
     },
     handelImportStoreApp() {
       var data = {
-        scope: "component",
+        scope: "cluster",
         scope_id: this.clusterId,
         namespace: this.importStoreAppForm.namespace,
         store_app_id: this.importStoreAppForm.storeAppId,

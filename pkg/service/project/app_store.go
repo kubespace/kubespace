@@ -6,11 +6,8 @@ import (
 	"github.com/kubespace/kubespace/pkg/core/code"
 	"github.com/kubespace/kubespace/pkg/core/errors"
 	"github.com/kubespace/kubespace/pkg/model/types"
-	"github.com/kubespace/kubespace/pkg/server/views/serializers"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"helm.sh/helm/v3/pkg/chart/loader"
-	"io"
-	"io/ioutil"
 	"time"
 )
 
@@ -24,45 +21,45 @@ func NewAppStoreService(appBaseService *AppBaseService) *AppStoreService {
 	}
 }
 
-func (s *AppStoreService) CreateStoreApp(
-	user *types.User,
-	serializer serializers.AppStoreCreateSerializer,
-	chartIn io.Reader,
-	icon io.Reader) (*types.AppStore, *types.AppVersion, error) {
-	app, err := s.models.AppStoreManager.GetByName(serializer.Name)
+type CreateStoreAppForm struct {
+	Name               string `json:"name" form:"name"`
+	PackageVersion     string `json:"package_version" form:"package_version"`
+	AppVersion         string `json:"app_version" form:"app_version"`
+	Description        string `json:"description" form:"description"`
+	VersionDescription string `json:"version_description" form:"version_description"`
+	Type               string `json:"type" form:"type"`
+	ChartBytes         []byte `json:"chart_bytes" form:"chart_bytes"`
+	IconBytes          []byte `json:"icon_bytes" form:"icon_bytes"`
+	User               string `json:"user" form:"user"`
+}
+
+func (s *AppStoreService) CreateStoreApp(form *CreateStoreAppForm) (*types.AppStore, *types.AppVersion, error) {
+	app, err := s.models.AppStoreManager.GetByName(form.Name)
 	if err != nil {
 		return nil, nil, errors.New(code.DBError, err)
 	}
 	if app != nil {
-		sameVersion, err := s.models.AppVersionManager.GetByPackageNameVersion(types.AppVersionScopeStoreApp, app.ID, serializer.Name, serializer.PackageVersion)
+		sameVersion, err := s.models.AppVersionManager.GetByPackageNameVersion(types.ScopeAppStore, app.ID, form.Name, form.PackageVersion)
 		if err != nil {
 			return app, nil, errors.New(code.DBError, err)
 		}
 		if sameVersion != nil {
 			return app, nil, errors.New(code.ParamsError, "该应用已存在相同版本")
 		}
-		app.UpdateUser = user.Name
+		app.UpdateUser = form.User
 	} else {
-		var iconBytes []byte
-		if icon != nil {
-			iconBytes, _ = ioutil.ReadAll(icon)
-		}
 		app = &types.AppStore{
-			Name:        serializer.Name,
-			Description: serializer.Description,
-			Type:        serializer.Type,
-			Icon:        iconBytes,
-			CreateUser:  user.Name,
-			UpdateUser:  user.Name,
+			Name:        form.Name,
+			Description: form.Description,
+			Type:        form.Type,
+			Icon:        form.IconBytes,
+			CreateUser:  form.User,
+			UpdateUser:  form.User,
 			CreateTime:  time.Now(),
 			UpdateTime:  time.Now(),
 		}
 	}
-	chartBytes, err := ioutil.ReadAll(chartIn)
-	if err != nil {
-		return app, nil, errors.New(code.ParamsError, "获取chart文件失败: "+err.Error())
-	}
-	charts, err := loader.LoadArchive(bytes.NewBuffer(chartBytes))
+	charts, err := loader.LoadArchive(bytes.NewBuffer(form.ChartBytes))
 	if err != nil {
 		return app, nil, errors.New(code.ParamsError, "加载chart文件失败: "+err.Error())
 	}
@@ -74,24 +71,24 @@ func (s *AppStoreService) CreateStoreApp(
 		}
 	}
 	appVersion := &types.AppVersion{
-		PackageName:    serializer.Name,
-		PackageVersion: serializer.PackageVersion,
-		AppVersion:     serializer.AppVersion,
-		Description:    serializer.VersionDescription,
+		PackageName:    form.Name,
+		PackageVersion: form.PackageVersion,
+		AppVersion:     form.AppVersion,
+		Description:    form.VersionDescription,
 		From:           types.AppVersionFromImport,
 		Values:         values,
-		CreateUser:     user.Name,
+		CreateUser:     form.User,
 		CreateTime:     time.Now(),
 		UpdateTime:     time.Now(),
 	}
-	app, err = s.models.AppStoreManager.CreateStoreApp(chartBytes, app, appVersion)
+	app, err = s.models.AppStoreManager.CreateStoreApp(form.ChartBytes, app, appVersion)
 	if err != nil {
 		return app, appVersion, errors.New(code.DBError, "创建应用失败:"+err.Error())
 	}
 	return app, appVersion, nil
 }
 
-func (s *AppStoreService) ListStoreApp(ser *serializers.GetStoreAppSerializer) *utils.Response {
+func (s *AppStoreService) ListStoreApp(withVersions bool) *utils.Response {
 	apps, err := s.models.AppStoreManager.ListStoreApps()
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: "获取应用商店列表失败:" + err.Error()}
@@ -122,13 +119,13 @@ func (s *AppStoreService) ListStoreApp(ser *serializers.GetStoreAppSerializer) *
 			a["latest_app_version"] = latestVersion.AppVersion
 			a["from"] = latestVersion.From
 		}
-		if ser.WithVersions {
+		if withVersions {
 			var appVersions []map[string]interface{}
-			versions, err := s.models.AppVersionManager.List(types.AppVersionScopeStoreApp, app.ID)
+			versions, err := s.models.AppVersionManager.List(types.ScopeAppStore, app.ID)
 			if err != nil {
 				return &utils.Response{Code: code.DBError, Msg: err.Error()}
 			}
-			for _, v := range *versions {
+			for _, v := range versions {
 				appVersions = append(appVersions, map[string]interface{}{
 					"id":              v.ID,
 					"package_name":    v.PackageName,
@@ -143,7 +140,7 @@ func (s *AppStoreService) ListStoreApp(ser *serializers.GetStoreAppSerializer) *
 	return &utils.Response{Code: code.Success, Data: data}
 }
 
-func (s *AppStoreService) GetStoreApp(appId uint, ser serializers.GetStoreAppSerializer) *utils.Response {
+func (s *AppStoreService) GetStoreApp(appId uint, withVersions bool) *utils.Response {
 	app, err := s.models.AppStoreManager.GetById(appId)
 	if err != nil {
 		return &utils.Response{Code: code.DBError, Msg: "获取应用失败:" + err.Error()}
@@ -163,8 +160,8 @@ func (s *AppStoreService) GetStoreApp(appId uint, ser serializers.GetStoreAppSer
 		"create_time": app.CreateTime,
 		"update_time": app.UpdateTime,
 	}
-	if ser.WithVersions {
-		versions, err := s.models.AppVersionManager.List(types.AppVersionScopeStoreApp, appId)
+	if withVersions {
+		versions, err := s.models.AppVersionManager.List(types.ScopeAppStore, appId)
 		if err != nil {
 			return &utils.Response{Code: code.DBError, Msg: err.Error()}
 		}
@@ -173,7 +170,7 @@ func (s *AppStoreService) GetStoreApp(appId uint, ser serializers.GetStoreAppSer
 	return &utils.Response{Code: code.Success, Data: data}
 }
 
-func (s *AppStoreService) DeleteVersion(appId, versionId uint, user *types.User) *utils.Response {
+func (s *AppStoreService) DeleteVersion(appId, versionId uint, user string) *utils.Response {
 	if err := s.models.AppStoreManager.DeleteStoreAppVersion(appId, versionId, user); err != nil {
 		return &utils.Response{Code: code.DBError, Msg: "删除应用版本失败：" + err.Error()}
 	}
