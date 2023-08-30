@@ -13,3 +13,11 @@ export function deleteSpacelet(id) {
     method: 'delete',
   })
 }
+
+export function updateSpacelet(id, data) {
+  return request({
+    url: `/spacelet/${id}`,
+    method: 'put',
+    data
+  })
+}

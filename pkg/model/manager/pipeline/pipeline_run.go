@@ -163,6 +163,7 @@ func (p *PipelineRunManager) GetJobRun(jobRunId uint) (*types.PipelineRunJob, er
 type JobRunListCondition struct {
 	WithSpacelet *bool    `json:"with_spacelet"`
 	StatusIn     []string `json:"status_in"`
+	SpaceletIds  []uint   `json:"spacelet_ids"`
 }
 
 func (p *PipelineRunManager) ListJobRun(cond *JobRunListCondition) ([]*types.PipelineRunJob, error) {
@@ -174,6 +175,9 @@ func (p *PipelineRunManager) ListJobRun(cond *JobRunListCondition) ([]*types.Pip
 		} else {
 			tx = tx.Where("spacelet_id = 0 or spacelet_id is null")
 		}
+	}
+	if len(cond.SpaceletIds) > 0 {
+		tx = tx.Where("spacelet_id in ?", cond.SpaceletIds)
 	}
 	if len(cond.StatusIn) > 0 {
 		tx = tx.Where("status in ?", cond.StatusIn)

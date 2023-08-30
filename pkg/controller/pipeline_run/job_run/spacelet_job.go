@@ -1,11 +1,13 @@
 package job_run
 
 import (
-	"errors"
 	"fmt"
+	"github.com/kubespace/kubespace/pkg/core/code"
+	"github.com/kubespace/kubespace/pkg/core/errors"
 	"github.com/kubespace/kubespace/pkg/informer"
 	pipelinelistwatcher "github.com/kubespace/kubespace/pkg/informer/listwatcher/pipeline"
 	"github.com/kubespace/kubespace/pkg/model"
+	"github.com/kubespace/kubespace/pkg/model/manager"
 	"github.com/kubespace/kubespace/pkg/model/manager/pipeline"
 	spaceletmanager "github.com/kubespace/kubespace/pkg/model/manager/spacelet"
 	"github.com/kubespace/kubespace/pkg/model/types"
@@ -13,6 +15,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/service/spacelet"
 	"github.com/kubespace/kubespace/pkg/spacelet/pipeline_job"
 	"k8s.io/klog/v2"
+	"strings"
 	"time"
 )
 
@@ -40,7 +43,7 @@ func (s SpaceletJob) getSpaceletClient(jobId uint) (spacelet.Client, error) {
 	}
 	var sp *types.Spacelet
 	if job.SpaceletId != 0 {
-		oldSp, err := s.models.SpaceletManager.Get(job.SpaceletId);
+		oldSp, err := s.models.SpaceletManager.Get(job.SpaceletId)
 		if err != nil {
 			return nil, err
 		}
@@ -51,7 +54,7 @@ func (s SpaceletJob) getSpaceletClient(jobId uint) (spacelet.Client, error) {
 	}
 	if sp == nil {
 		// 分配一个执行任务数最少的spacelet节点
-		if sp, err = s.chooseSpacelet(); err != nil {
+		if sp, err = s.scheduleSpacelet(job); err != nil {
 			return nil, err
 		}
 		// 更新jobRun spaceletId
@@ -62,14 +65,76 @@ func (s SpaceletJob) getSpaceletClient(jobId uint) (spacelet.Client, error) {
 	return spacelet.NewClient(sp)
 }
 
-// chooseSpacelet 选择一个spacelet执行任务数最少的在线节点
-func (s SpaceletJob) chooseSpacelet() (*types.Spacelet, error) {
+// scheduleSpacelet 根据job配置的spacelet调度策略选择节点
+func (s SpaceletJob) scheduleSpacelet(jobRun *types.PipelineRunJob) (*types.Spacelet, error) {
+	if jobRun.SchedulePolicy != nil && jobRun.SchedulePolicy.Hostname != "" {
+		spaceletObj, err := s.models.SpaceletManager.GetByHostname(jobRun.SchedulePolicy.Hostname, manager.NotFoundReturnNil)
+		if err != nil {
+			return nil, err
+		}
+		if spaceletObj == nil {
+			return nil, errors.New(code.DataNotExists, "not found spacelet node hostname="+jobRun.SchedulePolicy.Hostname)
+		}
+		if spaceletObj.Status == types.SpaceletStatusOffline {
+			return nil, errors.New(code.StatusError, fmt.Sprintf("spacelet node %s is offline", spaceletObj.Hostname))
+		}
+		return spaceletObj, nil
+	}
+	if jobRun.SchedulePolicy != nil && len(jobRun.SchedulePolicy.SpaceletSelector) > 0 {
+		return s.scheduleWithSelector(jobRun.SchedulePolicy.SpaceletSelector)
+	}
+	return s.scheduleAverageLeast(nil)
+}
+
+func (s SpaceletJob) scheduleWithSelector(selector map[string]string) (*types.Spacelet, error) {
 	// 查询所有在线的spacelet节点
 	spacelets, err := s.models.SpaceletManager.List(&spaceletmanager.SpaceletListCondition{
 		Status: types.SpaceletStatusOnline,
 	})
 	if err != nil {
 		return nil, err
+	}
+	var matchSpacelets []*types.Spacelet
+	for i, obj := range spacelets {
+		if s.matchSelector(obj.Labels, selector) {
+			matchSpacelets = append(matchSpacelets, spacelets[i])
+		}
+	}
+	if len(matchSpacelets) == 0 {
+		var selectorStr []string
+		for sk, sv := range selector {
+			selectorStr = append(selectorStr, fmt.Sprintf("%s=%v", sk, sv))
+		}
+		return nil, errors.New(code.DataNotExists, "no spacelet node with selector: "+strings.Join(selectorStr, ","))
+	}
+	return s.scheduleAverageLeast(matchSpacelets)
+}
+
+func (s SpaceletJob) matchSelector(labels, selector map[string]string) bool {
+	for sk, sv := range selector {
+		if _, ok := labels[sk]; !ok {
+			return false
+		}
+		if labels[sk] != sv {
+			return false
+		}
+	}
+	return true
+}
+
+func (s SpaceletJob) scheduleAverageLeast(spacelets []*types.Spacelet) (*types.Spacelet, error) {
+	var err error
+	if len(spacelets) == 0 {
+		// 查询所有在线的spacelet节点
+		spacelets, err = s.models.SpaceletManager.List(&spaceletmanager.SpaceletListCondition{
+			Status: types.SpaceletStatusOnline,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	if len(spacelets) == 0 {
+		return nil, errors.New(code.DataNotExists, "no online spacelet node")
 	}
 	withSpacelet := true
 	// 查询所有spacelet节点正在执行的pipeline job
@@ -91,7 +156,7 @@ func (s SpaceletJob) chooseSpacelet() (*types.Spacelet, error) {
 	}
 	var leastSpacelet *types.Spacelet
 	var leastSpaceletNum = -1
-	// spacelet节点任务数最少的
+	// 节点任务数最少的spacelet
 	for i, sp := range spacelets {
 		num, _ := spaceletJobMaps[sp.ID]
 		if leastSpaceletNum == -1 || num < leastSpaceletNum {
@@ -189,7 +254,7 @@ func (s *spaceletJob) execute() (interface{}, error) {
 			return statusLog.StatusResult.Result.Data, nil
 		}
 		if statusLog.StatusResult.Status == types.PipelineStatusError {
-			return nil, errors.New(statusLog.StatusResult.Result.Msg)
+			return nil, errors.New(statusLog.StatusResult.Result.Code, statusLog.StatusResult.Result.Msg)
 		}
 	}
 }

@@ -95,11 +95,12 @@ func (r *PipelineRunService) Build(pipelineId uint, buildConfig *types.PipelineB
 		var stageRunJobs types.PipelineRunJobs
 		for _, stageJob := range stage.Jobs {
 			stageRunJob := &types.PipelineRunJob{
-				Name:      stageJob.Name,
-				PluginKey: stageJob.PluginKey,
-				Status:    types.PipelineStatusWait,
-				Params:    stageJob.Params,
-				Env:       map[string]interface{}{},
+				Name:           stageJob.Name,
+				PluginKey:      stageJob.PluginKey,
+				Status:         types.PipelineStatusWait,
+				Params:         stageJob.Params,
+				Env:            map[string]interface{}{},
+				SchedulePolicy: stageJob.SchedulePolicy,
 			}
 			stageRunJobs = append(stageRunJobs, stageRunJob)
 		}

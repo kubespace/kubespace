@@ -8,20 +8,15 @@ import (
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/server/api/api"
 	"github.com/kubespace/kubespace/pkg/server/config"
-	spaceletservice "github.com/kubespace/kubespace/pkg/service/spacelet"
 	"github.com/kubespace/kubespace/pkg/utils"
 )
 
 type deleteHandler struct {
-	models          *model.Models
-	spaceletService *spaceletservice.SpaceletService
+	models *model.Models
 }
 
 func DeleteHandler(conf *config.ServerConfig) api.Handler {
-	return &deleteHandler{
-		models:          conf.Models,
-		spaceletService: conf.ServiceFactory.Pipeline.SpaceletService,
-	}
+	return &deleteHandler{models: conf.Models}
 }
 
 func (h *deleteHandler) Auth(c *api.Context) (bool, *api.AuthPerm, error) {

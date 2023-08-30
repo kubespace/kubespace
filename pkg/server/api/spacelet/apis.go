@@ -17,6 +17,7 @@ func ApiGroup(conf *config.ServerConfig) api.ApiGroup {
 func (a *apiGroup) Apis() []*api.Api {
 	apis := []*api.Api{
 		api.NewApi(http.MethodGet, "", ListHandler(a.config)),
+		api.NewApi(http.MethodPut, "/:id", UpdateHandler(a.config)),
 		api.NewApi(http.MethodDelete, "/:id", DeleteHandler(a.config)),
 		api.NewApi(http.MethodGet, "/install.sh", InstallHandler(a.config)),
 

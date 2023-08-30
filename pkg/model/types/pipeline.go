@@ -331,6 +331,24 @@ type PipelineJob struct {
 	Name      string                 `json:"name"`
 	PluginKey string                 `json:"plugin_key"`
 	Params    map[string]interface{} `json:"params"`
+	// spacelet调度策略
+	SchedulePolicy *PipelineJobSchedulePolicy `json:"schedule_policy,omitempty"`
+}
+
+type PipelineJobSchedulePolicy struct {
+	// 指定spacelet主机名
+	Hostname string `json:"hostname,omitempty"`
+	// 指定spacelet标签
+	SpaceletSelector map[string]string `json:"spacelet_selector,omitempty"`
+}
+
+func (pj *PipelineJobSchedulePolicy) Scan(value interface{}) error {
+	return db.Scan(value, pj)
+}
+
+// Value return json value, implement driver.Valuer interface
+func (pj PipelineJobSchedulePolicy) Value() (driver.Value, error) {
+	return db.Value(pj)
 }
 
 const (
@@ -467,18 +485,19 @@ type PipelineRunStage struct {
 type PipelineRunJobs []*PipelineRunJob
 
 type PipelineRunJob struct {
-	ID            uint            `gorm:"primaryKey" json:"id"`
-	PipelineRunId uint            `gorm:"not null" json:"pipeline_run_id"`
-	StageRunId    uint            `gorm:"not null" json:"stage_run_id"`
-	Name          string          `gorm:"size:50;not null" json:"name"`
-	PluginKey     string          `gorm:"size:255;not null" json:"plugin_key"`
-	Status        string          `gorm:"size:50;not null" json:"status"`
-	Env           Map             `gorm:"type:json;comment:任务执行完成后的变量参数值" json:"env"`
-	Params        Map             `gorm:"type:json;not null;comment:任务执行时参数" json:"params"`
-	Result        *utils.Response `gorm:"type:json;comment:任务执行结果" json:"result"`
-	SpaceletId    uint            `gorm:"comment:任务执行时的spacelet代理节点" json:"spacelet_id"`
-	CreateTime    time.Time       `gorm:"not null;autoCreateTime" json:"create_time"`
-	UpdateTime    time.Time       `gorm:"not null;autoUpdateTime" json:"update_time"`
+	ID             uint                       `gorm:"primaryKey" json:"id"`
+	PipelineRunId  uint                       `gorm:"not null" json:"pipeline_run_id"`
+	StageRunId     uint                       `gorm:"not null" json:"stage_run_id"`
+	Name           string                     `gorm:"size:50;not null" json:"name"`
+	PluginKey      string                     `gorm:"size:255;not null" json:"plugin_key"`
+	Status         string                     `gorm:"size:50;not null" json:"status"`
+	Env            Map                        `gorm:"type:json;comment:任务执行完成后的变量参数值" json:"env"`
+	Params         Map                        `gorm:"type:json;not null;comment:任务执行时参数" json:"params"`
+	Result         *utils.Response            `gorm:"type:json;comment:任务执行结果" json:"result"`
+	SpaceletId     uint                       `gorm:"comment:任务执行时的spacelet代理节点" json:"spacelet_id"`
+	SchedulePolicy *PipelineJobSchedulePolicy `gorm:"type:json;comment:任务执行时调度到spacelet策略" json:"schedule_policy"`
+	CreateTime     time.Time                  `gorm:"not null;autoCreateTime" json:"create_time"`
+	UpdateTime     time.Time                  `gorm:"not null;autoUpdateTime" json:"update_time"`
 }
 
 func (p *PipelineRunJob) Unmarshal(bytes []byte) (interface{}, error) {

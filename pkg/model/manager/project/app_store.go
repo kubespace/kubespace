@@ -6,7 +6,6 @@ import (
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"gorm.io/gorm"
 	"helm.sh/helm/v3/pkg/chart/loader"
-	"io/ioutil"
 	"k8s.io/klog/v2"
 	"os"
 	"path/filepath"
@@ -82,16 +81,11 @@ func (a *AppStoreManager) DeleteStoreAppVersion(appId, versionId uint, user stri
 }
 
 func (a *AppStoreManager) ListStoreApps() ([]*types.AppStore, error) {
-	var apps []types.AppStore
-	var err error
-	if err = a.DB.Find(&apps).Error; err != nil {
+	var apps []*types.AppStore
+	if err := a.DB.Find(&apps).Error; err != nil {
 		return nil, err
 	}
-	var rets []*types.AppStore
-	for i, _ := range apps {
-		rets = append(rets, &apps[i])
-	}
-	return rets, nil
+	return apps, nil
 }
 
 func (a *AppStoreManager) ImportApp(storeApp *types.AppStore, appVersion *types.AppVersion) error {
@@ -129,12 +123,12 @@ func (a *AppStoreManager) Init() {
 	pwd, _ := os.Getwd()
 	//获取文件或目录相关信息
 	appDir := filepath.Join(pwd, "apps")
-	fileInfoList, err := ioutil.ReadDir(appDir)
+	fileInfoList, err := os.ReadDir(appDir)
 	if err != nil {
 		klog.Errorf("read dir error: %v", err)
 	}
 	for i := range fileInfoList {
-		klog.Infof("start load %s", fileInfoList[i].Name())
+		klog.V(1).Infof("start load %s", fileInfoList[i].Name())
 		a.loadApp(filepath.Join(appDir, fileInfoList[i].Name()))
 	}
 }
@@ -146,7 +140,7 @@ type AppFileMetadata struct {
 }
 
 func (a *AppStoreManager) loadApp(appPath string) {
-	metadataBytes, err := ioutil.ReadFile(filepath.Join(appPath, "metadata"))
+	metadataBytes, err := os.ReadFile(filepath.Join(appPath, "metadata"))
 	if err != nil {
 		klog.Errorf("read app metadata %s error: %s", appPath, err)
 		return
@@ -169,7 +163,7 @@ func (a *AppStoreManager) loadApp(appPath string) {
 		klog.Errorf("app %s type is empty", appPath)
 		return
 	}
-	icon, err := ioutil.ReadFile(filepath.Join(appPath, "icon.png"))
+	icon, err := os.ReadFile(filepath.Join(appPath, "icon.png"))
 
 	var app types.AppStore
 	if err = a.DB.First(&app, "name=?", metadata.Name).Error; err != nil {
@@ -214,7 +208,7 @@ func (a *AppStoreManager) loadApp(appPath string) {
 				}
 			}
 			if existsVersion.ID != 0 {
-				klog.Infof("store app already exists name=%s, version=%s", charts.Name(), charts.Metadata.Version)
+				klog.V(1).Infof("store app already exists name=%s, version=%s", charts.Name(), charts.Metadata.Version)
 				continue
 			}
 		}
@@ -229,7 +223,7 @@ func (a *AppStoreManager) loadApp(appPath string) {
 			CreateTime:     time.Now(),
 			UpdateTime:     time.Now(),
 		}
-		chartByte, _ := ioutil.ReadFile(versionPath)
+		chartByte, _ := os.ReadFile(versionPath)
 		_, err = a.CreateStoreApp(chartByte, &app, newAppVersion)
 		if err != nil {
 			klog.Errorf("create app %s-%s error: %s", app.Name, newAppVersion.PackageVersion, err)

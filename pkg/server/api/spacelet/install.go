@@ -8,7 +8,6 @@ import (
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/server/api/api"
 	"github.com/kubespace/kubespace/pkg/server/config"
-	spaceletservice "github.com/kubespace/kubespace/pkg/service/spacelet"
 	"github.com/kubespace/kubespace/pkg/utils"
 	"io"
 	"text/template"
@@ -18,15 +17,11 @@ import (
 var installAgentShellTpl string
 
 type installHandler struct {
-	models          *model.Models
-	spaceletService *spaceletservice.SpaceletService
+	models *model.Models
 }
 
 func InstallHandler(conf *config.ServerConfig) api.Handler {
-	return &installHandler{
-		models:          conf.Models,
-		spaceletService: conf.ServiceFactory.Pipeline.SpaceletService,
-	}
+	return &installHandler{models: conf.Models}
 }
 
 type InstallSpaceletForm struct {

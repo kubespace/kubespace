@@ -7,20 +7,15 @@ import (
 	"github.com/kubespace/kubespace/pkg/server/api/api"
 	"github.com/kubespace/kubespace/pkg/server/config"
 	"github.com/kubespace/kubespace/pkg/service/pipeline/schemas"
-	spaceletservice "github.com/kubespace/kubespace/pkg/service/spacelet"
 	"github.com/kubespace/kubespace/pkg/utils"
 )
 
 type addReleaseHandler struct {
-	models          *model.Models
-	spaceletService *spaceletservice.SpaceletService
+	models *model.Models
 }
 
 func AddReleaseHandler(conf *config.ServerConfig) api.Handler {
-	return &addReleaseHandler{
-		models:          conf.Models,
-		spaceletService: conf.ServiceFactory.Pipeline.SpaceletService,
-	}
+	return &addReleaseHandler{models: conf.Models}
 }
 
 func (h *addReleaseHandler) Auth(c *api.Context) (bool, *api.AuthPerm, error) {
