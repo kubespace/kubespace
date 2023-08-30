@@ -430,6 +430,7 @@ export default {
         this.loading = false
         let res = response.data || []
         if(lastBuildNumber == 0) {
+          console.log('list builds: ', Date.now())
           this.$set(this, 'builds', res)
         } else {
           for(let r of res) this.builds.push(r)
@@ -501,9 +502,10 @@ export default {
 
         let data = JSON.parse(res)
         if(!data.pipeline_run) return
-
+        console.log("sse pipeline id: ", data.pipeline_run.id)
         for(let i in this.builds){
           let build = this.builds[i]
+          console.log("build id: ", build.pipeline_run.id)
           if(build.pipeline_run.id != data.pipeline_run.id) continue
 
           if (build.clickDetail) {
@@ -518,6 +520,7 @@ export default {
             }
             data.clickDetail = clickDetail
           }
+          console.log(data)
           this.$set(this.builds, i, data)
           this.processExecTime()
           break
@@ -628,8 +631,8 @@ export default {
       this.dialogLoading = true
       buildPipeline(this.pipelineId, params).then((response) => {
         this.$message({message: '构建成功', type: 'success'});
-        this.dialogLoading = false
         this.fetchBuilds(0)
+        this.dialogLoading = false
         this.dialogVisible = false
       }).catch( (err) => {
         this.dialogLoading = false

@@ -127,7 +127,7 @@
     </div>
 
     <el-drawer :title="dialogTitleMap[dialogType]" :visible.sync="dialogVisible" :destroy-on-close="true" :wrapperClosable="false"
-      @close="dialogType=''; dialogData={}" top="3vh" size="60%" :close-on-click-modal="false" style="scroll-behavior: auto;">
+      @close="closeDialog()" top="3vh" size="60%" :close-on-click-modal="false" style="scroll-behavior: auto;">
       <div slot="title">
         <span>{{ dialogTitleMap[dialogType] }}</span>
         <div style="display: inline; ">
@@ -158,6 +158,54 @@
             </el-form-item>
             <div v-if="jobPluginMap[dialogData.plugin_key]" style="background-color: #F2F6FC; padding: 15px;">
               <component v-if="jobPluginMap[dialogData.plugin_key]" v-bind:is="jobPluginMap[dialogData.plugin_key].component" :params="dialogData.params"></component>
+              <div class="job-advanced" v-if="hasAdvancedPlugins(dialogData.plugin_key)">
+                <el-divider>
+                  <div class="job-advanced-text" @click="turnJobAdvanced">
+                    <i :class="jobAdvancedVisible ? 'el-icon-caret-bottom' : 'el-icon-caret-right'" style="margin-right: 5px;"></i>高级设置
+                  </div>
+                </el-divider>
+                <div v-if="jobAdvancedVisible">
+                  <el-form-item label="指定Spacelet节点" prop="" label-width="145px">
+                    <div slot="label">
+                      指定Spacelet节点
+                      <el-popover placement="top-start" title="" width="500" trigger="hover">
+                        <div style="line-height: 24px;">
+                            任务执行时调度到该Spacelet节点
+                        </div>
+                        <i slot="reference" class="el-icon-question"></i>
+                      </el-popover>
+                    </div>
+                    <el-select v-model="dialogData.schedule_policy.hostname" placeholder="请选择要指定的Spacelet节点" size="small" style="width: 330px">
+                      <el-option :key="-1" label="不选择" value=""></el-option>
+                      <el-option
+                        v-for="res in spacelets"
+                        :key="res.hostname"
+                        :label="res.hostname"
+                        :value="res.hostname">
+                      </el-option>
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item label="Spacelet标签选择" prop="" label-width="145px">
+                    <div slot="label">
+                      Spacelet标签选择
+                      <el-popover placement="top-start" title="" width="500" trigger="hover">
+                        <div style="line-height: 24px;">
+                            任务执行时调度到匹配标签的Spacelet节点
+                        </div>
+                        <i slot="reference" class="el-icon-question"></i>
+                      </el-popover>
+                    </div>
+                    <div style="margin-bottom: 5px;" v-for="(l, i) in dialogData.schedule_policy.spacelet_selector" :key="i">
+                      <el-input size="small" v-model="l.key" style="width: 25%;" placeholder="Key"></el-input> = 
+                      <el-input size="small" v-model="l.value" style="width: 25%;" placeholder="Value"></el-input>
+                      <el-button size="mini" circle style="padding: 5px; margin-left: 10px;" @click="dialogData.schedule_policy.spacelet_selector.splice(i, 1)" 
+                        icon="el-icon-close"></el-button>
+                    </div>
+                    <el-button plain size="small" @click="dialogData.schedule_policy.spacelet_selector.push({key: '', value: ''})" icon="el-icon-plus"
+                      style="border-radius: 0px;">添加</el-button>
+                  </el-form-item>
+                </div>
+              </div>
             </div>
           </el-form>
         </template>
@@ -346,6 +394,7 @@ import { PipelineStage, CodeToImage, ExecuteShell, AppDeploy, Release, DeployK8s
 import { getPipeline, updatePipeline, createPipeline } from '@/api/pipeline/pipeline'
 import { listWorkspaces } from '@/api/pipeline/workspace'
 import { getWorkspace } from '@/api/pipeline/workspace'
+import { listSpacelet } from "@/api/spacelet/spacelet";
 import { Message } from 'element-ui'
 
 export default {
@@ -408,6 +457,10 @@ export default {
       },
       workspaces: [],
       workspacesDict: null,
+
+      jobAdvancedVisible: false,
+      spacelets: [],
+      spaceletsLoaded: false,
     }
   },
   created() {
@@ -459,6 +512,9 @@ export default {
     },
   },
   methods: {
+    hasAdvancedPlugins(pluginKey) {
+      return ['build_code_to_image', 'release', 'execute_shell'].indexOf(pluginKey) >= 0
+    },
     fetchWorkspace() {
       this.loading = true
       getWorkspace(this.workspaceId).then((response) => {
@@ -599,6 +655,24 @@ export default {
             Message.error(checkRes.errorMsg)
             return
           }
+          if(this.dialogData.schedule_policy) {
+            let schedulePolicy = this.dialogData.schedule_policy
+            if(schedulePolicy.spacelet_selector) {
+              let selector = {}
+              for(let s of schedulePolicy.spacelet_selector) {
+                if(!s.key) {
+                  Message.error("Spacelet标签选择键不能为空")
+                  return
+                }
+                if(s.key in selector) {
+                  Message.error(`Spacelet标签选择键「${s.key}」重复`)
+                  return
+                }
+                selector[s.key] = s.value
+              }
+              schedulePolicy.spacelet_selector = selector
+            }
+          }
           if(this.dialogType == 'edit_job') {
             let idx = this.dialogOriginData.idx
             this.dialogOriginData.stage.jobs[idx] = this.dialogData
@@ -668,16 +742,6 @@ export default {
         this.editPipeline.stages.splice(this.dialogOriginData.idx, 1)
       } else if (this.dialogType == 'edit_job') {
         this.dialogOriginData.stage.jobs.splice(this.dialogOriginData.idx, 1)
-        // if(this.dialogOriginData.stage.jobs.length == 1) {
-        //   let newJob = {
-        //     name: "未命名",
-        //     plugin_key: "",
-        //     params: {},
-        //   }
-        //   this.dialogOriginData.stage.jobs[0] = newJob
-        // } else {
-          
-        // }
       }
       this.dialogVisible = false
     },
@@ -706,6 +770,20 @@ export default {
         idx: idx,
       }
       this.dialogData = JSON.parse(JSON.stringify(stage.jobs[idx]))
+      // console.log(this.dialogData)
+      let schedulePolicy = this.dialogData.schedule_policy
+      if (!schedulePolicy) {
+        this.$set(this.dialogData, 'schedule_policy', {hostname: '', spacelet_selector: []})
+      } else if(!schedulePolicy.spacelet_selector){
+        this.$set(schedulePolicy, 'spacelet_selector', [])
+      } else if(schedulePolicy.spacelet_selector) {
+        let selectors = []
+        for(let sk in schedulePolicy.spacelet_selector) {
+          selectors.push({key: sk, value: schedulePolicy.spacelet_selector[sk]})
+        }
+        this.$set(schedulePolicy, 'spacelet_selector', selectors)
+      }
+      // console.log(this.dialogData)
     },
     openAddStageDialog(idx) {
       this.dialogType = 'add_stage'
@@ -723,6 +801,7 @@ export default {
         name: "未命名",
         plugin_key: "",
         params: {},
+        schedule_policy: {hostname: '', spacelet_selector: []},
       }
     },
     checkJobError(job) {
@@ -843,6 +922,24 @@ export default {
       }
       return false
     },
+    turnJobAdvanced() {
+      this.jobAdvancedVisible = !this.jobAdvancedVisible
+      if(!this.jobAdvancedVisible) return
+      if(!this.spaceletsLoaded) {
+        listSpacelet().then((resp) => {
+          this.spacelets = resp.data ? resp.data : []
+          this.spaceletsLoaded = true
+        }).catch((err) => {
+          console.log(err)
+        })
+      }
+    },
+    closeDialog() {
+      this.dialogType=''
+      this.dialogData={}
+      this.jobAdvancedVisible=false
+      // this.dialogVisible = false
+    }
   }
 }
 </script>
@@ -1053,6 +1150,15 @@ export default {
   input {
     border-radius: 0px;
   } 
+}
+
+.job-advanced {
+  .el-divider__text {
+    background-color: #F2F6FC;
+  }
+  .job-advanced-text:hover {
+    cursor: pointer;
+  }
 }
 
 </style>
