@@ -177,7 +177,7 @@
                     </div>
                     <el-select v-model="dialogData.schedule_policy.hostname" placeholder="请选择要指定的Spacelet节点" size="small" style="width: 330px">
                       <el-option :key="-1" label="不选择" value=""></el-option>
-                      <el-option
+                      <el-option :disabled="res.status!='online'"
                         v-for="res in spacelets"
                         :key="res.hostname"
                         :label="res.hostname"
