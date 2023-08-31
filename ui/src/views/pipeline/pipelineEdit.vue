@@ -8,7 +8,9 @@
     </clusterbar>
     <div v-loading="loading" class="dashboard-container">
       <div style="padding: 10px 0px 0px;">
-        <div>基本信息</div>
+        <div>
+          基本信息
+        </div>
         <el-form label-position="left" class="pipeline-form-item" label-width="80px">
           <el-form-item label="名称">
             <el-input v-model="editPipeline.name" autocomplete="off" placeholder="请输入流水线名称" size="small"></el-input>

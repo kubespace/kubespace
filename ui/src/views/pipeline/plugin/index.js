@@ -92,9 +92,9 @@ function checkExecShell(job) {
   if(!job.params) {
     return {checked: false, errorMsg: "参数错误"}
   }
-  if(!job.params.resource) {
-    return {checked: false, errorMsg: "执行脚本目标资源不能为空"}
-  }
+  // if(!job.params.resource) {
+  //   return {checked: false, errorMsg: "执行脚本目标资源不能为空"}
+  // }
   if(!job.params.script) {
     return {checked: false, errorMsg: "执行脚本不能为空"}
   }

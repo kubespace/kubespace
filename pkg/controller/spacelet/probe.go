@@ -28,8 +28,8 @@ func (s *SpaceletController) probeCheck(obj interface{}) bool {
 func (s *SpaceletController) probe(obj interface{}) error {
 	spaceletObj := obj.(types.Spacelet)
 	status := s.status(&spaceletObj)
-	klog.Infof("spacelet host=%s ip=%s stauts=%s", spaceletObj.Hostname, spaceletObj.HostIp, status)
 	if spaceletObj.Status != status {
+		klog.Infof("spacelet host=%s ip=%s stauts=%s", spaceletObj.Hostname, spaceletObj.HostIp, status)
 		return s.models.SpaceletManager.Update(spaceletObj.ID, &types.Spacelet{
 			Status:     status,
 			UpdateTime: time.Now(),

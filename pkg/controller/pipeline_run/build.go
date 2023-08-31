@@ -269,6 +269,9 @@ func (p *PipelineRunController) getJobExecParam(
 		if !ok {
 			return nil, nil
 		}
+		if resourceParam == "" {
+			return nil, nil
+		}
 		resourceId, err := strconv.ParseUint(fmt.Sprintf("%v", resourceParam), 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("获取流水线资源参数错误：%s", err.Error())

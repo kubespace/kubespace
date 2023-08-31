@@ -44,6 +44,7 @@ type execShellExecutor struct {
 	ctx        context.Context
 	canceled   bool
 	sshSession *ssh.Session
+	cmd        *exec.Cmd
 }
 
 func newExecShellExecutor(params *ExecutorParams) (*execShellExecutor, error) {
@@ -65,17 +66,19 @@ func newExecShellExecutor(params *ExecutorParams) (*execShellExecutor, error) {
 }
 
 func (b *execShellExecutor) Execute() (interface{}, error) {
-	if b.Params.Resource.Value == "" {
+	if b.Params.Resource.Type != "" && b.Params.Resource.Value == "" {
 		return nil, fmt.Errorf("执行脚本目标资源参数为空，请检查流水线配置")
 	}
+	var err error
 	if b.Params.Resource.Type == ResourceTypeImage {
-		if err := b.execImage(); err != nil {
-			return nil, err
-		}
+		err = b.execImage()
 	} else if b.Params.Resource.Type == ResourceTypeHost {
-		if err := b.execSsh(); err != nil {
-			return nil, err
-		}
+		err = b.execSsh()
+	} else {
+		err = b.execCmd()
+	}
+	if err != nil {
+		return nil, err
 	}
 	return b.Result, nil
 }
@@ -86,6 +89,35 @@ func (b *execShellExecutor) Cancel() error {
 	if b.sshSession != nil {
 		b.sshSession.Close()
 	}
+	if b.cmd != nil {
+		b.cmd.Cancel()
+	}
+	return nil
+}
+
+func (b *execShellExecutor) execCmd() error {
+	shell := b.Params.Shell
+	if shell == "" {
+		shell = "sh"
+	}
+
+	cmd := exec.CommandContext(b.ctx, shell, "-xc", b.Params.Script)
+	stdin := bytes.NewBuffer(nil)
+	cmd.Stdin = stdin
+	cmd.Stdout = b.Logger
+	cmd.Stderr = b.Logger
+	cmd.Dir = b.rootDir
+	var envs []string
+	for name, val := range b.Params.Env {
+		envs = append(envs, fmt.Sprintf("%s=%v", name, val))
+	}
+	cmd.Env = envs
+	b.cmd = cmd
+	if err := cmd.Run(); err != nil {
+		b.Log(err.Error())
+		return fmt.Errorf("execute error: %v", err)
+	}
+
 	return nil
 }
 
@@ -93,7 +125,7 @@ func (b *execShellExecutor) execImage() error {
 	image := b.Params.Resource.Value
 	shell := b.Params.Shell
 	if shell == "" {
-		shell = "bash"
+		shell = "sh"
 	}
 
 	// 脚本写入文件

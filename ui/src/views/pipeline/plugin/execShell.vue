@@ -4,7 +4,9 @@
       <el-form-item label="目标资源" prop="" :required="true">
         <!-- <el-input style="width: 250px;" v-model="params.resource" autocomplete="off" size="small"
           placeholder=""></el-input> -->
-        <el-select v-model="params.resource" placeholder="请选择要执行的目标资源" size="small" style="width: 320px">
+        <el-select v-model="params.resource" placeholder="请选择要执行的目标资源" size="small" style="width: 320px" 
+          >
+          <el-option :key="0" label="Spacelet节点" value=""></el-option>
           <el-option
             v-for="res in resources"
             :key="res.id"
@@ -34,7 +36,8 @@ export default {
   data() {
     return {
       loading: false,
-      resources: []
+      resources: [],
+      resource: this.params.resource ? this.params.resource : 0,
     }
   },
   props: ['params'],
@@ -59,6 +62,12 @@ export default {
         this.loading = false
       })
     },
+    // resourceSelectChanged(res) {
+    //   console.log(res)
+    //   if(res == 0) {
+    //     this.pa
+    //   }
+    // },
   }
 }
 </script>
