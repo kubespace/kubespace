@@ -2,7 +2,6 @@ package apps
 
 import (
 	"fmt"
-	"github.com/gin-gonic/gin/binding"
 	"github.com/kubespace/kubespace/pkg/core/code"
 	"github.com/kubespace/kubespace/pkg/core/errors"
 	"github.com/kubespace/kubespace/pkg/model"
@@ -11,7 +10,7 @@ import (
 	"github.com/kubespace/kubespace/pkg/server/config"
 	projectservice "github.com/kubespace/kubespace/pkg/service/project"
 	"github.com/kubespace/kubespace/pkg/utils"
-	"io/ioutil"
+	"io"
 )
 
 type importCustomAppHandler struct {
@@ -28,9 +27,10 @@ func ImportCustomAppHandler(conf *config.ServerConfig) api.Handler {
 
 func (h *importCustomAppHandler) Auth(c *api.Context) (bool, *api.AuthPerm, error) {
 	var form projectservice.ImportCustomAppForm
-	if err := c.ShouldBindBodyWith(&form, binding.JSON); err != nil {
+	if err := c.ShouldBind(&form); err != nil {
 		return true, nil, errors.New(code.ParamsError, err)
 	}
+	c.Set("form", &form)
 	return true, &api.AuthPerm{
 		Scope:   form.Scope,
 		ScopeId: form.ScopeId,
@@ -39,10 +39,8 @@ func (h *importCustomAppHandler) Auth(c *api.Context) (bool, *api.AuthPerm, erro
 }
 
 func (h *importCustomAppHandler) Handle(c *api.Context) *utils.Response {
-	var form projectservice.ImportCustomAppForm
-	if err := c.ShouldBindBodyWith(&form, binding.JSON); err != nil {
-		return c.ResponseError(errors.New(code.ParamsError, err))
-	}
+	formObj, _ := c.Get("form")
+	form := formObj.(*projectservice.ImportCustomAppForm)
 	form.User = c.User.Name
 
 	file, err := c.FormFile("file")
@@ -53,11 +51,11 @@ func (h *importCustomAppHandler) Handle(c *api.Context) *utils.Response {
 	if err != nil {
 		return c.ResponseError(errors.New(code.ParamsError, "get chart file error: "+err.Error()))
 	}
-	form.ChartBytes, err = ioutil.ReadAll(chartIn)
+	form.ChartBytes, err = io.ReadAll(chartIn)
 	if err != nil {
 		return c.ResponseError(errors.New(code.GetError, "获取chart文件失败: "+err.Error()))
 	}
-	app, _, err := h.appService.ImportCustomApp(&form)
+	app, _, err := h.appService.ImportCustomApp(form)
 	resp := c.ResponseError(err)
 	if app == nil {
 		return resp

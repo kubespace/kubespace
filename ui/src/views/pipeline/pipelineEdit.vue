@@ -68,11 +68,6 @@
           </div>
           <div v-for="(stage, i) in editPipeline.stages" :key="i" style="">
             <div class="stage-job-line" style="margin-top: 38px;">
-              <!-- <div class="stage-job-block">
-                <div class="stage-job-block__stage" @click="openEditStageDialog(stage, i); dialogVisible=true;">
-                  <span>#{{ i + 1 }} {{ stage.name }}</span>
-                </div>
-              </div> -->
               <div style="display: inline-flex;">
                 <div>
                   <div class="stage-job-line__inner" style="width: 30px;" ></div>
@@ -81,9 +76,6 @@
                       <span>#{{ i + 1 }} {{ stage.name }}</span>
                     </div>
                   </div>
-                  <!-- <a :class="checkJobError(stage.jobs[0]) ? 'stage-job-line__circle' : 'stage-job-line__circle-error'" @click="openEditJobDialog(stage, 0); dialogVisible=true;">
-                    {{ checkJobError(stage.jobs[0]) ? '' : '!' }}
-                  </a> -->
                   <div class="stage-job-line__inner" style="width: 30px;"></div>
                   <div class="stage-job-line__add" @click="openAddStageDialog(i+1); dialogVisible=true;">
                     <el-tooltip class="item" effect="light" content="添加阶段" placement="top" :hide-after="2000">
@@ -92,25 +84,15 @@
                   </div>
                 </div>
               </div>
-              <!-- <div class="stage-job-block">
-                <div class="stage-job-block__job-name">{{ stage.jobs[0].name }}</div>
-              </div> -->
               <div class="stage-job-block" style="margin-left: 25px; ">
                 <template  v-if="stage.jobs" >
                   <div v-for="(job, ji) in stage.jobs" :key="ji">
-                    <!-- <template v-if="ji >0"> -->
                       <div class="stage-job-block__job">
                         <div class="stage-job-block__job-circle">
                             <span class="stage-job-block__job-add__inner-name stage-job-block__job-add__inner-name-hover" 
                               @click="openEditJobDialog(stage, ji); dialogVisible=true;">{{ job.name }}</span>
-                           <!-- <div :class="checkJobError(job) ? 'stage-job-line__circle' : 'stage-job-line__circle-error'" 
-                            @click="openEditJobDialog(stage, ji); dialogVisible=true;">
-                            <span style="margin-top: -5px;">{{ checkJobError(job) ? '' : '!' }}</span>
-                          </div> -->
                         </div>
                       </div>
-                      <!-- <div class="stage-job-block__job-name" style="margin-top: 18px;">{{ job.name }}</div> -->
-                    <!-- </template> -->
                   </div>
                 </template>
 
@@ -229,7 +211,6 @@
                       分支
                     </div>
                   </el-col>
-                  <!-- <el-col :span="5"><div style="width: 100px;"></div></el-col> -->
                 </el-row>
                 <el-row style="padding-bottom: 5px;" v-for="(d, i) in dialogData.sources" :key="i">
                   <el-col :span="7">
