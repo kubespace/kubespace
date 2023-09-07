@@ -183,8 +183,8 @@ func ParseImageName(img string, withDefault bool) (string, string, string) {
 		tag = splitImg[len(splitImg)-1]
 	}
 	if strings.Contains(strings.Split(name, "/")[0], ".") {
-		name = strings.Join(strings.Split(name, "/")[1:], "/")
 		registry = strings.Split(name, "/")[0]
+		name = strings.Join(strings.Split(name, "/")[1:], "/")
 	}
 	return registry, name, tag
 }
