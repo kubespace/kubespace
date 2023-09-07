@@ -118,7 +118,7 @@ func (b *execShellExecutor) execCmd() error {
 		return fmt.Errorf("execute error: %v", err)
 	}
 
-	return nil
+	return b.getOutput()
 }
 
 func (b *execShellExecutor) execImage() error {
@@ -155,7 +155,10 @@ func (b *execShellExecutor) execImage() error {
 		b.Log(err.Error())
 		return fmt.Errorf("execute error: %v", err)
 	}
+	return b.getOutput()
+}
 
+func (b *execShellExecutor) getOutput() error {
 	// 读取脚本输出内容
 	outputBytes, err := os.ReadFile(path.Join(b.rootDir, "output"))
 	if err != nil {

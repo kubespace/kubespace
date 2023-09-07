@@ -385,7 +385,7 @@ func (r *Resource) Apply(params interface{}) *utils.Response {
 	if applyErr {
 		return &utils.Response{Code: code.RequestError, Msg: strings.Join(res, "\n"), Data: applyResources}
 	}
-	return &utils.Response{Code: code.Success, Msg: strings.Join(res, "\n"), Data: applyResources}
+	return &utils.Response{Code: code.Success, Data: applyResources}
 }
 
 func (r *Resource) buildDynamicResourceClient(data []byte) (obj *unstructured.Unstructured, dr dynamic.ResourceInterface, err error) {

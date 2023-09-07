@@ -4,7 +4,6 @@ const (
 	Success = "Success"
 
 	UnknownError   = "UnknownError"
-	RuntimeError   = "RuntimeError"
 	OsError        = "OsError"
 	RedisError     = "RedisError"
 	DBError        = "DBError"

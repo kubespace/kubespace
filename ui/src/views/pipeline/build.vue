@@ -13,7 +13,7 @@
               <div class="build-info__left-number">
                 <div class="build-info__left-number-inner" 
                   :style="{color: getBuildStatusColor(build.pipeline_run.status), 
-                    'line-height': pipeline.workspace.type == 'code' ? '22px' : '45px'}">
+                    'line-height': pipeline.workspace && pipeline.workspace.type == 'code' ? '22px' : '45px'}">
                   <status-icon :status="build.pipeline_run.status"></status-icon>
                   <span class="build-info__left__number" @click="clickBuildNumber(build)"> #{{ build.pipeline_run.build_number }}</span>
                   <!-- #{{ build.pipeline_run.build_number }} -->
@@ -35,42 +35,28 @@
               <el-steps simple class="el-steps">
                 <el-step title="" icon="none" :status="getStageStatus(stage.status)" v-for="stage in build.stages_run" :key="stage.id">
                   <div slot="title" class="el-steps-title">
-                    <div><span class="el-steps-title-name" style="margin-left: 1px; overflow: hidden; white-space: nowrap;"  @click="clickBuildDetail(build, 'stage', stage)">{{ stage.name }}{{ releaseVersion(stage) }}</span> </div>
+                    <div>
+                      <span class="el-steps-title-name" style="margin-left: 1px; overflow: hidden; white-space: nowrap;"  
+                        @click="clickBuildDetail(build, 'stage', stage)">
+                        {{ stage.name }}{{ releaseVersion(stage) }}
+                      </span>
+                    </div>
                     <div style="margin-top: 3px;">
-                      <template v-if="stage.status == 'ok'">
-                        <i class="el-icon-circle-check" style="font-size: 18px;"></i>
+                      <status-icon v-if="stage.status != 'pause'" style="font-size: 18px" :type="'job'" 
+                        :status="stage.status"></status-icon>
+                      <template v-if="['ok', 'error', 'cancel', 'canceled'].indexOf(stage.status) >= 0">
                         <div class="el-steps-stage-exectime">
                           {{ getStageExecTime(stage.exec_time, stage.update_time) }}
                         </div>
                       </template>
                       <template v-if="stage.status == 'doing'">
-                        <i class="el-icon-refresh refresh-rotate" style="font-size: 18px;"></i>
                         <div class="el-steps-stage-exectime">
                           {{ getStageExecTimeStr(refreshStages[stage.id]) }}
                         </div>
                       </template>
-                      <template v-if="stage.status == 'error'">
-                        <i class="el-icon-circle-close" style="font-size: 18px;"></i>
-                        <div class="el-steps-stage-exectime">
-                          {{ getStageExecTime(stage.exec_time, stage.update_time) }}
-                        </div>
-                      </template>
                       <template v-if="stage.status == 'wait'">
-                        <i class="el-icon-remove-outline" style="font-size: 18px;"></i>
                         <div class="el-steps-stage-exectime">
                           --
-                        </div>
-                      </template>
-                      <template v-if="stage.status == 'cancel'">
-                        <i class="el-icon-remove-outline" style="font-size: 18px;"></i>
-                        <div class="el-steps-stage-exectime">
-                          {{ getStageExecTime(stage.exec_time, stage.finish_time) }}
-                        </div>
-                      </template>
-                      <template v-if="stage.status == 'canceled'">
-                        <i class="el-icon-remove-outline" style="font-size: 18px;"></i>
-                        <div class="el-steps-stage-exectime">
-                          {{ getStageExecTime(stage.exec_time, stage.finish_time) }}
                         </div>
                       </template>
                       <template v-if="stage.status == 'pause'">
@@ -151,7 +137,11 @@
             </template>
             <template v-if="build.clickDetail && build.clickDetail.type == 'stage'">
               <div style="font-size: 14px; padding: 4px 3px 8px">
-                阶段：{{ build.clickDetail ? build.clickDetail.stage ? build.clickDetail.stage.name : '' : '' }}
+                阶段：
+                <span v-if="build.clickDetail.stage" class="build-stage-detail-text"
+                  :style="{'color': getBuildStatusColor(build.clickDetail.stage.status)}">
+                  {{ build.clickDetail.stage ? build.clickDetail.stage.name : '' }}
+                </span>
               </div>
               <el-table
                 :data="build.clickDetail ? build.clickDetail.stage ? build.clickDetail.stage.jobs : [] : []"
@@ -165,9 +155,11 @@
                 <el-table-column
                   prop="status"
                   label="状态"
-                  width="90">
+                  width="100">
                   <template slot-scope="scope">
-                    <span>
+                    <span :style="{'color': getBuildStatusColor(scope.row.status)}">
+                      <status-icon v-if="scope.row.status != 'pause'" style="font-size: 14px" :type="'job'" 
+                        :status="scope.row.status"></status-icon>
                       {{ jobStatusMap[scope.row.status] }}
                     </span>
                   </template>
@@ -177,20 +169,27 @@
                   label="执行结果"
                   width="">
                   <template slot-scope="scope">
-                    <span>
-                      {{ scope.row.result }}
+                    <span v-if="scope.row.result">
+                      <span v-if="scope.row.result.code != 'Success'">
+                        {{ scope.row.result.code }}{{ scope.row.result.msg ? ': '+scope.row.result.msg : '' }}
+                      </span>
+                      <component v-else-if="jobPluginResultMap[scope.row.plugin_key]" v-bind:is="jobPluginResultMap[scope.row.plugin_key]" 
+                        :result="scope.row.result" :params="scope.row.params"></component>
+                      <span v-else-if="scope.row.result.data">
+                        {{ scope.row.result.data }}
+                      </span>
                     </span>
                   </template>
                 </el-table-column>
               </el-table>
               <!-- <el-button style="margin-top: 8px; border-radius: 0px; padding: 5px 15px;" type="primary" size="mini">重新构建</el-button> -->
-              <el-button style="margin-top: 8px; border-radius: 0px; padding: 5px 15px;" type="danger" 
+              <el-button class="build-stage-action-btn" type="danger" 
                 size="mini" v-if="(build.clickDetail.stage.status == 'doing')" @click="stageCancel(build.clickDetail.stage)">取消执行</el-button>
-              <el-button style="margin-top: 8px; border-radius: 0px; padding: 5px 15px;" type="primary" 
+              <el-button class="build-stage-action-btn" type="primary" 
                 size="mini" v-if="(['canceled'].indexOf(build.clickDetail.stage.status) >= 0)" @click="stageCancelReexec(build.clickDetail.stage)">重新执行</el-button>
-              <el-button style="margin-top: 8px; border-radius: 0px; padding: 5px 15px;" type="primary" 
+              <el-button class="build-stage-action-btn" type="primary" 
                 size="mini" v-if="canReexec(build.pipeline_run, build.clickDetail.stage)" @click="stageReexec(build.clickDetail.stage)">从当前阶段重新执行</el-button>
-              <el-button style="margin-top: 8px; border-radius: 0px; padding: 5px 15px;" type="primary" 
+              <el-button class="build-stage-action-btn" type="primary" 
                 size="mini" v-if="(build.clickDetail.stage.status == 'error')" @click="stageRetry(build)">失败重试</el-button>
             </template>
             
@@ -320,6 +319,7 @@ import { StatusIcon } from '@/views/pipeline/components'
 import { getPipeline, listRepoBranches } from '@/api/pipeline/pipeline'
 import { listBuilds, buildPipeline, stageAction } from '@/api/pipeline/build'
 import { manualCheck, Release } from '@/views/pipeline/plugin-manual'
+import { ReleaseResult, CodeToImageResult, AppDeployResult, DeployK8sResult, ExecShellResult } from '@/views/pipeline/plugin-result'
 import { Message } from 'element-ui'
 
 export default {
@@ -328,6 +328,11 @@ export default {
     Clusterbar,
     Release,
     StatusIcon,
+    ReleaseResult,
+    CodeToImageResult,
+    AppDeployResult,
+    DeployK8sResult,
+    ExecShellResult,
   },
   sse: {cleanup: true},
   data() {
@@ -369,6 +374,13 @@ export default {
         'doing': '执行中',
         'cancel': '取消',
         'canceled': '已取消',
+      },
+      jobPluginResultMap: {
+        release: ReleaseResult,
+        build_code_to_image: CodeToImageResult,
+        upgrade_app: AppDeployResult,
+        deploy_k8s: DeployK8sResult,
+        execute_shell: ExecShellResult,
       }
     }
   },
@@ -430,7 +442,7 @@ export default {
         this.loading = false
         let res = response.data || []
         if(lastBuildNumber == 0) {
-          console.log('list builds: ', Date.now())
+          // console.log('list builds: ', Date.now())
           this.$set(this, 'builds', res)
         } else {
           for(let r of res) this.builds.push(r)
@@ -939,7 +951,10 @@ export default {
   font-size: 14px;
   font-weight: 400;
 }
-.build-stage {
+.build-stage-detail-text {
+  border: 1px solid;
+  border-radius: 15px;
+  padding: 2px 5px;
 }
 
 .build-span{
@@ -953,6 +968,12 @@ export default {
   animation: loading-rotate 1.5s cubic-bezier(0.29, 0.99, 0.73, 0.02) infinite;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.build-stage-action-btn {
+  margin-top: 8px; 
+  border-radius: 0px; 
+  padding: 5px 15px;
 }
 </style>
 <style lang="scss">

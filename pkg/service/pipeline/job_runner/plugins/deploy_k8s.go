@@ -2,8 +2,9 @@ package plugins
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
+	"github.com/kubespace/kubespace/pkg/core/code"
+	corerrors "github.com/kubespace/kubespace/pkg/core/errors"
 	"github.com/kubespace/kubespace/pkg/model"
 	"github.com/kubespace/kubespace/pkg/service/cluster"
 	"github.com/kubespace/kubespace/pkg/utils"
@@ -37,7 +38,16 @@ type deployK8sParams struct {
 	Env       map[string]interface{} `json:"env"`
 }
 
+type deployK8sResultResource struct {
+	Namespace string   `json:"namespace"`
+	Kind      string   `json:"kind"`
+	Name      string   `json:"name"`
+	Images    []string `json:"images"`
+}
+
 type deployK8sResult struct {
+	Cluster   string                     `json:"cluster"`
+	Resources []*deployK8sResultResource `json:"resources"`
 }
 
 type deployK8s struct {
@@ -82,7 +92,6 @@ func (u *deployK8s) execute() error {
 	}
 	if u.params.Images == "" {
 		u.Log("要升级的镜像列表参数为空")
-		//return nil
 	}
 	u.images = stringToImage(u.params.Images)
 	u.Log("升级的镜像列表：%v", u.params.Images)
@@ -95,6 +104,7 @@ func (u *deployK8s) execute() error {
 		u.Log("获取集群失败：%s", err.Error())
 		return err
 	}
+	u.result.Cluster = clusterObj.Name1
 	if u.params.Namespace == "" {
 		u.params.Namespace = "default"
 	}
@@ -103,21 +113,15 @@ func (u *deployK8s) execute() error {
 		return err
 	}
 	yamlList := strings.Split(yamlTpl, "---\n")
-	destYamlStr := ""
-	replaced := false
+	var destYamlList []string
 	for _, yamlStr := range yamlList {
-		destYaml, imageReplaced, err := u.replaceResourceImage(yamlStr)
+		destYaml, err := u.replaceResourceImage(yamlStr)
 		if err != nil {
 			return err
 		}
-		if imageReplaced {
-			replaced = true
-		}
-		destYamlStr += destYaml + "\n---\n"
+		destYamlList = append(destYamlList, destYaml)
 	}
-	if !replaced {
-		u.Log("未匹配到可替换的镜像")
-	}
+	destYamlStr := strings.Join(destYamlList, "\n---\n")
 	u.Log(destYamlStr)
 	u.Log("开始部署资源到集群「%s」", clusterObj.Name1)
 	resp := u.kubeClient.Apply(clusterObj.Name, map[string]string{
@@ -125,129 +129,110 @@ func (u *deployK8s) execute() error {
 	})
 	if !resp.IsSuccess() {
 		u.Log("部署资源到集群失败：%s", resp.Msg)
-		return errors.New(resp.Msg)
-	} else {
-		u.Log("部署资源到集群成功")
+		return corerrors.New(resp.Code, resp.Msg)
 	}
+	u.Log("部署资源到集群成功")
 	return nil
 }
 
-func (u *deployK8s) replaceResourceImage(yamlStr string) (string, bool, error) {
+func (u *deployK8s) replaceResourceImage(yamlStr string) (string, error) {
 	yamlDict := make(map[string]interface{})
-	err := yaml.Unmarshal([]byte(yamlStr), &yamlDict)
-	if err != nil {
+	if err := yaml.Unmarshal([]byte(yamlStr), &yamlDict); err != nil {
 		u.Log("%s\n解析Yaml失败：%s", yamlStr, err.Error())
-		return "", false, err
+		return "", corerrors.New(code.MarshalError, err)
 	}
+
 	obj := unstructured.Unstructured{Object: yamlDict}
 	obj.SetNamespace(u.params.Namespace)
-	replaced := false
-	if utils.Contains(WorkloadKinds, obj.GetKind()) {
-		switch obj.GetKind() {
-		case "Pod":
-			var pod corev1.Pod
-			err = runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, &pod)
-			if err != nil {
-				u.Log("%s\n转换Pod资源失败: %s", yamlStr, err.Error())
-				return "", false, err
-			}
-			if replaced, err = u.replaceContainerImage(pod.Spec.Containers); err != nil {
-				return "", false, err
-			}
-			if obj.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(&pod); err != nil {
-				u.Log("转换Pod资源失败：%s", err.Error())
-				return "", false, err
-			}
-		case "Deployment":
-			var deployment appsv1.Deployment
-			err = runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, &deployment)
-			if err != nil {
-				u.Log("%s\n转换Deployment资源失败: %s", yamlStr, err.Error())
-				return "", false, err
-			}
-			if replaced, err = u.replaceContainerImage(deployment.Spec.Template.Spec.Containers); err != nil {
-				return "", false, err
-			}
-			if obj.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(&deployment); err != nil {
-				u.Log("转换Deployment资源失败：%s", err.Error())
-				return "", false, err
-			}
-		case "StatefulSet":
-			var sts appsv1.StatefulSet
-			err = runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, &sts)
-			if err != nil {
-				u.Log("%s\n转换StatefulSet资源失败: %s", yamlStr, err.Error())
-				return "", false, err
-			}
-			if replaced, err = u.replaceContainerImage(sts.Spec.Template.Spec.Containers); err != nil {
-				return "", false, err
-			}
-			if obj.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(&sts); err != nil {
-				u.Log("转换StatefulSet资源失败：%s", err.Error())
-				return "", false, err
-			}
-		case "DaemonSet":
-			var ds appsv1.DaemonSet
-			err = runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, &ds)
-			if err != nil {
-				u.Log("%s\n转换DaemonSet资源失败: %s", yamlStr, err.Error())
-				return "", false, err
-			}
-			if replaced, err = u.replaceContainerImage(ds.Spec.Template.Spec.Containers); err != nil {
-				return "", false, err
-			}
-			if obj.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(&ds); err != nil {
-				u.Log("转换DaemonSet资源失败：%s", err.Error())
-				return "", false, err
-			}
-		case "Job":
-			var job batchv1.Job
-			err = runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, &job)
-			if err != nil {
-				u.Log("%s\n转换Job资源失败: %s", yamlStr, err.Error())
-				return "", false, err
-			}
-			if replaced, err = u.replaceContainerImage(job.Spec.Template.Spec.Containers); err != nil {
-				return "", false, err
-			}
-			if obj.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(&job); err != nil {
-				u.Log("转换Job资源失败：%s", err.Error())
-				return "", false, err
-			}
-		case "CronJob":
-			var cronjob batchV1beta1.CronJob
-			err = runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, &cronjob)
-			if err != nil {
-				u.Log("%s\n转换CronJob资源失败: %s", yamlStr, err.Error())
-				return "", false, err
-			}
-			if replaced, err = u.replaceContainerImage(cronjob.Spec.JobTemplate.Spec.Template.Spec.Containers); err != nil {
-				return "", false, err
-			}
-			if obj.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(&cronjob); err != nil {
-				u.Log("转换CronJob资源失败：%s", err.Error())
-				return "", false, err
-			}
-		}
+
+	deployRes := &deployK8sResultResource{
+		Namespace: u.params.Namespace,
+		Kind:      obj.GetKind(),
+		Name:      obj.GetName(),
 	}
+
+	u.result.Resources = append(u.result.Resources, deployRes)
+
+	if !utils.Contains(WorkloadKinds, obj.GetKind()) {
+		return yamlStr, nil
+	}
+
+	var resObject interface{}
+
+	switch obj.GetKind() {
+	case "Pod":
+		var pod corev1.Pod
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, &pod); err != nil {
+			u.Log("%s\n转换Pod资源失败: %s", yamlStr, err.Error())
+			return "", corerrors.New(code.ParseError, err)
+		}
+		deployRes.Images = u.replaceContainerImage(pod.Spec.Containers)
+		resObject = &pod
+	case "Deployment":
+		var deployment appsv1.Deployment
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, &deployment); err != nil {
+			u.Log("%s\n转换Deployment资源失败: %s", yamlStr, err.Error())
+			return "", corerrors.New(code.ParseError, err)
+		}
+		deployRes.Images = u.replaceContainerImage(deployment.Spec.Template.Spec.Containers)
+		resObject = &deployment
+	case "StatefulSet":
+		var sts appsv1.StatefulSet
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, &sts); err != nil {
+			u.Log("%s\n转换StatefulSet资源失败: %s", yamlStr, err.Error())
+			return "", corerrors.New(code.ParseError, err)
+		}
+		deployRes.Images = u.replaceContainerImage(sts.Spec.Template.Spec.Containers)
+		resObject = &sts
+	case "DaemonSet":
+		var ds appsv1.DaemonSet
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, &ds); err != nil {
+			u.Log("%s\n转换DaemonSet资源失败: %s", yamlStr, err.Error())
+			return "", corerrors.New(code.ParseError, err)
+		}
+		deployRes.Images = u.replaceContainerImage(ds.Spec.Template.Spec.Containers)
+		resObject = &ds
+	case "Job":
+		var job batchv1.Job
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, &job); err != nil {
+			u.Log("%s\n转换Job资源失败: %s", yamlStr, err.Error())
+			return "", corerrors.New(code.ParseError, err)
+		}
+		deployRes.Images = u.replaceContainerImage(job.Spec.Template.Spec.Containers)
+		resObject = &job
+	case "CronJob":
+		var cronjob batchV1beta1.CronJob
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, &cronjob); err != nil {
+			u.Log("%s\n转换CronJob资源失败: %s", yamlStr, err.Error())
+			return "", corerrors.New(code.ParseError, err)
+		}
+		deployRes.Images = u.replaceContainerImage(cronjob.Spec.JobTemplate.Spec.Template.Spec.Containers)
+		resObject = &cronjob
+	}
+	var err error
+	if obj.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(resObject); err != nil {
+		u.Log("转换%s资源失败：%s", obj.GetKind(), err.Error())
+		return "", corerrors.New(code.ParseError, err)
+	}
+
 	objBytes, err := yaml.Marshal(obj.Object)
 	if err != nil {
 		u.Log("marshal resource error: %s", err.Error())
-		return "", false, err
+		return "", corerrors.New(code.MarshalError, err)
 	}
-	return string(objBytes), replaced, nil
+	return string(objBytes), nil
 }
 
-func (u *deployK8s) replaceContainerImage(containers []corev1.Container) (bool, error) {
-	replaced := false
+func (u *deployK8s) replaceContainerImage(containers []corev1.Container) []string {
+	var images []string
 	for i, c := range containers {
 		if matchImage := u.matchImage(c.Image); matchImage != "" {
 			containers[i].Image = matchImage
-			replaced = true
-			u.Log("替换容器原镜像「%s」为「%s」", c.Image, matchImage)
+			images = append(images, matchImage)
+			u.Log("部署容器原镜像「%s」为「%s」", c.Image, matchImage)
 		}
 	}
-	return replaced, nil
+	return images
 }
 
 func (u *deployK8s) matchImage(srcImage string) string {

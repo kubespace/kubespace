@@ -15,7 +15,7 @@ type Response struct {
 	Data any    `json:"data"`
 }
 
-func NewResponseSuccess(data any) *Response {
+func NewResponseOk(data any) *Response {
 	return &Response{Code: code.Success, Data: data}
 }
 

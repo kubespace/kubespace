@@ -101,6 +101,7 @@ export default {
     },
     fetchClusters() {
       this.topSelectorLoading = true;
+      this.oriTopSelectors = []
       listCluster().then(response => {
         var clusters = response.data ? response.data : []
         clusters.sort(function(a,b) {
@@ -122,6 +123,7 @@ export default {
     },
     fetchPipelineWorkspaces() {
       this.topSelectorLoading = true;
+      this.oriTopSelectors = []
       listWorkspaces().then((response) => {
         var workspaces = response.data ? response.data : []
         var cur_workspace = parseInt(this.$route.params.workspaceId)
@@ -138,6 +140,7 @@ export default {
     },
     fetchProjects() {
       this.topSelectorLoading = true;
+      this.oriTopSelectors = []
       listProjects().then((response) => {
         var projects = response.data ? response.data : []
         var cur_workspace = parseInt(this.$route.params.workspaceId)

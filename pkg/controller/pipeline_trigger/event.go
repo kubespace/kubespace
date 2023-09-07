@@ -54,7 +54,7 @@ func (p *PipelineTriggerController) eventHandle(obj interface{}) error {
 	if err != nil {
 		result = utils.NewResponseWithError(errors.New(code.BuildError, err))
 	} else {
-		result = utils.NewResponseSuccess(pipelineRun)
+		result = utils.NewResponseOk(pipelineRun)
 	}
 	return p.models.PipelineTriggerEventManager.Update(event.ID, &types.PipelineTriggerEvent{
 		EventResult: result,

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/kubespace/kubespace/pkg/core/code"
+	corerrors "github.com/kubespace/kubespace/pkg/core/errors"
 	"github.com/kubespace/kubespace/pkg/model/types"
 	"github.com/kubespace/kubespace/pkg/service/pipeline/job_runner"
 	"github.com/kubespace/kubespace/pkg/service/pipeline/job_runner/plugins"
@@ -138,9 +139,9 @@ func (b *SpaceletJobRun) execute(executorF plugins.ExecutorFactory, params *plug
 		// 执行失败
 		status = types.PipelineStatusError
 		klog.Errorf("execute job=%d error: %s", params.JobId, err.Error())
-		resp = &utils.Response{Code: code.PluginError, Msg: err.Error()}
+		resp = utils.NewResponseWithError(corerrors.New(code.PluginError, err))
 	} else {
-		resp = &utils.Response{Code: code.Success, Data: result}
+		resp = utils.NewResponseOk(result)
 	}
 	// 将执行结果记录到当前任务的状态文件中
 	if err = jobStatus.Set(&StatusResult{Status: status, Result: resp}); err != nil {

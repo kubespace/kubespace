@@ -154,11 +154,39 @@ func GetCodeRepoName(codeUrl string) string {
 // GetImageName 获取镜像的名称
 // 如：docker.io/kubespace/kubespace:latest -> kubespace/kubespace
 func GetImageName(img string) string {
-	name := strings.Split(img, ":")[0]
+	_, name, _ := ParseImageName(img, true)
+	return name
+}
+
+// ParseImageName 获取镜像的名称
+// 如：docker.io/kubespace/kubespace:latest -> docker.io kubespace/kubespace latest
+func ParseImageName(img string, withDefault bool) (string, string, string) {
+	var registry, name, tag string
+	if withDefault {
+		registry = "docker.io"
+		tag = "latest"
+	}
+	splitImg := strings.Split(img, ":")
+	if len(splitImg) == 1 {
+		name = img
+	} else if len(splitImg) == 2 {
+		if strings.Contains(splitImg[0], "/") {
+			name = splitImg[0]
+			tag = splitImg[1]
+		} else {
+			// 127.0.0.1:5000/busybox
+			name = img
+		}
+	} else {
+		// 去掉tag
+		name = strings.Join(splitImg[0:len(splitImg)-1], ":")
+		tag = splitImg[len(splitImg)-1]
+	}
 	if strings.Contains(strings.Split(name, "/")[0], ".") {
 		name = strings.Join(strings.Split(name, "/")[1:], "/")
+		registry = strings.Split(name, "/")[0]
 	}
-	return name
+	return registry, name, tag
 }
 
 // RequestHost 获取http请求的server host
@@ -178,4 +206,13 @@ func RequestHost(r *http.Request) (host string) {
 func ParseUint(s string) (uint, error) {
 	i, err := strconv.ParseUint(s, 10, 64)
 	return uint(i), err
+}
+
+func GetMapStringValue(m map[string]interface{}, k string) (s string, ok bool) {
+	v, ok := m[k]
+	if !ok {
+		return
+	}
+	s, ok = v.(string)
+	return
 }
