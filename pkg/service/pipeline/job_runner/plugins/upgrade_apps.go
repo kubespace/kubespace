@@ -309,7 +309,7 @@ func (u *upgradeApp) matchRepositoryUpgrade(value map[string]interface{}, path s
 		return &upgradeAppResultImage{
 			Path:   replacePath,
 			Before: oriImage,
-			After:  destImageName,
+			After:  destImage,
 		}
 	}
 	return
