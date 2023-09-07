@@ -49,7 +49,7 @@
             {{ $dateFormat(scope.row.update_time) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120">
+        <el-table-column label="操作" width="140">
           <template slot-scope="scope">
             <div class="tableOperate">
               <!-- <el-link :disabled="!$editorRole()" :underline="false" type="primary" style="margin-right: 15px;"  @click="updateSecretFormDialog(scope.row)">编辑</el-link> -->

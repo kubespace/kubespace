@@ -41,7 +41,7 @@ export function clusterDetail(id) {
 
 export function deleteCluster(id) {
   return request({
-    url: `/cluster/delete/${id}`,
+    url: `/cluster/${id}`,
     method: 'delete',
   })
 }
