@@ -260,7 +260,7 @@ func (u *upgradeApp) matchImageUpgrade(value map[string]interface{}, path string
 		} else {
 			registry, imgName, tag := utils.ParseImageName(destImage, true)
 			replacePath[u.appendPath(path, "image")] = registry + "/" + imgName
-			replacePath[u.appendPath(path, "tag")] = tag
+			replacePath[u.appendPath(path, "tag")] = fmt.Sprintf(`"%s"`, tag)
 		}
 		u.Log("应用原镜像「%s」，升级为「%s」", oriImage, destImage)
 		return &upgradeAppResultImage{
@@ -296,7 +296,7 @@ func (u *upgradeApp) matchRepositoryUpgrade(value map[string]interface{}, path s
 		destRegistry, destImageName, destTag := utils.ParseImageName(destImage, true)
 
 		replacePath := map[string]string{
-			u.appendPath(path, "tag"): destTag,
+			u.appendPath(path, "tag"): fmt.Sprintf(`"%s"`, destTag),
 		}
 		if hasRegistry {
 			replacePath[u.appendPath(path, "registry")] = destRegistry
