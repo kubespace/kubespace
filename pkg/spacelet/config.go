@@ -76,7 +76,7 @@ func getSpaceletHostIp(options *Options) string {
 	klog.Infof("ip route out: %v", ipout)
 	hostIp := ""
 	if utils.Contains(ipout, "via") {
-		hostIp = ipout[7]
+		hostIp = ipout[6]
 	} else {
 		hostIp = ipout[5]
 	}
