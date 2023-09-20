@@ -316,7 +316,7 @@ export default {
           if(withSSE) {
             this.fetchJobLogSSE(this.mainContent.mainJob.id)
           } else {
-            getJobLog(this.mainContent.mainJob.id).then((response) => {
+            getJobLog(this.mainContent.mainJob.id, false, {workspace_id: this.workspaceId}).then((response) => {
               this.$set(this.mainContent, 'jobLog', response.data)
             }).catch(() => {
             })

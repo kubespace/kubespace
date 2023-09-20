@@ -9,6 +9,7 @@ const ServerVersion16 = "v1.16.0"
 const ServerVersion17 = "v1.17.0"
 const ServerVersion19 = "v1.19.0"
 const ServerVersion21 = "v1.21.0"
+const ServerVersion22 = "v1.22.0"
 
 var ProjectLabelSelector = &metav1.LabelSelector{
 	MatchLabels: map[string]string{"kubespace.cn/belong-to": "project"},

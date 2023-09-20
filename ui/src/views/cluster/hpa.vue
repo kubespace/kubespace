@@ -18,7 +18,7 @@
         :default-sort="{ prop: 'name' }"
         row-key="uid"
       >
-        <el-table-column type="selection" width="45"> </el-table-column>
+        <!-- <el-table-column type="selection" width="45"> </el-table-column> -->
         <el-table-column
           prop="name"
           label="名称"
@@ -73,7 +73,7 @@
           show-overflow-tooltip
         >
           <template slot-scope="scope">
-            {{ $dateFormat(scope.row.created) }}
+            {{ $dateFormat(scope.row.create_time) }}
           </template>
         </el-table-column>
         <el-table-column label="" show-overflow-tooltip width="45">
@@ -85,7 +85,7 @@
                   icon-class="operate"
               /></el-link>
               <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item
+                <!-- <el-dropdown-item
                   @click.native.prevent="
                     nameClick(scope.row.namespace, scope.row.name)
                   "
@@ -95,10 +95,10 @@
                     icon-class="detail"
                   />
                   <span style="margin-left: 5px;">详情</span>
-                </el-dropdown-item>
+                </el-dropdown-item> -->
                 <el-dropdown-item v-if="$editorRole()"
                   @click.native.prevent="
-                    getConfigMapYaml(scope.row.namespace, scope.row.name)
+                    getYaml(scope.row.namespace, scope.row.name)
                   "
                 >
                   <svg-icon
@@ -109,7 +109,7 @@
                 </el-dropdown-item>
                 <el-dropdown-item v-if="$editorRole()"
                   @click.native.prevent="
-                    deleteConfigMaps([
+                    deleteObjs([
                       { namespace: scope.row.namespace, name: scope.row.name },
                     ])
                   "
@@ -147,7 +147,7 @@
 <script>
 import { Clusterbar, Yaml } from '@/views/components'
 import { Message } from 'element-ui'
-import { ResType, listResource } from '@/api/cluster/resource'
+import { ResType, listResource, getResource, updateResource, delResource } from '@/api/cluster/resource'
 
 export default {
   name: 'HorizontalPodAutoscalers',
@@ -169,6 +169,8 @@ export default {
       yamlName: '',
       yamlValue: '',
       yamlLoading: true,
+      updateFormVisible: false,
+      createFormVisible: false,
     }
   },
   created() {
@@ -234,6 +236,95 @@ export default {
       } else {
         this.loading = false
         Message.error("获取集群异常，请刷新重试")
+      }
+    },
+    getYaml: function(namespace, name) {
+      this.yamlNamespace = ""
+      this.yamlName = ""
+      const cluster = this.$store.state.cluster
+      if (!cluster) {
+        Message.error("获取集群参数异常，请刷新重试")
+        return
+      }
+      if (!namespace) {
+        Message.error("获取命名空间参数异常，请刷新重试")
+        return
+      }
+      if (!name) {
+        Message.error("获取Deployment名称参数异常，请刷新重试")
+        return
+      }
+      this.yamlValue = ""
+      this.yamlDialog = true
+      this.yamlLoading = true
+      getResource(cluster, ResType.Hpa, namespace, name, "yaml").then(response => {
+        this.yamlLoading = false
+        this.yamlValue = response.data
+        this.yamlNamespace = namespace
+        this.yamlName = name
+      }).catch(() => {
+        this.yamlLoading = false
+      })
+    },
+    deleteObjs: function(objs) {
+      let cs = ''
+      for(let c of objs) {
+        cs += `${c.namespace}/${c.name}, `
+      }
+      cs = cs.substr(0, cs.length - 2)
+      this.$confirm(`请确认是否删除「${cs}」Hpa?`, '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        delResource(this.cluster, ResType.Hpa, {resources: objs}).then(() => {
+          Message.success("删除成功")
+          this.fetchData()
+        }).catch((err) => {
+          console.log(err)
+        });
+      }).catch(() => {       
+      });
+    },
+    update: function() {
+      const cluster = this.$store.state.cluster
+      if (!cluster) {
+        Message.error("获取集群参数异常，请刷新重试")
+        return
+      }
+      if (!this.yamlNamespace) {
+        Message.error("获取命名空间参数异常，请刷新重试")
+        return
+      }
+      if (!this.yamlName) {
+        Message.error("参数异常，请刷新重试")
+        return
+      }
+      this.yamlLoading = true
+      updateResource(cluster, ResType.Hpa, this.yamlNamespace, this.yamlName, this.yamlValue).then(() => {
+        Message.success("更新成功")
+        this.yamlLoading = false
+        this.yamlDialog = false
+      }).catch(() => {
+        // console.log(e) 
+      })
+    },
+    
+    _delDeploymentsFunc: function() {
+      if (this.delDeployments.length > 0){
+        let delDeployments = []
+        for (var p of this.delDeployments) {
+          delDeployments.push({namespace: p.namespace, name: p.name})
+        }
+        this.deleteDeployments(delDeployments)
+      }
+    },
+    handleSelectionChange(val) {
+      this.delDeployments = val;
+      if (val.length > 0){
+        this.delFunc = this._delDeploymentsFunc
+      } else {
+        this.delFunc = undefined
       }
     },
   }
