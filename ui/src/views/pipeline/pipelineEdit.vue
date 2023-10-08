@@ -66,45 +66,44 @@
               </div>
             </div>
           </div>
-          <div v-for="(stage, i) in editPipeline.stages" :key="i" style="">
-            <div class="stage-job-line" style="margin-top: 38px;">
-              <div style="display: inline-flex;">
-                <div>
-                  <div class="stage-job-line__inner" style="width: 30px;" ></div>
-                  <div class="stage-job-block" style="display: inline-block;">
-                    <div class="stage-job-block__stage" @click="openEditStageDialog(stage, i); dialogVisible=true;">
-                      <span>#{{ i + 1 }} {{ stage.name }}</span>
-                    </div>
-                  </div>
-                  <div class="stage-job-line__inner" style="width: 30px;"></div>
-                  <div class="stage-job-line__add" @click="openAddStageDialog(i+1); dialogVisible=true;">
-                    <el-tooltip class="item" effect="light" content="添加阶段" placement="top" :hide-after="2000">
-                      <i class="el-icon-circle-plus"></i>
-                    </el-tooltip>
-                  </div>
-                </div>
-              </div>
-              <div class="stage-job-block" style="margin-left: 25px; ">
-                <template  v-if="stage.jobs" >
-                  <div v-for="(job, ji) in stage.jobs" :key="ji">
-                      <div class="stage-job-block__job">
-                        <div class="stage-job-block__job-circle">
-                            <span class="stage-job-block__job-add__inner-name stage-job-block__job-add__inner-name-hover" 
-                              @click="openEditJobDialog(stage, ji); dialogVisible=true;">{{ job.name }}</span>
+          <draggable v-model="editPipeline.stages" ghostClass="draggable-ghost" chosenClass="draggable-chosen" dragClass="draggable-drag" handle=".stage-card">
+            <div v-for="(stage, i) in editPipeline.stages" :key="i" style="display: inline-flex">
+              
+              <div class="stage-job-line" style="margin-top: -10px;">
+                <div style="display: inline-flex;">
+                  <div>
+                    <div class="stage-job-line__inner draggable-zero" style="width: 30px; margin-top: 53px;" ></div>
+                    <el-card class="stage-card" style="display: inline-flex; overflow: inherit;">
+                      <div class="stage-job-block" style="margin-top: -35px; text-align: center;">
+                        <div class="stage-job-block__stage" @click="openEditStageDialog(stage, i); dialogVisible=true;">
+                          <span>#{{ i + 1 }} {{ stage.name }}</span>
                         </div>
                       </div>
-                  </div>
-                </template>
 
-                <div class="stage-job-block__job-add">
-                  <div class="stage-job-block__job-add__inner">
-                    <span class="stage-job-block__job-add__inner-name stage-job-block__job-add__inner-ex" 
-                    @click="openAddJobDialog(stage); dialogVisible=true;">+ 新建并行任务</span>
+                      <div class="stage-job-block" style="margin-left: 0px; ">
+                        <template  v-if="stage.jobs" >
+                          <div v-for="(job, ji) in stage.jobs" :key="ji" style="margin-top: 20px;">
+                            <span class="stage-job-block__job-add__inner-name stage-job-block__job-add__inner-name-hover" 
+                              @click="openEditJobDialog(stage, ji); dialogVisible=true;">{{ job.name }}</span>
+                          </div>
+                        </template>
+                        <div style="margin-top: 20px;">
+                          <span class="stage-job-block__job-add__inner-name stage-job-block__job-add__inner-ex" 
+                          @click="openAddJobDialog(stage); dialogVisible=true;">+ 新建并行任务</span>
+                        </div>
+                      </div>
+                    </el-card>
+                    <div class="stage-job-line__inner draggable-zero" style="width: 30px; margin-top: 53px;"></div>
+                    <div class="stage-job-line__add draggable-hidden" @click="openAddStageDialog(i+1); dialogVisible=true;" style="margin-top: 53px;">
+                      <el-tooltip class="item" effect="light" content="添加阶段" placement="top" :hide-after="2000">
+                        <i class="el-icon-circle-plus"></i>
+                      </el-tooltip>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          </draggable>
 
         </div>
       </div>
@@ -379,7 +378,7 @@ import { listWorkspaces } from '@/api/pipeline/workspace'
 import { getWorkspace } from '@/api/pipeline/workspace'
 import { listSpacelet } from "@/api/spacelet/spacelet";
 import { Message } from 'element-ui'
-
+import draggable from "vuedraggable";
 export default {
   name: 'PipelineEdit',
   components: {
@@ -389,7 +388,8 @@ export default {
     ExecuteShell,
     AppDeploy,
     Release,
-    DeployK8s
+    DeployK8s,
+    draggable,
   },
   data() {
     let jobPlugins = [{
@@ -933,7 +933,7 @@ export default {
 }
 
 .stage-job-outer {
-  padding: 10px 20px;
+  padding: 20px;
   display: -webkit-box;
   // height: 500px;
   // max-height: 500px;
@@ -941,9 +941,10 @@ export default {
   background-color: #fff;
   border-radius: 10px;
   margin: 15px 0px 0px;
+  white-space: nowrap;
 
   .stage-job-line {
-    display:inline-block;
+    display:inline-flex;
   }
 
   .stage-job-block {
@@ -958,6 +959,8 @@ export default {
       background-color: #EBEEF5;
       height: 32px;
       min-width: 120px;
+      position: relative;
+      z-index: 99;
     }
 
     .stage-job-block__stage:hover{
@@ -989,44 +992,29 @@ export default {
     .stage-job-block__job-add__inner-name-hover:hover {
       border-color: #409EFF;
       color: #409EFF;
+      opacity: 0.8;
     }
     .stage-job-block__job-add__inner-name {
-      margin-left: 20px;
+      // margin-left: 20px;
       background-color: white;
       margin-top: 36px; 
       border-radius: 15px; 
       border:1px solid #C0C4CC;
+      color: #606266;
       padding: 4px 8px;
     }
 
     .stage-job-block__job-add__inner-name:hover{
       cursor: pointer;
     }
-
-    .stage-job-block__job-add {
-      width: 20px;
-      height: 40px;
-      border-left: 1px dashed #c0c4cc;
-      border-bottom: 1px dashed #c0c4cc;
-      margin: 0px 20px;
-      opacity: 0.6;
-
-      .stage-job-block__job-add__inner {
-        font-size: 14px;
-        line-height: 25px;
-        width: 210px;
-        padding-top: 26px;
-
-        .stage-job-block__job-add__inner-ex {
-          border:1px dashed #C0C4CC;
-          color: #909399;
-        }
-        .stage-job-block__job-add__inner-ex:hover {
-          border-color: #409EFF;
-          color: #409EFF;
-        }
-      }
-
+    .stage-job-block__job-add__inner-ex {
+      border:1px dashed #C0C4CC;
+      color: #909399;
+      opacity: 0.7;
+    }
+    .stage-job-block__job-add__inner-ex:hover {
+      border-color: #409EFF;
+      color: #409EFF;
     }
   }
 
@@ -1106,6 +1094,24 @@ export default {
   .pipeline-source-outer:hover{
     border-color: #409EFF;
     cursor: pointer;
+  }
+
+  .draggable-class {
+    display: inline;
+  }
+
+
+  .draggable-drag {
+    .draggable-zero {
+      height: 0px
+    }
+    .draggable-hidden {
+      opacity: 0;
+    }
+  }
+
+  .stage-card:hover {
+    cursor: move;
   }
 
 }

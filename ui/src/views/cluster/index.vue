@@ -74,7 +74,7 @@
                 导入集群
               </el-link>
               <el-link :underline="false" type='primary' style="margin-right: 15px;" 
-                @click="nameClick(scope.row.id)"
+                @click="nameClick(scope.row.name)"
                 v-if="scope.row.status === 'Connect'">集群详情</el-link>
               <el-link :disabled="!$adminRole()" :underline="false" type="danger" @click="deleteCluster({id: scope.row.id, name1: scope.row.name1})">删除</el-link>
             </div>
